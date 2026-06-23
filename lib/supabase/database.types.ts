@@ -12,21 +12,43 @@ export type MemberRole =
   | "섭외이사"
   | "정회원"
   | "고문";
+export type MemberType = "정회원" | "준회원" | "게스트";
+export type PermissionRole = "member" | "scorer" | "manager" | "admin" | "master";
 export type AttendanceStatus = "attending" | "absent" | "undecided";
 export type WinnerTeam = "A" | "B";
+export type StagingValidationStatus =
+  | "pending"
+  | "valid"
+  | "duplicate"
+  | "missing_required"
+  | "invalid_phone"
+  | "invalid_mapo_score"
+  | "needs_review"
+  | "imported"
+  | "skipped";
 
 export interface Member {
   id: string;
   name: string;
   nickname: string;
+  /** @deprecated 0004부터 미사용. 실력 등급 — LP 시스템으로 대체됨. 신규 코드에서 참조하지 말 것. */
   grade: MemberGrade;
   role: MemberRole;
   phone: string | null;
   mapo_score: number | null;
+  /** @deprecated 0004부터 미사용. ELO 레이팅 — league_point로 대체됨. 신규 코드에서 참조하지 말 것. */
   rating: number;
   wins: number;
   losses: number;
   is_active: boolean;
+  member_type: MemberType;
+  league_point: number;
+  permission_role: PermissionRole;
+  kakao_provider_id: string | null;
+  is_kakao_linked: boolean;
+  address_full: string | null;
+  district: string | null;
+  age: number | null;
   created_at: string;
 }
 
@@ -69,6 +91,43 @@ export interface RatingHistory {
   rating_after: number;
   rating_change: number;
   created_at: string;
+}
+
+export interface PointHistory {
+  id: string;
+  match_id: string | null;
+  member_id: string;
+  point_before: number;
+  point_after: number;
+  point_change: number;
+  reason: string;
+  created_at: string;
+}
+
+export interface StagingMember {
+  id: string;
+  raw_name: string | null;
+  raw_nickname: string | null;
+  raw_phone: string | null;
+  raw_address: string | null;
+  raw_age: string | null;
+  raw_mapo_score: string | null;
+  raw_member_type: string | null;
+  normalized_name: string | null;
+  normalized_nickname: string | null;
+  normalized_phone: string | null;
+  normalized_address: string | null;
+  normalized_district: string | null;
+  normalized_age: number | null;
+  normalized_mapo_score: number | null;
+  normalized_member_type: string | null;
+  validation_status: StagingValidationStatus;
+  validation_errors: string | null;
+  existing_member_id: string | null;
+  memo: string | null;
+  imported_at: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface Attendance {
@@ -130,6 +189,24 @@ export interface Database {
           rating_change: number;
         };
         Update: Partial<RatingHistory>;
+        Relationships: [];
+      };
+      point_history: {
+        Row: PointHistory;
+        Insert: Partial<PointHistory> & {
+          member_id: string;
+          point_before: number;
+          point_after: number;
+          point_change: number;
+          reason: string;
+        };
+        Update: Partial<PointHistory>;
+        Relationships: [];
+      };
+      staging_members: {
+        Row: StagingMember;
+        Insert: Partial<StagingMember>;
+        Update: Partial<StagingMember>;
         Relationships: [];
       };
       attendance: {
