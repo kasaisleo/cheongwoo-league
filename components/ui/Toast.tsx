@@ -44,7 +44,7 @@ export function ToastViewport() {
   useEffect(() => {
     setMounted(true);
     const listener = (toast: ToastMessage) => {
-      setToasts((prev) => [...prev, toast]);
+      setToasts((prev) => [...prev, toast].slice(-3));
       setTimeout(() => {
         setToasts((prev) => prev.filter((t) => t.id !== toast.id));
       }, 2600);
