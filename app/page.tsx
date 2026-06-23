@@ -42,11 +42,11 @@ export default async function HomePage() {
         <div className="mb-1 inline-flex items-center gap-2">
           <span className="h-2 w-2 rounded-full bg-clay-400" />
           <p className="font-score text-xs font-semibold uppercase tracking-[0.2em] text-clay-400">
-            Cheongwoo League
+            Mapo Cheongwoo Club
           </p>
         </div>
         <h1 className="font-display text-3xl font-bold uppercase tracking-tight text-line-900">
-          청우리그
+          마포 청우회 리그
         </h1>
       </header>
 

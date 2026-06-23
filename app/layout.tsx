@@ -3,8 +3,8 @@ import { BottomTabBar } from "@/components/layout/BottomTabBar";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Cheongwoo League",
-  description: "청우 테니스 클럽 매치 레이팅",
+  title: "마포 청우회 리그",
+  description: "마포 청우회 테니스 클럽 매치 레이팅",
 };
 
 export const viewport: Viewport = {

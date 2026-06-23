@@ -1,4 +1,4 @@
-# Cheongwoo League
+# 마포 청우회 리그
 
 테니스 클럽 매치 레이팅 웹앱. Next.js (App Router) + Tailwind CSS + Supabase.
 

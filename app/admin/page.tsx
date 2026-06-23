@@ -40,7 +40,7 @@ function AdminLoginForm() {
       <div className="mb-1 inline-flex items-center gap-2">
         <span className="h-2 w-2 rounded-full bg-clay-400" />
         <p className="font-score text-xs font-semibold uppercase tracking-[0.2em] text-clay-400">
-          Cheongwoo League
+          Mapo Cheongwoo Club
         </p>
       </div>
       <h1 className="mt-1 font-display text-2xl font-bold uppercase tracking-tight text-line-900">운영진 로그인</h1>
