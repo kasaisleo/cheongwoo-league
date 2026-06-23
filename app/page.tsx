@@ -3,12 +3,14 @@ import { createClient } from "@/lib/supabase/server";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { MATCH_SELECT_WITH_PLAYERS, toDisplayMatches } from "@/lib/match-display";
+import type { AttendanceSession } from "@/lib/supabase/database.types";
 
-const MIN_REQUIRED_PLAYERS = 4;
-
-function todayString(): string {
-  return new Date().toISOString().slice(0, 10);
-}
+const SESSION_DAY_LABEL: Record<AttendanceSession["session_day"], string> = {
+  saturday: "토요 출석",
+  sunday: "일요 출석",
+  holiday: "휴일운동",
+  custom: "임시운동",
+};
 
 /** 오늘 기준 이번 주(월~일) 시작/끝 날짜 문자열 */
 function thisWeekRange(): { start: string; end: string } {
@@ -29,12 +31,15 @@ function thisWeekRange(): { start: string; end: string } {
 
 export default async function HomePage() {
   const supabase = createClient();
-  const today = todayString();
   const week = thisWeekRange();
 
-  const [{ data: attendanceRows }, { data: recentMatchRows }, { data: weeklyGuests }] =
+  const [{ data: openSessions }, { data: recentMatchRows }, { data: weeklyGuests }] =
     await Promise.all([
-      supabase.from("attendance").select("status, members(name, nickname)").eq("event_date", today),
+      supabase
+        .from("attendance_sessions")
+        .select("*")
+        .eq("status", "open")
+        .order("session_date", { ascending: true }),
       supabase
         .from("matches")
         .select(MATCH_SELECT_WITH_PLAYERS)
@@ -48,9 +53,29 @@ export default async function HomePage() {
         .order("visit_date", { ascending: true }),
     ]);
 
-  const attending = attendanceRows?.filter((a) => a.status === "attending").length ?? 0;
-  const undecided = attendanceRows?.filter((a) => a.status === "undecided").length ?? 0;
-  const shortage = Math.max(0, MIN_REQUIRED_PLAYERS - attending);
+  const sessions = (openSessions ?? []) as AttendanceSession[];
+
+  // 각 세션별 출석 현황을 한 번에 조회
+  const sessionIds = sessions.map((s) => s.id);
+  const { data: attendanceRows } =
+    sessionIds.length > 0
+      ? await supabase.from("attendance").select("session_id, status").in("session_id", sessionIds)
+      : { data: [] };
+
+  const summaryBySession = new Map<string, { attending: number; undecided: number; absent: number }>(
+    sessions.map((session) => {
+      const rows = (attendanceRows ?? []).filter((a) => a.session_id === session.id);
+      return [
+        session.id,
+        {
+          attending: rows.filter((r) => r.status === "attending").length,
+          undecided: rows.filter((r) => r.status === "undecided").length,
+          absent: rows.filter((r) => r.status === "absent").length,
+        },
+      ];
+    })
+  );
+
   const recentMatches = toDisplayMatches(recentMatchRows);
   const guestsThisWeek = weeklyGuests ?? [];
 
@@ -68,26 +93,31 @@ export default async function HomePage() {
         </h1>
       </header>
 
-      <Link href={`/attendance`}>
-        <Card className="mb-4 border-l-4 border-l-clay-400 p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-line-600">오늘 출석</p>
-              <p className="font-score text-4xl font-bold leading-none text-line-900">
-                {attending}
-                <span className="text-base font-normal text-line-500"> 명 참석</span>
-              </p>
-            </div>
-            {shortage > 0 ? (
-              <Badge tone="fault">{shortage}명 부족</Badge>
-            ) : (
-              <Badge tone="court">복식 가능</Badge>
-            )}
-          </div>
-          {undecided > 0 && (
-            <p className="mt-2 text-xs text-amber-400">미정 {undecided}명 — 출석 체크를 독려해보세요</p>
+      <Link href="/attendance">
+        <section className="mb-4 space-y-2">
+          {sessions.length === 0 ? (
+            <Card className="border-l-4 border-l-clay-400 p-4 text-sm text-line-400">
+              현재 진행 중인 출석 세션이 없어요.
+            </Card>
+          ) : (
+            sessions.map((session) => {
+              const summary = summaryBySession.get(session.id)!;
+              return (
+                <Card key={session.id} className="border-l-4 border-l-clay-400 p-4">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-semibold text-line-900">
+                      {SESSION_DAY_LABEL[session.session_day]}
+                    </p>
+                    <span className="text-xs text-line-400">{session.session_date}</span>
+                  </div>
+                  <p className="mt-1 text-xs text-line-500">
+                    출석 {summary.attending} · 미정 {summary.undecided} · 불참 {summary.absent}
+                  </p>
+                </Card>
+              );
+            })
           )}
-        </Card>
+        </section>
       </Link>
 
       {guestsThisWeek.length > 0 && (

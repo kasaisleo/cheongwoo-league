@@ -6,6 +6,7 @@ import type { AttendanceStatus } from "@/lib/supabase/database.types";
 interface AttendanceToggleProps {
   value: AttendanceStatus;
   onChange: (status: AttendanceStatus) => void;
+  disabled?: boolean;
 }
 
 const OPTIONS: { status: AttendanceStatus; label: string }[] = [
@@ -20,16 +21,17 @@ const activeClasses: Record<AttendanceStatus, string> = {
   absent: "bg-fault-400 text-line-25 border-fault-400",
 };
 
-export function AttendanceToggle({ value, onChange }: AttendanceToggleProps) {
+export function AttendanceToggle({ value, onChange, disabled }: AttendanceToggleProps) {
   return (
     <div className="flex gap-1.5">
       {OPTIONS.map((option) => (
         <button
           key={option.status}
           type="button"
+          disabled={disabled}
           onClick={() => onChange(option.status)}
           className={clsx(
-            "rounded-full border px-3 py-1 text-xs font-semibold transition-colors",
+            "rounded-full border px-3 py-1 text-xs font-semibold transition-colors disabled:opacity-40",
             value === option.status ? activeClasses[option.status] : "border-line-200 text-line-500"
           )}
         >

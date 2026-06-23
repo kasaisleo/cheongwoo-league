@@ -15,6 +15,8 @@ export type MemberRole =
 export type MemberType = "정회원" | "준회원" | "게스트";
 export type PermissionRole = "member" | "scorer" | "manager" | "admin" | "master";
 export type AttendanceStatus = "attending" | "absent" | "undecided";
+export type SessionDay = "saturday" | "sunday" | "holiday" | "custom";
+export type SessionStatus = "open" | "closed" | "archived";
 export type WinnerTeam = "A" | "B";
 export type StagingValidationStatus =
   | "pending"
@@ -135,7 +137,19 @@ export interface Attendance {
   member_id: string;
   event_date: string;
   status: AttendanceStatus;
+  session_id: string | null;
   updated_at: string;
+}
+
+export interface AttendanceSession {
+  id: string;
+  session_date: string;
+  session_day: SessionDay;
+  title: string;
+  status: SessionStatus;
+  created_by: string | null;
+  created_at: string;
+  closed_at: string | null;
 }
 
 export interface Guest {
@@ -213,6 +227,16 @@ export interface Database {
         Row: Attendance;
         Insert: Partial<Attendance> & { member_id: string; event_date: string; status: AttendanceStatus };
         Update: Partial<Attendance>;
+        Relationships: [];
+      };
+      attendance_sessions: {
+        Row: AttendanceSession;
+        Insert: Partial<AttendanceSession> & {
+          session_date: string;
+          session_day: SessionDay;
+          title: string;
+        };
+        Update: Partial<AttendanceSession>;
         Relationships: [];
       };
       guests: {
