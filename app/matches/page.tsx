@@ -2,7 +2,8 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
-import type { Member, MatchWithPlayers } from "@/lib/supabase/database.types";
+import { MATCH_SELECT_WITH_PLAYERS, toDisplayMatches } from "@/lib/match-display";
+import type { Member } from "@/lib/supabase/database.types";
 
 interface MatchesPageProps {
   searchParams: { member?: string };
@@ -12,33 +13,26 @@ export default async function MatchesPage({ searchParams }: MatchesPageProps) {
   const supabase = createClient();
   const filterMemberId = searchParams.member;
 
-  const baseSelect = `id, played_at, score_a, score_b, winner_team,
-       team_a_player1, team_a_player2, team_b_player1, team_b_player2,
-       team_a_player1_member:members!matches_team_a_player1_fkey(name, nickname),
-       team_a_player2_member:members!matches_team_a_player2_fkey(name, nickname),
-       team_b_player1_member:members!matches_team_b_player1_fkey(name, nickname),
-       team_b_player2_member:members!matches_team_b_player2_fkey(name, nickname)`;
-
   const [{ data: members }, matchesResult] = await Promise.all([
     supabase.from("members").select("*").eq("is_active", true).order("nickname"),
     filterMemberId
       ? supabase
           .from("matches")
-          .select(baseSelect)
+          .select(MATCH_SELECT_WITH_PLAYERS)
           .or(
-            `team_a_player1.eq.${filterMemberId},team_a_player2.eq.${filterMemberId},team_b_player1.eq.${filterMemberId},team_b_player2.eq.${filterMemberId}`
+            `team_a_player1_member.eq.${filterMemberId},team_a_player2_member.eq.${filterMemberId},team_b_player1_member.eq.${filterMemberId},team_b_player2_member.eq.${filterMemberId}`
           )
           .order("played_at", { ascending: false })
           .order("created_at", { ascending: false })
       : supabase
           .from("matches")
-          .select(baseSelect)
+          .select(MATCH_SELECT_WITH_PLAYERS)
           .order("played_at", { ascending: false })
           .order("created_at", { ascending: false }),
   ]);
 
   const memberList = (members ?? []) as Member[];
-  const matches = (matchesResult.data ?? []) as unknown as MatchWithPlayers[];
+  const matches = toDisplayMatches(matchesResult.data);
 
   return (
     <main className="px-4 pt-6">
@@ -94,7 +88,7 @@ export default async function MatchesPage({ searchParams }: MatchesPageProps) {
               <div className="flex items-center justify-between text-xs text-line-400">
                 <span>{match.played_at}</span>
                 <Badge tone={match.winner_team === "A" ? "clay" : "court"}>
-                  {match.winner_team === "A" ? "A팀 승" : "B팀 승"}
+                  {match.winner_team === "A" ? "청팀 승" : "우팀 승"}
                 </Badge>
               </div>
               <div className="mt-2 flex items-center justify-between text-sm">
@@ -103,17 +97,28 @@ export default async function MatchesPage({ searchParams }: MatchesPageProps) {
                     match.winner_team === "A" ? "font-semibold text-line-900" : "text-line-500"
                   }
                 >
-                  {match.team_a_player1_member.nickname} · {match.team_a_player2_member.nickname}
+                  {match.teamAPlayer1.nickname}
+                  {match.teamAPlayer1.isGuest && <span className="text-court-400"> G</span>} ·{" "}
+                  {match.teamAPlayer2.nickname}
+                  {match.teamAPlayer2.isGuest && <span className="text-court-400"> G</span>}
                 </span>
                 <span className="font-score font-bold text-line-900">
                   {match.score_a} : {match.score_b}
+                  {match.score_a_tiebreak !== null && (
+                    <span className="ml-1 text-xs font-normal text-line-500">
+                      ({match.score_a_tiebreak}-{match.score_b_tiebreak})
+                    </span>
+                  )}
                 </span>
                 <span
                   className={
                     match.winner_team === "B" ? "font-semibold text-line-900" : "text-line-500"
                   }
                 >
-                  {match.team_b_player1_member.nickname} · {match.team_b_player2_member.nickname}
+                  {match.teamBPlayer1.nickname}
+                  {match.teamBPlayer1.isGuest && <span className="text-court-400"> G</span>} ·{" "}
+                  {match.teamBPlayer2.nickname}
+                  {match.teamBPlayer2.isGuest && <span className="text-court-400"> G</span>}
                 </span>
               </div>
             </Card>

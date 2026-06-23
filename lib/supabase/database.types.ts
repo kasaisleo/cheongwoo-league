@@ -2,6 +2,16 @@
 // 실제 운영 환경에서는 `supabase gen types typescript --linked`로 생성한 파일로 교체 권장.
 
 export type MemberGrade = "A" | "B" | "C" | "D";
+export type MemberRole =
+  | "회장"
+  | "부회장"
+  | "총무"
+  | "경기이사"
+  | "홍보이사"
+  | "운영이사"
+  | "섭외이사"
+  | "정회원"
+  | "고문";
 export type AttendanceStatus = "attending" | "absent" | "undecided";
 export type WinnerTeam = "A" | "B";
 
@@ -10,6 +20,9 @@ export interface Member {
   name: string;
   nickname: string;
   grade: MemberGrade;
+  role: MemberRole;
+  phone: string | null;
+  mapo_score: number | null;
   rating: number;
   wins: number;
   losses: number;
@@ -24,22 +37,28 @@ export interface MemberWithStats extends Member {
 export interface Match {
   id: string;
   played_at: string;
-  team_a_player1: string;
-  team_a_player2: string;
-  team_b_player1: string;
-  team_b_player2: string;
+  team_a_player1_member: string | null;
+  team_a_player1_guest: string | null;
+  team_a_player2_member: string | null;
+  team_a_player2_guest: string | null;
+  team_b_player1_member: string | null;
+  team_b_player1_guest: string | null;
+  team_b_player2_member: string | null;
+  team_b_player2_guest: string | null;
   score_a: number;
   score_b: number;
+  score_a_tiebreak: number | null;
+  score_b_tiebreak: number | null;
   winner_team: WinnerTeam;
   created_by: string | null;
   created_at: string;
 }
 
-export interface MatchWithPlayers extends Match {
-  team_a_player1_member: Member;
-  team_a_player2_member: Member;
-  team_b_player1_member: Member;
-  team_b_player2_member: Member;
+/** 경기 화면에 표시할 선수 정보. 회원이든 게스트든 동일한 모양으로 다룬다. */
+export interface MatchPlayerDisplay {
+  id: string;
+  nickname: string;
+  isGuest: boolean;
 }
 
 export interface RatingHistory {
@@ -63,13 +82,23 @@ export interface Attendance {
 export interface Guest {
   id: string;
   name: string;
+  age: number | null;
+  years_playing: number | null;
+  phone: string | null;
   referred_by: string | null;
   visit_date: string;
   skill_grade: MemberGrade | null;
   manner_score: number | null;
   reinvite: boolean | null;
   notes: string | null;
+  wins: number;
+  losses: number;
+  converted_to_member_id: string | null;
   created_at: string;
+}
+
+export interface GuestWithStats extends Guest {
+  win_rate: number;
 }
 
 export interface Database {
@@ -84,10 +113,6 @@ export interface Database {
       matches: {
         Row: Match;
         Insert: Partial<Match> & {
-          team_a_player1: string;
-          team_a_player2: string;
-          team_b_player1: string;
-          team_b_player2: string;
           score_a: number;
           score_b: number;
           winner_team: WinnerTeam;
@@ -123,6 +148,10 @@ export interface Database {
     Views: {
       member_stats: {
         Row: MemberWithStats;
+        Relationships: [];
+      };
+      guest_stats: {
+        Row: GuestWithStats;
         Relationships: [];
       };
     };

@@ -3,41 +3,57 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { PlayerSelector } from "@/components/match/PlayerSelector";
+import { PlayerSelector, playerKey, type SelectedPlayer } from "@/components/match/PlayerSelector";
 import { ScoreStepper } from "@/components/match/ScoreStepper";
+import { QuickGuestModal } from "@/components/match/QuickGuestModal";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import type { Member } from "@/lib/supabase/database.types";
+import type { Member, Guest } from "@/lib/supabase/database.types";
+
+type GuestModalTarget = "teamAPlayer1" | "teamAPlayer2" | "teamBPlayer1" | "teamBPlayer2";
 
 export default function NewMatchPage() {
   const router = useRouter();
   const [members, setMembers] = useState<Member[]>([]);
-  const [loadingMembers, setLoadingMembers] = useState(true);
+  const [guests, setGuests] = useState<Guest[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const [teamAPlayer1, setTeamAPlayer1] = useState<string | null>(null);
-  const [teamAPlayer2, setTeamAPlayer2] = useState<string | null>(null);
-  const [teamBPlayer1, setTeamBPlayer1] = useState<string | null>(null);
-  const [teamBPlayer2, setTeamBPlayer2] = useState<string | null>(null);
+  const [teamAPlayer1, setTeamAPlayer1] = useState<SelectedPlayer | null>(null);
+  const [teamAPlayer2, setTeamAPlayer2] = useState<SelectedPlayer | null>(null);
+  const [teamBPlayer1, setTeamBPlayer1] = useState<SelectedPlayer | null>(null);
+  const [teamBPlayer2, setTeamBPlayer2] = useState<SelectedPlayer | null>(null);
 
   const [scoreA, setScoreA] = useState(0);
   const [scoreB, setScoreB] = useState(0);
+  const [tiebreakA, setTiebreakA] = useState(0);
+  const [tiebreakB, setTiebreakB] = useState(0);
   const [winnerTeam, setWinnerTeam] = useState<"A" | "B" | null>(null);
+
+  const [guestModalTarget, setGuestModalTarget] = useState<GuestModalTarget | null>(null);
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const supabase = createClient();
-    supabase
-      .from("members")
-      .select("*")
-      .eq("is_active", true)
-      .order("nickname")
-      .then(({ data }) => {
-        setMembers(data ?? []);
-        setLoadingMembers(false);
-      });
+    loadData();
   }, []);
+
+  async function loadData() {
+    const supabase = createClient();
+    const [{ data: memberData }, { data: guestData }] = await Promise.all([
+      supabase.from("members").select("*").eq("is_active", true).order("nickname"),
+      supabase
+        .from("guests")
+        .select("*")
+        .is("converted_to_member_id", null)
+        .order("created_at", { ascending: false }),
+    ]);
+    setMembers(memberData ?? []);
+    setGuests(guestData ?? []);
+    setLoading(false);
+  }
+
+  const isTiebreakSet = (scoreA === 7 && scoreB === 6) || (scoreA === 6 && scoreB === 7);
 
   // 점수를 입력하면 승리팀을 자동으로 추정 (동점이면 수동 선택 유지)
   useEffect(() => {
@@ -45,12 +61,36 @@ export default function NewMatchPage() {
     setWinnerTeam(scoreA > scoreB ? "A" : "B");
   }, [scoreA, scoreB]);
 
-  const selectedIds = [teamAPlayer1, teamAPlayer2, teamBPlayer1, teamBPlayer2].filter(
-    (id): id is string => id !== null
+  const selectedKeys = [teamAPlayer1, teamAPlayer2, teamBPlayer1, teamBPlayer2]
+    .filter((p): p is SelectedPlayer => p !== null)
+    .map((p) => playerKey(p.id, p.isGuest));
+
+  function excludeKeysFor(current: SelectedPlayer | null): string[] {
+    const currentKey = current ? playerKey(current.id, current.isGuest) : null;
+    return selectedKeys.filter((k) => k !== currentKey);
+  }
+
+  const isReadyToSubmit = Boolean(
+    teamAPlayer1 &&
+      teamAPlayer2 &&
+      teamBPlayer1 &&
+      teamBPlayer2 &&
+      winnerTeam &&
+      (!isTiebreakSet || tiebreakA !== tiebreakB) &&
+      !submitting
   );
 
-  const isReadyToSubmit =
-    teamAPlayer1 && teamAPlayer2 && teamBPlayer1 && teamBPlayer2 && winnerTeam && !submitting;
+  function handleGuestCreated(guest: Guest) {
+    setGuests((prev) => [guest, ...prev]);
+    const selected: SelectedPlayer = { id: guest.id, nickname: guest.name, isGuest: true };
+
+    if (guestModalTarget === "teamAPlayer1") setTeamAPlayer1(selected);
+    if (guestModalTarget === "teamAPlayer2") setTeamAPlayer2(selected);
+    if (guestModalTarget === "teamBPlayer1") setTeamBPlayer1(selected);
+    if (guestModalTarget === "teamBPlayer2") setTeamBPlayer2(selected);
+
+    setGuestModalTarget(null);
+  }
 
   async function handleSubmit() {
     if (!isReadyToSubmit) return;
@@ -62,12 +102,14 @@ export default function NewMatchPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         playedAt: new Date().toISOString().slice(0, 10),
-        teamAPlayer1,
-        teamAPlayer2,
-        teamBPlayer1,
-        teamBPlayer2,
+        teamAPlayer1: { id: teamAPlayer1!.id, isGuest: teamAPlayer1!.isGuest },
+        teamAPlayer2: { id: teamAPlayer2!.id, isGuest: teamAPlayer2!.isGuest },
+        teamBPlayer1: { id: teamBPlayer1!.id, isGuest: teamBPlayer1!.isGuest },
+        teamBPlayer2: { id: teamBPlayer2!.id, isGuest: teamBPlayer2!.isGuest },
         scoreA,
         scoreB,
+        scoreATiebreak: isTiebreakSet ? tiebreakA : null,
+        scoreBTiebreak: isTiebreakSet ? tiebreakB : null,
         winnerTeam,
       }),
     });
@@ -84,10 +126,10 @@ export default function NewMatchPage() {
     router.refresh();
   }
 
-  if (loadingMembers) {
+  if (loading) {
     return (
       <main className="flex min-h-[60vh] items-center justify-center text-sm text-line-400">
-        회원 목록을 불러오는 중...
+        불러오는 중...
       </main>
     );
   }
@@ -102,45 +144,53 @@ export default function NewMatchPage() {
       </header>
 
       <Card className="mb-4 p-4">
-        <p className="mb-3 text-sm font-bold uppercase tracking-wide text-clay-400">A팀</p>
+        <p className="mb-3 text-sm font-bold uppercase tracking-wide text-clay-400">청팀</p>
         <div className="space-y-3">
           <PlayerSelector
             label="선수 1"
             members={members}
-            selectedIds={selectedIds}
-            excludeIds={selectedIds.filter((id) => id !== teamAPlayer1)}
+            guests={guests}
+            selectedKeys={selectedKeys}
+            excludeKeys={excludeKeysFor(teamAPlayer1)}
             value={teamAPlayer1}
             onChange={setTeamAPlayer1}
+            onRequestAddGuest={() => setGuestModalTarget("teamAPlayer1")}
           />
           <PlayerSelector
             label="선수 2"
             members={members}
-            selectedIds={selectedIds}
-            excludeIds={selectedIds.filter((id) => id !== teamAPlayer2)}
+            guests={guests}
+            selectedKeys={selectedKeys}
+            excludeKeys={excludeKeysFor(teamAPlayer2)}
             value={teamAPlayer2}
             onChange={setTeamAPlayer2}
+            onRequestAddGuest={() => setGuestModalTarget("teamAPlayer2")}
           />
         </div>
       </Card>
 
       <Card className="mb-4 p-4">
-        <p className="mb-3 text-sm font-bold uppercase tracking-wide text-court-400">B팀</p>
+        <p className="mb-3 text-sm font-bold uppercase tracking-wide text-court-400">우팀</p>
         <div className="space-y-3">
           <PlayerSelector
             label="선수 1"
             members={members}
-            selectedIds={selectedIds}
-            excludeIds={selectedIds.filter((id) => id !== teamBPlayer1)}
+            guests={guests}
+            selectedKeys={selectedKeys}
+            excludeKeys={excludeKeysFor(teamBPlayer1)}
             value={teamBPlayer1}
             onChange={setTeamBPlayer1}
+            onRequestAddGuest={() => setGuestModalTarget("teamBPlayer1")}
           />
           <PlayerSelector
             label="선수 2"
             members={members}
-            selectedIds={selectedIds}
-            excludeIds={selectedIds.filter((id) => id !== teamBPlayer2)}
+            guests={guests}
+            selectedKeys={selectedKeys}
+            excludeKeys={excludeKeysFor(teamBPlayer2)}
             value={teamBPlayer2}
             onChange={setTeamBPlayer2}
+            onRequestAddGuest={() => setGuestModalTarget("teamBPlayer2")}
           />
         </div>
       </Card>
@@ -148,10 +198,40 @@ export default function NewMatchPage() {
       <Card className="mb-4 p-4">
         <p className="mb-3 text-center text-xs font-bold uppercase tracking-widest text-line-600">스코어</p>
         <div className="flex items-center justify-center gap-6">
-          <ScoreStepper label="A팀" value={scoreA} onChange={setScoreA} highlight={winnerTeam === "A"} />
+          <ScoreStepper
+            label="청팀"
+            value={scoreA}
+            onChange={setScoreA}
+            highlight={winnerTeam === "A"}
+            max={7}
+          />
           <span className="text-line-400">vs</span>
-          <ScoreStepper label="B팀" value={scoreB} onChange={setScoreB} highlight={winnerTeam === "B"} />
+          <ScoreStepper
+            label="우팀"
+            value={scoreB}
+            onChange={setScoreB}
+            highlight={winnerTeam === "B"}
+            max={7}
+          />
         </div>
+
+        {isTiebreakSet && (
+          <div className="mt-4 border-t border-line-200 pt-4">
+            <p className="mb-2 text-center text-[11px] font-semibold uppercase tracking-widest text-amber-400">
+              타이브레이크
+            </p>
+            <div className="flex items-center justify-center gap-4">
+              <ScoreStepper label="청팀" value={tiebreakA} onChange={setTiebreakA} compact />
+              <span className="text-xs text-line-400">:</span>
+              <ScoreStepper label="우팀" value={tiebreakB} onChange={setTiebreakB} compact />
+            </div>
+            {tiebreakA === tiebreakB && (
+              <p className="mt-2 text-center text-xs text-fault-400">
+                타이브레이크 점수는 동점일 수 없어요.
+              </p>
+            )}
+          </div>
+        )}
 
         <div className="mt-4 flex gap-2">
           <button
@@ -163,7 +243,7 @@ export default function NewMatchPage() {
                 : "border-line-200 text-line-600"
             }`}
           >
-            A팀 승리
+            청팀 승리
           </button>
           <button
             type="button"
@@ -174,21 +254,20 @@ export default function NewMatchPage() {
                 : "border-line-200 text-line-600"
             }`}
           >
-            B팀 승리
+            우팀 승리
           </button>
         </div>
       </Card>
 
       {error && <p className="mb-3 text-sm text-fault-400">{error}</p>}
 
-      <Button
-        size="lg"
-        className="w-full"
-        disabled={!isReadyToSubmit}
-        onClick={handleSubmit}
-      >
+      <Button size="lg" className="w-full" disabled={!isReadyToSubmit} onClick={handleSubmit}>
         {submitting ? "저장 중..." : "경기 결과 저장"}
       </Button>
+
+      {guestModalTarget && (
+        <QuickGuestModal onClose={() => setGuestModalTarget(null)} onCreated={handleGuestCreated} />
+      )}
     </main>
   );
 }

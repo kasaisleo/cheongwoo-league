@@ -41,10 +41,15 @@ export default async function MembersPage() {
                 <div className="flex items-center gap-2">
                   <Badge tone={gradeTone(member.grade)}>{member.grade}</Badge>
                   <div>
-                    <p className="text-sm font-semibold text-line-900">
+                    <p className="flex items-center gap-1.5 text-sm font-semibold text-line-900">
                       {member.nickname}
+                      {member.role !== "정회원" && (
+                        <span className="rounded-full bg-line-200 px-1.5 py-0.5 text-[10px] font-semibold text-line-700">
+                          {member.role}
+                        </span>
+                      )}
                       {!member.is_active && (
-                        <span className="ml-1 text-xs text-line-400">(비활성)</span>
+                        <span className="text-xs text-line-400">(비활성)</span>
                       )}
                     </p>
                     <p className="text-xs text-line-500">{member.name}</p>
@@ -53,7 +58,7 @@ export default async function MembersPage() {
                 <div className="text-right">
                   <p className="font-score text-lg font-bold text-line-900">{member.rating}</p>
                   <p className="text-xs text-line-500">
-                    {member.wins}승 {member.losses}패
+                    {member.wins}승 {member.losses}패 · {member.win_rate}%
                   </p>
                 </div>
               </Card>

@@ -6,15 +6,30 @@ import { createClient } from "@/lib/supabase/client";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { INITIAL_RATING_BY_GRADE } from "@/lib/elo";
-import type { MemberGrade } from "@/lib/supabase/database.types";
+import type { MemberGrade, MemberRole } from "@/lib/supabase/database.types";
 
 const GRADES: MemberGrade[] = ["A", "B", "C", "D"];
+const ROLES: MemberRole[] = [
+  "회장",
+  "부회장",
+  "총무",
+  "경기이사",
+  "홍보이사",
+  "운영이사",
+  "섭외이사",
+  "정회원",
+  "고문",
+];
+const MAPO_SCORES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
 export default function NewMemberPage() {
   const router = useRouter();
   const [name, setName] = useState("");
   const [nickname, setNickname] = useState("");
+  const [phone, setPhone] = useState("");
   const [grade, setGrade] = useState<MemberGrade>("C");
+  const [role, setRole] = useState<MemberRole>("정회원");
+  const [mapoScore, setMapoScore] = useState<number | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -31,7 +46,10 @@ export default function NewMemberPage() {
     const { error: insertError } = await supabase.from("members").insert({
       name: name.trim(),
       nickname: nickname.trim(),
+      phone: phone.trim() || null,
       grade,
+      role,
+      mapo_score: mapoScore,
     });
 
     setSubmitting(false);
@@ -77,7 +95,34 @@ export default function NewMemberPage() {
           </div>
 
           <div>
-            <label className="mb-1 block text-xs font-semibold text-line-600">등급</label>
+            <label className="mb-1 block text-xs font-semibold text-line-600">휴대폰 번호</label>
+            <input
+              type="tel"
+              inputMode="numeric"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="010-0000-0000"
+              className="h-11 w-full rounded-lg border border-line-200 bg-line-25 px-3 text-sm text-line-900 placeholder:text-line-400"
+            />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-xs font-semibold text-line-600">직책</label>
+            <select
+              value={role}
+              onChange={(e) => setRole(e.target.value as MemberRole)}
+              className="h-11 w-full rounded-lg border border-line-200 bg-line-25 px-3 text-sm text-line-900"
+            >
+              {ROLES.map((r) => (
+                <option key={r} value={r}>
+                  {r}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="mb-1 block text-xs font-semibold text-line-600">실력 등급</label>
             <div className="flex gap-2">
               {GRADES.map((g) => (
                 <button
@@ -96,6 +141,31 @@ export default function NewMemberPage() {
             </div>
             <p className="mt-1.5 text-xs text-line-400">
               초기 레이팅 {INITIAL_RATING_BY_GRADE[grade]}점으로 시작합니다.
+            </p>
+          </div>
+
+          <div>
+            <label className="mb-1 block text-xs font-semibold text-line-600">
+              마포구 대회 점수 (1~10, 선택)
+            </label>
+            <div className="flex flex-wrap gap-1.5">
+              {MAPO_SCORES.map((score) => (
+                <button
+                  key={score}
+                  type="button"
+                  onClick={() => setMapoScore(mapoScore === score ? null : score)}
+                  className={`flex h-9 w-9 items-center justify-center rounded-full border text-sm font-semibold ${
+                    mapoScore === score
+                      ? "border-court-400 bg-court-400 text-line-25"
+                      : "border-line-200 text-line-600"
+                  }`}
+                >
+                  {score}
+                </button>
+              ))}
+            </div>
+            <p className="mt-1.5 text-xs text-line-400">
+              클럽 레이팅과는 별개의 점수이며, 레이팅 계산에 영향을 주지 않습니다.
             </p>
           </div>
         </Card>

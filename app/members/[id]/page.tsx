@@ -35,11 +35,18 @@ export default async function MemberDetailPage({ params }: MemberDetailPageProps
     <main className="px-4 pt-6">
       <Card className="mb-4 overflow-hidden p-0 text-center">
         <div className="border-b-2 border-clay-400 bg-line-200/40 px-5 pb-5 pt-6">
-          <div className="mb-2 flex items-center justify-center gap-1.5">
+          <div className="mb-1 flex items-center justify-center gap-1.5">
             <h1 className="font-display text-2xl font-bold uppercase tracking-tight text-line-900">{typedMember.nickname}</h1>
             <Badge tone={gradeTone(typedMember.grade)}>{typedMember.grade}급</Badge>
           </div>
-          <p className="text-sm text-line-500">{typedMember.name}</p>
+          <div className="mb-2 flex items-center justify-center gap-1.5">
+            <p className="text-sm text-line-500">{typedMember.name}</p>
+            {typedMember.role !== "정회원" && (
+              <span className="rounded-full bg-line-200 px-2 py-0.5 text-[11px] font-semibold text-line-700">
+                {typedMember.role}
+              </span>
+            )}
+          </div>
 
           <p className="font-score mt-3 text-6xl font-bold leading-none text-clay-400">{typedMember.rating}</p>
           <p className="mt-1 text-[11px] font-semibold uppercase tracking-widest text-line-500">Rating</p>
@@ -59,6 +66,21 @@ export default async function MemberDetailPage({ params }: MemberDetailPageProps
             <p className="text-xs text-line-500">승률</p>
           </div>
         </div>
+
+        {(typedMember.phone || typedMember.mapo_score !== null) && (
+          <div className="grid grid-cols-2 gap-2 border-t border-line-200 px-5 py-3 text-center">
+            <div>
+              <p className="text-xs text-line-500">휴대폰</p>
+              <p className="text-sm font-semibold text-line-900">{typedMember.phone ?? "—"}</p>
+            </div>
+            <div>
+              <p className="text-xs text-line-500">마포구 점수</p>
+              <p className="font-score text-sm font-bold text-court-400">
+                {typedMember.mapo_score !== null ? `${typedMember.mapo_score}점` : "—"}
+              </p>
+            </div>
+          </div>
+        )}
       </Card>
 
       <section>
