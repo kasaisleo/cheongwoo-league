@@ -1,6 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
 import { Card } from "@/components/ui/Card";
-import { Badge, gradeTone } from "@/components/ui/Badge";
 import Link from "next/link";
 import type { MemberWithStats } from "@/lib/supabase/database.types";
 
@@ -11,7 +10,9 @@ export default async function RankingPage() {
     .from("member_stats")
     .select("*")
     .eq("is_active", true)
-    .order("rating", { ascending: false });
+    .order("league_point", { ascending: false })
+    .order("win_rate", { ascending: false })
+    .order("wins", { ascending: false });
 
   const members = (rankedMembers ?? []) as MemberWithStats[];
 
@@ -55,20 +56,27 @@ export default async function RankingPage() {
                   <div className="flex-1">
                     <div className="flex items-center gap-1.5">
                       <span className="font-semibold text-line-900">{member.nickname}</span>
-                      <Badge tone={gradeTone(member.grade)}>{member.grade}</Badge>
+                      {member.mapo_score !== null && (
+                        <span className="rounded-full bg-line-200 px-1.5 py-0.5 text-[10px] font-semibold text-line-700">
+                          MAPO {member.mapo_score}
+                        </span>
+                      )}
                     </div>
                     <p className="text-xs text-line-500">
-                      {member.wins}승 {member.losses}패 · 승률 {member.win_rate}%
+                      {member.wins}승 {member.losses}패 (W-L) · 승률 {member.win_rate}%
                     </p>
                   </div>
 
-                  <span
-                    className={`font-score text-2xl font-bold ${
-                      isTop ? "text-clay-400" : "text-line-900"
-                    }`}
-                  >
-                    {member.rating}
-                  </span>
+                  <div className="text-right">
+                    <span
+                      className={`font-score text-2xl font-bold ${
+                        isTop ? "text-clay-400" : "text-line-900"
+                      }`}
+                    >
+                      {member.league_point}
+                    </span>
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-line-500">LP</p>
+                  </div>
                 </Card>
               </Link>
             );

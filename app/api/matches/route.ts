@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { isAdminSession } from "@/lib/admin-auth";
-import { calculateDoublesElo } from "@/lib/elo";
 import type { Member, Guest } from "@/lib/supabase/database.types";
 
-/** 게스트가 경기에 참여할 때 ELO 계산에만 쓰는 임시 레이팅(C급 기준). 게스트 본인에게는 저장되지 않는다. */
-const GUEST_TEMP_RATING = 1300;
+/** 일반 경기 승리 시 적립되는 LP. 패배는 변화 없음. */
+const LEAGUE_POINT_WIN = 10;
 
 interface PlayerInput {
   id: string;
@@ -111,18 +110,12 @@ export async function POST(request: NextRequest) {
   const memberById = new Map<string, Member>(memberRows.map((m: Member) => [m.id, m]));
   const guestById = new Map<string, Guest>(guestRows.map((g: Guest) => [g.id, g]));
 
-  function ratingOf(p: PlayerInput): number {
-    return p.isGuest ? GUEST_TEMP_RATING : memberById.get(p.id)!.rating;
-  }
-
-  // 2. ELO 계산 (게스트는 임시 레이팅으로 계산에만 참여, 결과는 게스트 본인에게 반영하지 않음)
-  const elo = calculateDoublesElo({
-    teamARating1: ratingOf(teamAPlayer1),
-    teamARating2: ratingOf(teamAPlayer2),
-    teamBRating1: ratingOf(teamBPlayer1),
-    teamBRating2: ratingOf(teamBPlayer2),
-    winner: winnerTeam,
-  });
+  // 2. 중복 저장 방지는 이번 단계에서 보류한다.
+  //    - 같은 날 같은 4명이 같은 스코어로 여러 세트를 치는 경우가 실제로 있어,
+  //      "4명+날짜+스코어 일치"만으로 서버에서 무조건 거부하지 않는다.
+  //    - idempotency_key(클라이언트 요청 식별자) 기반 차단이 더 안전하지만,
+  //      matches.idempotency_key 컬럼 추가는 후순위 작업이라 아직 도입하지 않는다.
+  //    - 현재는 프론트엔드의 저장 버튼 중복 클릭 방지(disabled 처리)로만 방어한다.
 
   // 3. 경기 저장 (각 슬롯은 member/guest 중 하나만 채움)
   const { data: match, error: matchError } = await supabase
@@ -151,16 +144,16 @@ export async function POST(request: NextRequest) {
   }
 
   // 4. 선수별 갱신
-  //    - 회원: 레이팅 갱신 + 승/패 갱신 + rating_history 기록
-  //    - 게스트: 승/패만 갱신 (레이팅 없음, rating_history 없음)
+  //    - 회원: 승리 시 league_point +10(패배는 변화 없음) + wins/losses 갱신 + point_history 기록
+  //    - 게스트: league_point 없음, wins/losses만 갱신 (point_history 없음)
   const updates = [
-    { player: teamAPlayer1, newRating: elo.teamANewRating1, won: winnerTeam === "A" },
-    { player: teamAPlayer2, newRating: elo.teamANewRating2, won: winnerTeam === "A" },
-    { player: teamBPlayer1, newRating: elo.teamBNewRating1, won: winnerTeam === "B" },
-    { player: teamBPlayer2, newRating: elo.teamBNewRating2, won: winnerTeam === "B" },
+    { player: teamAPlayer1, won: winnerTeam === "A" },
+    { player: teamAPlayer2, won: winnerTeam === "A" },
+    { player: teamBPlayer1, won: winnerTeam === "B" },
+    { player: teamBPlayer2, won: winnerTeam === "B" },
   ];
 
-  for (const { player, newRating, won } of updates) {
+  for (const { player, won } of updates) {
     if (player.isGuest) {
       const guest = guestById.get(player.id)!;
       await supabase
@@ -174,21 +167,26 @@ export async function POST(request: NextRequest) {
     }
 
     const member = memberById.get(player.id)!;
+    const pointBefore = member.league_point;
+    const pointChange = won ? LEAGUE_POINT_WIN : 0;
+    const pointAfter = pointBefore + pointChange;
+
     await supabase
       .from("members")
       .update({
-        rating: newRating,
+        league_point: pointAfter,
         wins: member.wins + (won ? 1 : 0),
         losses: member.losses + (won ? 0 : 1),
       })
       .eq("id", member.id);
 
-    await supabase.from("rating_history").insert({
+    await supabase.from("point_history").insert({
       match_id: match.id,
       member_id: member.id,
-      rating_before: member.rating,
-      rating_after: newRating,
-      rating_change: newRating - member.rating,
+      point_before: pointBefore,
+      point_after: pointAfter,
+      point_change: pointChange,
+      reason: won ? "regular_match_win" : "regular_match_loss",
     });
   }
 
