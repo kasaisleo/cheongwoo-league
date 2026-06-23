@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { BottomTabBar } from "@/components/layout/BottomTabBar";
+import { ToastViewport } from "@/components/ui/Toast";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -20,6 +21,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="font-body">
         <div className="mx-auto min-h-screen max-w-md pb-20">{children}</div>
         <BottomTabBar />
+        <ToastViewport />
       </body>
     </html>
   );

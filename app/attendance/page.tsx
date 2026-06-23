@@ -4,8 +4,10 @@ import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
-import { Button } from "@/components/ui/Button";
+import { Dropdown, DropdownItem } from "@/components/ui/Dropdown";
+import { toast } from "@/components/ui/Toast";
 import { AttendanceToggle } from "@/components/attendance/AttendanceToggle";
+import { getDisambiguatedName } from "@/lib/member-display";
 import type { AttendanceStatus, AttendanceSession, Member } from "@/lib/supabase/database.types";
 
 const MIN_REQUIRED_PLAYERS = 4;
@@ -35,13 +37,14 @@ export default function AttendancePage() {
   const [loadingSessions, setLoadingSessions] = useState(true);
   const [loadingRows, setLoadingRows] = useState(false);
   const [updatingMemberId, setUpdatingMemberId] = useState<string | null>(null);
+  const [processingSessionId, setProcessingSessionId] = useState<string | null>(null);
 
+  // 휴일/임시운동 생성 폼 (관리 메뉴에서 토글)
   const [showCustomForm, setShowCustomForm] = useState(false);
   const [customDate, setCustomDate] = useState(todayString());
   const [customDay, setCustomDay] = useState<"holiday" | "custom">("custom");
   const [customTitle, setCustomTitle] = useState("");
   const [creatingCustom, setCreatingCustom] = useState(false);
-  const [processingSessionId, setProcessingSessionId] = useState<string | null>(null);
 
   // 1. open 상태인 세션 목록 불러오기
   useEffect(() => {
@@ -94,6 +97,7 @@ export default function AttendancePage() {
           const existing = attendanceByMember.get(member.id);
           return {
             member,
+            // 기본 상태는 미정(undecided)
             status: existing?.status ?? "undecided",
             attendanceId: existing?.id ?? null,
           };
@@ -108,15 +112,15 @@ export default function AttendancePage() {
     };
   }, [selectedSessionId, supabase]);
 
+  // 3. 출석 상태 변경 — 즉시 화면(통계 포함) 반영, 새로고침 없음. 실패 시 롤백.
   async function updateStatus(memberId: string, newStatus: AttendanceStatus) {
     if (!selectedSessionId) {
-      alert("출석 세션을 선택해주세요.");
+      toast.error("출석 세션을 선택해주세요.");
       return;
     }
 
     const previousStatus = rows.find((r) => r.member.id === memberId)?.status ?? "undecided";
 
-    // 낙관적 업데이트: 먼저 화면에 반영
     setRows((prev) =>
       prev.map((row) => (row.member.id === memberId ? { ...row, status: newStatus } : row))
     );
@@ -142,11 +146,10 @@ export default function AttendancePage() {
     setUpdatingMemberId(null);
 
     if (error || !data) {
-      // 실패 시 기존 상태로 롤백
       setRows((prev) =>
         prev.map((row) => (row.member.id === memberId ? { ...row, status: previousStatus } : row))
       );
-      alert("출석 변경에 실패했습니다.");
+      toast.error("출석 변경에 실패했습니다.");
       return;
     }
 
@@ -155,7 +158,8 @@ export default function AttendancePage() {
     );
   }
 
-  async function handleCreateWeeklySessions() {
+  async function handleCreateWeeklySessions(closeMenu: () => void) {
+    closeMenu();
     const confirmed = window.confirm(
       "기존 열린 토/일 출석 세션을 보관하고 이번 주 토/일 세션을 새로 생성합니다. 진행할까요?"
     );
@@ -165,25 +169,25 @@ export default function AttendancePage() {
     const body = await res.json().catch(() => null);
 
     if (!res.ok) {
-      alert(body?.error ?? "세션 생성에 실패했습니다.");
+      toast.error(body?.error ?? "세션 생성에 실패했습니다.");
       return;
     }
 
-    alert("이번 주 출석 세션이 생성되었습니다.");
+    toast.success("이번 주 출석 세션이 생성되었습니다.");
     window.location.reload();
   }
 
   async function handleCreateCustomSession() {
     if (!customDate) {
-      alert("날짜를 선택해주세요.");
+      toast.error("날짜를 선택해주세요.");
       return;
     }
     if (!customDay) {
-      alert("운동 구분을 선택해주세요.");
+      toast.error("운동 구분을 선택해주세요.");
       return;
     }
     if (!customTitle.trim()) {
-      alert("제목을 입력해주세요.");
+      toast.error("제목을 입력해주세요.");
       return;
     }
 
@@ -197,19 +201,24 @@ export default function AttendancePage() {
     setCreatingCustom(false);
 
     if (!res.ok) {
-      alert(body?.error ?? "세션 생성에 실패했습니다.");
+      toast.error(body?.error ?? "세션 생성에 실패했습니다.");
       return;
     }
 
-    alert("세션이 생성되었습니다.");
+    toast.success("세션이 생성되었습니다.");
     window.location.reload();
   }
 
-  async function handleSessionStatusChange(sessionId: string, targetStatus: "closed" | "archived") {
+  async function handleSessionStatusChange(
+    sessionId: string,
+    targetStatus: "closed" | "archived",
+    closeMenu: () => void
+  ) {
+    closeMenu();
     const confirmMessage =
       targetStatus === "closed"
-        ? "이 세션을 마감 처리할까요?"
-        : "이 세션을 보관 처리할까요? 보관 후에는 출석 화면에 노출되지 않습니다.";
+        ? "현재 세션을 마감 처리할까요?"
+        : "현재 세션을 보관 처리할까요? 보관 후에는 출석 화면에 노출되지 않습니다.";
 
     if (!window.confirm(confirmMessage)) return;
 
@@ -223,21 +232,25 @@ export default function AttendancePage() {
     setProcessingSessionId(null);
 
     if (!res.ok) {
-      alert(
+      toast.error(
         body?.error ??
           (targetStatus === "closed" ? "세션 마감 처리에 실패했습니다." : "세션 보관 처리에 실패했습니다.")
       );
       return;
     }
 
-    alert(targetStatus === "closed" ? "세션이 마감되었습니다." : "세션이 보관되었습니다.");
+    toast.success(targetStatus === "closed" ? "세션이 마감되었습니다." : "세션이 보관되었습니다.");
     window.location.reload();
   }
 
+  const allMembers = rows.map((r) => r.member);
   const attending = rows.filter((r) => r.status === "attending").length;
   const undecided = rows.filter((r) => r.status === "undecided").length;
   const absent = rows.filter((r) => r.status === "absent").length;
   const shortage = Math.max(0, MIN_REQUIRED_PLAYERS - attending);
+  const selectedSession = openSessions.find((s) => s.id === selectedSessionId) ?? null;
+  const selectedSessionIsCustom =
+    selectedSession?.session_day === "holiday" || selectedSession?.session_day === "custom";
 
   return (
     <main className="px-4 pt-6">
@@ -251,24 +264,60 @@ export default function AttendancePage() {
           </div>
           <h1 className="font-display text-3xl font-bold uppercase tracking-tight text-line-900">출석 체크</h1>
         </div>
-      </header>
 
-      <div className="mb-3 flex gap-2">
-        <Button variant="ghost" size="md" onClick={handleCreateWeeklySessions} className="flex-1">
-          이번 주 출석 세션 생성
-        </Button>
-        <Button
-          variant="ghost"
-          size="md"
-          onClick={() => setShowCustomForm((v) => !v)}
-          className="flex-1"
+        {/* 관리자 메뉴 — 일반 회원에게는 세션 생성/관리 폼을 노출하지 않고 ⚙ 안에 숨김 */}
+        <Dropdown
+          align="right"
+          triggerClassName="flex h-10 w-10 items-center justify-center rounded-full border border-line-200 bg-line-100 text-line-700 transition-colors hover:bg-line-200"
+          trigger={<span className="text-lg">⚙</span>}
         >
-          {showCustomForm ? "닫기" : "휴일/임시운동 생성"}
-        </Button>
-      </div>
+          {(close) => (
+            <div className="space-y-0.5">
+              <DropdownItem onClick={() => handleCreateWeeklySessions(close)}>
+                이번 주 세션 생성
+              </DropdownItem>
+              <DropdownItem
+                onClick={() => {
+                  setShowCustomForm(true);
+                  close();
+                }}
+              >
+                휴일/임시운동 생성
+              </DropdownItem>
+              {selectedSessionId && selectedSessionIsCustom && (
+                <>
+                  <div className="my-1 h-px bg-line-200" />
+                  <DropdownItem
+                    disabled={processingSessionId === selectedSessionId}
+                    onClick={() => handleSessionStatusChange(selectedSessionId, "closed", close)}
+                  >
+                    세션 마감
+                  </DropdownItem>
+                  <DropdownItem
+                    disabled={processingSessionId === selectedSessionId}
+                    onClick={() => handleSessionStatusChange(selectedSessionId, "archived", close)}
+                  >
+                    세션 보관
+                  </DropdownItem>
+                </>
+              )}
+            </div>
+          )}
+        </Dropdown>
+      </header>
 
       {showCustomForm && (
         <Card className="mb-4 space-y-3 p-4">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-bold uppercase tracking-wide text-clay-400">휴일/임시운동 생성</p>
+            <button
+              type="button"
+              onClick={() => setShowCustomForm(false)}
+              className="text-xs font-semibold text-line-500"
+            >
+              닫기
+            </button>
+          </div>
           <div>
             <label className="mb-1 block text-xs font-semibold text-line-600">날짜</label>
             <input
@@ -314,84 +363,87 @@ export default function AttendancePage() {
               className="h-11 w-full rounded-lg border border-line-200 bg-line-25 px-3 text-sm text-line-900 placeholder:text-line-400"
             />
           </div>
-          <Button
-            size="md"
-            className="w-full"
+          <button
+            type="button"
             disabled={creatingCustom}
             onClick={handleCreateCustomSession}
+            className="h-11 w-full rounded-lg bg-clay-400 text-sm font-bold text-line-25 transition-colors disabled:opacity-40"
           >
             {creatingCustom ? "생성 중..." : "세션 생성"}
-          </Button>
+          </button>
         </Card>
       )}
 
+      {/* 세션 선택 — 드롭다운 방식. 휴일/임시운동이 늘어나도 화면이 밀리지 않음 */}
       {loadingSessions ? (
         <p className="text-center text-sm text-line-400">세션을 불러오는 중...</p>
       ) : openSessions.length === 0 ? (
         <Card className="mb-4 p-6 text-center text-sm text-line-400">
-          현재 진행 중인 출석 세션이 없어요. "이번 주 출석 세션 생성"을 눌러주세요.
+          현재 진행 중인 출석 세션이 없어요. 우측 상단 ⚙ 메뉴에서 세션을 만들어주세요.
         </Card>
       ) : (
-        <div className="mb-4 flex flex-wrap gap-1.5">
-          {openSessions.map((session) => {
-            const isCustomSession = session.session_day === "holiday" || session.session_day === "custom";
-            return (
-              <div key={session.id} className="flex items-center gap-1">
-                <button
-                  type="button"
-                  onClick={() => setSelectedSessionId(session.id)}
-                  className={`rounded-full border px-3 py-1.5 text-sm font-semibold transition-colors ${
-                    selectedSessionId === session.id
-                      ? "border-clay-400 bg-clay-400 text-line-25"
-                      : "border-line-200 bg-line-50 text-line-800"
-                  }`}
-                >
-                  {SESSION_DAY_LABEL[session.session_day]}
-                </button>
-                {isCustomSession && (
-                  <>
-                    <button
-                      type="button"
-                      disabled={processingSessionId === session.id}
-                      onClick={() => handleSessionStatusChange(session.id, "closed")}
-                      className="rounded-full border border-line-200 px-2 py-1 text-[11px] font-semibold text-line-600 disabled:opacity-40"
-                    >
-                      마감
-                    </button>
-                    <button
-                      type="button"
-                      disabled={processingSessionId === session.id}
-                      onClick={() => handleSessionStatusChange(session.id, "archived")}
-                      className="rounded-full border border-line-200 px-2 py-1 text-[11px] font-semibold text-line-600 disabled:opacity-40"
-                    >
-                      보관
-                    </button>
-                  </>
-                )}
+        <div className="mb-4">
+          <Dropdown
+            align="left"
+            triggerClassName="flex w-full items-center justify-between rounded-lg border border-line-200 bg-line-100 px-4 py-3 text-left"
+            trigger={
+              <>
+                <span className="text-sm font-semibold text-line-900">
+                  {selectedSession ? SESSION_DAY_LABEL[selectedSession.session_day] : "세션 선택"}
+                  {selectedSessionIsCustom && selectedSession ? ` · ${selectedSession.title}` : ""}
+                </span>
+                <span className="text-line-500">▼</span>
+              </>
+            }
+          >
+            {(close) => (
+              <div className="space-y-0.5">
+                {openSessions.map((session) => (
+                  <DropdownItem
+                    key={session.id}
+                    onClick={() => {
+                      setSelectedSessionId(session.id);
+                      close();
+                    }}
+                  >
+                    <span className={selectedSessionId === session.id ? "text-clay-400" : ""}>
+                      {SESSION_DAY_LABEL[session.session_day]}
+                      {(session.session_day === "holiday" || session.session_day === "custom") &&
+                        ` · ${session.title}`}
+                    </span>
+                  </DropdownItem>
+                ))}
               </div>
-            );
-          })}
+            )}
+          </Dropdown>
         </div>
       )}
 
       {selectedSessionId && (
         <>
-          <Card className="mb-4 flex items-center justify-between p-4">
-            <div>
-              <p className="font-score text-2xl font-bold text-line-900">
-                {attending}
-                <span className="text-sm text-line-400"> / {rows.length}명</span>
-              </p>
-              <p className="text-xs text-line-500">
-                미정 {undecided} · 불참 {absent}
-              </p>
-            </div>
+          {/* 통계 — 출석/미정/불참 배지 3개 */}
+          <div className="mb-4 grid grid-cols-3 gap-2">
+            <Card className="p-3 text-center">
+              <p className="font-score text-2xl font-bold text-court-400">{attending}</p>
+              <p className="text-xs text-line-500">출석</p>
+            </Card>
+            <Card className="p-3 text-center">
+              <p className="font-score text-2xl font-bold text-amber-400">{undecided}</p>
+              <p className="text-xs text-line-500">미정</p>
+            </Card>
+            <Card className="p-3 text-center">
+              <p className="font-score text-2xl font-bold text-fault-400">{absent}</p>
+              <p className="text-xs text-line-500">불참</p>
+            </Card>
+          </div>
+
+          <div className="mb-4 flex justify-center">
             {shortage > 0 ? (
               <Badge tone="fault">{shortage}명 더 필요해요</Badge>
             ) : (
               <Badge tone="court">복식 경기 가능</Badge>
             )}
-          </Card>
+          </div>
 
           {loadingRows ? (
             <p className="text-center text-sm text-line-400">불러오는 중...</p>
@@ -399,7 +451,9 @@ export default function AttendancePage() {
             <div className="space-y-2">
               {rows.map(({ member, status }) => (
                 <Card key={member.id} className="flex items-center justify-between p-3">
-                  <span className="text-sm font-medium text-line-900">{member.nickname}</span>
+                  <span className="text-sm font-medium text-line-900">
+                    {getDisambiguatedName(member, allMembers)}
+                  </span>
                   <AttendanceToggle
                     value={status}
                     onChange={(s) => updateStatus(member.id, s)}
