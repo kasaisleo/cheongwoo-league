@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
@@ -31,6 +32,7 @@ interface MemberAttendance {
 
 export default function AttendancePage() {
   const supabase = useMemo(() => createClient(), []);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [openSessions, setOpenSessions] = useState<AttendanceSession[]>([]);
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
   const [rows, setRows] = useState<MemberAttendance[]>([]);
@@ -39,12 +41,21 @@ export default function AttendancePage() {
   const [updatingMemberId, setUpdatingMemberId] = useState<string | null>(null);
   const [processingSessionId, setProcessingSessionId] = useState<string | null>(null);
 
-  // 휴일/임시운동 생성 폼 (관리 메뉴에서 토글)
+  // 휴일/임시운동 생성 폼
   const [showCustomForm, setShowCustomForm] = useState(false);
   const [customDate, setCustomDate] = useState(todayString());
   const [customDay, setCustomDay] = useState<"holiday" | "custom">("custom");
   const [customTitle, setCustomTitle] = useState("");
   const [creatingCustom, setCreatingCustom] = useState(false);
+
+  // 0. 운영진 여부 확인 — manager 이상만 세션 생성/명단확정/명단보관 버튼을 본다.
+  // 카카오 로그인 + permission_role 도입 전까지는 운영진 비밀번호 인증으로 대체.
+  useEffect(() => {
+    fetch("/api/auth/status")
+      .then((res) => res.json())
+      .then((body) => setIsAdmin(Boolean(body?.isAdmin)))
+      .catch(() => setIsAdmin(false));
+  }, []);
 
   // 1. open 상태인 세션 목록 불러오기
   useEffect(() => {
@@ -158,8 +169,8 @@ export default function AttendancePage() {
     );
   }
 
-  async function handleCreateWeeklySessions(closeMenu: () => void) {
-    closeMenu();
+  async function handleCreateWeeklySessions(closeMenu?: () => void) {
+    closeMenu?.();
     const confirmed = window.confirm(
       "기존 열린 토/일 출석 세션을 보관하고 이번 주 토/일 세션을 새로 생성합니다. 진행할까요?"
     );
@@ -209,16 +220,18 @@ export default function AttendancePage() {
     window.location.reload();
   }
 
+  // 용어 정리: closed = "명단 확정", archived = "명단 보관"
+  // 보관은 데이터 삭제가 아니라 화면에서 숨기고 히스토리로 옮기는 개념.
   async function handleSessionStatusChange(
     sessionId: string,
     targetStatus: "closed" | "archived",
-    closeMenu: () => void
+    closeMenu?: () => void
   ) {
-    closeMenu();
+    closeMenu?.();
     const confirmMessage =
       targetStatus === "closed"
-        ? "현재 세션을 마감 처리할까요?"
-        : "현재 세션을 보관 처리할까요? 보관 후에는 출석 화면에 노출되지 않습니다.";
+        ? "이 출석 명단을 확정하시겠습니까?"
+        : "이 출석 명단을 보관하시겠습니까?";
 
     if (!window.confirm(confirmMessage)) return;
 
@@ -234,12 +247,12 @@ export default function AttendancePage() {
     if (!res.ok) {
       toast.error(
         body?.error ??
-          (targetStatus === "closed" ? "세션 마감 처리에 실패했습니다." : "세션 보관 처리에 실패했습니다.")
+          (targetStatus === "closed" ? "명단 확정에 실패했습니다." : "명단 보관에 실패했습니다.")
       );
       return;
     }
 
-    toast.success(targetStatus === "closed" ? "세션이 마감되었습니다." : "세션이 보관되었습니다.");
+    toast.success(targetStatus === "closed" ? "출석 명단이 확정되었습니다." : "출석 명단이 보관되었습니다.");
     window.location.reload();
   }
 
@@ -265,48 +278,60 @@ export default function AttendancePage() {
           <h1 className="font-display text-3xl font-bold uppercase tracking-tight text-line-900">출석 체크</h1>
         </div>
 
-        {/* 관리자 메뉴 — 일반 회원에게는 세션 생성/관리 폼을 노출하지 않고 ⚙ 안에 숨김 */}
-        <Dropdown
-          align="right"
-          triggerClassName="flex h-10 w-10 items-center justify-center rounded-full border border-line-200 bg-line-100 text-line-700 transition-colors hover:bg-line-200"
-          trigger={<span className="text-lg">⚙</span>}
-        >
-          {(close) => (
-            <div className="space-y-0.5">
-              <DropdownItem onClick={() => handleCreateWeeklySessions(close)}>
-                이번 주 세션 생성
-              </DropdownItem>
-              <DropdownItem
-                onClick={() => {
-                  setShowCustomForm(true);
-                  close();
-                }}
-              >
-                휴일/임시운동 생성
-              </DropdownItem>
-              {selectedSessionId && selectedSessionIsCustom && (
-                <>
-                  <div className="my-1 h-px bg-line-200" />
-                  <DropdownItem
-                    disabled={processingSessionId === selectedSessionId}
-                    onClick={() => handleSessionStatusChange(selectedSessionId, "closed", close)}
-                  >
-                    세션 마감
+        <div className="flex items-center gap-1.5">
+          <Link
+            href="/attendance/history"
+            className="flex h-10 w-10 items-center justify-center rounded-full border border-line-200 bg-line-100 text-line-700 transition-colors hover:bg-line-200"
+            aria-label="출석 히스토리 보기"
+          >
+            <span className="text-base">🕓</span>
+          </Link>
+
+          {/* 관리자 메뉴 — 운영진에게만 노출 */}
+          {isAdmin && (
+            <Dropdown
+              align="right"
+              triggerClassName="flex h-10 w-10 items-center justify-center rounded-full border border-line-200 bg-line-100 text-line-700 transition-colors hover:bg-line-200"
+              trigger={<span className="text-lg">⚙</span>}
+            >
+              {(close) => (
+                <div className="space-y-0.5">
+                  <DropdownItem onClick={() => handleCreateWeeklySessions(close)}>
+                    이번 주 세션 생성
                   </DropdownItem>
                   <DropdownItem
-                    disabled={processingSessionId === selectedSessionId}
-                    onClick={() => handleSessionStatusChange(selectedSessionId, "archived", close)}
+                    onClick={() => {
+                      setShowCustomForm(true);
+                      close();
+                    }}
                   >
-                    세션 보관
+                    휴일/임시운동 생성
                   </DropdownItem>
-                </>
+                  {selectedSessionId && (
+                    <>
+                      <div className="my-1 h-px bg-line-200" />
+                      <DropdownItem
+                        disabled={processingSessionId === selectedSessionId}
+                        onClick={() => handleSessionStatusChange(selectedSessionId, "closed", close)}
+                      >
+                        명단 확정
+                      </DropdownItem>
+                      <DropdownItem
+                        disabled={processingSessionId === selectedSessionId}
+                        onClick={() => handleSessionStatusChange(selectedSessionId, "archived", close)}
+                      >
+                        명단 보관
+                      </DropdownItem>
+                    </>
+                  )}
+                </div>
               )}
-            </div>
+            </Dropdown>
           )}
-        </Dropdown>
+        </div>
       </header>
 
-      {showCustomForm && (
+      {showCustomForm && isAdmin && (
         <Card className="mb-4 space-y-3 p-4">
           <div className="flex items-center justify-between">
             <p className="text-sm font-bold uppercase tracking-wide text-clay-400">휴일/임시운동 생성</p>
@@ -319,7 +344,7 @@ export default function AttendancePage() {
             </button>
           </div>
           <div>
-            <label className="mb-1 block text-xs font-semibold text-line-600">날짜</label>
+            <label className="mb-1 block text-xs font-semibold text-line-600">날짜 *</label>
             <input
               type="date"
               value={customDate}
@@ -328,7 +353,7 @@ export default function AttendancePage() {
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-semibold text-line-600">운동 구분</label>
+            <label className="mb-1 block text-xs font-semibold text-line-600">구분 *</label>
             <div className="flex gap-2">
               <button
                 type="button"
@@ -355,7 +380,7 @@ export default function AttendancePage() {
             </div>
           </div>
           <div>
-            <label className="mb-1 block text-xs font-semibold text-line-600">제목</label>
+            <label className="mb-1 block text-xs font-semibold text-line-600">제목 *</label>
             <input
               value={customTitle}
               onChange={(e) => setCustomTitle(e.target.value)}
@@ -379,7 +404,9 @@ export default function AttendancePage() {
         <p className="text-center text-sm text-line-400">세션을 불러오는 중...</p>
       ) : openSessions.length === 0 ? (
         <Card className="mb-4 p-6 text-center text-sm text-line-400">
-          현재 진행 중인 출석 세션이 없어요. 우측 상단 ⚙ 메뉴에서 세션을 만들어주세요.
+          {isAdmin
+            ? "현재 진행 중인 출석 세션이 없어요. 우측 상단 ⚙ 메뉴에서 세션을 만들어주세요."
+            : "현재 진행 중인 출석 세션이 없어요."}
         </Card>
       ) : (
         <div className="mb-4">
@@ -421,7 +448,31 @@ export default function AttendancePage() {
 
       {selectedSessionId && (
         <>
-          {/* 통계 — 출석/미정/불참 배지 3개 */}
+          {/* 통계 카드 + 운영진 전용 명단확정/명단보관 버튼을 같은 영역에 노출 */}
+          <div className="mb-2 flex items-center justify-between">
+            <p className="text-xs font-semibold text-line-500">현재 명단</p>
+            {isAdmin && (
+              <div className="flex gap-1.5">
+                <button
+                  type="button"
+                  disabled={processingSessionId === selectedSessionId}
+                  onClick={() => handleSessionStatusChange(selectedSessionId, "closed")}
+                  className="rounded-full border border-line-200 px-2.5 py-1 text-[11px] font-semibold text-line-600 disabled:opacity-40"
+                >
+                  명단 확정
+                </button>
+                <button
+                  type="button"
+                  disabled={processingSessionId === selectedSessionId}
+                  onClick={() => handleSessionStatusChange(selectedSessionId, "archived")}
+                  className="rounded-full border border-line-200 px-2.5 py-1 text-[11px] font-semibold text-line-600 disabled:opacity-40"
+                >
+                  명단 보관
+                </button>
+              </div>
+            )}
+          </div>
+
           <div className="mb-4 grid grid-cols-3 gap-2">
             <Card className="p-3 text-center">
               <p className="font-score text-2xl font-bold text-court-400">{attending}</p>

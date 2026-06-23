@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
 
   if (updateError) {
     return NextResponse.json(
-      { error: nextStatus === "closed" ? "세션 마감 처리에 실패했습니다." : "세션 보관 처리에 실패했습니다." },
+      { error: nextStatus === "closed" ? "명단 확정에 실패했습니다." : "명단 보관에 실패했습니다." },
       { status: 500 }
     );
   }
