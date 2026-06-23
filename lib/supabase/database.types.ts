@@ -79,6 +79,7 @@ export interface Database {
         Row: Member;
         Insert: Partial<Member> & { name: string; nickname: string; grade: MemberGrade };
         Update: Partial<Member>;
+        Relationships: [];
       };
       matches: {
         Row: Match;
@@ -92,6 +93,7 @@ export interface Database {
           winner_team: WinnerTeam;
         };
         Update: Partial<Match>;
+        Relationships: [];
       };
       rating_history: {
         Row: RatingHistory;
@@ -103,22 +105,29 @@ export interface Database {
           rating_change: number;
         };
         Update: Partial<RatingHistory>;
+        Relationships: [];
       };
       attendance: {
         Row: Attendance;
         Insert: Partial<Attendance> & { member_id: string; event_date: string; status: AttendanceStatus };
         Update: Partial<Attendance>;
+        Relationships: [];
       };
       guests: {
         Row: Guest;
         Insert: Partial<Guest> & { name: string; visit_date: string };
         Update: Partial<Guest>;
+        Relationships: [];
       };
     };
     Views: {
       member_stats: {
         Row: MemberWithStats;
+        Relationships: [];
       };
     };
+    Functions: Record<string, never>;
+    Enums: Record<string, never>;
+    CompositeTypes: Record<string, never>;
   };
 }
