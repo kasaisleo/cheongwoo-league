@@ -2,11 +2,10 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { INITIAL_RATING_BY_GRADE } from "@/lib/elo";
-import type { MemberGrade, MemberRole } from "@/lib/supabase/database.types";
+import type { MemberGrade, MemberRole, MemberType } from "@/lib/supabase/database.types";
 
 const GRADES: MemberGrade[] = ["A", "B", "C", "D"];
 const ROLES: MemberRole[] = [
@@ -20,45 +19,97 @@ const ROLES: MemberRole[] = [
   "정회원",
   "고문",
 ];
+const MEMBER_TYPES: MemberType[] = ["정회원", "준회원", "게스트"];
 const MAPO_SCORES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+
+/** 숫자만 추출, 최대 11자리로 자름 */
+function sanitizePhoneDigits(value: string): string {
+  return value.replace(/\D/g, "").slice(0, 11);
+}
+
+/** 010-0000-0000 형태로 화면에 보여줄 포맷 */
+function formatPhoneForDisplay(digits: string): string {
+  if (digits.length <= 3) return digits;
+  if (digits.length <= 7) return `${digits.slice(0, 3)}-${digits.slice(3)}`;
+  return `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7)}`;
+}
 
 export default function NewMemberPage() {
   const router = useRouter();
   const [name, setName] = useState("");
   const [nickname, setNickname] = useState("");
-  const [phone, setPhone] = useState("");
+  const [phoneDigits, setPhoneDigits] = useState("");
   const [grade, setGrade] = useState<MemberGrade>("C");
   const [role, setRole] = useState<MemberRole>("정회원");
+  const [memberType, setMemberType] = useState<MemberType | null>(null);
   const [mapoScore, setMapoScore] = useState<number | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const isReady = name.trim().length > 0 && nickname.trim().length > 0 && !submitting;
+  function handlePhoneChange(value: string) {
+    setPhoneDigits(sanitizePhoneDigits(value));
+  }
+
+  /** 제출 전 클라이언트측 필수값 검증. 통과하지 못하면 alert로 안내하고 false 반환. */
+  function validateBeforeSubmit(): boolean {
+    if (!name.trim()) {
+      alert("이름을 입력해주세요.");
+      return false;
+    }
+    if (!phoneDigits.trim()) {
+      alert("휴대폰 번호를 입력해주세요.");
+      return false;
+    }
+    if (!/^010\d{8}$/.test(phoneDigits)) {
+      alert("휴대폰 번호는 010으로 시작하는 11자리여야 합니다.");
+      return false;
+    }
+    if (mapoScore === null) {
+      alert("마포점수를 선택해주세요.");
+      return false;
+    }
+    if (!memberType) {
+      alert("회원구분을 선택해주세요.");
+      return false;
+    }
+    return true;
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!isReady) return;
+    if (submitting) return;
+    if (!validateBeforeSubmit()) return;
 
     setSubmitting(true);
     setError(null);
 
-    const supabase = createClient();
-    const { error: insertError } = await supabase.from("members").insert({
-      name: name.trim(),
-      nickname: nickname.trim(),
-      phone: phone.trim() || null,
-      grade,
-      role,
-      mapo_score: mapoScore,
+    const res = await fetch("/api/members", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: name.trim(),
+        nickname: nickname.trim() || null,
+        phone: phoneDigits,
+        grade,
+        role,
+        mapoScore,
+        memberType,
+      }),
     });
 
     setSubmitting(false);
 
-    if (insertError) {
-      setError("회원 등록에 실패했습니다. 다시 시도해주세요.");
+    if (!res.ok) {
+      const body = await res.json().catch(() => null);
+      if (res.status === 409) {
+        setError("이미 등록된 휴대폰 번호입니다.");
+      } else {
+        setError(body?.error ?? "회원 등록에 실패했습니다. 다시 시도해주세요.");
+      }
       return;
     }
 
+    alert("회원 등록이 완료되었습니다.");
     router.push("/members");
     router.refresh();
   }
@@ -85,11 +136,11 @@ export default function NewMemberPage() {
           </div>
 
           <div>
-            <label className="mb-1 block text-xs font-semibold text-line-600">닉네임</label>
+            <label className="mb-1 block text-xs font-semibold text-line-600">닉네임 (선택)</label>
             <input
               value={nickname}
               onChange={(e) => setNickname(e.target.value)}
-              placeholder="예: 철수"
+              placeholder="예: 철수 (비워두면 이름으로 등록)"
               className="h-11 w-full rounded-lg border border-line-200 bg-line-25 px-3 text-sm text-line-900 placeholder:text-line-400"
             />
           </div>
@@ -99,11 +150,32 @@ export default function NewMemberPage() {
             <input
               type="tel"
               inputMode="numeric"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
+              value={formatPhoneForDisplay(phoneDigits)}
+              onChange={(e) => handlePhoneChange(e.target.value)}
               placeholder="010-0000-0000"
+              maxLength={13}
               className="h-11 w-full rounded-lg border border-line-200 bg-line-25 px-3 text-sm text-line-900 placeholder:text-line-400"
             />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-xs font-semibold text-line-600">회원구분</label>
+            <div className="flex gap-2">
+              {MEMBER_TYPES.map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => setMemberType(t)}
+                  className={`flex-1 rounded-lg border py-2 text-sm font-semibold ${
+                    memberType === t
+                      ? "border-clay-400 bg-clay-400 text-line-25"
+                      : "border-line-200 text-line-600"
+                  }`}
+                >
+                  {t}
+                </button>
+              ))}
+            </div>
           </div>
 
           <div>
@@ -146,7 +218,7 @@ export default function NewMemberPage() {
 
           <div>
             <label className="mb-1 block text-xs font-semibold text-line-600">
-              마포구 대회 점수 (1~10, 선택)
+              마포구 대회 점수 (1~10)
             </label>
             <div className="flex flex-wrap gap-1.5">
               {MAPO_SCORES.map((score) => (
@@ -172,7 +244,7 @@ export default function NewMemberPage() {
 
         {error && <p className="mt-3 text-sm text-fault-400">{error}</p>}
 
-        <Button type="submit" size="lg" className="mt-4 w-full" disabled={!isReady}>
+        <Button type="submit" size="lg" className="mt-4 w-full" disabled={submitting}>
           {submitting ? "등록 중..." : "회원 등록"}
         </Button>
       </form>
