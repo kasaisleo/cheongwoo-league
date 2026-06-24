@@ -3,10 +3,12 @@ import { createClient } from "@/lib/supabase/server";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { MATCH_SELECT_WITH_PLAYERS, toDisplayMatches } from "@/lib/match-display";
-import { MATCH_SESSION_DAY_LABEL } from "@/lib/match-session-label";
+import { MATCH_SESSION_DAY_LABEL, selectHomeSessions } from "@/lib/match-session-label";
 import type { AttendanceSession } from "@/lib/supabase/database.types";
 
-/** 오늘 기준 이번 주(월~일) 시작/끝 날짜 문자열 */
+const MAIN_SESSION_LIMIT = 5;
+
+/** 오늘 기준 이번 주(월~일) 시작/끝 날짜 문자열 — 게스트 주간 조회용 */
 function thisWeekRange(): { start: string; end: string } {
   const now = new Date();
   const day = now.getDay(); // 0(일)~6(토)
@@ -26,14 +28,15 @@ function thisWeekRange(): { start: string; end: string } {
 export default async function HomePage() {
   const supabase = createClient();
   const week = thisWeekRange();
+  const today = new Date().toISOString().slice(0, 10);
 
-  const [{ data: openSessions }, { data: recentMatchRows }, { data: weeklyGuests }] =
+  const [{ data: activeSessionRows }, { data: recentMatchRows }, { data: weeklyGuests }] =
     await Promise.all([
       supabase
         .from("attendance_sessions")
         .select("*")
-        .eq("status", "open")
-        .order("session_date", { ascending: true }),
+        .in("status", ["open", "closed"])
+        .gte("session_date", today),
       supabase
         .from("matches")
         .select(MATCH_SELECT_WITH_PLAYERS)
@@ -47,9 +50,11 @@ export default async function HomePage() {
         .order("visit_date", { ascending: true }),
     ]);
 
-  const sessions = (openSessions ?? []) as AttendanceSession[];
+  const allSessions = selectHomeSessions((activeSessionRows ?? []) as AttendanceSession[]);
+  const sessions = allSessions.slice(0, MAIN_SESSION_LIMIT);
+  const hasMoreSessions = allSessions.length > MAIN_SESSION_LIMIT;
 
-  // 각 세션별 출석 현황을 한 번에 조회
+  // 각 세션별 출석 현황을 한 번에 조회 (화면에 보일 세션 기준으로만)
   const sessionIds = sessions.map((s) => s.id);
   const { data: attendanceRows } =
     sessionIds.length > 0
@@ -87,32 +92,44 @@ export default async function HomePage() {
         </h1>
       </header>
 
-      <Link href="/attendance">
-        <section className="mb-4 space-y-2">
-          {sessions.length === 0 ? (
-            <Card className="border-l-4 border-l-clay-400 p-4 text-sm text-line-400">
-              현재 진행 중인 출석 세션이 없어요.
-            </Card>
-          ) : (
-            sessions.map((session) => {
+      <section className="mb-4 space-y-2">
+        {sessions.length === 0 ? (
+          <Card className="border-l-4 border-l-clay-400 p-4 text-sm text-line-400">
+            현재 진행 중인 출석 세션이 없어요.
+          </Card>
+        ) : (
+          <>
+            {sessions.map((session) => {
               const summary = summaryBySession.get(session.id)!;
+              const isCustom = session.session_day === "holiday" || session.session_day === "custom";
+
               return (
-                <Card key={session.id} className="border-l-4 border-l-clay-400 p-4">
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm font-semibold text-line-900">
-                      {MATCH_SESSION_DAY_LABEL[session.session_day]}
+                <Link key={session.id} href={`/attendance?session_id=${session.id}`}>
+                  <Card className="border-l-4 border-l-clay-400 p-4">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-semibold text-line-900">
+                        {MATCH_SESSION_DAY_LABEL[session.session_day]}
+                      </p>
+                      <span className="text-xs text-line-400">{session.session_date}</span>
+                    </div>
+                    {isCustom && session.title && (
+                      <p className="mt-0.5 text-xs text-line-600">{session.title}</p>
+                    )}
+                    <p className="mt-1 text-xs text-line-500">
+                      출석 {summary.attending} · 미정 {summary.undecided} · 불참 {summary.absent}
                     </p>
-                    <span className="text-xs text-line-400">{session.session_date}</span>
-                  </div>
-                  <p className="mt-1 text-xs text-line-500">
-                    출석 {summary.attending} · 미정 {summary.undecided} · 불참 {summary.absent}
-                  </p>
-                </Card>
+                  </Card>
+                </Link>
               );
-            })
-          )}
-        </section>
-      </Link>
+            })}
+            {hasMoreSessions && (
+              <Link href="/attendance">
+                <Card className="p-3 text-center text-xs font-semibold text-clay-400">더보기</Card>
+              </Link>
+            )}
+          </>
+        )}
+      </section>
 
       {guestsThisWeek.length > 0 && (
         <section className="mb-4">

@@ -21,6 +21,13 @@ export async function POST(request: NextRequest) {
   if (!sessionDate) {
     return NextResponse.json({ error: "날짜를 선택해주세요." }, { status: 400 });
   }
+  const todayString = new Date().toISOString().slice(0, 10);
+  if (sessionDate < todayString) {
+    return NextResponse.json(
+      { error: "오늘 이전 날짜는 선택할 수 없습니다." },
+      { status: 400 }
+    );
+  }
   if (sessionDay !== "holiday" && sessionDay !== "custom") {
     return NextResponse.json({ error: "운동 구분을 선택해주세요." }, { status: 400 });
   }

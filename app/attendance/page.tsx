@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
@@ -24,7 +25,9 @@ interface MemberAttendance {
   attendanceId: string | null;
 }
 
-export default function AttendancePage() {
+function AttendancePageInner() {
+  const searchParams = useSearchParams();
+  const initialSessionId = searchParams.get("session_id");
   const supabase = useMemo(() => createClient(), []);
   const [isAdmin, setIsAdmin] = useState(false);
   const [openSessions, setOpenSessions] = useState<AttendanceSession[]>([]);
@@ -35,7 +38,7 @@ export default function AttendancePage() {
   const [updatingMemberId, setUpdatingMemberId] = useState<string | null>(null);
   const [processingSessionId, setProcessingSessionId] = useState<string | null>(null);
 
-  // 휴일/임시운동 생성 폼
+  // 휴일매치/이벤트매치 생성 폼
   const [showCustomForm, setShowCustomForm] = useState(false);
   const [customDate, setCustomDate] = useState(todayString());
   const [customDay, setCustomDay] = useState<"holiday" | "custom">("custom");
@@ -51,7 +54,7 @@ export default function AttendancePage() {
       .catch(() => setIsAdmin(false));
   }, []);
 
-  // 1. open 상태인 세션 목록 불러오기
+  // 1. open 상태인 세션 목록 불러오기. URL의 session_id가 있고 목록에 실제로 존재하면 그걸 우선 선택한다.
   useEffect(() => {
     let isCurrent = true;
 
@@ -62,7 +65,13 @@ export default function AttendancePage() {
       if (!isCurrent) return;
 
       setOpenSessions(sessions);
-      setSelectedSessionId((prev) => prev ?? sessions[0]?.id ?? null);
+      setSelectedSessionId((prev) => {
+        if (prev) return prev;
+        const fromUrl = initialSessionId && sessions.some((s) => s.id === initialSessionId)
+          ? initialSessionId
+          : null;
+        return fromUrl ?? sessions[0]?.id ?? null;
+      });
       setLoadingSessions(false);
     }
 
@@ -70,7 +79,7 @@ export default function AttendancePage() {
     return () => {
       isCurrent = false;
     };
-  }, [supabase]);
+  }, [supabase, initialSessionId]);
 
   // 2. 선택된 세션의 출석 현황 불러오기
   useEffect(() => {
@@ -182,6 +191,10 @@ export default function AttendancePage() {
       toast.error("날짜를 선택해주세요.");
       return;
     }
+    if (customDate < todayString()) {
+      toast.error("오늘 이전 날짜는 선택할 수 없습니다.");
+      return;
+    }
     if (!customDay) {
       toast.error("운동 구분을 선택해주세요.");
       return;
@@ -290,11 +303,12 @@ export default function AttendancePage() {
                   </DropdownItem>
                   <DropdownItem
                     onClick={() => {
+                      setCustomDate((prev) => (prev < todayString() ? todayString() : prev));
                       setShowCustomForm(true);
                       close();
                     }}
                   >
-                    휴일/임시운동 생성
+                    휴일매치/이벤트매치 생성
                   </DropdownItem>
                   {selectedSessionId && (
                     <>
@@ -323,7 +337,7 @@ export default function AttendancePage() {
       {showCustomForm && isAdmin && (
         <Card className="mb-4 space-y-3 p-4">
           <div className="flex items-center justify-between">
-            <p className="text-sm font-bold uppercase tracking-wide text-clay-400">휴일/임시운동 생성</p>
+            <p className="text-sm font-bold uppercase tracking-wide text-clay-400">휴일매치/이벤트매치 생성</p>
             <button
               type="button"
               onClick={() => setShowCustomForm(false)}
@@ -332,13 +346,14 @@ export default function AttendancePage() {
               닫기
             </button>
           </div>
-          <div>
+          <div className="w-full">
             <label className="mb-1 block text-xs font-semibold text-line-600">날짜 *</label>
             <input
               type="date"
               value={customDate}
+              min={todayString()}
               onChange={(e) => setCustomDate(e.target.value)}
-              className="h-11 w-full rounded-lg border border-line-200 bg-line-25 px-3 text-sm text-line-900"
+              className="box-border block h-11 w-full max-w-full rounded-lg border border-line-200 bg-line-25 px-3 text-sm text-line-900"
             />
           </div>
           <div>
@@ -353,7 +368,7 @@ export default function AttendancePage() {
                     : "border-line-200 text-line-600"
                 }`}
               >
-                휴일운동
+                휴일매치
               </button>
               <button
                 type="button"
@@ -364,17 +379,17 @@ export default function AttendancePage() {
                     : "border-line-200 text-line-600"
                 }`}
               >
-                임시운동
+                이벤트매치
               </button>
             </div>
           </div>
-          <div>
+          <div className="w-full">
             <label className="mb-1 block text-xs font-semibold text-line-600">제목 *</label>
             <input
               value={customTitle}
               onChange={(e) => setCustomTitle(e.target.value)}
-              placeholder="예: 광복절 특별 운동"
-              className="h-11 w-full rounded-lg border border-line-200 bg-line-25 px-3 text-sm text-line-900 placeholder:text-line-400"
+              placeholder="예: 광복절 특별 매치, 청우회 VS 망원클럽 친선전"
+              className="box-border block h-11 w-full max-w-full rounded-lg border border-line-200 bg-line-25 px-3 text-sm text-line-900 placeholder:text-line-400"
             />
           </div>
           <button
@@ -388,7 +403,7 @@ export default function AttendancePage() {
         </Card>
       )}
 
-      {/* 세션 선택 — 드롭다운 방식. 휴일/임시운동이 늘어나도 화면이 밀리지 않음 */}
+      {/* 세션 선택 — 드롭다운 방식. 휴일매치/이벤트매치가 늘어나도 화면이 밀리지 않음 */}
       {loadingSessions ? (
         <p className="text-center text-sm text-line-400">세션을 불러오는 중...</p>
       ) : openSessions.length === 0 ? (
@@ -506,5 +521,13 @@ export default function AttendancePage() {
         </>
       )}
     </main>
+  );
+}
+
+export default function AttendancePage() {
+  return (
+    <Suspense fallback={null}>
+      <AttendancePageInner />
+    </Suspense>
   );
 }
