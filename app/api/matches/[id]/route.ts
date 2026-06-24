@@ -1,15 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { isAdminSession } from "@/lib/admin-auth";
-import { applyMatch } from "@/lib/match-engine";
-import type { Member, Guest } from "@/lib/supabase/database.types";
+import { applyMatch, rollbackMatch } from "@/lib/match-engine";
+import type { Match, Member, Guest } from "@/lib/supabase/database.types";
 
 interface PlayerInput {
   id: string;
   isGuest: boolean;
 }
 
-interface CreateMatchBody {
+interface UpdateMatchBody {
   playedAt: string;
   teamAPlayer1: PlayerInput;
   teamAPlayer2: PlayerInput;
@@ -31,12 +31,24 @@ function isValidPlayer(p: unknown): p is PlayerInput {
   );
 }
 
-export async function POST(request: NextRequest) {
+interface RouteParams {
+  params: { id: string };
+}
+
+/**
+ * 경기 수정. manager 이상만 가능 (현재는 isAdminSession으로 대체, 권한 시스템
+ * 도입 후 permission_role >= manager 체크로 교체할 것).
+ *
+ * 처리 순서: rollbackMatch(기존 경기 효과 되돌리기) → 경기 내용 수정 → applyMatch(새 효과 적용)
+ * 이 순서를 지켜야 LP/wins/losses가 항상 "현재 저장된 경기 내용"과 일치하는 상태를 유지한다.
+ */
+export async function PUT(request: NextRequest, { params }: RouteParams) {
   if (!isAdminSession()) {
     return NextResponse.json({ error: "운영진 인증이 필요합니다." }, { status: 401 });
   }
 
-  const body = (await request.json()) as CreateMatchBody;
+  const matchId = params.id;
+  const body = (await request.json()) as UpdateMatchBody;
   const {
     playedAt,
     teamAPlayer1,
@@ -82,7 +94,18 @@ export async function POST(request: NextRequest) {
 
   const supabase = createServiceClient();
 
-  // 1. 회원/게스트 선수 정보 조회
+  // 0. 기존 경기 조회
+  const { data: existingMatch, error: fetchError } = await supabase
+    .from("matches")
+    .select("*")
+    .eq("id", matchId)
+    .single();
+
+  if (fetchError || !existingMatch) {
+    return NextResponse.json({ error: "경기를 찾을 수 없습니다." }, { status: 404 });
+  }
+
+  // 1. 새로 선택된 선수들이 실제로 존재하는지 확인
   const memberIds = players.filter((p) => !p.isGuest).map((p) => p.id);
   const guestIds = players.filter((p) => p.isGuest).map((p) => p.id);
 
@@ -105,17 +128,16 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "게스트 정보를 불러오지 못했습니다." }, { status: 500 });
   }
 
-  // 2. 중복 저장 방지는 이번 단계에서 보류한다.
-  //    - 같은 날 같은 4명이 같은 스코어로 여러 세트를 치는 경우가 실제로 있어,
-  //      "4명+날짜+스코어 일치"만으로 서버에서 무조건 거부하지 않는다.
-  //    - idempotency_key(클라이언트 요청 식별자) 기반 차단이 더 안전하지만,
-  //      matches.idempotency_key 컬럼 추가는 후순위 작업이라 아직 도입하지 않는다.
-  //    - 현재는 프론트엔드의 저장 버튼 중복 클릭 방지(disabled 처리)로만 방어한다.
+  // 2. rollback — 기존 경기가 미쳤던 효과(LP/wins/losses)를 먼저 되돌린다.
+  const rollbackResult = await rollbackMatch(supabase, existingMatch as Match);
+  if (!rollbackResult.ok) {
+    return NextResponse.json({ error: rollbackResult.error }, { status: 500 });
+  }
 
-  // 3. 경기 저장 (각 슬롯은 member/guest 중 하나만 채움)
-  const { data: match, error: matchError } = await supabase
+  // 3. 경기 내용 수정
+  const { data: updatedMatch, error: updateError } = await supabase
     .from("matches")
-    .insert({
+    .update({
       played_at: playedAt,
       team_a_player1_member: teamAPlayer1.isGuest ? null : teamAPlayer1.id,
       team_a_player1_guest: teamAPlayer1.isGuest ? teamAPlayer1.id : null,
@@ -131,18 +153,62 @@ export async function POST(request: NextRequest) {
       score_b_tiebreak: isTiebreakSet ? scoreBTiebreak : null,
       winner_team: winnerTeam,
     })
+    .eq("id", matchId)
     .select()
     .single();
 
-  if (matchError || !match) {
-    return NextResponse.json({ error: "경기 결과 저장에 실패했습니다." }, { status: 500 });
+  if (updateError || !updatedMatch) {
+    // 수정 자체가 실패하면, 방금 되돌린 효과를 원래 경기 내용으로 다시 적용해 정합성을 복구한다.
+    await applyMatch(supabase, existingMatch as Match);
+    return NextResponse.json({ error: "경기 수정에 실패했습니다." }, { status: 500 });
   }
 
-  // 4. 선수별 갱신 — 생성/수정/삭제가 모두 같은 로직을 쓰도록 공용 모듈(applyMatch)에 위임
-  const applyResult = await applyMatch(supabase, match);
+  // 4. apply — 수정된 새 경기 내용으로 효과를 다시 적용한다.
+  const applyResult = await applyMatch(supabase, updatedMatch as Match);
   if (!applyResult.ok) {
     return NextResponse.json({ error: applyResult.error }, { status: 500 });
   }
 
-  return NextResponse.json({ ok: true, matchId: match.id });
+  return NextResponse.json({ ok: true, matchId: updatedMatch.id });
+}
+
+/**
+ * 경기 삭제. manager 이상만 가능 (현재는 isAdminSession으로 대체).
+ *
+ * 처리 순서: rollbackMatch(효과 되돌리기) → 경기 행 삭제.
+ * point_history.match_id는 on delete set null로 설정되어 있어, 경기가 삭제되어도
+ * rollback이 남긴 보정 레코드(및 기존 이력)는 그대로 보존된다(match_id만 null이 됨).
+ */
+export async function DELETE(_request: NextRequest, { params }: RouteParams) {
+  if (!isAdminSession()) {
+    return NextResponse.json({ error: "운영진 인증이 필요합니다." }, { status: 401 });
+  }
+
+  const matchId = params.id;
+  const supabase = createServiceClient();
+
+  const { data: existingMatch, error: fetchError } = await supabase
+    .from("matches")
+    .select("*")
+    .eq("id", matchId)
+    .single();
+
+  if (fetchError || !existingMatch) {
+    return NextResponse.json({ error: "경기를 찾을 수 없습니다." }, { status: 404 });
+  }
+
+  const rollbackResult = await rollbackMatch(supabase, existingMatch as Match);
+  if (!rollbackResult.ok) {
+    return NextResponse.json({ error: rollbackResult.error }, { status: 500 });
+  }
+
+  const { error: deleteError } = await supabase.from("matches").delete().eq("id", matchId);
+
+  if (deleteError) {
+    // 삭제 자체가 실패하면, 되돌렸던 효과를 다시 적용해 정합성을 복구한다.
+    await applyMatch(supabase, existingMatch as Match);
+    return NextResponse.json({ error: "경기 삭제에 실패했습니다." }, { status: 500 });
+  }
+
+  return NextResponse.json({ ok: true });
 }

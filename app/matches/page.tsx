@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { Card } from "@/components/ui/Card";
-import { Badge } from "@/components/ui/Badge";
+import { MatchCard } from "@/components/match/MatchCard";
 import { MATCH_SELECT_WITH_PLAYERS, toDisplayMatches } from "@/lib/match-display";
 import type { Member } from "@/lib/supabase/database.types";
 
@@ -84,44 +84,7 @@ export default async function MatchesPage({ searchParams }: MatchesPageProps) {
       ) : (
         <div className="space-y-2">
           {matches.map((match) => (
-            <Card key={match.id} className="p-3">
-              <div className="flex items-center justify-between text-xs text-line-400">
-                <span>{match.played_at}</span>
-                <Badge tone={match.winner_team === "A" ? "clay" : "court"}>
-                  {match.winner_team === "A" ? "청팀 승" : "우팀 승"}
-                </Badge>
-              </div>
-              <div className="mt-2 flex items-center justify-between text-sm">
-                <span
-                  className={
-                    match.winner_team === "A" ? "font-semibold text-line-900" : "text-line-500"
-                  }
-                >
-                  {match.teamAPlayer1.nickname}
-                  {match.teamAPlayer1.isGuest && <span className="text-court-400"> G</span>} ·{" "}
-                  {match.teamAPlayer2.nickname}
-                  {match.teamAPlayer2.isGuest && <span className="text-court-400"> G</span>}
-                </span>
-                <span className="font-score font-bold text-line-900">
-                  {match.score_a} : {match.score_b}
-                  {match.score_a_tiebreak !== null && (
-                    <span className="ml-1 text-xs font-normal text-line-500">
-                      ({match.score_a_tiebreak}-{match.score_b_tiebreak})
-                    </span>
-                  )}
-                </span>
-                <span
-                  className={
-                    match.winner_team === "B" ? "font-semibold text-line-900" : "text-line-500"
-                  }
-                >
-                  {match.teamBPlayer1.nickname}
-                  {match.teamBPlayer1.isGuest && <span className="text-court-400"> G</span>} ·{" "}
-                  {match.teamBPlayer2.nickname}
-                  {match.teamBPlayer2.isGuest && <span className="text-court-400"> G</span>}
-                </span>
-              </div>
-            </Card>
+            <MatchCard key={match.id} match={match} />
           ))}
         </div>
       )}
