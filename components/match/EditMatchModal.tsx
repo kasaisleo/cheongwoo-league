@@ -8,7 +8,9 @@ import { QuickGuestModal } from "@/components/match/QuickGuestModal";
 import { Button } from "@/components/ui/Button";
 import { toast } from "@/components/ui/Toast";
 import type { DisplayMatch } from "@/lib/match-display";
-import type { Member, Guest } from "@/lib/supabase/database.types";
+import { Dropdown, DropdownItem } from "@/components/ui/Dropdown";
+import { MATCH_SESSION_DAY_LABEL } from "@/lib/match-session-label";
+import type { Member, Guest, AttendanceSession } from "@/lib/supabase/database.types";
 
 type GuestModalTarget = "teamAPlayer1" | "teamAPlayer2" | "teamBPlayer1" | "teamBPlayer2";
 
@@ -25,6 +27,8 @@ function toSelectedPlayer(p: DisplayMatch["teamAPlayer1"]): SelectedPlayer {
 export function EditMatchModal({ match, onClose, onSaved }: EditMatchModalProps) {
   const [members, setMembers] = useState<Member[]>([]);
   const [guests, setGuests] = useState<Guest[]>([]);
+  const [sessions, setSessions] = useState<AttendanceSession[]>([]);
+  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(match.session_id);
   const [loading, setLoading] = useState(true);
 
   const [teamAPlayer1, setTeamAPlayer1] = useState<SelectedPlayer | null>(
@@ -53,20 +57,39 @@ export function EditMatchModal({ match, onClose, onSaved }: EditMatchModalProps)
   useEffect(() => {
     async function loadData() {
       const supabase = createClient();
-      const [{ data: memberData }, { data: guestData }] = await Promise.all([
+      const [{ data: memberData }, { data: guestData }, { data: sessionData }] = await Promise.all([
         supabase.from("members").select("*").eq("is_active", true).order("nickname"),
         supabase
           .from("guests")
           .select("*")
           .is("converted_to_member_id", null)
           .order("created_at", { ascending: false }),
+        supabase
+          .from("attendance_sessions")
+          .select("*")
+          .in("status", ["open", "closed"])
+          .order("session_date", { ascending: false }),
       ]);
       setMembers(memberData ?? []);
       setGuests(guestData ?? []);
+
+      let sessionList = sessionData ?? [];
+      // 이 경기에 이미 연결된 세션이 archived라서 목록에 없으면, 선택지가 사라지지 않도록 추가한다.
+      if (match.session_id && !sessionList.some((s) => s.id === match.session_id)) {
+        const { data: currentSession } = await supabase
+          .from("attendance_sessions")
+          .select("*")
+          .eq("id", match.session_id)
+          .single();
+        if (currentSession) {
+          sessionList = [currentSession, ...sessionList];
+        }
+      }
+      setSessions(sessionList);
       setLoading(false);
     }
     loadData();
-  }, []);
+  }, [match.session_id]);
 
   const isTiebreakSet = (scoreA === 7 && scoreB === 6) || (scoreA === 6 && scoreB === 7);
 
@@ -84,8 +107,18 @@ export function EditMatchModal({ match, onClose, onSaved }: EditMatchModalProps)
     return selectedKeys.filter((k) => k !== currentKey);
   }
 
+  const selectedSession = sessions.find((s) => s.id === selectedSessionId) ?? null;
+  const selectedSessionIsCustom =
+    selectedSession?.session_day === "holiday" || selectedSession?.session_day === "custom";
+  const selectedSessionLabel = selectedSession
+    ? `${MATCH_SESSION_DAY_LABEL[selectedSession.session_day]}${
+        selectedSessionIsCustom ? ` · ${selectedSession.title}` : ""
+      } (${selectedSession.session_date})`
+    : null;
+
   const isReadyToSubmit = Boolean(
-    teamAPlayer1 &&
+    selectedSessionId &&
+      teamAPlayer1 &&
       teamAPlayer2 &&
       teamBPlayer1 &&
       teamBPlayer2 &&
@@ -115,6 +148,7 @@ export function EditMatchModal({ match, onClose, onSaved }: EditMatchModalProps)
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
+        sessionId: selectedSessionId,
         playedAt: match.played_at,
         teamAPlayer1: { id: teamAPlayer1!.id, isGuest: teamAPlayer1!.isGuest },
         teamAPlayer2: { id: teamAPlayer2!.id, isGuest: teamAPlayer2!.isGuest },
@@ -155,6 +189,45 @@ export function EditMatchModal({ match, onClose, onSaved }: EditMatchModalProps)
           <p className="py-8 text-center text-sm text-line-400">불러오는 중...</p>
         ) : (
           <>
+            <div className="mb-3 rounded-lg border border-line-200 p-3">
+              <p className="mb-2 text-xs font-bold uppercase tracking-widest text-line-600">세션 *</p>
+              <Dropdown
+                align="left"
+                triggerClassName="flex w-full items-center justify-between rounded-lg border border-line-200 bg-line-25 px-3 py-2.5 text-left"
+                trigger={
+                  <>
+                    <span className="text-sm font-semibold text-line-900">
+                      {selectedSessionLabel ?? "세션을 선택해주세요"}
+                    </span>
+                    <span className="text-line-500">▼</span>
+                  </>
+                }
+              >
+                {(close) => (
+                  <div className="max-h-56 space-y-0.5 overflow-y-auto">
+                    {sessions.map((session) => {
+                      const isCustom =
+                        session.session_day === "holiday" || session.session_day === "custom";
+                      return (
+                        <DropdownItem
+                          key={session.id}
+                          onClick={() => {
+                            setSelectedSessionId(session.id);
+                            close();
+                          }}
+                        >
+                          <span className={selectedSessionId === session.id ? "text-clay-400" : ""}>
+                            {MATCH_SESSION_DAY_LABEL[session.session_day]}
+                            {isCustom && ` · ${session.title}`} ({session.session_date})
+                          </span>
+                        </DropdownItem>
+                      );
+                    })}
+                  </div>
+                )}
+              </Dropdown>
+            </div>
+
             <div className="mb-3 rounded-lg border border-line-200 p-3">
               <p className="mb-2 text-xs font-bold uppercase tracking-wide text-clay-400">청팀</p>
               <div className="space-y-2">

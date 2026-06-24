@@ -10,6 +10,7 @@ interface PlayerInput {
 }
 
 interface CreateMatchBody {
+  sessionId: string;
   playedAt: string;
   teamAPlayer1: PlayerInput;
   teamAPlayer2: PlayerInput;
@@ -38,6 +39,7 @@ export async function POST(request: NextRequest) {
 
   const body = (await request.json()) as CreateMatchBody;
   const {
+    sessionId,
     playedAt,
     teamAPlayer1,
     teamAPlayer2,
@@ -49,6 +51,10 @@ export async function POST(request: NextRequest) {
     scoreBTiebreak,
     winnerTeam,
   } = body;
+
+  if (!sessionId) {
+    return NextResponse.json({ error: "출석 세션을 선택해주세요." }, { status: 400 });
+  }
 
   const players = [teamAPlayer1, teamAPlayer2, teamBPlayer1, teamBPlayer2];
   if (!players.every(isValidPlayer)) {
@@ -105,6 +111,23 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "게스트 정보를 불러오지 못했습니다." }, { status: 500 });
   }
 
+  // 1-1. 세션 유효성 확인 — archived 세션에는 경기를 등록할 수 없다.
+  const { data: session, error: sessionError } = await supabase
+    .from("attendance_sessions")
+    .select("id, status")
+    .eq("id", sessionId)
+    .single();
+
+  if (sessionError || !session) {
+    return NextResponse.json({ error: "세션을 찾을 수 없습니다." }, { status: 404 });
+  }
+  if (session.status === "archived") {
+    return NextResponse.json(
+      { error: "보관된 세션에는 경기를 등록할 수 없습니다." },
+      { status: 400 }
+    );
+  }
+
   // 2. 중복 저장 방지는 이번 단계에서 보류한다.
   //    - 같은 날 같은 4명이 같은 스코어로 여러 세트를 치는 경우가 실제로 있어,
   //      "4명+날짜+스코어 일치"만으로 서버에서 무조건 거부하지 않는다.
@@ -116,6 +139,7 @@ export async function POST(request: NextRequest) {
   const { data: match, error: matchError } = await supabase
     .from("matches")
     .insert({
+      session_id: sessionId,
       played_at: playedAt,
       team_a_player1_member: teamAPlayer1.isGuest ? null : teamAPlayer1.id,
       team_a_player1_guest: teamAPlayer1.isGuest ? teamAPlayer1.id : null,

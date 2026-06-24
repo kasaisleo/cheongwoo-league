@@ -61,6 +61,7 @@ export interface MemberWithStats extends Member {
 export interface Match {
   id: string;
   played_at: string;
+  session_id: string | null;
   team_a_player1_member: string | null;
   team_a_player1_guest: string | null;
   team_a_player2_member: string | null;

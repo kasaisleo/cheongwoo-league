@@ -8,7 +8,9 @@ import { ScoreStepper } from "@/components/match/ScoreStepper";
 import { QuickGuestModal } from "@/components/match/QuickGuestModal";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import type { Member, Guest } from "@/lib/supabase/database.types";
+import { Dropdown, DropdownItem } from "@/components/ui/Dropdown";
+import { MATCH_SESSION_DAY_LABEL } from "@/lib/match-session-label";
+import type { Member, Guest, AttendanceSession } from "@/lib/supabase/database.types";
 
 type GuestModalTarget = "teamAPlayer1" | "teamAPlayer2" | "teamBPlayer1" | "teamBPlayer2";
 
@@ -16,6 +18,8 @@ export default function NewMatchPage() {
   const router = useRouter();
   const [members, setMembers] = useState<Member[]>([]);
   const [guests, setGuests] = useState<Guest[]>([]);
+  const [sessions, setSessions] = useState<AttendanceSession[]>([]);
+  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   const [teamAPlayer1, setTeamAPlayer1] = useState<SelectedPlayer | null>(null);
@@ -40,16 +44,22 @@ export default function NewMatchPage() {
 
   async function loadData() {
     const supabase = createClient();
-    const [{ data: memberData }, { data: guestData }] = await Promise.all([
+    const [{ data: memberData }, { data: guestData }, { data: sessionData }] = await Promise.all([
       supabase.from("members").select("*").eq("is_active", true).order("nickname"),
       supabase
         .from("guests")
         .select("*")
         .is("converted_to_member_id", null)
         .order("created_at", { ascending: false }),
+      supabase
+        .from("attendance_sessions")
+        .select("*")
+        .in("status", ["open", "closed"])
+        .order("session_date", { ascending: false }),
     ]);
     setMembers(memberData ?? []);
     setGuests(guestData ?? []);
+    setSessions(sessionData ?? []);
     setLoading(false);
   }
 
@@ -70,8 +80,18 @@ export default function NewMatchPage() {
     return selectedKeys.filter((k) => k !== currentKey);
   }
 
+  const selectedSession = sessions.find((s) => s.id === selectedSessionId) ?? null;
+  const selectedSessionIsCustom =
+    selectedSession?.session_day === "holiday" || selectedSession?.session_day === "custom";
+  const selectedSessionLabel = selectedSession
+    ? `${MATCH_SESSION_DAY_LABEL[selectedSession.session_day]}${
+        selectedSessionIsCustom ? ` · ${selectedSession.title}` : ""
+      } (${selectedSession.session_date})`
+    : null;
+
   const isReadyToSubmit = Boolean(
-    teamAPlayer1 &&
+    selectedSessionId &&
+      teamAPlayer1 &&
       teamAPlayer2 &&
       teamBPlayer1 &&
       teamBPlayer2 &&
@@ -101,6 +121,7 @@ export default function NewMatchPage() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
+        sessionId: selectedSessionId,
         playedAt: new Date().toISOString().slice(0, 10),
         teamAPlayer1: { id: teamAPlayer1!.id, isGuest: teamAPlayer1!.isGuest },
         teamAPlayer2: { id: teamAPlayer2!.id, isGuest: teamAPlayer2!.isGuest },
@@ -142,6 +163,50 @@ export default function NewMatchPage() {
         </p>
         <h1 className="font-display text-3xl font-bold uppercase tracking-tight text-line-900">경기 결과 입력</h1>
       </header>
+
+      <Card className="mb-4 p-4">
+        <p className="mb-2 text-xs font-bold uppercase tracking-widest text-line-600">세션 선택 *</p>
+        {sessions.length === 0 ? (
+          <p className="text-sm text-line-400">
+            선택 가능한 출석 세션이 없어요. 출석 체크 화면에서 세션을 먼저 만들어주세요.
+          </p>
+        ) : (
+          <Dropdown
+            align="left"
+            triggerClassName="flex w-full items-center justify-between rounded-lg border border-line-200 bg-line-25 px-4 py-3 text-left"
+            trigger={
+              <>
+                <span className="text-sm font-semibold text-line-900">
+                  {selectedSessionLabel ?? "세션을 선택해주세요"}
+                </span>
+                <span className="text-line-500">▼</span>
+              </>
+            }
+          >
+            {(close) => (
+              <div className="max-h-64 space-y-0.5 overflow-y-auto">
+                {sessions.map((session) => {
+                  const isCustom = session.session_day === "holiday" || session.session_day === "custom";
+                  return (
+                    <DropdownItem
+                      key={session.id}
+                      onClick={() => {
+                        setSelectedSessionId(session.id);
+                        close();
+                      }}
+                    >
+                      <span className={selectedSessionId === session.id ? "text-clay-400" : ""}>
+                        {MATCH_SESSION_DAY_LABEL[session.session_day]}
+                        {isCustom && ` · ${session.title}`} ({session.session_date})
+                      </span>
+                    </DropdownItem>
+                  );
+                })}
+              </div>
+            )}
+          </Dropdown>
+        )}
+      </Card>
 
       <Card className="mb-4 p-4">
         <p className="mb-3 text-sm font-bold uppercase tracking-wide text-clay-400">청팀</p>

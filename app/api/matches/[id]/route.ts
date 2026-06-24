@@ -10,6 +10,7 @@ interface PlayerInput {
 }
 
 interface UpdateMatchBody {
+  sessionId?: string;
   playedAt: string;
   teamAPlayer1: PlayerInput;
   teamAPlayer2: PlayerInput;
@@ -50,6 +51,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
   const matchId = params.id;
   const body = (await request.json()) as UpdateMatchBody;
   const {
+    sessionId,
     playedAt,
     teamAPlayer1,
     teamAPlayer2,
@@ -128,6 +130,25 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     return NextResponse.json({ error: "게스트 정보를 불러오지 못했습니다." }, { status: 500 });
   }
 
+  // 1-1. session_id가 함께 전달된 경우, 그 세션이 유효한지(존재 + archived 아님) 확인한다.
+  if (sessionId) {
+    const { data: session, error: sessionError } = await supabase
+      .from("attendance_sessions")
+      .select("id, status")
+      .eq("id", sessionId)
+      .single();
+
+    if (sessionError || !session) {
+      return NextResponse.json({ error: "세션을 찾을 수 없습니다." }, { status: 404 });
+    }
+    if (session.status === "archived") {
+      return NextResponse.json(
+        { error: "보관된 세션으로는 변경할 수 없습니다." },
+        { status: 400 }
+      );
+    }
+  }
+
   // 2. rollback — 기존 경기가 미쳤던 효과(LP/wins/losses)를 먼저 되돌린다.
   const rollbackResult = await rollbackMatch(supabase, existingMatch as Match);
   if (!rollbackResult.ok) {
@@ -138,6 +159,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
   const { data: updatedMatch, error: updateError } = await supabase
     .from("matches")
     .update({
+      session_id: sessionId ?? (existingMatch as Match).session_id,
       played_at: playedAt,
       team_a_player1_member: teamAPlayer1.isGuest ? null : teamAPlayer1.id,
       team_a_player1_guest: teamAPlayer1.isGuest ? teamAPlayer1.id : null,
