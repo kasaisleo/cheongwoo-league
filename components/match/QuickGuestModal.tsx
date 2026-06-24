@@ -58,7 +58,7 @@ export function QuickGuestModal({ onClose, onCreated }: QuickGuestModalProps) {
       <div className="w-full max-w-sm rounded-xl border border-line-200 bg-line-100 p-4 shadow-card">
         <p className="mb-3 text-sm font-bold uppercase tracking-wide text-clay-400">게스트 등록</p>
 
-        <div className="space-y-3">
+        <div className="space-y-3 overflow-hidden">
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
@@ -100,7 +100,7 @@ export function QuickGuestModal({ onClose, onCreated }: QuickGuestModalProps) {
             type="date"
             value={visitDate}
             onChange={(e) => setVisitDate(e.target.value)}
-            className="h-11 w-full rounded-lg border border-line-200 bg-line-25 px-3 text-sm text-line-900"
+            className="box-border block h-11 w-full min-w-0 max-w-full rounded-lg border border-line-200 bg-line-25 px-3 text-sm text-line-900"
           />
         </div>
 

@@ -87,7 +87,7 @@ export default function NewGuestPage() {
       </header>
 
       <form onSubmit={handleSubmit}>
-        <Card className="space-y-4 p-4">
+        <Card className="space-y-4 overflow-hidden p-4">
           <div>
             <label className="mb-1 block text-xs font-semibold text-line-600">이름</label>
             <input
@@ -136,13 +136,13 @@ export default function NewGuestPage() {
             />
           </div>
 
-          <div>
+          <div className="w-full overflow-hidden">
             <label className="mb-1 block text-xs font-semibold text-line-600">방문일</label>
             <input
               type="date"
               value={visitDate}
               onChange={(e) => setVisitDate(e.target.value)}
-              className="h-11 w-full rounded-lg border border-line-200 bg-line-25 px-3 text-sm text-line-900"
+              className="box-border block h-11 w-full min-w-0 max-w-full rounded-lg border border-line-200 bg-line-25 px-3 text-sm text-line-900"
             />
           </div>
         </Card>

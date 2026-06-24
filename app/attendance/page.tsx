@@ -335,7 +335,7 @@ function AttendancePageInner() {
       </header>
 
       {showCustomForm && isAdmin && (
-        <Card className="mb-4 space-y-3 p-4">
+        <Card className="mb-4 space-y-3 overflow-hidden p-4">
           <div className="flex items-center justify-between">
             <p className="text-sm font-bold uppercase tracking-wide text-clay-400">휴일매치/이벤트매치 생성</p>
             <button
@@ -346,14 +346,14 @@ function AttendancePageInner() {
               닫기
             </button>
           </div>
-          <div className="w-full">
+          <div className="w-full overflow-hidden">
             <label className="mb-1 block text-xs font-semibold text-line-600">날짜 *</label>
             <input
               type="date"
               value={customDate}
               min={todayString()}
               onChange={(e) => setCustomDate(e.target.value)}
-              className="box-border block h-11 w-full max-w-full rounded-lg border border-line-200 bg-line-25 px-3 text-sm text-line-900"
+              className="box-border block h-11 w-full min-w-0 max-w-full rounded-lg border border-line-200 bg-line-25 px-3 text-sm text-line-900"
             />
           </div>
           <div>
