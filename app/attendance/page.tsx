@@ -9,16 +9,10 @@ import { Dropdown, DropdownItem } from "@/components/ui/Dropdown";
 import { toast } from "@/components/ui/Toast";
 import { AttendanceToggle } from "@/components/attendance/AttendanceToggle";
 import { getDisambiguatedName } from "@/lib/member-display";
+import { MATCH_SESSION_DAY_LABEL, fetchActiveSessions } from "@/lib/match-session-label";
 import type { AttendanceStatus, AttendanceSession, Member } from "@/lib/supabase/database.types";
 
 const MIN_REQUIRED_PLAYERS = 4;
-
-const SESSION_DAY_LABEL: Record<AttendanceSession["session_day"], string> = {
-  saturday: "토요 정기운동",
-  sunday: "일요 정기운동",
-  holiday: "휴일운동",
-  custom: "임시운동",
-};
 
 function todayString(): string {
   return new Date().toISOString().slice(0, 10);
@@ -63,15 +57,10 @@ export default function AttendancePage() {
 
     async function loadSessions() {
       setLoadingSessions(true);
-      const { data } = await supabase
-        .from("attendance_sessions")
-        .select("*")
-        .eq("status", "open")
-        .order("session_date", { ascending: true });
+      const sessions = await fetchActiveSessions(supabase);
 
       if (!isCurrent) return;
 
-      const sessions = (data ?? []) as AttendanceSession[];
       setOpenSessions(sessions);
       setSelectedSessionId((prev) => prev ?? sessions[0]?.id ?? null);
       setLoadingSessions(false);
@@ -416,7 +405,7 @@ export default function AttendancePage() {
             trigger={
               <>
                 <span className="text-sm font-semibold text-line-900">
-                  {selectedSession ? SESSION_DAY_LABEL[selectedSession.session_day] : "세션 선택"}
+                  {selectedSession ? MATCH_SESSION_DAY_LABEL[selectedSession.session_day] : "세션 선택"}
                   {selectedSessionIsCustom && selectedSession ? ` · ${selectedSession.title}` : ""}
                 </span>
                 <span className="text-line-500">▼</span>
@@ -434,7 +423,7 @@ export default function AttendancePage() {
                     }}
                   >
                     <span className={selectedSessionId === session.id ? "text-clay-400" : ""}>
-                      {SESSION_DAY_LABEL[session.session_day]}
+                      {MATCH_SESSION_DAY_LABEL[session.session_day]}
                       {(session.session_day === "holiday" || session.session_day === "custom") &&
                         ` · ${session.title}`}
                     </span>

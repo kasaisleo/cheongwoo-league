@@ -3,14 +3,8 @@ import { createClient } from "@/lib/supabase/server";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { MATCH_SELECT_WITH_PLAYERS, toDisplayMatches } from "@/lib/match-display";
+import { MATCH_SESSION_DAY_LABEL } from "@/lib/match-session-label";
 import type { AttendanceSession } from "@/lib/supabase/database.types";
-
-const SESSION_DAY_LABEL: Record<AttendanceSession["session_day"], string> = {
-  saturday: "토요 출석",
-  sunday: "일요 출석",
-  holiday: "휴일운동",
-  custom: "임시운동",
-};
 
 /** 오늘 기준 이번 주(월~일) 시작/끝 날짜 문자열 */
 function thisWeekRange(): { start: string; end: string } {
@@ -106,7 +100,7 @@ export default async function HomePage() {
                 <Card key={session.id} className="border-l-4 border-l-clay-400 p-4">
                   <div className="flex items-center justify-between">
                     <p className="text-sm font-semibold text-line-900">
-                      {SESSION_DAY_LABEL[session.session_day]}
+                      {MATCH_SESSION_DAY_LABEL[session.session_day]}
                     </p>
                     <span className="text-xs text-line-400">{session.session_date}</span>
                   </div>

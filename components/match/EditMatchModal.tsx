@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/Button";
 import { toast } from "@/components/ui/Toast";
 import type { DisplayMatch } from "@/lib/match-display";
 import { Dropdown, DropdownItem } from "@/components/ui/Dropdown";
-import { MATCH_SESSION_DAY_LABEL } from "@/lib/match-session-label";
+import { MATCH_SESSION_DAY_LABEL, fetchActiveSessions } from "@/lib/match-session-label";
 import type { Member, Guest, AttendanceSession } from "@/lib/supabase/database.types";
 
 type GuestModalTarget = "teamAPlayer1" | "teamAPlayer2" | "teamBPlayer1" | "teamBPlayer2";
@@ -57,23 +57,19 @@ export function EditMatchModal({ match, onClose, onSaved }: EditMatchModalProps)
   useEffect(() => {
     async function loadData() {
       const supabase = createClient();
-      const [{ data: memberData }, { data: guestData }, { data: sessionData }] = await Promise.all([
+      const [{ data: memberData }, { data: guestData }, activeSessions] = await Promise.all([
         supabase.from("members").select("*").eq("is_active", true).order("nickname"),
         supabase
           .from("guests")
           .select("*")
           .is("converted_to_member_id", null)
           .order("created_at", { ascending: false }),
-        supabase
-          .from("attendance_sessions")
-          .select("*")
-          .in("status", ["open", "closed"])
-          .order("session_date", { ascending: false }),
+        fetchActiveSessions(supabase),
       ]);
       setMembers(memberData ?? []);
       setGuests(guestData ?? []);
 
-      let sessionList = sessionData ?? [];
+      let sessionList = activeSessions;
       // 이 경기에 이미 연결된 세션이 archived라서 목록에 없으면, 선택지가 사라지지 않도록 추가한다.
       if (match.session_id && !sessionList.some((s) => s.id === match.session_id)) {
         const { data: currentSession } = await supabase

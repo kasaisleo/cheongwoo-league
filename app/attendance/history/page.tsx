@@ -5,14 +5,8 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { Card } from "@/components/ui/Card";
 import { getDisambiguatedName } from "@/lib/member-display";
+import { MATCH_SESSION_DAY_LABEL } from "@/lib/match-session-label";
 import type { AttendanceSession, AttendanceStatus, Member } from "@/lib/supabase/database.types";
-
-const SESSION_DAY_LABEL: Record<AttendanceSession["session_day"], string> = {
-  saturday: "토요 정기운동",
-  sunday: "일요 정기운동",
-  holiday: "휴일운동",
-  custom: "임시운동",
-};
 
 interface SessionSummary {
   session: AttendanceSession;
@@ -144,7 +138,7 @@ export default function AttendanceHistoryPage() {
               >
                 <div>
                   <p className="text-sm font-semibold text-line-900">
-                    {session.session_date} {SESSION_DAY_LABEL[session.session_day]}
+                    {session.session_date} {MATCH_SESSION_DAY_LABEL[session.session_day]}
                     {(session.session_day === "holiday" || session.session_day === "custom") &&
                       ` · ${session.title}`}
                   </p>

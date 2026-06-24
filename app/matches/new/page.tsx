@@ -9,7 +9,7 @@ import { QuickGuestModal } from "@/components/match/QuickGuestModal";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Dropdown, DropdownItem } from "@/components/ui/Dropdown";
-import { MATCH_SESSION_DAY_LABEL } from "@/lib/match-session-label";
+import { MATCH_SESSION_DAY_LABEL, fetchActiveSessions } from "@/lib/match-session-label";
 import type { Member, Guest, AttendanceSession } from "@/lib/supabase/database.types";
 
 type GuestModalTarget = "teamAPlayer1" | "teamAPlayer2" | "teamBPlayer1" | "teamBPlayer2";
@@ -44,22 +44,18 @@ export default function NewMatchPage() {
 
   async function loadData() {
     const supabase = createClient();
-    const [{ data: memberData }, { data: guestData }, { data: sessionData }] = await Promise.all([
+    const [{ data: memberData }, { data: guestData }, sessionList] = await Promise.all([
       supabase.from("members").select("*").eq("is_active", true).order("nickname"),
       supabase
         .from("guests")
         .select("*")
         .is("converted_to_member_id", null)
         .order("created_at", { ascending: false }),
-      supabase
-        .from("attendance_sessions")
-        .select("*")
-        .in("status", ["open", "closed"])
-        .order("session_date", { ascending: false }),
+      fetchActiveSessions(supabase),
     ]);
     setMembers(memberData ?? []);
     setGuests(guestData ?? []);
-    setSessions(sessionData ?? []);
+    setSessions(sessionList);
     setLoading(false);
   }
 

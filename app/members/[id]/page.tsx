@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { Card } from "@/components/ui/Card";
 import { Badge, gradeTone } from "@/components/ui/Badge";
@@ -84,7 +85,15 @@ export default async function MemberDetailPage({ params }: MemberDetailPageProps
       </Card>
 
       <section>
-        <h2 className="mb-2 text-xs font-bold uppercase tracking-widest text-line-600">최근 레이팅 변동</h2>
+        <div className="mb-2 flex items-center justify-between">
+          <h2 className="text-xs font-bold uppercase tracking-widest text-line-600">최근 레이팅 변동</h2>
+          <Link
+            href={`/point-history?member=${typedMember.id}`}
+            className="text-xs font-semibold text-clay-400"
+          >
+            LP 히스토리 보기 →
+          </Link>
+        </div>
         {typedHistory.length === 0 ? (
           <Card className="p-6 text-center text-sm text-line-400">아직 경기 기록이 없어요.</Card>
         ) : (
