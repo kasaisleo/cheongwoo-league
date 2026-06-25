@@ -1,0 +1,158 @@
+import { NextRequest, NextResponse } from "next/server";
+import * as XLSX from "xlsx";
+import { createServiceClient } from "@/lib/supabase/server";
+import { isAdminSession } from "@/lib/admin-auth";
+import { normalizeStagingRow, normalizePhone } from "@/lib/member-import";
+
+/**
+ * CSV/XLSX 파일을 업로드받아 파싱하고, staging_members에 저장한다.
+ * members에는 직접 insert하지 않는다 — 반드시 staging_members → 검수 → members 순서.
+ *
+ * 컬럼 매칭은 헤더 이름 기준으로 한다(대소문자/공백 무시). 지원하는 헤더 이름:
+ * 이름/name, 닉네임/nickname, 휴대폰/phone, 주소/address, 나이/age,
+ * 출생연도/birth_year, 마포점수/mapo_score, 회원구분/member_type
+ */
+
+const HEADER_ALIASES: Record<string, string> = {
+  이름: "name",
+  name: "name",
+  닉네임: "nickname",
+  nickname: "nickname",
+  휴대폰: "phone",
+  휴대폰번호: "phone",
+  phone: "phone",
+  주소: "address",
+  address: "address",
+  나이: "age",
+  age: "age",
+  출생연도: "birth_year",
+  생년: "birth_year",
+  birth_year: "birth_year",
+  마포점수: "mapo_score",
+  마포구점수: "mapo_score",
+  mapo_score: "mapo_score",
+  회원구분: "member_type",
+  member_type: "member_type",
+};
+
+function normalizeHeader(header: string): string | null {
+  const key = header.trim().toLowerCase();
+  return HEADER_ALIASES[key] ?? HEADER_ALIASES[header.trim()] ?? null;
+}
+
+export async function POST(request: NextRequest) {
+  if (!isAdminSession()) {
+    return NextResponse.json({ error: "운영진 인증이 필요합니다." }, { status: 401 });
+  }
+
+  const formData = await request.formData();
+  const file = formData.get("file");
+
+  if (!file || !(file instanceof File)) {
+    return NextResponse.json({ error: "파일을 선택해주세요." }, { status: 400 });
+  }
+
+  const arrayBuffer = await file.arrayBuffer();
+  let rows: Record<string, unknown>[];
+
+  try {
+    const workbook = XLSX.read(arrayBuffer, { type: "array" });
+    const firstSheetName = workbook.SheetNames[0];
+    const sheet = workbook.Sheets[firstSheetName];
+    rows = XLSX.utils.sheet_to_json(sheet, { defval: "" });
+  } catch {
+    return NextResponse.json(
+      { error: "파일을 읽을 수 없습니다. CSV 또는 XLSX 파일인지 확인해주세요." },
+      { status: 400 }
+    );
+  }
+
+  if (rows.length === 0) {
+    return NextResponse.json({ error: "파일에 데이터가 없습니다." }, { status: 400 });
+  }
+
+  // 첫 행의 헤더를 표준 필드명으로 매핑
+  const sampleRow = rows[0];
+  const headerMap = new Map<string, string>();
+  for (const header of Object.keys(sampleRow)) {
+    const mapped = normalizeHeader(header);
+    if (mapped) headerMap.set(header, mapped);
+  }
+
+  if (!Array.from(headerMap.values()).includes("name")) {
+    return NextResponse.json(
+      { error: "이름 컬럼을 찾을 수 없습니다. 헤더에 '이름' 또는 'name'이 있는지 확인해주세요." },
+      { status: 400 }
+    );
+  }
+
+  const supabase = createServiceClient();
+
+  // 기존 members의 phone 전체를 미리 가져와서 중복 검사에 사용
+  const { data: existingMembers } = await supabase.from("members").select("id, phone");
+  const phoneToMemberId = new Map(
+    (existingMembers ?? [])
+      .filter((m) => m.phone)
+      .map((m) => [normalizePhone(m.phone) ?? m.phone, m.id])
+  );
+
+  const stagingRows = rows.map((row) => {
+    const get = (field: string): string | null => {
+      for (const [header, mapped] of headerMap.entries()) {
+        if (mapped === field) {
+          const value = row[header];
+          return value === undefined || value === null || value === "" ? null : String(value).trim();
+        }
+      }
+      return null;
+    };
+
+    const raw = {
+      raw_name: get("name"),
+      raw_nickname: get("nickname"),
+      raw_phone: get("phone"),
+      raw_address: get("address"),
+      raw_age: get("age"),
+      raw_mapo_score: get("mapo_score"),
+      raw_member_type: get("member_type"),
+      raw_birth_year: get("birth_year"),
+    };
+
+    const normalized = normalizeStagingRow(raw);
+
+    // phone 중복 검사 — 기존 members에 같은 번호가 있으면 duplicate로 표시
+    let existingMemberId: string | null = null;
+    if (normalized.normalized_phone && phoneToMemberId.has(normalized.normalized_phone)) {
+      existingMemberId = phoneToMemberId.get(normalized.normalized_phone) ?? null;
+      normalized.validation_status = "duplicate";
+    }
+
+    return {
+      ...raw,
+      ...normalized,
+      existing_member_id: existingMemberId,
+    };
+  });
+
+  // 업로드 파일 내부에서도 phone이 중복되는 행이 있으면 두 번째 이후는 duplicate 처리
+  const seenPhones = new Set<string>();
+  for (const row of stagingRows) {
+    if (!row.normalized_phone) continue;
+    if (seenPhones.has(row.normalized_phone)) {
+      row.validation_status = "duplicate";
+    } else {
+      seenPhones.add(row.normalized_phone);
+    }
+  }
+
+  const { data: inserted, error: insertError } = await supabase
+    .from("staging_members")
+    .insert(stagingRows)
+    .select();
+
+  if (insertError || !inserted) {
+    return NextResponse.json({ error: "데이터 저장에 실패했습니다." }, { status: 500 });
+  }
+
+  return NextResponse.json({ ok: true, count: inserted.length, batchIds: inserted.map((r) => r.id) });
+}

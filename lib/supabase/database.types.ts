@@ -116,6 +116,7 @@ export interface StagingMember {
   raw_age: string | null;
   raw_mapo_score: string | null;
   raw_member_type: string | null;
+  raw_birth_year: string | null;
   normalized_name: string | null;
   normalized_nickname: string | null;
   normalized_phone: string | null;
@@ -124,6 +125,8 @@ export interface StagingMember {
   normalized_age: number | null;
   normalized_mapo_score: number | null;
   normalized_member_type: string | null;
+  normalized_birth_year: number | null;
+  corrected_age: number | null;
   validation_status: StagingValidationStatus;
   validation_errors: string | null;
   existing_member_id: string | null;
