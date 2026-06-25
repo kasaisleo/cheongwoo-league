@@ -4,10 +4,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { INITIAL_RATING_BY_GRADE } from "@/lib/elo";
-import type { MemberGrade, MemberRole, MemberType } from "@/lib/supabase/database.types";
+import type { MemberRole, MemberType } from "@/lib/supabase/database.types";
 
-const GRADES: MemberGrade[] = ["A", "B", "C", "D"];
 const ROLES: MemberRole[] = [
   "회장",
   "부회장",
@@ -21,6 +19,10 @@ const ROLES: MemberRole[] = [
 ];
 const MEMBER_TYPES: MemberType[] = ["정회원", "준회원", "게스트"];
 const MAPO_SCORES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+
+/** grade 컬럼은 DB에서 아직 제거하지 않았지만, 화면에서는 더 이상 입력받지 않는다.
+ * API가 필수로 검증하므로 고정값을 그대로 전송한다. */
+const DEFAULT_GRADE = "C";
 
 /** 숫자만 추출, 최대 11자리로 자름 */
 function sanitizePhoneDigits(value: string): string {
@@ -39,7 +41,6 @@ export default function NewMemberPage() {
   const [name, setName] = useState("");
   const [nickname, setNickname] = useState("");
   const [phoneDigits, setPhoneDigits] = useState("");
-  const [grade, setGrade] = useState<MemberGrade>("C");
   const [role, setRole] = useState<MemberRole>("정회원");
   const [memberType, setMemberType] = useState<MemberType | null>(null);
   const [mapoScore, setMapoScore] = useState<number | null>(null);
@@ -90,7 +91,7 @@ export default function NewMemberPage() {
         name: name.trim(),
         nickname: nickname.trim() || null,
         phone: phoneDigits,
-        grade,
+        grade: DEFAULT_GRADE,
         role,
         mapoScore,
         memberType,
@@ -191,29 +192,6 @@ export default function NewMemberPage() {
                 </option>
               ))}
             </select>
-          </div>
-
-          <div>
-            <label className="mb-1 block text-xs font-semibold text-line-600">실력 등급</label>
-            <div className="flex gap-2">
-              {GRADES.map((g) => (
-                <button
-                  key={g}
-                  type="button"
-                  onClick={() => setGrade(g)}
-                  className={`flex-1 rounded-lg border py-2 text-sm font-semibold ${
-                    grade === g
-                      ? "border-clay-400 bg-clay-400 text-line-25"
-                      : "border-line-200 text-line-600"
-                  }`}
-                >
-                  {g}급
-                </button>
-              ))}
-            </div>
-            <p className="mt-1.5 text-xs text-line-400">
-              초기 레이팅 {INITIAL_RATING_BY_GRADE[grade]}점으로 시작합니다.
-            </p>
           </div>
 
           <div>

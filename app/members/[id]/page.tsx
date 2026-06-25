@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { Card } from "@/components/ui/Card";
-import { Badge, gradeTone } from "@/components/ui/Badge";
 import { MemberDetailActions } from "@/components/member/MemberDetailActions";
 import { notFound } from "next/navigation";
 import type { MemberWithStats } from "@/lib/supabase/database.types";
@@ -34,7 +33,6 @@ export default async function MemberDetailPage({ params }: MemberDetailPageProps
         <div className="border-b-2 border-clay-400 bg-line-200/40 px-5 pb-5 pt-6">
           <div className="mb-1 flex items-center justify-center gap-1.5">
             <h1 className="font-display text-2xl font-bold uppercase tracking-tight text-line-900">{typedMember.nickname}</h1>
-            <Badge tone={gradeTone(typedMember.grade)}>{typedMember.grade}급</Badge>
           </div>
           <div className="mb-2 flex items-center justify-center gap-1.5">
             <p className="text-sm text-line-500">{typedMember.name}</p>
@@ -49,18 +47,21 @@ export default async function MemberDetailPage({ params }: MemberDetailPageProps
           <p className="mt-1 text-[11px] font-semibold uppercase tracking-widest text-line-500">LP</p>
         </div>
 
+        {/* 우선 노출 지표: LP / 마포구 점수 / 경기수 / 승률 */}
         <div className="grid grid-cols-4 gap-2 px-5 py-4 text-center">
+          <div>
+            <p className="font-score text-xl font-bold text-clay-400">{typedMember.league_point}</p>
+            <p className="text-xs text-line-500">LP</p>
+          </div>
+          <div>
+            <p className="font-score text-xl font-bold text-court-400">
+              {typedMember.mapo_score !== null ? typedMember.mapo_score : "—"}
+            </p>
+            <p className="text-xs text-line-500">마포구 점수</p>
+          </div>
           <div>
             <p className="font-score text-xl font-bold text-line-900">{matchesPlayed}</p>
             <p className="text-xs text-line-500">경기수</p>
-          </div>
-          <div>
-            <p className="font-score text-xl font-bold text-court-400">{typedMember.wins}</p>
-            <p className="text-xs text-line-500">승</p>
-          </div>
-          <div>
-            <p className="font-score text-xl font-bold text-fault-400">{typedMember.losses}</p>
-            <p className="text-xs text-line-500">패</p>
           </div>
           <div>
             <p className="font-score text-xl font-bold text-line-900">{typedMember.win_rate}%</p>
@@ -68,18 +69,22 @@ export default async function MemberDetailPage({ params }: MemberDetailPageProps
           </div>
         </div>
 
-        {(typedMember.phone || typedMember.mapo_score !== null) && (
-          <div className="grid grid-cols-2 gap-2 border-t border-line-200 px-5 py-3 text-center">
-            <div>
-              <p className="text-xs text-line-500">휴대폰</p>
-              <p className="text-sm font-semibold text-line-900">{typedMember.phone ?? "—"}</p>
-            </div>
-            <div>
-              <p className="text-xs text-line-500">마포구 점수</p>
-              <p className="font-score text-sm font-bold text-court-400">
-                {typedMember.mapo_score !== null ? `${typedMember.mapo_score}점` : "—"}
-              </p>
-            </div>
+        {/* 승/패 상세는 보조 정보로 유지 */}
+        <div className="grid grid-cols-2 gap-2 border-t border-line-200 px-5 py-3 text-center">
+          <div>
+            <p className="font-score text-lg font-bold text-court-400">{typedMember.wins}</p>
+            <p className="text-xs text-line-500">승</p>
+          </div>
+          <div>
+            <p className="font-score text-lg font-bold text-fault-400">{typedMember.losses}</p>
+            <p className="text-xs text-line-500">패</p>
+          </div>
+        </div>
+
+        {typedMember.phone && (
+          <div className="border-t border-line-200 px-5 py-3 text-center">
+            <p className="text-xs text-line-500">휴대폰</p>
+            <p className="text-sm font-semibold text-line-900">{typedMember.phone}</p>
           </div>
         )}
       </Card>

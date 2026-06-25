@@ -1,9 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { Card } from "@/components/ui/Card";
-import { Badge, gradeTone } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
-import { CallButton } from "@/components/member/CallButton";
+import { MemberList } from "@/components/member/MemberList";
 import { isAdminSession } from "@/lib/admin-auth";
 import type { MemberWithStats } from "@/lib/supabase/database.types";
 
@@ -13,7 +11,7 @@ export default async function MembersPage() {
     .from("member_stats")
     .select("*")
     .eq("is_active", true)
-    .order("grade")
+    .order("league_point", { ascending: false })
     .order("nickname");
 
   const members = (data ?? []) as MemberWithStats[];
@@ -42,43 +40,7 @@ export default async function MembersPage() {
         </div>
       </header>
 
-      {members.length === 0 ? (
-        <Card className="p-6 text-center text-sm text-line-400">
-          등록된 회원이 없어요. 첫 회원을 등록해보세요.
-        </Card>
-      ) : (
-        <div className="space-y-2">
-          {members.map((member) => (
-            <Link key={member.id} href={`/members/${member.id}`}>
-              <Card className="flex items-center justify-between p-3">
-                <div className="flex items-center gap-2">
-                  <Badge tone={gradeTone(member.grade)}>{member.grade}</Badge>
-                  <div>
-                    <p className="flex items-center gap-1.5 text-sm font-semibold text-line-900">
-                      {member.nickname}
-                      {member.role !== "정회원" && (
-                        <span className="rounded-full bg-line-200 px-1.5 py-0.5 text-[10px] font-semibold text-line-700">
-                          {member.role}
-                        </span>
-                      )}
-                    </p>
-                    <p className="text-xs text-line-500">{member.name}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  {isAdmin && member.phone && <CallButton phone={member.phone} />}
-                  <div className="text-right">
-                    <p className="font-score text-lg font-bold text-line-900">{member.rating}</p>
-                    <p className="text-xs text-line-500">
-                      {member.wins}승 {member.losses}패 · {member.win_rate}%
-                    </p>
-                  </div>
-                </div>
-              </Card>
-            </Link>
-          ))}
-        </div>
-      )}
+      <MemberList members={members} isAdmin={isAdmin} />
     </main>
   );
 }
