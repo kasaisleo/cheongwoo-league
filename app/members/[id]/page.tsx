@@ -1,16 +1,38 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { Card } from "@/components/ui/Card";
+import { Badge } from "@/components/ui/Badge";
 import { MemberDetailActions } from "@/components/member/MemberDetailActions";
 import { BackButton } from "@/components/member/BackButton";
 import { CallButton } from "@/components/member/CallButton";
 import { isAdminSession } from "@/lib/admin-auth";
+import { MATCH_SESSION_DAY_LABEL } from "@/lib/match-session-label";
+import {
+  fetchMemberRecentMatches,
+  fetchMemberRecentAttendance,
+  fetchMemberAttendanceRate,
+  fetchMemberRecentPointHistory,
+  fetchMemberRecentPartners,
+  pointHistoryReasonLabel,
+} from "@/lib/member-activity";
 import { notFound } from "next/navigation";
 import type { MemberWithStats } from "@/lib/supabase/database.types";
 
 interface MemberDetailPageProps {
   params: { id: string };
 }
+
+const ATTENDANCE_STATUS_LABEL: Record<string, string> = {
+  attending: "출석",
+  absent: "불참",
+  undecided: "미정",
+};
+
+const SESSION_STATUS_LABEL: Record<string, string> = {
+  open: "진행중",
+  closed: "확정",
+  archived: "보관됨",
+};
 
 export default async function MemberDetailPage({ params }: MemberDetailPageProps) {
   const supabase = createClient();
@@ -28,6 +50,17 @@ export default async function MemberDetailPage({ params }: MemberDetailPageProps
   const typedMember = member as MemberWithStats;
   const matchesPlayed = typedMember.wins + typedMember.losses;
   const isAdmin = isAdminSession();
+
+  // 회원 상세의 "최근 활동" 데이터는 모두 이 회원 한 명 기준으로 독립적으로 조회한다.
+  // 4개 쿼리를 병렬로 실행 — 서로 의존성이 없으므로 동시에 보내도 안전하다.
+  const [recentMatches, recentAttendance, attendanceRate, recentPointHistory, recentPartners] =
+    await Promise.all([
+      fetchMemberRecentMatches(typedMember.id),
+      fetchMemberRecentAttendance(typedMember.id),
+      fetchMemberAttendanceRate(typedMember.id),
+      fetchMemberRecentPointHistory(typedMember.id),
+      fetchMemberRecentPartners(typedMember.id),
+    ]);
 
   return (
     <main className="px-4 pt-6">
@@ -105,7 +138,105 @@ export default async function MemberDetailPage({ params }: MemberDetailPageProps
         )}
       </Card>
 
-      <section>
+      {/* 1. 최근 경기 */}
+      <section className="mb-4">
+        <div className="mb-2 flex items-center justify-between">
+          <h2 className="text-xs font-bold uppercase tracking-widest text-line-600">최근 경기</h2>
+          <Link href={`/matches?member=${typedMember.id}`} className="text-xs font-semibold text-clay-400">
+            전체보기 →
+          </Link>
+        </div>
+        {recentMatches.length === 0 ? (
+          <Card className="p-4 text-center text-sm text-line-400">최근 경기 기록이 없습니다.</Card>
+        ) : (
+          <div className="space-y-2">
+            {recentMatches.map((summary) => (
+              <Link key={summary.match.id} href={`/matches?member=${typedMember.id}`}>
+                <Card className="p-3">
+                  <div className="flex items-center justify-between text-xs text-line-400">
+                    <span>{summary.match.played_at}</span>
+                    <span>
+                      {summary.match.sessionDay ? MATCH_SESSION_DAY_LABEL[summary.match.sessionDay] : "세션 정보 없음"}
+                      {summary.match.sessionTitle &&
+                        (summary.match.sessionDay === "holiday" || summary.match.sessionDay === "custom") &&
+                        ` · ${summary.match.sessionTitle}`}
+                    </span>
+                  </div>
+                  <div className="mt-1.5 flex items-center justify-between text-sm">
+                    <span className="text-line-700">
+                      {typedMember.nickname}
+                      {summary.partner && ` / ${summary.partner.nickname}`}
+                    </span>
+                    <Badge tone={summary.won ? "court" : "fault"}>{summary.won ? "승" : "패"}</Badge>
+                  </div>
+                  <p className="mt-1 text-xs text-line-500">
+                    vs {summary.opponents.map((o) => o.nickname).join(" / ")}
+                  </p>
+                  <div className="mt-1.5 flex items-center justify-between">
+                    <span className="font-score text-sm font-bold text-line-900">
+                      {summary.myScore}:{summary.opponentScore}
+                    </span>
+                    <span
+                      className={`text-xs font-semibold ${
+                        summary.lpChange && summary.lpChange > 0 ? "text-court-400" : "text-line-500"
+                      }`}
+                    >
+                      {summary.lpChange && summary.lpChange > 0 ? `+${summary.lpChange} LP` : "LP 변화 없음"}
+                    </span>
+                  </div>
+                </Card>
+              </Link>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* 2. 최근 출석 + 3. 출석률 */}
+      <section className="mb-4">
+        <h2 className="mb-2 text-xs font-bold uppercase tracking-widest text-line-600">최근 출석</h2>
+        {recentAttendance.length === 0 ? (
+          <Card className="p-4 text-center text-sm text-line-400">최근 출석 기록이 없습니다.</Card>
+        ) : (
+          <div className="space-y-2">
+            {recentAttendance.map((row) => (
+              <Card key={row.id} className="flex items-center justify-between p-3">
+                <div>
+                  <p className="text-sm font-semibold text-line-900">{row.sessionDate}</p>
+                  <p className="text-xs text-line-500">
+                    {row.sessionDay ? MATCH_SESSION_DAY_LABEL[row.sessionDay] : "세션 정보 없음"}
+                    {row.sessionStatus && ` · ${SESSION_STATUS_LABEL[row.sessionStatus] ?? row.sessionStatus}`}
+                  </p>
+                </div>
+                <Badge
+                  tone={
+                    row.status === "attending" ? "court" : row.status === "absent" ? "fault" : "amber"
+                  }
+                >
+                  {ATTENDANCE_STATUS_LABEL[row.status] ?? row.status}
+                </Badge>
+              </Card>
+            ))}
+          </div>
+        )}
+
+        <div className="mt-2 grid grid-cols-2 gap-2">
+          <Card className="p-3 text-center">
+            <p className="font-score text-xl font-bold text-line-900">
+              {attendanceRate.overallRate !== null ? `${attendanceRate.overallRate}%` : "—"}
+            </p>
+            <p className="text-xs text-line-500">전체 출석률</p>
+          </Card>
+          <Card className="p-3 text-center">
+            <p className="font-score text-xl font-bold text-line-900">
+              {attendanceRate.recentRate !== null ? `${attendanceRate.recentRate}%` : "—"}
+            </p>
+            <p className="text-xs text-line-500">최근 {attendanceRate.recentSampleSize}회 출석률</p>
+          </Card>
+        </div>
+      </section>
+
+      {/* 4. LP 이력 미리보기 */}
+      <section className="mb-4">
         <div className="mb-2 flex items-center justify-between">
           <h2 className="text-xs font-bold uppercase tracking-widest text-line-600">LP 이력</h2>
           <Link
@@ -115,10 +246,65 @@ export default async function MemberDetailPage({ params }: MemberDetailPageProps
             LP 이력 보기 →
           </Link>
         </div>
-        <Card className="p-4 text-center text-sm text-line-400">
-          이 회원의 LP 변동 내역은 위 "LP 이력 보기"에서 확인할 수 있어요.
-        </Card>
+        {recentPointHistory.length === 0 ? (
+          <Card className="p-4 text-center text-sm text-line-400">LP 변동 내역이 없습니다.</Card>
+        ) : (
+          <div className="space-y-2">
+            {recentPointHistory.map((entry) => (
+              <Card key={entry.id} className="flex items-center justify-between p-3">
+                <span className="text-xs text-line-500">
+                  {new Date(entry.createdAt).toLocaleDateString("ko-KR")}
+                </span>
+                <span className="text-xs font-semibold text-line-700">
+                  {pointHistoryReasonLabel(entry.reason)}
+                </span>
+                <span
+                  className={`font-score text-sm font-bold ${
+                    entry.pointChange > 0 ? "text-court-400" : entry.pointChange < 0 ? "text-fault-400" : "text-line-500"
+                  }`}
+                >
+                  {entry.pointChange > 0 ? "+" : ""}
+                  {entry.pointChange} LP
+                </span>
+              </Card>
+            ))}
+          </div>
+        )}
       </section>
+
+      {/* 6. 최근 파트너 */}
+      <section className="mb-4">
+        <h2 className="mb-2 text-xs font-bold uppercase tracking-widest text-line-600">최근 파트너</h2>
+        {recentPartners.length === 0 ? (
+          <Card className="p-4 text-center text-sm text-line-400">최근 파트너 정보가 없습니다.</Card>
+        ) : (
+          <div className="space-y-1.5">
+            {recentPartners.map((partner) => (
+              <Card key={`${partner.isGuest ? "guest" : "member"}:${partner.id}`} className="flex items-center justify-between p-3">
+                <span className="text-sm font-medium text-line-900">
+                  {partner.nickname}
+                  {partner.isGuest && <span className="ml-1 text-xs text-court-400">G</span>}
+                </span>
+                <span className="text-xs font-semibold text-line-500">{partner.count}회</span>
+              </Card>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* 5. 회원 메모 (운영진 전용 — 조회/수정 모두 운영진만. 수정은 "회원 정보 수정" 모달에서) */}
+      {isAdmin && (
+        <section className="mb-4">
+          <h2 className="mb-2 text-xs font-bold uppercase tracking-widest text-line-600">회원 메모</h2>
+          <Card className="p-4 text-sm text-line-700">
+            {typedMember.memo ? (
+              <p className="whitespace-pre-wrap">{typedMember.memo}</p>
+            ) : (
+              <p className="text-line-400">메모가 없습니다.</p>
+            )}
+          </Card>
+        </section>
+      )}
     </main>
   );
 }
