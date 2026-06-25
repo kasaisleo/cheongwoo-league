@@ -28,11 +28,29 @@ export function extractDistrict(address: string | null | undefined): string | nu
   return null;
 }
 
-/** 숫자만 남기고 010으로 시작하는 11자리인지 검사. 통과하면 정규화된 문자열, 아니면 null. */
-export function normalizePhone(raw: string | null | undefined): string | null {
-  if (!raw) return null;
-  const digitsOnly = raw.replace(/\D/g, "");
-  return /^010\d{8}$/.test(digitsOnly) ? digitsOnly : null;
+/**
+ * 숫자만 남기고 010으로 시작하는 11자리인지 검사한다.
+ *
+ * 엑셀에서 전화번호가 숫자 형식으로 저장되면 맨 앞의 0이 사라져
+ * "01030643885"가 "1030643885"(10자리, "10"으로 시작)로 읽히는 경우가 있다.
+ * 또한 XLSX 파싱 결과가 number 타입으로 오거나, 셀 서식에 따라
+ * "1030643885.0" 같은 소수점/공백이 섞인 문자열로 올 수도 있다.
+ * 입력 타입에 관계없이 항상 String()으로 강제 변환한 뒤 문자열 기준으로 처리한다.
+ */
+export function normalizePhone(raw: unknown): string | null {
+  if (raw === null || raw === undefined || raw === "") return null;
+
+  // 소수점 이하(.0 등)와 공백을 먼저 제거하고, 숫자가 아닌 문자를 모두 제거한다.
+  const asString = String(raw).trim();
+  const withoutDecimal = asString.split(".")[0];
+  const digitsOnly = withoutDecimal.replace(/\D/g, "");
+
+  let normalized = digitsOnly;
+  if (normalized.length === 10 && normalized.startsWith("10")) {
+    normalized = "0" + normalized;
+  }
+
+  return /^010\d{8}$/.test(normalized) ? normalized : null;
 }
 
 /** "정회원" / "준회원" / "게스트" 외의 표기를 최대한 매칭. 못 찾으면 null. */

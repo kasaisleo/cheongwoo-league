@@ -59,7 +59,10 @@ export async function POST(request: NextRequest) {
     const workbook = XLSX.read(arrayBuffer, { type: "array" });
     const firstSheetName = workbook.SheetNames[0];
     const sheet = workbook.Sheets[firstSheetName];
-    rows = XLSX.utils.sheet_to_json(sheet, { defval: "" });
+    // raw:false — 셀의 "표시 텍스트"를 그대로 가져온다. 엑셀에서 숫자 서식으로
+    // 저장된 휴대폰 번호(예: 1030643885)가 JS number로 들어와 선행 0 손실 여부를
+    // 판단하기 어려워지는 것을 막기 위해, 항상 문자열 기준으로 다룬다.
+    rows = XLSX.utils.sheet_to_json(sheet, { defval: "", raw: false });
   } catch {
     return NextResponse.json(
       { error: "파일을 읽을 수 없습니다. CSV 또는 XLSX 파일인지 확인해주세요." },
