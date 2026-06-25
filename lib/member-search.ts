@@ -11,8 +11,8 @@ export const MAPO_SCORE_FILTER_OPTIONS: { value: MapoScoreFilter; label: string 
 ];
 
 /**
- * 검색어 하나로 회원의 여러 필드를 한 번에 매칭한다.
- * 현재 대상: 이름/닉네임/전화번호/주소/district/LP(league_point)/마포구점수.
+ * 검색어 하나로 회원의 핵심 식별 정보를 매칭한다.
+ * 대상: 이름/닉네임/전화번호 (주소/district/LP/마포점수는 검색 대상에서 제외).
  *
  * 향후 확장 예정(이번 작업 범위 아님): 선수 출신 정보, 대회 이력(연도/협회·대회구분/
  * 부서/결과/대회명/메모) 등을 검색하려면, 그 데이터를 별도로 조회해서 이 함수에
@@ -24,15 +24,7 @@ export function matchesMemberSearch(member: MemberWithStats, query: string): boo
 
   const normalized = query.trim().toLowerCase();
 
-  const searchableFields = [
-    member.name,
-    member.nickname,
-    member.phone,
-    member.address_full,
-    member.district,
-    String(member.league_point),
-    member.mapo_score !== null ? String(member.mapo_score) : null,
-  ];
+  const searchableFields = [member.name, member.nickname, member.phone];
 
   return searchableFields.some((field) => field?.toLowerCase().includes(normalized));
 }

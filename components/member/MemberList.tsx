@@ -17,10 +17,9 @@ import type { MemberWithStats } from "@/lib/supabase/database.types";
 
 interface MemberListProps {
   members: MemberWithStats[];
-  isAdmin: boolean;
 }
 
-export function MemberList({ members, isAdmin }: MemberListProps) {
+export function MemberList({ members }: MemberListProps) {
   const [query, setQuery] = useState("");
   const [mapoFilter, setMapoFilter] = useState<MapoScoreFilter>("all");
   const [sortBy, setSortBy] = useState<MemberSortOption>("league_point");
@@ -38,7 +37,7 @@ export function MemberList({ members, isAdmin }: MemberListProps) {
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="이름, 닉네임, 전화번호, 주소, LP, 마포구 점수로 검색"
+          placeholder="이름, 닉네임, 전화번호로 검색"
           className="box-border block h-11 w-full min-w-0 max-w-full rounded-lg border border-line-200 bg-line-100 px-3 text-sm text-line-900 placeholder:text-line-400"
         />
       </div>
@@ -106,7 +105,7 @@ export function MemberList({ members, isAdmin }: MemberListProps) {
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
-                  {isAdmin && member.phone && <CallButton phone={member.phone} />}
+                  {member.phone && <CallButton phone={member.phone} />}
                 </div>
               </Card>
             </Link>

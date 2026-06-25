@@ -2,14 +2,13 @@
 
 import { useState } from "react";
 import { toast } from "@/components/ui/Toast";
-import type { MemberGrade, MemberWithStats } from "@/lib/supabase/database.types";
-
-const GRADES: MemberGrade[] = ["A", "B", "C", "D"];
+import type { MemberWithStats } from "@/lib/supabase/database.types";
 
 interface EditMemberModalProps {
   member: MemberWithStats;
   onClose: () => void;
   onSaved: () => void;
+  onDeleted: () => void;
 }
 
 /** 010-0000-0000 형태로 화면에 보여줄 포맷 (숫자만 입력받고 화면엔 자동 포맷) */
@@ -23,17 +22,17 @@ function sanitizePhoneDigits(value: string): string {
   return value.replace(/\D/g, "").slice(0, 11);
 }
 
-export function EditMemberModal({ member, onClose, onSaved }: EditMemberModalProps) {
+export function EditMemberModal({ member, onClose, onSaved, onDeleted }: EditMemberModalProps) {
   const [name, setName] = useState(member.name);
   const [nickname, setNickname] = useState(member.nickname);
   const [phoneDigits, setPhoneDigits] = useState(member.phone ?? "");
   const [age, setAge] = useState(member.age?.toString() ?? "");
   const [addressFull, setAddressFull] = useState(member.address_full ?? "");
   const [district, setDistrict] = useState(member.district ?? "");
-  const [grade, setGrade] = useState<MemberGrade>(member.grade);
   const [mapoScore, setMapoScore] = useState<number | null>(member.mapo_score);
   const [memo, setMemo] = useState(member.memo ?? "");
   const [submitting, setSubmitting] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function handleSubmit() {
@@ -59,7 +58,6 @@ export function EditMemberModal({ member, onClose, onSaved }: EditMemberModalPro
         age: age.trim() ? Number(age) : null,
         addressFull: addressFull.trim() || null,
         district: district.trim() || null,
-        grade,
         mapoScore,
         memo: memo.trim() || null,
       }),
@@ -77,6 +75,29 @@ export function EditMemberModal({ member, onClose, onSaved }: EditMemberModalPro
 
     toast.success("회원 정보가 수정되었습니다.");
     onSaved();
+  }
+
+  async function handleDelete() {
+    const confirmedFirst = window.confirm("정말 이 회원을 삭제하시겠습니까?");
+    if (!confirmedFirst) return;
+
+    const confirmedSecond = window.confirm(
+      "회원 목록에서는 숨겨지지만 기존 경기/출석/LP 이력은 보존됩니다."
+    );
+    if (!confirmedSecond) return;
+
+    setDeleting(true);
+    const res = await fetch(`/api/members/${member.id}`, { method: "DELETE" });
+    const body = await res.json().catch(() => null);
+    setDeleting(false);
+
+    if (!res.ok) {
+      toast.error(body?.error ?? "회원 삭제에 실패했습니다.");
+      return;
+    }
+
+    toast.success("회원이 삭제되었습니다.");
+    onDeleted();
   }
 
   return (
@@ -152,26 +173,6 @@ export function EditMemberModal({ member, onClose, onSaved }: EditMemberModalPro
           </div>
 
           <div>
-            <label className="mb-1 block text-xs font-semibold text-line-600">실력 등급</label>
-            <div className="flex gap-2">
-              {GRADES.map((g) => (
-                <button
-                  key={g}
-                  type="button"
-                  onClick={() => setGrade(g)}
-                  className={`flex-1 rounded-lg border py-2 text-sm font-semibold ${
-                    grade === g
-                      ? "border-clay-400 bg-clay-400 text-line-25"
-                      : "border-line-200 text-line-600"
-                  }`}
-                >
-                  {g}급
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div>
             <label className="mb-1 block text-xs font-semibold text-line-600">마포구 대회 점수 (1~10)</label>
             <div className="flex flex-wrap gap-1.5">
               {Array.from({ length: 10 }, (_, i) => i + 1).map((score) => (
@@ -212,6 +213,20 @@ export function EditMemberModal({ member, onClose, onSaved }: EditMemberModalPro
         >
           {submitting ? "저장 중..." : "수정 내용 저장"}
         </button>
+
+        <div className="mt-6 border-t border-line-200 pt-4">
+          <p className="mb-2 text-center text-[11px] font-semibold uppercase tracking-widest text-line-400">
+            위험 구역
+          </p>
+          <button
+            type="button"
+            disabled={deleting}
+            onClick={handleDelete}
+            className="h-11 w-full rounded-lg border border-fault-400 text-xs font-semibold text-fault-400 disabled:opacity-40"
+          >
+            {deleting ? "삭제 중..." : "회원 삭제"}
+          </button>
+        </div>
       </div>
     </div>
   );

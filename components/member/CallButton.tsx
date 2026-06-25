@@ -5,15 +5,15 @@ interface CallButtonProps {
 }
 
 /**
- * 운영진 전용 전화 버튼. 회원 카드 전체가 <Link>(렌더링되면 <a> 태그)로
- * 감싸여 있어, 이 버튼을 <a href="tel:...">로 만들면 <a> 안에 <a>가 중첩되는
- * 유효하지 않은 HTML 구조가 되어 브라우저가 예측 불가능하게 동작할 수 있다.
- * 그래서 <button>으로 만들고, 클릭 시 stopPropagation으로 부모 Link의
- * 이동을 막은 뒤 location.href로 tel: 링크를 직접 연다.
+ * 전화 버튼. 일반 회원/운영진 모두에게 노출된다(전화하기 자체는 누구나 가능).
+ * 다만 phone 텍스트 자체를 화면에 노출할지는 호출하는 쪽(부모)에서 운영진
+ * 여부로 따로 결정한다 — 이 버튼은 phone 값만 받아서 tel: 링크로 연결한다.
  *
- * 현재는 이 버튼 자체를 부모(서버 컴포넌트)에서 isAdminSession() 기준으로만
- * 렌더링한다. 추후 permission_role >= manager로 교체할 때도 부모의 조건만
- * 바꾸면 되고, 이 컴포넌트는 그대로 재사용 가능하다.
+ * 회원 카드 전체가 <Link>(렌더링되면 <a> 태그)로 감싸여 있어, 이 버튼을
+ * <a href="tel:...">로 만들면 <a> 안에 <a>가 중첩되는 유효하지 않은 HTML
+ * 구조가 되어 브라우저가 예측 불가능하게 동작할 수 있다. 그래서 <button>으로
+ * 만들고, 클릭 시 stopPropagation으로 부모 Link의 이동을 막은 뒤
+ * location.href로 tel: 링크를 직접 연다.
  */
 export function CallButton({ phone }: CallButtonProps) {
   return (

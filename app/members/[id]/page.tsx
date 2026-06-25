@@ -2,6 +2,9 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { Card } from "@/components/ui/Card";
 import { MemberDetailActions } from "@/components/member/MemberDetailActions";
+import { BackButton } from "@/components/member/BackButton";
+import { CallButton } from "@/components/member/CallButton";
+import { isAdminSession } from "@/lib/admin-auth";
 import { notFound } from "next/navigation";
 import type { MemberWithStats } from "@/lib/supabase/database.types";
 
@@ -24,9 +27,11 @@ export default async function MemberDetailPage({ params }: MemberDetailPageProps
 
   const typedMember = member as MemberWithStats;
   const matchesPlayed = typedMember.wins + typedMember.losses;
+  const isAdmin = isAdminSession();
 
   return (
     <main className="px-4 pt-6">
+      <BackButton />
       <MemberDetailActions member={typedMember} />
 
       <Card className="mb-4 overflow-hidden p-0 text-center">
@@ -83,24 +88,35 @@ export default async function MemberDetailPage({ params }: MemberDetailPageProps
 
         {typedMember.phone && (
           <div className="border-t border-line-200 px-5 py-3 text-center">
-            <p className="text-xs text-line-500">휴대폰</p>
-            <p className="text-sm font-semibold text-line-900">{typedMember.phone}</p>
+            {isAdmin ? (
+              <>
+                <p className="text-xs text-line-500">휴대폰</p>
+                <div className="mt-1 flex items-center justify-center gap-2">
+                  <p className="text-sm font-semibold text-line-900">{typedMember.phone}</p>
+                  <CallButton phone={typedMember.phone} />
+                </div>
+              </>
+            ) : (
+              <div className="flex justify-center">
+                <CallButton phone={typedMember.phone} />
+              </div>
+            )}
           </div>
         )}
       </Card>
 
       <section>
         <div className="mb-2 flex items-center justify-between">
-          <h2 className="text-xs font-bold uppercase tracking-widest text-line-600">포인트(LP) 변동</h2>
+          <h2 className="text-xs font-bold uppercase tracking-widest text-line-600">LP 이력</h2>
           <Link
             href={`/point-history?member=${typedMember.id}`}
             className="text-xs font-semibold text-clay-400"
           >
-            LP 히스토리 보기 →
+            LP 이력 보기 →
           </Link>
         </div>
         <Card className="p-4 text-center text-sm text-line-400">
-          이 회원의 LP 변동 내역은 위 "LP 히스토리 보기"에서 확인할 수 있어요.
+          이 회원의 LP 변동 내역은 위 "LP 이력 보기"에서 확인할 수 있어요.
         </Card>
       </section>
     </main>

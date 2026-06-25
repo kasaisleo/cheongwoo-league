@@ -40,7 +40,7 @@ export default async function MembersPage() {
         </div>
       </header>
 
-      <MemberList members={members} isAdmin={isAdmin} />
+      <MemberList members={members} />
     </main>
   );
 }
