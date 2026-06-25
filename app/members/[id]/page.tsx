@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { Card } from "@/components/ui/Card";
 import { Badge, gradeTone } from "@/components/ui/Badge";
 import { notFound } from "next/navigation";
-import type { MemberWithStats, RatingHistory } from "@/lib/supabase/database.types";
+import type { MemberWithStats } from "@/lib/supabase/database.types";
 
 interface MemberDetailPageProps {
   params: { id: string };
@@ -22,15 +22,8 @@ export default async function MemberDetailPage({ params }: MemberDetailPageProps
     notFound();
   }
 
-  const { data: history } = await supabase
-    .from("rating_history")
-    .select("*")
-    .eq("member_id", params.id)
-    .order("created_at", { ascending: false })
-    .limit(10);
-
   const typedMember = member as MemberWithStats;
-  const typedHistory = (history ?? []) as RatingHistory[];
+  const matchesPlayed = typedMember.wins + typedMember.losses;
 
   return (
     <main className="px-4 pt-6">
@@ -49,11 +42,15 @@ export default async function MemberDetailPage({ params }: MemberDetailPageProps
             )}
           </div>
 
-          <p className="font-score mt-3 text-6xl font-bold leading-none text-clay-400">{typedMember.rating}</p>
-          <p className="mt-1 text-[11px] font-semibold uppercase tracking-widest text-line-500">Rating</p>
+          <p className="font-score mt-3 text-6xl font-bold leading-none text-clay-400">{typedMember.league_point}</p>
+          <p className="mt-1 text-[11px] font-semibold uppercase tracking-widest text-line-500">LP</p>
         </div>
 
-        <div className="grid grid-cols-3 gap-2 px-5 py-4 text-center">
+        <div className="grid grid-cols-4 gap-2 px-5 py-4 text-center">
+          <div>
+            <p className="font-score text-xl font-bold text-line-900">{matchesPlayed}</p>
+            <p className="text-xs text-line-500">경기수</p>
+          </div>
           <div>
             <p className="font-score text-xl font-bold text-court-400">{typedMember.wins}</p>
             <p className="text-xs text-line-500">승</p>
@@ -86,7 +83,7 @@ export default async function MemberDetailPage({ params }: MemberDetailPageProps
 
       <section>
         <div className="mb-2 flex items-center justify-between">
-          <h2 className="text-xs font-bold uppercase tracking-widest text-line-600">최근 레이팅 변동</h2>
+          <h2 className="text-xs font-bold uppercase tracking-widest text-line-600">포인트(LP) 변동</h2>
           <Link
             href={`/point-history?member=${typedMember.id}`}
             className="text-xs font-semibold text-clay-400"
@@ -94,30 +91,9 @@ export default async function MemberDetailPage({ params }: MemberDetailPageProps
             LP 히스토리 보기 →
           </Link>
         </div>
-        {typedHistory.length === 0 ? (
-          <Card className="p-6 text-center text-sm text-line-400">아직 경기 기록이 없어요.</Card>
-        ) : (
-          <div className="space-y-1.5">
-            {typedHistory.map((h) => (
-              <Card key={h.id} className="flex items-center justify-between p-3">
-                <span className="text-xs text-line-500">
-                  {new Date(h.created_at).toLocaleDateString("ko-KR")}
-                </span>
-                <span className="font-score text-sm text-line-600">
-                  {h.rating_before} → {h.rating_after}
-                </span>
-                <span
-                  className={`font-score text-sm font-bold ${
-                    h.rating_change >= 0 ? "text-court-400" : "text-fault-400"
-                  }`}
-                >
-                  {h.rating_change >= 0 ? "+" : ""}
-                  {h.rating_change}
-                </span>
-              </Card>
-            ))}
-          </div>
-        )}
+        <Card className="p-4 text-center text-sm text-line-400">
+          이 회원의 LP 변동 내역은 위 "LP 히스토리 보기"에서 확인할 수 있어요.
+        </Card>
       </section>
     </main>
   );
