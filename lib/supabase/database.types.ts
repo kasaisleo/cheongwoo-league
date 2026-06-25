@@ -51,6 +51,7 @@ export interface Member {
   address_full: string | null;
   district: string | null;
   age: number | null;
+  memo: string | null;
   created_at: string;
 }
 

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { Card } from "@/components/ui/Card";
 import { Badge, gradeTone } from "@/components/ui/Badge";
+import { MemberDetailActions } from "@/components/member/MemberDetailActions";
 import { notFound } from "next/navigation";
 import type { MemberWithStats } from "@/lib/supabase/database.types";
 
@@ -27,6 +28,8 @@ export default async function MemberDetailPage({ params }: MemberDetailPageProps
 
   return (
     <main className="px-4 pt-6">
+      <MemberDetailActions member={typedMember} />
+
       <Card className="mb-4 overflow-hidden p-0 text-center">
         <div className="border-b-2 border-clay-400 bg-line-200/40 px-5 pb-5 pt-6">
           <div className="mb-1 flex items-center justify-center gap-1.5">

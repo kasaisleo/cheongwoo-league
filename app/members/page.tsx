@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { Card } from "@/components/ui/Card";
 import { Badge, gradeTone } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
+import { CallButton } from "@/components/member/CallButton";
 import { isAdminSession } from "@/lib/admin-auth";
 import type { MemberWithStats } from "@/lib/supabase/database.types";
 
@@ -11,6 +12,7 @@ export default async function MembersPage() {
   const { data } = await supabase
     .from("member_stats")
     .select("*")
+    .eq("is_active", true)
     .order("grade")
     .order("nickname");
 
@@ -59,18 +61,18 @@ export default async function MembersPage() {
                           {member.role}
                         </span>
                       )}
-                      {!member.is_active && (
-                        <span className="text-xs text-line-400">(비활성)</span>
-                      )}
                     </p>
                     <p className="text-xs text-line-500">{member.name}</p>
                   </div>
                 </div>
-                <div className="text-right">
-                  <p className="font-score text-lg font-bold text-line-900">{member.rating}</p>
-                  <p className="text-xs text-line-500">
-                    {member.wins}승 {member.losses}패 · {member.win_rate}%
-                  </p>
+                <div className="flex items-center gap-2">
+                  {isAdmin && member.phone && <CallButton phone={member.phone} />}
+                  <div className="text-right">
+                    <p className="font-score text-lg font-bold text-line-900">{member.rating}</p>
+                    <p className="text-xs text-line-500">
+                      {member.wins}승 {member.losses}패 · {member.win_rate}%
+                    </p>
+                  </div>
                 </div>
               </Card>
             </Link>
