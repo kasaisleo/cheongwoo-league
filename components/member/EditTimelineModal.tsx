@@ -8,7 +8,9 @@ import {
   RESULT_OPTIONS,
   divisionOptionsFor,
   associationHasNoDivision,
-  type TimelineType,
+  isLegacyTimelineType,
+  timelineTypeLabel,
+  type AnyTimelineType,
 } from "@/lib/constants/member-timeline";
 import type { MemberTimeline } from "@/lib/supabase/database.types";
 
@@ -23,9 +25,13 @@ interface EditTimelineModalProps {
 const NO_ASSOCIATION = "__none__";
 
 export function EditTimelineModal({ memberId, existing, onClose, onSaved }: EditTimelineModalProps) {
-  const [timelineType, setTimelineType] = useState<TimelineType>(
-    (existing?.timeline_type as TimelineType) ?? "achievement"
+  // 기존 row가 legacy 값(achievement/attendance)을 갖고 있을 수 있어 초기값은
+  // AnyTimelineType으로 받는다. 사용자가 버튼을 눌러 종류를 바꾸면 신규 값(TimelineType)만
+  // 선택 가능하므로, 그 시점부터는 자연스럽게 신규 값으로 좁혀진다.
+  const [timelineType, setTimelineType] = useState<AnyTimelineType>(
+    (existing?.timeline_type as AnyTimelineType) ?? "competition"
   );
+  const isLegacySelected = isLegacyTimelineType(timelineType);
   const [eventDate, setEventDate] = useState(existing?.event_date ?? "");
   const [title, setTitle] = useState(existing?.title ?? "");
   const [association, setAssociation] = useState<string>(existing?.association ?? NO_ASSOCIATION);
@@ -126,6 +132,12 @@ export function EditTimelineModal({ memberId, existing, onClose, onSaved }: Edit
         <div className="space-y-3">
           <div>
             <label className="mb-1 block text-xs font-semibold text-line-600">종류</label>
+            {isLegacySelected && (
+              <p className="mb-1.5 text-xs text-line-500">
+                현재 값: <span className="font-semibold">{timelineTypeLabel(timelineType)}</span> (이전 방식으로
+                저장된 항목입니다. 아래에서 새 종류를 선택하면 변경됩니다)
+              </p>
+            )}
             <div className="flex flex-wrap gap-1.5">
               {TIMELINE_TYPE_OPTIONS.map((option) => (
                 <button
