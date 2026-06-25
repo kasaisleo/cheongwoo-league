@@ -37,6 +37,8 @@ function AttendancePageInner() {
   const [loadingRows, setLoadingRows] = useState(false);
   const [updatingMemberId, setUpdatingMemberId] = useState<string | null>(null);
   const [processingSessionId, setProcessingSessionId] = useState<string | null>(null);
+  // closed 세션에서 운영진이 "명단 수정" 버튼을 눌러야만 토글이 활성화된다.
+  const [editingClosedSession, setEditingClosedSession] = useState(false);
 
   // 휴일매치/이벤트매치 생성 폼
   const [showCustomForm, setShowCustomForm] = useState(false);
@@ -83,6 +85,8 @@ function AttendancePageInner() {
 
   // 2. 선택된 세션의 출석 현황 불러오기
   useEffect(() => {
+    setEditingClosedSession(false);
+
     if (!selectedSessionId) {
       setRows([]);
       return;
@@ -495,8 +499,14 @@ function AttendancePageInner() {
             <p className="text-xs font-semibold text-line-500">
               현재 명단
               {selectedSession?.status === "closed" && (
-                <span className="ml-1.5 rounded-full bg-amber-400/20 px-1.5 py-0.5 text-[10px] font-semibold text-amber-400">
-                  확정됨
+                <span
+                  className={`ml-1.5 rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${
+                    editingClosedSession
+                      ? "bg-clay-400/20 text-clay-400"
+                      : "bg-amber-400/20 text-amber-400"
+                  }`}
+                >
+                  {editingClosedSession ? "수정 중" : "확정됨"}
                 </span>
               )}
             </p>
@@ -513,14 +523,27 @@ function AttendancePageInner() {
                   </button>
                 )}
                 {selectedSession.status === "closed" && (
-                  <button
-                    type="button"
-                    disabled={processingSessionId === selectedSessionId}
-                    onClick={() => handleSessionStatusChange(selectedSessionId, "archived")}
-                    className="rounded-full border border-line-200 px-2.5 py-1 text-[11px] font-semibold text-line-600 disabled:opacity-40"
-                  >
-                    매치 보관
-                  </button>
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setEditingClosedSession((v) => !v)}
+                      className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold ${
+                        editingClosedSession
+                          ? "border-clay-400 bg-clay-400 text-line-25"
+                          : "border-line-200 text-line-600"
+                      }`}
+                    >
+                      {editingClosedSession ? "수정 완료" : "명단 수정"}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={processingSessionId === selectedSessionId}
+                      onClick={() => handleSessionStatusChange(selectedSessionId, "archived")}
+                      className="rounded-full border border-line-200 px-2.5 py-1 text-[11px] font-semibold text-line-600 disabled:opacity-40"
+                    >
+                      매치 보관
+                    </button>
+                  </>
                 )}
               </div>
             )}
@@ -561,7 +584,10 @@ function AttendancePageInner() {
                   <AttendanceToggle
                     value={status}
                     onChange={(s) => updateStatus(member.id, s)}
-                    disabled={updatingMemberId === member.id}
+                    disabled={
+                      updatingMemberId === member.id ||
+                      (selectedSession?.status === "closed" && !(isAdmin && editingClosedSession))
+                    }
                   />
                 </Card>
               ))}
