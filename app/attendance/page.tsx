@@ -122,9 +122,17 @@ function AttendancePageInner() {
   }, [selectedSessionId, supabase]);
 
   // 3. 출석 상태 변경 — 즉시 화면(통계 포함) 반영, 새로고침 없음. 실패 시 롤백.
+  //    - open: 회원 본인이 RLS를 통해 직접 upsert
+  //    - closed: 일반 회원은 RLS가 막음. 운영진은 admin-update API(service-role)로 보정
+  //    - archived: 읽기 전용 — 이 함수를 호출하는 토글 자체가 비활성화되어 있어야 한다
   async function updateStatus(memberId: string, newStatus: AttendanceStatus) {
-    if (!selectedSessionId) {
+    if (!selectedSessionId || !selectedSession) {
       toast.error("출석 세션을 선택해주세요.");
+      return;
+    }
+
+    if (selectedSession.status === "archived") {
+      toast.error("보관된 세션은 읽기 전용이라 수정할 수 없습니다.");
       return;
     }
 
@@ -135,26 +143,52 @@ function AttendancePageInner() {
     );
     setUpdatingMemberId(memberId);
 
-    const { data, error } = await supabase
-      .from("attendance")
-      .upsert(
-        {
-          member_id: memberId,
-          session_id: selectedSessionId,
-          event_date:
-            openSessions.find((s) => s.id === selectedSessionId)?.session_date ??
-            new Date().toISOString().slice(0, 10),
-          status: newStatus,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: "member_id,session_id" }
-      )
-      .select()
-      .single();
+    let succeeded: boolean;
+    let newAttendanceId: string | null = null;
+
+    if (selectedSession.status === "closed") {
+      // 명단이 확정된 세션 — 운영진만 보정 가능. 별도 service-role API를 거친다.
+      if (!isAdmin) {
+        setUpdatingMemberId(null);
+        setRows((prev) =>
+          prev.map((row) => (row.member.id === memberId ? { ...row, status: previousStatus } : row))
+        );
+        toast.error("명단이 확정된 세션은 운영진만 수정할 수 있습니다.");
+        return;
+      }
+
+      const res = await fetch("/api/attendance/admin-update", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ memberId, sessionId: selectedSessionId, status: newStatus }),
+      });
+      const body = await res.json().catch(() => null);
+      succeeded = res.ok;
+      newAttendanceId = body?.attendance?.id ?? null;
+    } else {
+      // open 세션 — 회원 본인이 RLS를 통해 직접 upsert
+      const { data, error } = await supabase
+        .from("attendance")
+        .upsert(
+          {
+            member_id: memberId,
+            session_id: selectedSessionId,
+            event_date: selectedSession.session_date,
+            status: newStatus,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "member_id,session_id" }
+        )
+        .select()
+        .single();
+
+      succeeded = !error && Boolean(data);
+      newAttendanceId = data?.id ?? null;
+    }
 
     setUpdatingMemberId(null);
 
-    if (error || !data) {
+    if (!succeeded) {
       setRows((prev) =>
         prev.map((row) => (row.member.id === memberId ? { ...row, status: previousStatus } : row))
       );
@@ -163,7 +197,7 @@ function AttendancePageInner() {
     }
 
     setRows((prev) =>
-      prev.map((row) => (row.member.id === memberId ? { ...row, attendanceId: data.id } : row))
+      prev.map((row) => (row.member.id === memberId ? { ...row, attendanceId: newAttendanceId } : row))
     );
   }
 
@@ -310,21 +344,25 @@ function AttendancePageInner() {
                   >
                     휴일매치/이벤트매치 생성
                   </DropdownItem>
-                  {selectedSessionId && (
+                  {selectedSessionId && selectedSession && (
                     <>
                       <div className="my-1 h-px bg-line-200" />
-                      <DropdownItem
-                        disabled={processingSessionId === selectedSessionId}
-                        onClick={() => handleSessionStatusChange(selectedSessionId, "closed", close)}
-                      >
-                        명단 확정
-                      </DropdownItem>
-                      <DropdownItem
-                        disabled={processingSessionId === selectedSessionId}
-                        onClick={() => handleSessionStatusChange(selectedSessionId, "archived", close)}
-                      >
-                        명단 보관
-                      </DropdownItem>
+                      {selectedSession.status === "open" && (
+                        <DropdownItem
+                          disabled={processingSessionId === selectedSessionId}
+                          onClick={() => handleSessionStatusChange(selectedSessionId, "closed", close)}
+                        >
+                          명단 확정
+                        </DropdownItem>
+                      )}
+                      {selectedSession.status === "closed" && (
+                        <DropdownItem
+                          disabled={processingSessionId === selectedSessionId}
+                          onClick={() => handleSessionStatusChange(selectedSessionId, "archived", close)}
+                        >
+                          매치 보관
+                        </DropdownItem>
+                      )}
                     </>
                   )}
                 </div>
@@ -454,25 +492,36 @@ function AttendancePageInner() {
         <>
           {/* 통계 카드 + 운영진 전용 명단확정/명단보관 버튼을 같은 영역에 노출 */}
           <div className="mb-2 flex items-center justify-between">
-            <p className="text-xs font-semibold text-line-500">현재 명단</p>
-            {isAdmin && (
+            <p className="text-xs font-semibold text-line-500">
+              현재 명단
+              {selectedSession?.status === "closed" && (
+                <span className="ml-1.5 rounded-full bg-amber-400/20 px-1.5 py-0.5 text-[10px] font-semibold text-amber-400">
+                  확정됨
+                </span>
+              )}
+            </p>
+            {isAdmin && selectedSession && (
               <div className="flex gap-1.5">
-                <button
-                  type="button"
-                  disabled={processingSessionId === selectedSessionId}
-                  onClick={() => handleSessionStatusChange(selectedSessionId, "closed")}
-                  className="rounded-full border border-line-200 px-2.5 py-1 text-[11px] font-semibold text-line-600 disabled:opacity-40"
-                >
-                  명단 확정
-                </button>
-                <button
-                  type="button"
-                  disabled={processingSessionId === selectedSessionId}
-                  onClick={() => handleSessionStatusChange(selectedSessionId, "archived")}
-                  className="rounded-full border border-line-200 px-2.5 py-1 text-[11px] font-semibold text-line-600 disabled:opacity-40"
-                >
-                  명단 보관
-                </button>
+                {selectedSession.status === "open" && (
+                  <button
+                    type="button"
+                    disabled={processingSessionId === selectedSessionId}
+                    onClick={() => handleSessionStatusChange(selectedSessionId, "closed")}
+                    className="rounded-full border border-line-200 px-2.5 py-1 text-[11px] font-semibold text-line-600 disabled:opacity-40"
+                  >
+                    명단 확정
+                  </button>
+                )}
+                {selectedSession.status === "closed" && (
+                  <button
+                    type="button"
+                    disabled={processingSessionId === selectedSessionId}
+                    onClick={() => handleSessionStatusChange(selectedSessionId, "archived")}
+                    className="rounded-full border border-line-200 px-2.5 py-1 text-[11px] font-semibold text-line-600 disabled:opacity-40"
+                  >
+                    매치 보관
+                  </button>
+                )}
               </div>
             )}
           </div>
