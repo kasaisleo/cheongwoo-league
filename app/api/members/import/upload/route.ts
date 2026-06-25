@@ -88,6 +88,12 @@ export async function POST(request: NextRequest) {
 
   const supabase = createServiceClient();
 
+  // 새 파일 업로드 시작 — staging_members는 임시 작업 공간(working table)이다.
+  // 이력 보존 용도로 쓰지 않으므로, 새 업로드 시작 시 기존 데이터를 전부 비운다.
+  // (이미 members로 반영된 회원 정보는 members 테이블에 남아있으므로 staging에는
+  // 보존할 필요가 없다.)
+  await supabase.from("staging_members").delete().not("id", "is", null);
+
   // 기존 members의 phone 전체를 미리 가져와서 중복 검사에 사용
   const { data: existingMembers } = await supabase.from("members").select("id, phone");
   const phoneToMemberId = new Map(
@@ -96,43 +102,49 @@ export async function POST(request: NextRequest) {
       .map((m) => [normalizePhone(m.phone) ?? m.phone, m.id])
   );
 
-  const stagingRows = rows.map((row) => {
-    const get = (field: string): string | null => {
-      for (const [header, mapped] of headerMap.entries()) {
-        if (mapped === field) {
-          const value = row[header];
-          return value === undefined || value === null || value === "" ? null : String(value).trim();
+  const stagingRows = rows
+    .map((row) => {
+      const get = (field: string): string | null => {
+        for (const [header, mapped] of headerMap.entries()) {
+          if (mapped === field) {
+            const value = row[header];
+            return value === undefined || value === null || value === "" ? null : String(value).trim();
+          }
         }
+        return null;
+      };
+
+      const raw = {
+        raw_name: get("name"),
+        raw_nickname: get("nickname"),
+        raw_phone: get("phone"),
+        raw_address: get("address"),
+        raw_age: get("age"),
+        raw_mapo_score: get("mapo_score"),
+        raw_member_type: get("member_type"),
+        raw_birth_year: get("birth_year"),
+      };
+
+      return raw;
+    })
+    // 이름과 전화번호가 둘 다 비어있는 행(CSV/XLSX 끝의 빈 줄 등)은 staging에 저장하지 않고 건너뛴다.
+    .filter((raw) => raw.raw_name || raw.raw_phone)
+    .map((raw) => {
+      const normalized = normalizeStagingRow(raw);
+
+      // phone 중복 검사 — 기존 members에 같은 번호가 있으면 duplicate로 표시
+      let existingMemberId: string | null = null;
+      if (normalized.normalized_phone && phoneToMemberId.has(normalized.normalized_phone)) {
+        existingMemberId = phoneToMemberId.get(normalized.normalized_phone) ?? null;
+        normalized.validation_status = "duplicate";
       }
-      return null;
-    };
 
-    const raw = {
-      raw_name: get("name"),
-      raw_nickname: get("nickname"),
-      raw_phone: get("phone"),
-      raw_address: get("address"),
-      raw_age: get("age"),
-      raw_mapo_score: get("mapo_score"),
-      raw_member_type: get("member_type"),
-      raw_birth_year: get("birth_year"),
-    };
-
-    const normalized = normalizeStagingRow(raw);
-
-    // phone 중복 검사 — 기존 members에 같은 번호가 있으면 duplicate로 표시
-    let existingMemberId: string | null = null;
-    if (normalized.normalized_phone && phoneToMemberId.has(normalized.normalized_phone)) {
-      existingMemberId = phoneToMemberId.get(normalized.normalized_phone) ?? null;
-      normalized.validation_status = "duplicate";
-    }
-
-    return {
-      ...raw,
-      ...normalized,
-      existing_member_id: existingMemberId,
-    };
-  });
+      return {
+        ...raw,
+        ...normalized,
+        existing_member_id: existingMemberId,
+      };
+    });
 
   // 업로드 파일 내부에서도 phone이 중복되는 행이 있으면 두 번째 이후는 duplicate 처리
   const seenPhones = new Set<string>();
@@ -143,6 +155,13 @@ export async function POST(request: NextRequest) {
     } else {
       seenPhones.add(row.normalized_phone);
     }
+  }
+
+  if (stagingRows.length === 0) {
+    return NextResponse.json(
+      { error: "유효한 데이터가 없습니다. 이름 또는 휴대폰 번호가 있는 행이 하나도 없어요." },
+      { status: 400 }
+    );
   }
 
   const { data: inserted, error: insertError } = await supabase

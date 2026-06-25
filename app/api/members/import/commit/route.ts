@@ -71,7 +71,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "회원 반영에 실패했습니다." }, { status: 500 });
   }
 
-  // staging_members를 imported로 표시 (데이터는 삭제하지 않고 보존)
+  // staging_members는 임시 작업 공간이라 데이터를 영구 보존하지 않지만, 같은 업로드
+  // 배치 안에서 "이미 반영했는지" 구분이 필요하므로 즉시 삭제하지 않고 imported로
+  // 표시만 해둔다. 다음 새 파일 업로드 시점에 staging_members가 전체 초기화되면서
+  // 이 표시도 함께 사라진다 — 즉 imported 상태 자체를 영구 이력으로 쓰지 않는다.
   await supabase
     .from("staging_members")
     .update({ validation_status: "imported", imported_at: new Date().toISOString() })
