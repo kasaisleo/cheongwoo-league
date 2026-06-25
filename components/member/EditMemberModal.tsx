@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { toast } from "@/components/ui/Toast";
+import { PLAYER_BACKGROUND_OPTIONS, type PlayerBackground } from "@/lib/constants/member-timeline";
 import type { MemberWithStats } from "@/lib/supabase/database.types";
 
 interface EditMemberModalProps {
@@ -31,9 +32,17 @@ export function EditMemberModal({ member, onClose, onSaved, onDeleted }: EditMem
   const [district, setDistrict] = useState(member.district ?? "");
   const [mapoScore, setMapoScore] = useState<number | null>(member.mapo_score);
   const [memo, setMemo] = useState(member.memo ?? "");
+  const initialPlayerBackground = (member.player_background as PlayerBackground) || "none";
+  const [isPlayerOrigin, setIsPlayerOrigin] = useState(initialPlayerBackground !== "none");
+  const [playerBackgroundDetail, setPlayerBackgroundDetail] = useState<PlayerBackground>(
+    initialPlayerBackground !== "none" ? initialPlayerBackground : "elementary"
+  );
   const [submitting, setSubmitting] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // 1단계에서 "비선출"을 선택하면 항상 'none'으로, "선출"을 선택하면 2단계에서 고른 세부값으로 저장한다.
+  const playerBackgroundOptions = PLAYER_BACKGROUND_OPTIONS.filter((o) => o.value !== "none");
 
   async function handleSubmit() {
     if (!name.trim()) {
@@ -60,6 +69,7 @@ export function EditMemberModal({ member, onClose, onSaved, onDeleted }: EditMem
         district: district.trim() || null,
         mapoScore,
         memo: memo.trim() || null,
+        playerBackground: isPlayerOrigin ? playerBackgroundDetail : "none",
       }),
     });
 
@@ -190,6 +200,53 @@ export function EditMemberModal({ member, onClose, onSaved, onDeleted }: EditMem
                 </button>
               ))}
             </div>
+          </div>
+
+          <div>
+            <label className="mb-1 block text-xs font-semibold text-line-600">선수출신</label>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setIsPlayerOrigin(false)}
+                className={`flex-1 rounded-lg border py-2 text-sm font-semibold ${
+                  !isPlayerOrigin
+                    ? "border-clay-400 bg-clay-400 text-line-25"
+                    : "border-line-200 text-line-600"
+                }`}
+              >
+                비선출
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsPlayerOrigin(true)}
+                className={`flex-1 rounded-lg border py-2 text-sm font-semibold ${
+                  isPlayerOrigin
+                    ? "border-clay-400 bg-clay-400 text-line-25"
+                    : "border-line-200 text-line-600"
+                }`}
+              >
+                선출
+              </button>
+            </div>
+
+            {isPlayerOrigin && (
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {playerBackgroundOptions.map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => setPlayerBackgroundDetail(option.value)}
+                    className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${
+                      playerBackgroundDetail === option.value
+                        ? "border-court-400 bg-court-400 text-line-25"
+                        : "border-line-200 text-line-600"
+                    }`}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           <div>

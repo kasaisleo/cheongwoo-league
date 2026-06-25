@@ -52,6 +52,7 @@ export interface Member {
   district: string | null;
   age: number | null;
   memo: string | null;
+  player_background: string;
   created_at: string;
 }
 
@@ -106,6 +107,22 @@ export interface PointHistory {
   point_change: number;
   reason: string;
   created_at: string;
+}
+
+export interface MemberTimeline {
+  id: string;
+  member_id: string;
+  timeline_type: string;
+  event_date: string | null;
+  title: string;
+  description: string | null;
+  association: string | null;
+  division: string | null;
+  result: string | null;
+  memo: string | null;
+  is_highlight: boolean;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface StagingMember {
@@ -220,6 +237,12 @@ export interface Database {
           reason: string;
         };
         Update: Partial<PointHistory>;
+        Relationships: [];
+      };
+      member_timeline: {
+        Row: MemberTimeline;
+        Insert: Partial<MemberTimeline> & { member_id: string; title: string };
+        Update: Partial<MemberTimeline>;
         Relationships: [];
       };
       staging_members: {

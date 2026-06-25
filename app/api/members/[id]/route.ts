@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { isAdminSession } from "@/lib/admin-auth";
+import { isValidPlayerBackground } from "@/lib/constants/member-timeline";
 import type { MemberGrade } from "@/lib/supabase/database.types";
 
 interface UpdateMemberBody {
@@ -13,6 +14,7 @@ interface UpdateMemberBody {
   grade?: MemberGrade;
   mapoScore?: number | null;
   memo?: string | null;
+  playerBackground?: string;
 }
 
 const VALID_GRADES: MemberGrade[] = ["A", "B", "C", "D"];
@@ -29,7 +31,7 @@ interface RouteParams {
  * 운영진 비밀번호 인증(isAdminSession)으로 대체한다.
  * 추후 카카오 로그인 도입 시: 본인은 자신의 정보를 수정할 수 있게 허용 예정.
  *
- * 수정 가능 항목: 이름, 닉네임, 전화번호, 나이, 주소, district, grade, 마포점수, 메모.
+ * 수정 가능 항목: 이름, 닉네임, 전화번호, 나이, 주소, district, grade, 마포점수, 메모, 선수출신.
  * 그 외 항목(직책/회원구분/LP/승패 등)은 이 API의 대상이 아니다.
  */
 export async function PUT(request: NextRequest, { params }: RouteParams) {
@@ -39,7 +41,8 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
   const memberId = params.id;
   const body = (await request.json()) as UpdateMemberBody;
-  const { name, nickname, phone, age, addressFull, district, grade, mapoScore, memo } = body;
+  const { name, nickname, phone, age, addressFull, district, grade, mapoScore, memo, playerBackground } =
+    body;
 
   const supabase = createServiceClient();
 
@@ -132,6 +135,13 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
   if (memo !== undefined) {
     updates.memo = memo?.trim() || null;
+  }
+
+  if (playerBackground !== undefined) {
+    if (!isValidPlayerBackground(playerBackground)) {
+      return NextResponse.json({ error: "선수출신 정보가 올바르지 않습니다." }, { status: 400 });
+    }
+    updates.player_background = playerBackground;
   }
 
   if (Object.keys(updates).length === 0) {

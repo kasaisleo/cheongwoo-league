@@ -5,8 +5,10 @@ import { Badge } from "@/components/ui/Badge";
 import { MemberDetailActions } from "@/components/member/MemberDetailActions";
 import { BackButton } from "@/components/member/BackButton";
 import { CallButton } from "@/components/member/CallButton";
+import { MemberTimelineSection } from "@/components/member/MemberTimelineSection";
 import { isAdminSession } from "@/lib/admin-auth";
 import { MATCH_SESSION_DAY_LABEL } from "@/lib/match-session-label";
+import { playerBackgroundLabel } from "@/lib/constants/member-timeline";
 import {
   fetchMemberRecentMatches,
   fetchMemberRecentAttendance,
@@ -78,6 +80,11 @@ export default async function MemberDetailPage({ params }: MemberDetailPageProps
             {typedMember.role !== "정회원" && (
               <span className="rounded-full bg-line-200 px-2 py-0.5 text-[11px] font-semibold text-line-700">
                 {typedMember.role}
+              </span>
+            )}
+            {typedMember.player_background !== "none" && (
+              <span className="rounded-full bg-amber-400/20 px-2 py-0.5 text-[11px] font-semibold text-amber-400">
+                {playerBackgroundLabel(typedMember.player_background)}
               </span>
             )}
           </div>
@@ -187,6 +194,8 @@ export default async function MemberDetailPage({ params }: MemberDetailPageProps
           </div>
         )}
       </section>
+
+      <MemberTimelineSection memberId={typedMember.id} isAdmin={isAdmin} />
 
       {/* 2. 최근 출석 + 3. 출석률 */}
       <section className="mb-4">
