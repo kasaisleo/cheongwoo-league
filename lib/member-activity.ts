@@ -7,7 +7,8 @@ const RECENT_MATCH_LIMIT = 5;
 const RECENT_ATTENDANCE_LIMIT = 5;
 const RECENT_POINT_HISTORY_LIMIT = 5;
 const RECENT_PARTNER_LIMIT = 5;
-const ATTENDANCE_RATE_RECENT_COUNT = 10;
+/** "최근 출석률"의 표본 개수는 "최근 출석" 표시 개수와 항상 같게 맞춘다 — 둘이 다르면 화면에서 혼란스럽다. */
+const ATTENDANCE_RATE_RECENT_COUNT = RECENT_ATTENDANCE_LIMIT;
 /** 파트너 집계는 "최근 경기"라는 표현에 맞춰, 출석 5경기보다 더 넓은 표본(최근 30경기)에서 계산한다. */
 const PARTNER_AGGREGATION_MATCH_LIMIT = 30;
 
@@ -35,6 +36,7 @@ export interface MemberPointHistoryEntry {
   createdAt: string;
   pointChange: number;
   reason: string;
+  matchId: string | null;
 }
 
 export interface MemberPartnerSummary {
@@ -53,15 +55,50 @@ export interface AttendanceRateSummary {
 
 const REASON_LABEL: Record<string, string> = {
   regular_match_win: "경기 승리",
-  regular_match_loss: "경기 패배",
-  regular_match_rollback: "수정 보정",
+  regular_match_loss: "경기 패배 (변동 없음)",
+  regular_match_rollback: "경기 수정/삭제로 취소됨",
 };
 
 export function pointHistoryReasonLabel(reason: string): string {
   return REASON_LABEL[reason] ?? reason;
 }
 
-/** memberId가 매치의 어느 슬롯에 있는지 찾아 파트너/상대팀/점수/승패를 계산한다. */
+export interface PointHistoryGroup {
+  key: string;
+  matchId: string | null;
+  entries: MemberPointHistoryEntry[];
+}
+
+/**
+ * 최신순으로 정렬된 LP 이력 목록에서, 같은 match_id를 가진 항목들이 인접해 있으면
+ * 하나의 그룹으로 묶는다. 정렬 순서 자체는 바꾸지 않고, 화면에 보여줄 묶음 경계만
+ * 계산한다. match_id가 null인 항목(예: 대회 보너스 등 경기와 무관한 변동)은 항상
+ * 단독 그룹이 된다.
+ */
+export function groupPointHistoryByMatch(entries: MemberPointHistoryEntry[]): PointHistoryGroup[] {
+  const groups: PointHistoryGroup[] = [];
+
+  for (const entry of entries) {
+    const lastGroup = groups[groups.length - 1];
+    if (entry.matchId && lastGroup && lastGroup.matchId === entry.matchId) {
+      lastGroup.entries.push(entry);
+    } else {
+      groups.push({ key: entry.id, matchId: entry.matchId, entries: [entry] });
+    }
+  }
+
+  return groups;
+}
+
+/**
+ * memberId가 매치의 어느 슬롯에 있는지 찾아 파트너/상대팀/점수/승패를 계산한다.
+ *
+ * 방어 처리: 정상적인 경기는 4개 슬롯에 회원/게스트가 한 번씩만 들어가야 한다
+ * (생성/수정 API에서 이미 중복 선택을 막고 있음). 다만 그 검증이 추가되기 전에
+ * 저장된 과거 데이터에 같은 회원이 두 슬롯 이상(예: 양쪽 팀에 동시) 들어있는
+ * 경우가 있을 수 있다. 이런 경기는 "내 편/상대편"을 명확히 가를 수 없으므로,
+ * 화면에 잘못된 정보를 보여주는 대신 null을 반환해 최근 경기 목록에서 제외한다.
+ */
 function summarizeMatchForMember(match: DisplayMatch, memberId: string): MemberMatchSummary | null {
   const slots = [
     { player: match.teamAPlayer1, team: "A" as const },
@@ -70,9 +107,11 @@ function summarizeMatchForMember(match: DisplayMatch, memberId: string): MemberM
     { player: match.teamBPlayer2, team: "B" as const },
   ];
 
-  const mySlot = slots.find((s) => !s.player.isGuest && s.player.id === memberId);
-  if (!mySlot) return null;
+  const mySlots = slots.filter((s) => !s.player.isGuest && s.player.id === memberId);
+  if (mySlots.length === 0) return null;
+  if (mySlots.length > 1) return null; // 데이터 오류 방어: 한 회원이 여러 슬롯에 중복 등록된 경기는 제외
 
+  const mySlot = mySlots[0];
   const partnerSlot = slots.find((s) => s.team === mySlot.team && s.player.id !== memberId);
   const opponentSlots = slots.filter((s) => s.team !== mySlot.team);
 
@@ -103,6 +142,10 @@ export async function fetchMemberRecentMatches(
 ): Promise<MemberMatchSummary[]> {
   const supabase = createClient();
 
+  // 같은 회원이 양쪽 슬롯에 중복으로 들어간 데이터 오류 건이 필터링될 수 있으므로,
+  // 요청한 개수보다 여유 있게 가져온 뒤 정확히 limit개로 자른다.
+  const fetchBuffer = limit * 2;
+
   const { data } = await supabase
     .from("matches")
     .select(MATCH_SELECT_WITH_PLAYERS)
@@ -111,12 +154,13 @@ export async function fetchMemberRecentMatches(
     )
     .order("played_at", { ascending: false })
     .order("created_at", { ascending: false })
-    .limit(limit);
+    .limit(fetchBuffer);
 
   const matches = toDisplayMatches(data);
   return matches
     .map((match) => summarizeMatchForMember(match, memberId))
-    .filter((summary): summary is MemberMatchSummary => summary !== null);
+    .filter((summary): summary is MemberMatchSummary => summary !== null)
+    .slice(0, limit);
 }
 
 /** 회원의 최근 출석 N건. attendance_sessions를 조인해 세션명/상태를 함께 가져온다. */
@@ -188,7 +232,7 @@ export async function fetchMemberRecentPointHistory(
 
   const { data } = await supabase
     .from("point_history")
-    .select("id, created_at, point_change, reason")
+    .select("id, created_at, point_change, reason, match_id")
     .eq("member_id", memberId)
     .order("created_at", { ascending: false })
     .limit(limit);
@@ -198,6 +242,7 @@ export async function fetchMemberRecentPointHistory(
     createdAt: row.created_at,
     pointChange: row.point_change,
     reason: row.reason,
+    matchId: row.match_id,
   }));
 }
 

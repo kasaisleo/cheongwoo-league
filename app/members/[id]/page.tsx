@@ -14,6 +14,7 @@ import {
   fetchMemberRecentPointHistory,
   fetchMemberRecentPartners,
   pointHistoryReasonLabel,
+  groupPointHistoryByMatch,
 } from "@/lib/member-activity";
 import { notFound } from "next/navigation";
 import type { MemberWithStats } from "@/lib/supabase/database.types";
@@ -85,12 +86,8 @@ export default async function MemberDetailPage({ params }: MemberDetailPageProps
           <p className="mt-1 text-[11px] font-semibold uppercase tracking-widest text-line-500">LP</p>
         </div>
 
-        {/* 우선 노출 지표: LP / 마포구 점수 / 경기수 / 승률 */}
-        <div className="grid grid-cols-4 gap-2 px-5 py-4 text-center">
-          <div>
-            <p className="font-score text-xl font-bold text-clay-400">{typedMember.league_point}</p>
-            <p className="text-xs text-line-500">LP</p>
-          </div>
+        {/* 우선 노출 지표: 마포구 점수 / 경기수 / 승률 (LP는 위에서 이미 크게 표시됨) */}
+        <div className="grid grid-cols-3 gap-2 px-5 py-4 text-center">
           <div>
             <p className="font-score text-xl font-bold text-court-400">
               {typedMember.mapo_score !== null ? typedMember.mapo_score : "—"}
@@ -224,7 +221,7 @@ export default async function MemberDetailPage({ params }: MemberDetailPageProps
             <p className="font-score text-xl font-bold text-line-900">
               {attendanceRate.overallRate !== null ? `${attendanceRate.overallRate}%` : "—"}
             </p>
-            <p className="text-xs text-line-500">전체 출석률</p>
+            <p className="text-xs text-line-500">전체 출석률 ({attendanceRate.overallCount}회)</p>
           </Card>
           <Card className="p-3 text-center">
             <p className="font-score text-xl font-bold text-line-900">
@@ -250,22 +247,37 @@ export default async function MemberDetailPage({ params }: MemberDetailPageProps
           <Card className="p-4 text-center text-sm text-line-400">LP 변동 내역이 없습니다.</Card>
         ) : (
           <div className="space-y-2">
-            {recentPointHistory.map((entry) => (
-              <Card key={entry.id} className="flex items-center justify-between p-3">
-                <span className="text-xs text-line-500">
-                  {new Date(entry.createdAt).toLocaleDateString("ko-KR")}
-                </span>
-                <span className="text-xs font-semibold text-line-700">
-                  {pointHistoryReasonLabel(entry.reason)}
-                </span>
-                <span
-                  className={`font-score text-sm font-bold ${
-                    entry.pointChange > 0 ? "text-court-400" : entry.pointChange < 0 ? "text-fault-400" : "text-line-500"
-                  }`}
-                >
-                  {entry.pointChange > 0 ? "+" : ""}
-                  {entry.pointChange} LP
-                </span>
+            {groupPointHistoryByMatch(recentPointHistory).map((group) => (
+              <Card key={group.key} className="p-3">
+                {group.entries.length > 1 && (
+                  <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-amber-400">
+                    같은 경기에 대한 변동 {group.entries.length}건
+                  </p>
+                )}
+                <div className="space-y-1.5">
+                  {group.entries.map((entry) => (
+                    <div key={entry.id} className="flex items-center justify-between">
+                      <span className="text-xs text-line-500">
+                        {new Date(entry.createdAt).toLocaleDateString("ko-KR")}
+                      </span>
+                      <span className="text-xs font-semibold text-line-700">
+                        {pointHistoryReasonLabel(entry.reason)}
+                      </span>
+                      <span
+                        className={`font-score text-sm font-bold ${
+                          entry.pointChange > 0
+                            ? "text-court-400"
+                            : entry.pointChange < 0
+                            ? "text-fault-400"
+                            : "text-line-500"
+                        }`}
+                      >
+                        {entry.pointChange > 0 ? "+" : ""}
+                        {entry.pointChange} LP
+                      </span>
+                    </div>
+                  ))}
+                </div>
               </Card>
             ))}
           </div>
@@ -281,10 +293,7 @@ export default async function MemberDetailPage({ params }: MemberDetailPageProps
           <div className="space-y-1.5">
             {recentPartners.map((partner) => (
               <Card key={`${partner.isGuest ? "guest" : "member"}:${partner.id}`} className="flex items-center justify-between p-3">
-                <span className="text-sm font-medium text-line-900">
-                  {partner.nickname}
-                  {partner.isGuest && <span className="ml-1 text-xs text-court-400">G</span>}
-                </span>
+                <span className="text-sm font-medium text-line-900">{partner.nickname}</span>
                 <span className="text-xs font-semibold text-line-500">{partner.count}회</span>
               </Card>
             ))}
