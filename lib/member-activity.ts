@@ -163,7 +163,16 @@ export async function fetchMemberRecentMatches(
     .slice(0, limit);
 }
 
-/** 회원의 최근 출석 N건. attendance_sessions를 조인해 세션명/상태를 함께 가져온다. */
+/**
+ * 회원의 최근 출석 N건. attendance_sessions를 조인해 세션명/상태를 함께 가져온다.
+ *
+ * 정책: status='attending'인 row만 노출한다. attendance row가 있다는 사실
+ * 자체가 아니라 "실제로 참석했다"는 상태만 최근 출석으로 인정한다 — 출석을
+ * 체크한 뒤 취소해서 absent/undecided로 바뀐 경우는 더 이상 노출되지 않아야
+ * 한다("출석 취소 시 최근 출석에서도 제외" 정책). 반대로 attending으로
+ * 남아있는 기록은 그 세션이 closed/archived가 되어도 계속 노출된다 — 이
+ * 필터는 세션 상태가 아니라 attendance.status만 본다.
+ */
 export async function fetchMemberRecentAttendance(
   memberId: string,
   limit: number = RECENT_ATTENDANCE_LIMIT
@@ -177,6 +186,7 @@ export async function fetchMemberRecentAttendance(
        session:attendance_sessions!attendance_session_id_fkey(session_date, session_day, title, status)`
     )
     .eq("member_id", memberId)
+    .eq("status", "attending")
     .order("event_date", { ascending: false })
     .limit(limit);
 
