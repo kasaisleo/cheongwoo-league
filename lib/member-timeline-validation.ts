@@ -5,6 +5,7 @@ import {
   isValidDivisionForAssociation,
   isValidResult,
 } from "@/lib/constants/member-timeline";
+import type { createServiceClient } from "@/lib/supabase/server";
 
 export interface TimelinePayloadInput {
   timelineType: string;
@@ -78,7 +79,7 @@ export function validateTimelinePayload(
 /**
  * event_year/event_month로부터 호환용 event_date 컬럼 값을 합성한다.
  * 정렬·그룹화 로직이 event_date(텍스트, "YYYY-MM-DD")에 의존하므로, day는
- * 항상 "01"로 고정한 placeholder다 — 실제 날짜가 1일이라는 의미가 아니다.
+ * 항상 "01"로 고정한 placeholder다 — 실제 날짜가 1일이라는 의미이 아니다.
  * 화면 표시나 "월을 아는지" 판단에는 이 값을 절대 쓰지 않고 event_year/
  * event_month를 직접 사용해야 한다.
  */
@@ -86,4 +87,36 @@ export function buildEventDate(eventYear: number | null, eventMonth: number | nu
   if (eventYear === null) return null;
   const month = eventMonth ?? 1;
   return `${eventYear}-${String(month).padStart(2, "0")}-01`;
+}
+
+/**
+ * 대표 커리어(is_highlight) 단일성 보장.
+ *
+ * 정책: 회원당 대표 커리어는 1개만 허용한다. DB unique constraint 대신
+ * API 레벨에서 보장한다 — partial unique index는 "끄기"와 "켜기"가 분리된
+ * 두 단계 사이에 일시적으로 제약을 위반하는 구간이 생길 수 있어 복잡도가
+ * 늘어나고, 운영 중인 클럽 내부 도구 규모에서는 과한 설계다. 필요해지면
+ * 별도 마이그레이션으로 재검토한다.
+ *
+ * isHighlight가 true로 저장/수정되는 경우에만 호출한다 — false로 저장하는
+ * 건 기존 대표 커리어에 영향을 주지 않으므로 호출할 필요가 없다.
+ *
+ * @param excludeId PUT(수정)일 때 자기 자신의 row id. 자기 자신까지 끄면
+ *   "자신을 대표로 설정"하는 흐름이 깨지므로 제외한다. POST(신규 생성)는
+ *   아직 id가 없으므로 undefined를 넘긴다.
+ */
+export async function ensureSingleHighlight(
+  supabase: ReturnType<typeof createServiceClient>,
+  memberId: string,
+  excludeId?: string
+): Promise<{ error: unknown | null }> {
+  let query = supabase.from("member_timeline").update({ is_highlight: false }).eq("member_id", memberId).eq(
+    "is_highlight",
+    true
+  );
+  if (excludeId) {
+    query = query.neq("id", excludeId);
+  }
+  const { error } = await query;
+  return { error };
 }

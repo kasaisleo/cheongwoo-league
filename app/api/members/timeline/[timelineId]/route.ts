@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { isAdminSession } from "@/lib/admin-auth";
-import { validateTimelinePayload, buildEventDate } from "@/lib/member-timeline-validation";
+import { validateTimelinePayload, buildEventDate, ensureSingleHighlight } from "@/lib/member-timeline-validation";
 
 interface UpdateTimelineBody {
   timelineType: string;
@@ -77,6 +77,27 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
   }
 
   const supabase = createServiceClient();
+
+  // 대표 커리어(is_highlight) 단일성 보장: true로 수정하는 경우에만,
+  // 같은 회원의 다른 기존 대표를 먼저 끈다. PUT body에는 member_id가
+  // 없으므로(row 자체에 이미 있는 값이라 수정 대상이 아님) 먼저 조회한다.
+  // false로 두는 건 기존 대표에 영향이 없으니 이 단계 자체를 건너뛴다.
+  if (isHighlight) {
+    const { data: target, error: lookupError } = await supabase
+      .from("member_timeline")
+      .select("member_id")
+      .eq("id", timelineId)
+      .single();
+
+    if (lookupError || !target) {
+      return NextResponse.json({ error: "수정할 항목을 찾을 수 없습니다." }, { status: 404 });
+    }
+
+    const { error: clearError } = await ensureSingleHighlight(supabase, target.member_id, timelineId);
+    if (clearError) {
+      return NextResponse.json({ error: "대표 커리어 갱신에 실패했습니다." }, { status: 500 });
+    }
+  }
 
   const { data: updated, error: updateError } = await supabase
     .from("member_timeline")

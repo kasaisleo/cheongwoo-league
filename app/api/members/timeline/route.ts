@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { isAdminSession } from "@/lib/admin-auth";
-import { validateTimelinePayload, buildEventDate } from "@/lib/member-timeline-validation";
+import { validateTimelinePayload, buildEventDate, ensureSingleHighlight } from "@/lib/member-timeline-validation";
 
 interface CreateTimelineBody {
   memberId: string;
@@ -97,6 +97,17 @@ export async function POST(request: NextRequest) {
   }
 
   const supabase = createServiceClient();
+
+  // 대표 커리어(is_highlight) 단일성 보장: true로 새로 만드는 경우에만,
+  // 같은 회원의 기존 대표를 먼저 끈다. false로 만드는 건 기존 대표에
+  // 영향이 없으니 건드리지 않는다. 신규 생성이라 아직 자기 자신의 id가
+  // 없으므로 excludeId는 넘기지 않는다.
+  if (isHighlight) {
+    const { error: clearError } = await ensureSingleHighlight(supabase, memberId);
+    if (clearError) {
+      return NextResponse.json({ error: "대표 커리어 갱신에 실패했습니다." }, { status: 500 });
+    }
+  }
 
   const { data: inserted, error: insertError } = await supabase
     .from("member_timeline")

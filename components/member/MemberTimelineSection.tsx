@@ -41,7 +41,14 @@ export function MemberTimelineSection({ memberId, isAdmin }: MemberTimelineSecti
   function applySavedItem(saved: MemberTimeline) {
     setItems((prev) => {
       const exists = prev.some((item) => item.id === saved.id);
-      const next = exists ? prev.map((item) => (item.id === saved.id ? saved : item)) : [saved, ...prev];
+      let next = exists ? prev.map((item) => (item.id === saved.id ? saved : item)) : [saved, ...prev];
+      // 서버가 단일 대표 커리어를 보장하므로(같은 회원의 기존 대표를 먼저
+      // false로 내린 뒤 이 항목을 true로 저장), 화면도 그 사실을 즉시
+      // 반영해야 한다 — 그러지 않으면 loadTimeline()의 GET 응답이 오기
+      // 전까지 잠깐 "대표"가 두 개로 보이는 상태가 생긴다.
+      if (saved.is_highlight) {
+        next = next.map((item) => (item.id === saved.id ? item : { ...item, is_highlight: false }));
+      }
       return [...next].sort((a, b) => {
         const aYear = a.event_year;
         const bYear = b.event_year;
@@ -85,47 +92,46 @@ export function MemberTimelineSection({ memberId, isAdmin }: MemberTimelineSecti
         )}
       </div>
 
-      {loading ? (
-        <p className="text-center text-sm text-line-400">불러오는 중...</p>
-      ) : items.length === 0 ? (
-        <Card className="p-4 text-center text-sm text-line-400">등록된 커리어 이력이 없습니다.</Card>
-      ) : (
-        <div className="space-y-3">
-          {groups.map((group) => (
-            <div key={group.year}>
-              <p className="mb-1.5 text-sm font-bold text-line-900">{group.year}</p>
-              <div className="space-y-1.5">
-                {group.items.map((item) => (
-                  <Card
-                    key={item.id}
-                    className={`p-3 ${isAdmin ? "cursor-pointer" : ""}`}
-                    onClick={isAdmin ? () => setEditingItem(item) : undefined}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-1.5">
-                        <Badge tone={item.is_highlight ? "clay" : "neutral"}>
-                          {timelineTypeLabel(item.timeline_type)}
-                        </Badge>
-                        {item.result && <Badge tone="court">{item.result}</Badge>}
+        {loading ? (
+          <p className="text-center text-sm text-line-400">불러오는 중...</p>
+        ) : items.length === 0 ? (
+          <Card className="p-4 text-center text-sm text-line-400">등록된 커리어 이력이 없습니다.</Card>
+        ) : (
+          <div className="space-y-3">
+            {groups.map((group) => (
+              <div key={group.year}>
+                <p className="mb-1.5 text-sm font-bold text-line-900">{group.year}</p>
+                <div className="space-y-1.5">
+                  {group.items.map((item) => (
+                    <Card
+                      key={item.id}
+                      className={`p-3 ${isAdmin ? "cursor-pointer" : ""}`}
+                      onClick={isAdmin ? () => setEditingItem(item) : undefined}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1.5">
+                          {item.is_highlight && <Badge tone="clay">대표</Badge>}
+                          <Badge tone="neutral">{timelineTypeLabel(item.timeline_type)}</Badge>
+                          {item.result && <Badge tone="court">{item.result}</Badge>}
+                        </div>
+                        <span className="text-xs text-line-400">
+                          {formatTimelineDate(item.event_year, item.event_month)}
+                        </span>
                       </div>
-                      <span className="text-xs text-line-400">
-                        {formatTimelineDate(item.event_year, item.event_month)}
-                      </span>
-                    </div>
-                    <p className="mt-1.5 text-sm font-semibold text-line-900">{item.title}</p>
-                    {(item.association || item.division) && (
-                      <p className="mt-0.5 text-xs text-line-500">
-                        {[item.association, item.division].filter(Boolean).join(" · ")}
-                      </p>
-                    )}
-                    {item.memo && <p className="mt-1 text-xs text-line-400">{item.memo}</p>}
-                  </Card>
-                ))}
+                      <p className="mt-1.5 text-sm font-semibold text-line-900">{item.title}</p>
+                      {(item.association || item.division) && (
+                        <p className="mt-0.5 text-xs text-line-500">
+                          {[item.association, item.division].filter(Boolean).join(" · ")}
+                        </p>
+                      )}
+                      {item.memo && <p className="mt-1 text-xs text-line-400">{item.memo}</p>}
+                    </Card>
+                  ))}
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
-      )}
+            ))}
+          </div>
+        )}
 
       {showAddModal && (
         <EditTimelineModal
