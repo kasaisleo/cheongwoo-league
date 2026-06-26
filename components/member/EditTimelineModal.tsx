@@ -1,17 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "@/components/ui/Toast";
 import {
   TIMELINE_TYPE_OPTIONS,
-  ASSOCIATION_OPTIONS,
-  RESULT_OPTIONS,
-  divisionOptionsFor,
-  associationHasNoDivision,
   isLegacyTimelineType,
   timelineTypeLabel,
   type AnyTimelineType,
 } from "@/lib/constants/member-timeline";
+import { NO_ASSOCIATION, getTimelineSchema, type TimelineFormValues } from "@/lib/timeline-schemas";
+import { TimelineFieldRenderer } from "@/components/member/TimelineFieldRenderer";
 import type { MemberTimeline } from "@/lib/supabase/database.types";
 
 interface EditTimelineModalProps {
@@ -22,34 +20,73 @@ interface EditTimelineModalProps {
   onSaved: () => void;
 }
 
-const NO_ASSOCIATION = "__none__";
+function initialValues(existing: MemberTimeline | null): TimelineFormValues {
+  return {
+    eventDate: existing?.event_date ?? "",
+    title: existing?.title ?? "",
+    competitionName: "",
+    association: existing?.association ?? NO_ASSOCIATION,
+    division: existing?.division ?? "",
+    result: existing?.result ?? "",
+    leagueName: "",
+    seasonYear: "",
+    role: "",
+    memo: existing?.memo ?? "",
+    isHighlight: existing?.is_highlight ?? false,
+  };
+}
 
 export function EditTimelineModal({ memberId, existing, onClose, onSaved }: EditTimelineModalProps) {
   // 기존 row가 legacy 값(achievement/attendance)을 갖고 있을 수 있어 초기값은
-  // AnyTimelineType으로 받는다. 사용자가 버튼을 눌러 종류를 바꾸면 신규 값(TimelineType)만
+  // AnyTimelineType으로 받는다. 사용자가 버튼을 눌러 종류를 바꾸면 신규 값만
   // 선택 가능하므로, 그 시점부터는 자연스럽게 신규 값으로 좁혀진다.
   const [timelineType, setTimelineType] = useState<AnyTimelineType>(
     (existing?.timeline_type as AnyTimelineType) ?? "competition"
   );
-  const isLegacySelected = isLegacyTimelineType(timelineType);
-  const [eventDate, setEventDate] = useState(existing?.event_date ?? "");
-  const [title, setTitle] = useState(existing?.title ?? "");
-  const [association, setAssociation] = useState<string>(existing?.association ?? NO_ASSOCIATION);
-  const [division, setDivision] = useState<string>(existing?.division ?? "");
-  const [result, setResult] = useState<string>(existing?.result ?? "");
-  const [memo, setMemo] = useState(existing?.memo ?? "");
-  const [isHighlight, setIsHighlight] = useState(existing?.is_highlight ?? false);
+  const [values, setValues] = useState<TimelineFormValues>(() => initialValues(existing));
+  // title 자동생성 on/off. 기존 항목을 수정할 때는 이미 저장된 title을
+  // 덮어쓰지 않기 위해 항상 manual로 시작하고, 신규 추가일 때만 auto로 시작한다.
+  const [titleMode, setTitleMode] = useState<"auto" | "manual">(existing ? "manual" : "auto");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const isAssociationSelected = association !== NO_ASSOCIATION;
-  const divisionOptions = isAssociationSelected ? divisionOptionsFor(association) : [];
-  const showDivisionSelect = isAssociationSelected && !associationHasNoDivision(association);
+  const isLegacySelected = isLegacyTimelineType(timelineType);
+  const schema = useMemo(() => getTimelineSchema(timelineType), [timelineType]);
 
-  function handleAssociationChange(value: string) {
-    setAssociation(value);
-    setDivision(""); // association이 바뀌면 division 선택은 항상 초기화
+  function updateValues(patch: Partial<TimelineFormValues>) {
+    setValues((prev) => {
+      const next = { ...prev, ...patch };
+      if (titleMode === "auto") {
+        const autoTitle = schema.buildTitle(next);
+        if (autoTitle !== null) {
+          next.title = autoTitle;
+        }
+      }
+      return next;
+    });
   }
+
+  function handleTimelineTypeChange(nextType: AnyTimelineType) {
+    setTimelineType(nextType);
+    setTitleMode("auto");
+    setValues((prev) => {
+      // 종류가 바뀌면 그 종류 전용 재료(대회명/리그명/시즌/직책)는 의미가 없어지므로
+      // 초기화한다. association/division/result/memo/날짜는 career ↔ competition처럼
+      // 종류 간에도 의미가 통하는 경우가 많아 그대로 유지한다.
+      const reset = { ...prev, competitionName: "", leagueName: "", seasonYear: "", role: "" };
+      // setTimelineType과 setValues가 같은 렌더에서 batching되더라도 title이 한 텀
+      // 늦게 갱신되지 않도록, 새 종류의 schema로 즉시 title을 다시 계산한다.
+      const nextSchema = getTimelineSchema(nextType);
+      const autoTitle = nextSchema.buildTitle(reset);
+      return autoTitle !== null ? { ...reset, title: autoTitle } : { ...reset, title: "" };
+    });
+  }
+
+  function handleTitleManualEdit() {
+    setTitleMode("manual");
+  }
+
+  const isAssociationSelected = values.association !== NO_ASSOCIATION;
 
   async function handleDelete() {
     if (!existing) return;
@@ -71,7 +108,7 @@ export function EditTimelineModal({ memberId, existing, onClose, onSaved }: Edit
   }
 
   async function handleSubmit() {
-    if (!title.trim()) {
+    if (!values.title.trim()) {
       toast.error("제목을 입력해주세요.");
       return;
     }
@@ -79,16 +116,24 @@ export function EditTimelineModal({ memberId, existing, onClose, onSaved }: Edit
     setSubmitting(true);
     setError(null);
 
+    // schema.fields에 association/division/result가 없는 종류(join/league/system/custom
+    // 등)라도, 만약 기존 값이 남아있다면 그대로 보존하지 않고 정직하게 비워서 보낸다 —
+    // 화면에 보이지 않는 필드는 저장도 되지 않아야 "보이는 대로 저장된다"는 원칙이 유지된다.
+    const fieldSet = new Set(schema.fields);
+    const association = fieldSet.has("association") && isAssociationSelected ? values.association : null;
+    const division = fieldSet.has("division") && values.division ? values.division : null;
+    const result = fieldSet.has("result") && values.result ? values.result : null;
+
     const payload = {
       memberId,
       timelineType,
-      eventDate: eventDate.trim() || null,
-      title: title.trim(),
-      association: isAssociationSelected ? association : null,
-      division: showDivisionSelect && division ? division : null,
-      result: result || null,
-      memo: memo.trim() || null,
-      isHighlight,
+      eventDate: values.eventDate.trim() || null,
+      title: values.title.trim(),
+      association,
+      division,
+      result,
+      memo: values.memo.trim() || null,
+      isHighlight: values.isHighlight,
     };
 
     const res = existing
@@ -143,7 +188,7 @@ export function EditTimelineModal({ memberId, existing, onClose, onSaved }: Edit
                 <button
                   key={option.value}
                   type="button"
-                  onClick={() => setTimelineType(option.value)}
+                  onClick={() => handleTimelineTypeChange(option.value)}
                   className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${
                     timelineType === option.value
                       ? "border-clay-400 bg-clay-400 text-line-25"
@@ -156,96 +201,22 @@ export function EditTimelineModal({ memberId, existing, onClose, onSaved }: Edit
             </div>
           </div>
 
-          <div>
-            <label className="mb-1 block text-xs font-semibold text-line-600">
-              날짜 (모르면 비워두세요 — "날짜 미상"으로 표시됩니다)
-            </label>
-            <input
-              type="date"
-              value={eventDate}
-              onChange={(e) => setEventDate(e.target.value)}
-              className="box-border block h-11 w-full min-w-0 max-w-full rounded-lg border border-line-200 bg-line-25 px-3 text-sm text-line-900"
+          {schema.fields.map((field) => (
+            <TimelineFieldRenderer
+              key={field}
+              field={field}
+              values={values}
+              onChange={updateValues}
+              titlePlaceholder={schema.titlePlaceholder}
+              onTitleManualEdit={handleTitleManualEdit}
             />
-          </div>
-
-          <div>
-            <label className="mb-1 block text-xs font-semibold text-line-600">제목 *</label>
-            <input
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="예: 2025 강서오픈, 청우회 가입"
-              className="box-border block h-11 w-full min-w-0 max-w-full rounded-lg border border-line-200 bg-line-25 px-3 text-sm text-line-900 placeholder:text-line-400"
-            />
-          </div>
-
-          <div>
-            <label className="mb-1 block text-xs font-semibold text-line-600">대회 구분 (대회 이력이 아니면 비워두세요)</label>
-            <select
-              value={association}
-              onChange={(e) => handleAssociationChange(e.target.value)}
-              className="h-11 w-full rounded-lg border border-line-200 bg-line-25 px-3 text-sm text-line-900"
-            >
-              <option value={NO_ASSOCIATION}>선택 안 함</option>
-              {ASSOCIATION_OPTIONS.map((a) => (
-                <option key={a} value={a}>
-                  {a}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {showDivisionSelect && (
-            <div>
-              <label className="mb-1 block text-xs font-semibold text-line-600">부서</label>
-              <select
-                value={division}
-                onChange={(e) => setDivision(e.target.value)}
-                className="h-11 w-full rounded-lg border border-line-200 bg-line-25 px-3 text-sm text-line-900"
-              >
-                <option value="">선택 안 함</option>
-                {divisionOptions.map((d) => (
-                  <option key={d} value={d}>
-                    {d}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-
-          {isAssociationSelected && (
-            <div>
-              <label className="mb-1 block text-xs font-semibold text-line-600">결과</label>
-              <select
-                value={result}
-                onChange={(e) => setResult(e.target.value)}
-                className="h-11 w-full rounded-lg border border-line-200 bg-line-25 px-3 text-sm text-line-900"
-              >
-                <option value="">선택 안 함</option>
-                {RESULT_OPTIONS.map((r) => (
-                  <option key={r} value={r}>
-                    {r}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-
-          <div>
-            <label className="mb-1 block text-xs font-semibold text-line-600">메모</label>
-            <textarea
-              value={memo}
-              onChange={(e) => setMemo(e.target.value)}
-              rows={2}
-              placeholder="예: 복식, 파트너 홍길동"
-              className="box-border block w-full min-w-0 max-w-full resize-none rounded-lg border border-line-200 bg-line-25 px-3 py-2 text-sm text-line-900 placeholder:text-line-400"
-            />
-          </div>
+          ))}
 
           <label className="flex items-center gap-2 text-xs font-semibold text-line-600">
             <input
               type="checkbox"
-              checked={isHighlight}
-              onChange={(e) => setIsHighlight(e.target.checked)}
+              checked={values.isHighlight}
+              onChange={(e) => updateValues({ isHighlight: e.target.checked })}
             />
             대표 커리어로 표시
           </label>
