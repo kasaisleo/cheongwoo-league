@@ -51,9 +51,25 @@ export function EditTimelineModal({ memberId, existing, onClose, onSaved, onDele
     (existing?.timeline_type as AnyTimelineType) ?? "competition"
   );
   const [values, setValues] = useState<TimelineFormValues>(() => initialValues(existing));
-  // title 자동생성 on/off. 기존 항목을 수정할 때는 이미 저장된 title을
-  // 덮어쓰지 않기 위해 항상 manual로 시작하고, 신규 추가일 때만 auto로 시작한다.
-  const [titleMode, setTitleMode] = useState<"auto" | "manual">(existing ? "manual" : "auto");
+  // title 자동생성 on/off. 이 모드는 "사용자가 title 입력칸을 직접 건드렸는가"만
+  // 추적해야 한다 — add냐 edit이냐는 무관하다.
+  //
+  // edit 진입 시 초기값을 정할 때 한 가지 더 따진다: 기존 title이 "당시
+  // 자동조립 규칙으로 만들어졌을 법한 값"과 일치하는지를 본다.
+  //   - 일치하면(또는 add 모드라면) auto로 시작 → 필드를 바꾸면 title도 같이
+  //     갱신된다. 아무 필드도 안 바꾸면 buildTitle이 호출될 일이 없어 기존
+  //     title이 자연히 그대로 보존된다.
+  //   - 불일치하면(사용자가 예전에 title을 직접 고쳐서 자동조립 결과와 달라진
+  //     경우) manual로 시작 → 필드를 바꿔도 그 수동 문구를 함부로 덮어쓰지
+  //     않는다. 이 경우 자동생성을 다시 쓰려면 사용자가 title을 지우고 다시
+  //     입력해야 한다(의도적 트레이드오프).
+  const [titleMode, setTitleMode] = useState<"auto" | "manual">(() => {
+    if (!existing) return "auto";
+    const initial = initialValues(existing);
+    const initialSchema = getTimelineSchema(existing.timeline_type as AnyTimelineType);
+    const expectedTitle = initialSchema.buildTitle(initial);
+    return expectedTitle !== null && expectedTitle === existing.title ? "auto" : "manual";
+  });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
