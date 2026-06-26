@@ -12,6 +12,12 @@ interface CreateTimelineBody {
   eventMonth: number | null;
   title: string;
   description?: string | null;
+  /** 대회명 원본 (competition 타입). title 자동조립의 source. */
+  competitionName?: string | null;
+  /** 리그명 원본 (league 타입). title 자동조립의 source. */
+  leagueName?: string | null;
+  /** 직책 원본 (system 타입, 현재 비활성). title 자동조립의 source. */
+  role?: string | null;
   association?: string | null;
   division?: string | null;
   result?: string | null;
@@ -57,6 +63,9 @@ export async function POST(request: NextRequest) {
     eventMonth,
     title,
     description,
+    competitionName,
+    leagueName,
+    role,
     association,
     division,
     result,
@@ -102,6 +111,9 @@ export async function POST(request: NextRequest) {
       event_date: buildEventDate(normalizedEventYear, normalizedEventMonth),
       title: title.trim(),
       description: description?.trim() || null,
+      competition_name: competitionName?.trim() || null,
+      league_name: leagueName?.trim() || null,
+      role: role?.trim() || null,
       association: normalizedAssociation,
       division: normalizedDivision,
       result: normalizedResult,

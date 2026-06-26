@@ -5,5 +5,6 @@ export const customSchema: TimelineSchema = {
   type: "custom",
   fields: ["eventYear", "eventMonth", "title", "memo"],
   titlePlaceholder: "예: 자유 입력",
+  supportsAutoTitle: false,
   buildTitle: () => null,
 };

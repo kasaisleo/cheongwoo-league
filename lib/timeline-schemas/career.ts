@@ -23,5 +23,6 @@ export const careerSchema: TimelineSchema = {
   type: "career",
   fields: ["eventYear", "eventMonth", "association", "division", "result", "title", "memo"],
   titlePlaceholder: "예: KATA 오픈부 우승 (협회/결과 선택 시 자동 채워짐)",
+  supportsAutoTitle: true,
   buildTitle: (values) => buildAssociationResultTitle(values),
 };

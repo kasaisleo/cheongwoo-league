@@ -5,5 +5,6 @@ export const joinSchema: TimelineSchema = {
   type: "join",
   fields: ["eventYear", "eventMonth", "title", "memo"],
   titlePlaceholder: "예: 청우회 가입",
+  supportsAutoTitle: false,
   buildTitle: () => null,
 };

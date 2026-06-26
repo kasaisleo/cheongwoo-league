@@ -121,6 +121,12 @@ export interface MemberTimeline {
   event_month: number | null;
   title: string;
   description: string | null;
+  /** 대회명 원본 (competition 타입). title 자동조립의 source — title을 파싱해 복원하지 않고 이 컬럼으로 edit 폼을 채운다. */
+  competition_name: string | null;
+  /** 리그명 원본 (league 타입). title 자동조립의 source. */
+  league_name: string | null;
+  /** 직책 원본 (system 타입, 현재 비활성). title 자동조립의 source. */
+  role: string | null;
   association: string | null;
   division: string | null;
   result: string | null;

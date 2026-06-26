@@ -32,12 +32,15 @@ function initialValues(existing: MemberTimeline | null): TimelineFormValues {
     eventYear: existing?.event_year != null ? String(existing.event_year) : "",
     eventMonth: existing?.event_month != null ? String(existing.event_month) : "",
     title: existing?.title ?? "",
-    competitionName: "",
+    // competitionName/leagueName/role은 이제 title을 파싱해서 복원하지 않고
+    // DB 원본 컬럼(competition_name/league_name/role)에서 그대로 가져온다 —
+    // 이게 이 값들의 source of truth이고, title은 여기서 파생된 결과물이다.
+    competitionName: existing?.competition_name ?? "",
     association: existing?.association ?? NO_ASSOCIATION,
     division: existing?.division ?? "",
     result: existing?.result ?? "",
-    leagueName: "",
-    role: "",
+    leagueName: existing?.league_name ?? "",
+    role: existing?.role ?? "",
     memo: existing?.memo ?? "",
     isHighlight: existing?.is_highlight ?? false,
   };
@@ -51,25 +54,18 @@ export function EditTimelineModal({ memberId, existing, onClose, onSaved, onDele
     (existing?.timeline_type as AnyTimelineType) ?? "competition"
   );
   const [values, setValues] = useState<TimelineFormValues>(() => initialValues(existing));
-  // title 자동생성 on/off. 이 모드는 "사용자가 title 입력칸을 직접 건드렸는가"만
-  // 추적해야 한다 — add냐 edit이냐는 무관하다.
+  // title 자동생성 on/off. add든 edit이든 항상 "auto"로 시작한다 — "기존
+  // title이 자동조립 규칙과 일치하는가"로 추측하는 방식은 쓰지 않는다. 그
+  // 추측은 필드가 바뀌는 순간 거의 항상 불일치로 판정되어버리는 근본적
+  // 결함이 있었다(연도를 2024→2027로 바꾸면 "2024 ..."였던 title은 새
+  // 필드값 기준 재계산과 당연히 달라지므로, 그게 "원래 수동입력이었다"는
+  // 뜻이 아니다).
   //
-  // edit 진입 시 초기값을 정할 때 한 가지 더 따진다: 기존 title이 "당시
-  // 자동조립 규칙으로 만들어졌을 법한 값"과 일치하는지를 본다.
-  //   - 일치하면(또는 add 모드라면) auto로 시작 → 필드를 바꾸면 title도 같이
-  //     갱신된다. 아무 필드도 안 바꾸면 buildTitle이 호출될 일이 없어 기존
-  //     title이 자연히 그대로 보존된다.
-  //   - 불일치하면(사용자가 예전에 title을 직접 고쳐서 자동조립 결과와 달라진
-  //     경우) manual로 시작 → 필드를 바꿔도 그 수동 문구를 함부로 덮어쓰지
-  //     않는다. 이 경우 자동생성을 다시 쓰려면 사용자가 title을 지우고 다시
-  //     입력해야 한다(의도적 트레이드오프).
-  const [titleMode, setTitleMode] = useState<"auto" | "manual">(() => {
-    if (!existing) return "auto";
-    const initial = initialValues(existing);
-    const initialSchema = getTimelineSchema(existing.timeline_type as AnyTimelineType);
-    const expectedTitle = initialSchema.buildTitle(initial);
-    return expectedTitle !== null && expectedTitle === existing.title ? "auto" : "manual";
-  });
+  // 대신 manual 전환은 오직 "직접 수정" 버튼 클릭(handleSwitchToManualTitle)
+  // 이라는 명시적 행동으로만 일어난다 — 그래서 auto/manual 여부가 항상
+  // 명확하다. supportsAutoTitle이 false인 종류(join/custom 등)는 처음부터
+  // 자유 입력 필드로 보여주므로 이 모드 구분 자체가 화면에 노출되지 않는다.
+  const [titleMode, setTitleMode] = useState<"auto" | "manual">("auto");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -79,12 +75,8 @@ export function EditTimelineModal({ memberId, existing, onClose, onSaved, onDele
   function updateValues(patch: Partial<TimelineFormValues>) {
     setValues((prev) => {
       const next = { ...prev, ...patch };
-      // patch에 title이 직접 들어있다면 "사용자가 title 칸을 고친" 경우다.
-      // 이때는 setTitleMode("manual") 호출이 같은 이벤트 핸들러 안에서 비동기로
-      // 배치되어, 이 함수 내부의 titleMode가 아직 이전 값("auto")인 race
-      // condition이 생길 수 있다. patch 자체에 title이 있으면 그 값을 최종으로
-      // 보고 buildTitle로 덮어쓰지 않는다 — 그래야 사용자가 첫 글자를 입력하는
-      // 순간 즉시 지워지는 버그가 생기지 않는다.
+      // patch에 title이 직접 들어있으면(manual 모드의 title 입력칸에서만
+      // 발생) 그 값을 최종으로 보고 buildTitle로 덮어쓰지 않는다 — 안전망.
       const isDirectTitleEdit = Object.prototype.hasOwnProperty.call(patch, "title");
       if (titleMode === "auto" && !isDirectTitleEdit) {
         const autoTitle = schema.buildTitle(next);
@@ -112,7 +104,8 @@ export function EditTimelineModal({ memberId, existing, onClose, onSaved, onDele
     });
   }
 
-  function handleTitleManualEdit() {
+  /** "직접 수정" 버튼 클릭 시 호출 — 이 명시적 행동으로만 manual로 전환된다. */
+  function handleSwitchToManualTitle() {
     setTitleMode("manual");
   }
 
@@ -160,6 +153,13 @@ export function EditTimelineModal({ memberId, existing, onClose, onSaved, onDele
     const association = fieldSet.has("association") && isAssociationSelected ? values.association : null;
     const division = fieldSet.has("division") && values.division ? values.division : null;
     const result = fieldSet.has("result") && values.result ? values.result : null;
+    // competitionName/leagueName/role도 이제 DB에 저장되는 원본 컬럼이라
+    // 같은 원칙을 적용한다 — 화면에 그 필드가 없는 종류라면 null로 보낸다.
+    const competitionName = fieldSet.has("competitionName") && values.competitionName.trim()
+      ? values.competitionName.trim()
+      : null;
+    const leagueName = fieldSet.has("leagueName") && values.leagueName.trim() ? values.leagueName.trim() : null;
+    const role = fieldSet.has("role") && values.role.trim() ? values.role.trim() : null;
 
     // eventYear가 비어있으면 "날짜 전체 모름"이고, 이 경우 eventMonth도 항상
     // null로 보낸다(연도 없이 월만 있는 입력은 의미가 모호해 서버 validation도
@@ -173,6 +173,9 @@ export function EditTimelineModal({ memberId, existing, onClose, onSaved, onDele
       eventYear,
       eventMonth,
       title: values.title.trim(),
+      competitionName,
+      leagueName,
+      role,
       association,
       division,
       result,
@@ -261,7 +264,9 @@ export function EditTimelineModal({ memberId, existing, onClose, onSaved, onDele
               values={values}
               onChange={updateValues}
               titlePlaceholder={schema.titlePlaceholder}
-              onTitleManualEdit={handleTitleManualEdit}
+              titleIsAutoGenerated={schema.supportsAutoTitle}
+              titleMode={titleMode}
+              onSwitchToManualTitle={handleSwitchToManualTitle}
             />
           ))}
 

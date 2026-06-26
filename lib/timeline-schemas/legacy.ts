@@ -14,6 +14,7 @@ export function legacySchema(type: LegacyTimelineType): TimelineSchema {
     type,
     fields: ["eventYear", "eventMonth", "association", "division", "result", "title", "memo"],
     titlePlaceholder: "예: 2025 강서오픈, 청우회 가입",
+    supportsAutoTitle: false,
     buildTitle: () => null,
   };
 }

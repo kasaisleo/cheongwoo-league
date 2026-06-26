@@ -11,12 +11,15 @@ import { buildAssociationResultTitle } from "./shared";
  * eventYear(날짜 입력)에서 연도를 가져와 자동으로 앞에 붙인다 — 대회명에는
  * "강서오픈"처럼 연도 없이 입력하면 된다.
  *
- * competitionName은 title 조립 재료일 뿐 DB 컬럼으로 저장되지 않는다.
+ * competitionName은 title 자동조립의 source of truth로 DB(competition_name
+ * 컬럼)에 저장된다 — title은 이 값에서 파생되는 결과물이고, edit 진입 시에는
+ * title을 파싱하지 않고 이 컬럼에서 그대로 복원한다.
  */
 export const competitionSchema: TimelineSchema = {
   type: "competition",
   fields: ["eventYear", "eventMonth", "competitionName", "association", "division", "result", "title", "memo"],
   titlePlaceholder: "예: 2025 강서오픈 KATA 오픈부 우승 (위 항목 입력 시 자동 채워짐)",
+  supportsAutoTitle: true,
   buildTitle: (values) => {
     // 대회명에 연도를 자동으로 붙인다. eventYear가 없으면 대회명만 그대로 둔다
     // (연도를 모르더라도 대회명+결과만으로는 여전히 자동생성이 가능해야 한다).

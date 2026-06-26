@@ -8,13 +8,15 @@ import type { TimelineSchema } from "./types";
  * 예: eventYear=2025, leagueName="청우회 리그", result="준우승"
  *     → "2025 청우회 리그 준우승"
  *
- * leagueName은 title 조립 재료일 뿐 DB 컬럼으로 저장되지 않는다.
+ * leagueName은 title 자동조립의 source of truth로 DB(league_name 컬럼)에
+ * 저장된다 — edit 진입 시 title을 파싱하지 않고 이 컬럼에서 그대로 복원한다.
  * result는 기존 RESULT_OPTIONS를 그대로 쓰고 DB result 컬럼에 저장된다.
  */
 export const leagueSchema: TimelineSchema = {
   type: "league",
   fields: ["eventYear", "eventMonth", "leagueName", "result", "title", "memo"],
   titlePlaceholder: "예: 2025 청우회 리그 준우승 (연도/리그명/결과 입력 시 자동 채워짐)",
+  supportsAutoTitle: true,
   buildTitle: (values) => {
     const parts = [values.eventYear || null, values.leagueName.trim(), values.result || null].filter(
       (part): part is string => Boolean(part && part.trim())

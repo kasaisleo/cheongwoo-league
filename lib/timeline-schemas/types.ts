@@ -15,10 +15,11 @@
 import type { AnyTimelineType } from "@/lib/constants/member-timeline";
 
 /**
- * 폼에서 다루는 입력값 전체. DB 컬럼에 그대로 저장되는 값(association,
- * division, result, memo, title, eventYear, eventMonth)과, title 자동생성
- * "재료"로만 쓰이고 저장되지 않는 값(competitionName, leagueName, role)이
- * 섞여 있다. 어떤 필드가 어느 쪽인지는 각 schema의 fields 배열이 결정한다.
+ * 폼에서 다루는 입력값 전체. 전부 DB 컬럼에 그대로 저장된다(association,
+ * division, result, memo, title, eventYear, eventMonth, competitionName,
+ * leagueName, role). competitionName/leagueName/role은 title 자동조립의
+ * source of truth로, edit 진입 시 title을 파싱하지 않고 이 컬럼들에서
+ * 그대로 복원한다 — title은 이 값들로부터 파생되는 결과물이다.
  */
 export interface TimelineFormValues {
   /** 연도. 정책상 필수 — 빈 문자열은 "아직 선택 안 함"을 의미한다. */
@@ -69,4 +70,16 @@ export interface TimelineSchema {
    * 반환하며, 이 경우 모달은 사용자가 입력한 title을 그대로 둔다.
    */
   buildTitle: (values: TimelineFormValues) => string | null;
+  /**
+   * 이 종류가 title 자동생성을 "지원"하는지 나타내는 정적 플래그
+   * (competition/league는 true, join/custom/legacy는 false).
+   *
+   * "현재 값으로 buildTitle을 호출했더니 null이 나왔다"처럼 런타임에 추측하지
+   * 않고 schema 정의 자체에 명시한다 — 추측 기반 판단은 "이 title이 한때는
+   * 자동생성이었는지"를 알아낼 수 없다는 근본적 한계가 있다(필드가 바뀌면
+   * 과거 title과 안 맞는 게 당연하므로, 그걸로 auto/manual을 가르면 오판한다).
+   * true인 종류는 title 입력칸을 기본적으로 읽기 전용으로 보여주고, 사용자가
+   * "직접 수정" 버튼을 눌러야만 manual로 전환되어 입력 가능해진다.
+   */
+  supportsAutoTitle: boolean;
 }
