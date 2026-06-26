@@ -29,14 +29,14 @@ interface EditTimelineModalProps {
 
 function initialValues(existing: MemberTimeline | null): TimelineFormValues {
   return {
-    eventDate: existing?.event_date ?? "",
+    eventYear: existing?.event_year != null ? String(existing.event_year) : "",
+    eventMonth: existing?.event_month != null ? String(existing.event_month) : "",
     title: existing?.title ?? "",
     competitionName: "",
     association: existing?.association ?? NO_ASSOCIATION,
     division: existing?.division ?? "",
     result: existing?.result ?? "",
     leagueName: "",
-    seasonYear: "",
     role: "",
     memo: existing?.memo ?? "",
     isHighlight: existing?.is_highlight ?? false,
@@ -84,10 +84,10 @@ export function EditTimelineModal({ memberId, existing, onClose, onSaved, onDele
     setTimelineType(nextType);
     setTitleMode("auto");
     setValues((prev) => {
-      // 종류가 바뀌면 그 종류 전용 재료(대회명/리그명/시즌/직책)는 의미가 없어지므로
-      // 초기화한다. association/division/result/memo/날짜는 career ↔ competition처럼
-      // 종류 간에도 의미가 통하는 경우가 많아 그대로 유지한다.
-      const reset = { ...prev, competitionName: "", leagueName: "", seasonYear: "", role: "" };
+      // 종류가 바뀌면 그 종류 전용 재료(대회명/리그명/직책)는 의미가 없어지므로
+      // 초기화한다. eventYear/eventMonth/association/division/result/memo는
+      // career ↔ competition처럼 종류 간에도 의미가 통하는 경우가 많아 그대로 유지한다.
+      const reset = { ...prev, competitionName: "", leagueName: "", role: "" };
       // setTimelineType과 setValues가 같은 렌더에서 batching되더라도 title이 한 텀
       // 늦게 갱신되지 않도록, 새 종류의 schema로 즉시 title을 다시 계산한다.
       const nextSchema = getTimelineSchema(nextType);
@@ -145,10 +145,17 @@ export function EditTimelineModal({ memberId, existing, onClose, onSaved, onDele
     const division = fieldSet.has("division") && values.division ? values.division : null;
     const result = fieldSet.has("result") && values.result ? values.result : null;
 
+    // eventYear가 비어있으면 "날짜 전체 모름"이고, 이 경우 eventMonth도 항상
+    // null로 보낸다(연도 없이 월만 있는 입력은 의미가 모호해 서버 validation도
+    // 막고 있다 — 여기서도 같은 규칙을 지켜 굳이 거부당할 요청을 만들지 않는다).
+    const eventYear = values.eventYear ? Number(values.eventYear) : null;
+    const eventMonth = eventYear && values.eventMonth ? Number(values.eventMonth) : null;
+
     const payload = {
       memberId,
       timelineType,
-      eventDate: values.eventDate.trim() || null,
+      eventYear,
+      eventMonth,
       title: values.title.trim(),
       association,
       division,

@@ -12,7 +12,7 @@ import type { TimelineSchema } from "./types";
 export function legacySchema(type: LegacyTimelineType): TimelineSchema {
   return {
     type,
-    fields: ["association", "division", "result", "title", "memo"],
+    fields: ["eventYear", "eventMonth", "association", "division", "result", "title", "memo"],
     titlePlaceholder: "예: 2025 강서오픈, 청우회 가입",
     buildTitle: () => null,
   };

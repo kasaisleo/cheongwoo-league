@@ -24,11 +24,21 @@ const inputClass =
 const selectClass = "h-11 w-full rounded-lg border border-line-200 bg-line-25 px-3 text-sm text-line-900";
 const labelClass = "mb-1 block text-xs font-semibold text-line-600";
 
-/** 연도 드롭다운 옵션: 올해 기준 -1년 ~ +1년. 운영 중 시즌이 걸쳐있을 수 있어 약간의 여유를 둔다. */
-function seasonYearOptions(): string[] {
+/**
+ * 연도 드롭다운 옵션. 가입/경력처럼 과거 데이터가 많을 수 있어 폭넓게
+ * 잡는다 — 올해 기준 -30년 ~ +1년 (클럽 역사가 그보다 길어지면 이 범위만
+ * 늘리면 된다. DB 자체는 1900~2100을 허용한다).
+ */
+function eventYearOptions(): string[] {
   const currentYear = new Date().getFullYear();
-  return [currentYear + 1, currentYear, currentYear - 1].map(String);
+  const years: string[] = [];
+  for (let y = currentYear + 1; y >= currentYear - 30; y--) {
+    years.push(String(y));
+  }
+  return years;
 }
+
+const MONTH_OPTIONS = Array.from({ length: 12 }, (_, i) => String(i + 1));
 
 /**
  * schema.fields 배열의 한 항목을 실제 입력 UI로 렌더링한다.
@@ -44,18 +54,47 @@ export function TimelineFieldRenderer({
   onTitleManualEdit,
 }: TimelineFieldRendererProps) {
   switch (field) {
-    case "eventDate":
+    case "eventYear":
       return (
         <div>
-          <label className={labelClass}>날짜 (모르면 비워두세요 — &quot;날짜 미상&quot;으로 표시됩니다)</label>
-          <input
-            type="date"
-            value={values.eventDate}
-            onChange={(e) => onChange({ eventDate: e.target.value })}
-            className={inputClass}
-          />
+          <label className={labelClass}>연도 *</label>
+          <select
+            value={values.eventYear}
+            onChange={(e) => {
+              const nextYear = e.target.value;
+              // 연도를 비우면(선택 안 함) 월도 의미가 없어지므로 함께 비운다 —
+              // "연도 없이 월만 아는" 상태는 검증에서도 막혀 있어 UI에서도 만들지 않는다.
+              onChange(nextYear ? { eventYear: nextYear } : { eventYear: "", eventMonth: "" });
+            }}
+            className={selectClass}
+          >
+            <option value="">선택 안 함 (날짜 미상)</option>
+            {eventYearOptions().map((year) => (
+              <option key={year} value={year}>
+                {year}
+              </option>
+            ))}
+          </select>
         </div>
       );
+
+    case "eventMonth": {
+      const yearSelected = Boolean(values.eventYear);
+      if (!yearSelected) return null; // 연도를 모르면 월 선택 자체가 의미 없어 숨긴다.
+      return (
+        <div>
+          <label className={labelClass}>월 (모르면 비워두세요)</label>
+          <select value={values.eventMonth} onChange={(e) => onChange({ eventMonth: e.target.value })} className={selectClass}>
+            <option value="">모름</option>
+            {MONTH_OPTIONS.map((month) => (
+              <option key={month} value={month}>
+                {month}월
+              </option>
+            ))}
+          </select>
+        </div>
+      );
+    }
 
     case "title":
       return (
@@ -80,7 +119,7 @@ export function TimelineFieldRenderer({
           <input
             value={values.competitionName}
             onChange={(e) => onChange({ competitionName: e.target.value })}
-            placeholder="예: 2025 강서오픈"
+            placeholder="예: 강서오픈 (연도는 위 날짜에서 자동으로 붙어요)"
             className={inputClass}
           />
         </div>
@@ -156,21 +195,6 @@ export function TimelineFieldRenderer({
             placeholder="예: 청우회 리그"
             className={inputClass}
           />
-        </div>
-      );
-
-    case "seasonYear":
-      return (
-        <div>
-          <label className={labelClass}>시즌</label>
-          <select value={values.seasonYear} onChange={(e) => onChange({ seasonYear: e.target.value })} className={selectClass}>
-            <option value="">선택 안 함</option>
-            {seasonYearOptions().map((year) => (
-              <option key={year} value={year}>
-                {year}
-              </option>
-            ))}
-          </select>
         </div>
       );
 

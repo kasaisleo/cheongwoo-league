@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { isAdminSession } from "@/lib/admin-auth";
-import { validateTimelinePayload } from "@/lib/member-timeline-validation";
+import { validateTimelinePayload, buildEventDate } from "@/lib/member-timeline-validation";
 
 interface UpdateTimelineBody {
   timelineType: string;
-  eventDate: string | null;
+  /** 연도. 정책상 필수 — null은 "날짜를 전혀 모름"으로만 허용. */
+  eventYear: number | null;
+  /** 월(1~12). 선택값. */
+  eventMonth: number | null;
   title: string;
   description?: string | null;
   association?: string | null;
@@ -27,17 +30,20 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
   const timelineId = params.timelineId;
   const body = (await request.json()) as UpdateTimelineBody;
-  const { timelineType, eventDate, title, description, association, division, result, memo, isHighlight } =
+  const { timelineType, eventYear, eventMonth, title, description, association, division, result, memo, isHighlight } =
     body;
 
   const normalizedAssociation = association ?? null;
   const normalizedDivision = division ?? null;
   const normalizedResult = result ?? null;
+  const normalizedEventYear = eventYear ?? null;
+  const normalizedEventMonth = eventMonth ?? null;
 
   const validationError = validateTimelinePayload(
     {
       timelineType,
-      eventDate: eventDate ?? null,
+      eventYear: normalizedEventYear,
+      eventMonth: normalizedEventMonth,
       title,
       association: normalizedAssociation,
       division: normalizedDivision,
@@ -57,7 +63,10 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     .from("member_timeline")
     .update({
       timeline_type: timelineType,
-      event_date: eventDate ?? null,
+      event_year: normalizedEventYear,
+      event_month: normalizedEventMonth,
+      // event_date는 event_year/event_month로부터 서버가 합성한 호환용 값.
+      event_date: buildEventDate(normalizedEventYear, normalizedEventMonth),
       title: title.trim(),
       description: description?.trim() || null,
       association: normalizedAssociation,

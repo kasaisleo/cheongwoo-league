@@ -181,20 +181,25 @@ export interface TimelineYearGroup<T> {
 }
 
 /**
- * event_date 기준 연도별로 묶는다. event_date가 없는 항목("날짜 미상")은
+ * event_year 기준 연도별로 묶는다. event_year가 없는 항목("날짜 미상")은
  * 별도의 "날짜 미상" 그룹으로 묶어 맨 뒤에 둔다.
+ *
+ * event_date(호환용 합성 컬럼)는 일부러 쓰지 않는다 — day가 항상 "01"
+ * placeholder라서 실제 날짜 의미가 없고, event_year/event_month가 "연도만
+ * 아는 경우"와 "연+월을 아는 경우"를 정확히 구분해주는 진짜 소스다.
+ *
  * 입력은 이미 최신순으로 정렬되어 있다고 가정한다(API가 그렇게 내려줌) —
  * 이 함수는 순서를 바꾸지 않고 그룹 경계만 계산한다.
  */
-export function groupTimelineByYear<T extends { event_date: string | null }>(
+export function groupTimelineByYear<T extends { event_year: number | null }>(
   items: T[]
 ): TimelineYearGroup<T>[] {
-  const dated = items.filter((item) => item.event_date !== null);
-  const undated = items.filter((item) => item.event_date === null);
+  const dated = items.filter((item) => item.event_year !== null);
+  const undated = items.filter((item) => item.event_year === null);
 
   const groups: TimelineYearGroup<T>[] = [];
   for (const item of dated) {
-    const year = item.event_date!.slice(0, 4);
+    const year = String(item.event_year);
     const lastGroup = groups[groups.length - 1];
     if (lastGroup && lastGroup.year === year) {
       lastGroup.items.push(item);
@@ -208,4 +213,16 @@ export function groupTimelineByYear<T extends { event_date: string | null }>(
   }
 
   return groups;
+}
+
+/**
+ * event_year/event_month를 화면 표시용 문자열로 변환한다.
+ * 월을 알면 "2025.07", 월을 모르면 "2025", 연도조차 없으면 "날짜 미상".
+ * event_date(호환용 컬럼)는 절대 직접 파싱하지 않는다 — day가 항상
+ * placeholder("01")라서 "월을 아는지"를 구분할 수 없기 때문이다.
+ */
+export function formatTimelineDate(eventYear: number | null, eventMonth: number | null): string {
+  if (eventYear === null) return "날짜 미상";
+  if (eventMonth === null) return String(eventYear);
+  return `${eventYear}.${String(eventMonth).padStart(2, "0")}`;
 }

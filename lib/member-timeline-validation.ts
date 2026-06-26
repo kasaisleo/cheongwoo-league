@@ -6,16 +6,20 @@ import {
   isValidResult,
 } from "@/lib/constants/member-timeline";
 
-export const TIMELINE_DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
-
 export interface TimelinePayloadInput {
   timelineType: string;
-  eventDate: string | null;
+  /** 연도. 정책상 필수 — null이면 "날짜를 전혀 모르는" 경우로만 허용(연도 없이 월만 있는 것은 불가). */
+  eventYear: number | null;
+  /** 월(1~12). 선택값 — 모르면 null. eventYear가 null이면 eventMonth도 반드시 null이어야 한다. */
+  eventMonth: number | null;
   title: string;
   association: string | null;
   division: string | null;
   result: string | null;
 }
+
+export const TIMELINE_YEAR_MIN = 1900;
+export const TIMELINE_YEAR_MAX = 2100;
 
 export interface ValidateTimelinePayloadOptions {
   /**
@@ -42,8 +46,18 @@ export function validateTimelinePayload(
   if (!body.title?.trim()) {
     return "제목을 입력해주세요.";
   }
-  if (body.eventDate !== null && !TIMELINE_DATE_REGEX.test(body.eventDate)) {
-    return "날짜는 YYYY-MM-DD 형식이거나 비워둬야 합니다.";
+  if (body.eventYear !== null) {
+    if (!Number.isInteger(body.eventYear) || body.eventYear < TIMELINE_YEAR_MIN || body.eventYear > TIMELINE_YEAR_MAX) {
+      return `연도는 ${TIMELINE_YEAR_MIN}~${TIMELINE_YEAR_MAX} 사이여야 합니다.`;
+    }
+  } else if (body.eventMonth !== null) {
+    // 연도 없이 월만 있는 입력은 의미가 모호해서 허용하지 않는다 — "몇 년도 7월인지"를 알 수 없다.
+    return "월을 입력하려면 연도를 함께 입력해야 합니다.";
+  }
+  if (body.eventMonth !== null) {
+    if (!Number.isInteger(body.eventMonth) || body.eventMonth < 1 || body.eventMonth > 12) {
+      return "월은 1~12 사이여야 합니다.";
+    }
   }
   if (body.association !== null) {
     if (!isValidAssociation(body.association)) {
@@ -59,4 +73,17 @@ export function validateTimelinePayload(
     return "대회 결과가 올바르지 않습니다.";
   }
   return null;
+}
+
+/**
+ * event_year/event_month로부터 호환용 event_date 컬럼 값을 합성한다.
+ * 정렬·그룹화 로직이 event_date(텍스트, "YYYY-MM-DD")에 의존하므로, day는
+ * 항상 "01"로 고정한 placeholder다 — 실제 날짜가 1일이라는 의미가 아니다.
+ * 화면 표시나 "월을 아는지" 판단에는 이 값을 절대 쓰지 않고 event_year/
+ * event_month를 직접 사용해야 한다.
+ */
+export function buildEventDate(eventYear: number | null, eventMonth: number | null): string | null {
+  if (eventYear === null) return null;
+  const month = eventMonth ?? 1;
+  return `${eventYear}-${String(month).padStart(2, "0")}-01`;
 }

@@ -113,7 +113,12 @@ export interface MemberTimeline {
   id: string;
   member_id: string;
   timeline_type: string;
+  /** [호환용] event_year/event_month로부터 합성된 날짜. 화면 표시에는 쓰지 않는다 — event_year/event_month를 본다. */
   event_date: string | null;
+  /** Timeline 사건의 연도. 정책상 필수(신규 등록은 API에서 강제). */
+  event_year: number | null;
+  /** Timeline 사건의 월(1~12). 선택값, 모르면 null. */
+  event_month: number | null;
   title: string;
   description: string | null;
   association: string | null;

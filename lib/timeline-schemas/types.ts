@@ -16,12 +16,15 @@ import type { AnyTimelineType } from "@/lib/constants/member-timeline";
 
 /**
  * 폼에서 다루는 입력값 전체. DB 컬럼에 그대로 저장되는 값(association,
- * division, result, memo, title, eventDate)과, title 자동생성 "재료"로만
- * 쓰이고 저장되지 않는 값(competitionName, leagueName, seasonYear, role)이
+ * division, result, memo, title, eventYear, eventMonth)과, title 자동생성
+ * "재료"로만 쓰이고 저장되지 않는 값(competitionName, leagueName, role)이
  * 섞여 있다. 어떤 필드가 어느 쪽인지는 각 schema의 fields 배열이 결정한다.
  */
 export interface TimelineFormValues {
-  eventDate: string;
+  /** 연도. 정책상 필수 — 빈 문자열은 "아직 선택 안 함"을 의미한다. */
+  eventYear: string;
+  /** 월(1~12). 선택값 — 빈 문자열은 "모름"을 의미한다. */
+  eventMonth: string;
   title: string;
   /** 대회명 (competition). title 조립 재료, DB에는 저장하지 않음. */
   competitionName: string;
@@ -30,8 +33,6 @@ export interface TimelineFormValues {
   result: string;
   /** 리그명 (league). title 조립 재료, DB에는 저장하지 않음. */
   leagueName: string;
-  /** 리그 시즌 연도 (league). title 조립 재료, DB에는 저장하지 않음. */
-  seasonYear: string;
   /** 직책 (system). title 조립 재료, DB에는 저장하지 않음. */
   role: string;
   memo: string;
@@ -40,14 +41,14 @@ export interface TimelineFormValues {
 
 /** 폼에 렌더링할 수 있는 필드 종류. */
 export type TimelineFieldKey =
-  | "eventDate"
+  | "eventYear"
+  | "eventMonth"
   | "title"
   | "competitionName"
   | "association"
   | "division"
   | "result"
   | "leagueName"
-  | "seasonYear"
   | "role"
   | "memo";
 

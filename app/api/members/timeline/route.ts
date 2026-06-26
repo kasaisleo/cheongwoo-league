@@ -1,12 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { isAdminSession } from "@/lib/admin-auth";
-import { validateTimelinePayload } from "@/lib/member-timeline-validation";
+import { validateTimelinePayload, buildEventDate } from "@/lib/member-timeline-validation";
 
 interface CreateTimelineBody {
   memberId: string;
   timelineType: string;
-  eventDate: string | null;
+  /** 연도. 정책상 필수 — null은 "날짜를 전혀 모름"으로만 허용. */
+  eventYear: number | null;
+  /** 월(1~12). 선택값. */
+  eventMonth: number | null;
   title: string;
   description?: string | null;
   association?: string | null;
@@ -28,6 +31,8 @@ export async function GET(request: NextRequest) {
     .from("member_timeline")
     .select("*")
     .eq("member_id", memberId)
+    // event_date(호환용 합성 컬럼)로 정렬한다 — day는 항상 placeholder("01")라
+    // 실제 날짜 의미는 없지만, 연/월 순서를 정렬하는 목적으로는 정확하다.
     .order("event_date", { ascending: false, nullsFirst: false })
     .order("created_at", { ascending: false });
 
@@ -48,7 +53,8 @@ export async function POST(request: NextRequest) {
   const {
     memberId,
     timelineType,
-    eventDate,
+    eventYear,
+    eventMonth,
     title,
     description,
     association,
@@ -65,10 +71,13 @@ export async function POST(request: NextRequest) {
   const normalizedAssociation = association ?? null;
   const normalizedDivision = division ?? null;
   const normalizedResult = result ?? null;
+  const normalizedEventYear = eventYear ?? null;
+  const normalizedEventMonth = eventMonth ?? null;
 
   const validationError = validateTimelinePayload({
     timelineType,
-    eventDate: eventDate ?? null,
+    eventYear: normalizedEventYear,
+    eventMonth: normalizedEventMonth,
     title,
     association: normalizedAssociation,
     division: normalizedDivision,
@@ -85,7 +94,12 @@ export async function POST(request: NextRequest) {
     .insert({
       member_id: memberId,
       timeline_type: timelineType,
-      event_date: eventDate ?? null,
+      event_year: normalizedEventYear,
+      event_month: normalizedEventMonth,
+      // event_date는 event_year/event_month로부터 서버가 합성한 호환용 값.
+      // 정렬·과거 코드 호환 목적일 뿐, 화면 표시나 "월을 아는지" 판단에는
+      // 쓰지 않는다(그건 event_year/event_month가 직접 갖고 있다).
+      event_date: buildEventDate(normalizedEventYear, normalizedEventMonth),
       title: title.trim(),
       description: description?.trim() || null,
       association: normalizedAssociation,

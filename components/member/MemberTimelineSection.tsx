@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { EditTimelineModal } from "@/components/member/EditTimelineModal";
-import { groupTimelineByYear, timelineTypeLabel } from "@/lib/constants/member-timeline";
+import { groupTimelineByYear, timelineTypeLabel, formatTimelineDate } from "@/lib/constants/member-timeline";
 import type { MemberTimeline } from "@/lib/supabase/database.types";
 
 interface MemberTimelineSectionProps {
@@ -34,24 +34,26 @@ export function MemberTimelineSection({ memberId, isAdmin }: MemberTimelineSecti
    * 이 시점부터 이미 정확한 값을 보여준다 — refetch는 그 뒤에 "진실 동기화"
    * 목적으로 한 번 더 호출하되, 화면 반영 자체는 이 함수가 보장한다.
    *
-   * GET 응답과 동일한 정렬 기준(event_date desc, 없으면 created_at desc)을
-   * 그대로 따른다 — groupTimelineByYear는 입력이 이미 정렬되어 있다고
-   * 가정하므로, 여기서 순서가 흐트러지면 연도별 그룹이 깨질 수 있다.
+   * GET 응답과 같은 의미의 정렬(연도desc → 월desc → 없으면 created_at desc)을
+   * 따른다. event_date(호환용 합성 컬럼)는 일부러 쓰지 않는다 — event_year/
+   * event_month가 "월을 아는지"를 정확히 구분해주는 진짜 소스다.
    */
   function applySavedItem(saved: MemberTimeline) {
     setItems((prev) => {
       const exists = prev.some((item) => item.id === saved.id);
       const next = exists ? prev.map((item) => (item.id === saved.id ? saved : item)) : [saved, ...prev];
       return [...next].sort((a, b) => {
-        const aKey = a.event_date ?? "";
-        const bKey = b.event_date ?? "";
-        if (aKey !== bKey) {
-          // event_date가 없는 항목(빈 문자열)은 맨 뒤로 — GET의
-          // nullsFirst:false 정렬과 동일한 순서를 유지한다.
-          if (!aKey) return 1;
-          if (!bKey) return -1;
-          return bKey.localeCompare(aKey);
+        const aYear = a.event_year;
+        const bYear = b.event_year;
+        if (aYear !== bYear) {
+          // 연도를 모르는 항목(null)은 맨 뒤로 — GET의 nullsFirst:false와 동일한 순서.
+          if (aYear === null) return 1;
+          if (bYear === null) return -1;
+          return bYear - aYear;
         }
+        const aMonth = a.event_month ?? 0;
+        const bMonth = b.event_month ?? 0;
+        if (aMonth !== bMonth) return bMonth - aMonth;
         return b.created_at.localeCompare(a.created_at);
       });
     });
@@ -106,7 +108,9 @@ export function MemberTimelineSection({ memberId, isAdmin }: MemberTimelineSecti
                         </Badge>
                         {item.result && <Badge tone="court">{item.result}</Badge>}
                       </div>
-                      <span className="text-xs text-line-400">{item.event_date ?? "날짜 미상"}</span>
+                      <span className="text-xs text-line-400">
+                        {formatTimelineDate(item.event_year, item.event_month)}
+                      </span>
                     </div>
                     <p className="mt-1.5 text-sm font-semibold text-line-900">{item.title}</p>
                     {(item.association || item.division) && (
