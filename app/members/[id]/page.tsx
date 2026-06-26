@@ -7,6 +7,7 @@ import { BackButton } from "@/components/member/BackButton";
 import { CallButton } from "@/components/member/CallButton";
 import { MemberTimelineSection } from "@/components/member/MemberTimelineSection";
 import { MemberHighlightCareer } from "@/components/member/MemberHighlightCareer";
+import { MemberCareerProvider } from "@/components/member/MemberCareerProvider";
 import { isAdminSession } from "@/lib/admin-auth";
 import { MATCH_SESSION_DAY_LABEL } from "@/lib/match-session-label";
 import { playerBackgroundLabel } from "@/lib/constants/member-timeline";
@@ -67,9 +68,10 @@ export default async function MemberDetailPage({ params }: MemberDetailPageProps
     ]);
 
   return (
-    <main className="px-4 pt-6">
-      <BackButton />
-      <MemberDetailActions member={typedMember} />
+    <MemberCareerProvider memberId={typedMember.id} isAdmin={isAdmin}>
+      <main className="px-4 pt-6">
+        <BackButton />
+        <MemberDetailActions member={typedMember} />
 
       <Card className="mb-4 overflow-hidden p-0 text-center">
         <div className="border-b-2 border-clay-400 bg-line-200/40 px-5 pb-5 pt-6">
@@ -144,8 +146,10 @@ export default async function MemberDetailPage({ params }: MemberDetailPageProps
       </Card>
 
       {/* 대표 커리어는 회원 상세 가장 상단(프로필 카드 다음)에 단독으로
-          노출한다. 없으면 컴포넌트 자체가 null을 반환해 영역이 숨겨진다. */}
-      <MemberHighlightCareer memberId={typedMember.id} />
+          노출한다. 없으면 컴포넌트 자체가 null을 반환해 영역이 숨겨진다.
+          데이터는 MemberCareerProvider context에서 가져온다(memberId
+          전달 불필요, props 없이 호출). */}
+      <MemberHighlightCareer />
 
       {/* 1. 최근 경기 */}
       <section className="mb-4">
@@ -200,7 +204,7 @@ export default async function MemberDetailPage({ params }: MemberDetailPageProps
         )}
       </section>
 
-      <MemberTimelineSection memberId={typedMember.id} isAdmin={isAdmin} />
+      <MemberTimelineSection />
 
       {/* 2. 최근 출석 + 3. 출석률 */}
       <section className="mb-4">
@@ -328,6 +332,7 @@ export default async function MemberDetailPage({ params }: MemberDetailPageProps
           </Card>
         </section>
       )}
-    </main>
+      </main>
+    </MemberCareerProvider>
   );
 }
