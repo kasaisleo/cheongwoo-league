@@ -1,5 +1,6 @@
 import {
   isValidTimelineType,
+  isValidOrLegacyTimelineType,
   isValidAssociation,
   isValidDivisionForAssociation,
   isValidResult,
@@ -16,9 +17,26 @@ export interface TimelinePayloadInput {
   result: string | null;
 }
 
+export interface ValidateTimelinePayloadOptions {
+  /**
+   * true면 timeline_type에 legacy 값(career/system/achievement/attendance)도
+   * 허용한다. 기존 row를 PUT으로 수정할 때 종류를 그대로 두고 다른 필드만
+   * 바꾸는 경우가 흔한데, 신규 등록 기준(isValidTimelineType)만으로 검증하면
+   * 이런 평범한 수정조차 막혀버린다. 신규 생성(POST)에는 절대 true를 넘기지
+   * 않아야 새 legacy row가 더 늘어나는 것을 막을 수 있다.
+   */
+  allowLegacyType?: boolean;
+}
+
 /** Timeline 등록/수정 공통 검증. 문제 있으면 에러 메시지, 없으면 null. */
-export function validateTimelinePayload(body: TimelinePayloadInput): string | null {
-  if (!isValidTimelineType(body.timelineType)) {
+export function validateTimelinePayload(
+  body: TimelinePayloadInput,
+  options: ValidateTimelinePayloadOptions = {}
+): string | null {
+  const typeIsValid = options.allowLegacyType
+    ? isValidOrLegacyTimelineType(body.timelineType)
+    : isValidTimelineType(body.timelineType);
+  if (!typeIsValid) {
     return "타임라인 종류가 올바르지 않습니다.";
   }
   if (!body.title?.trim()) {

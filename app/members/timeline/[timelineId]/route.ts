@@ -34,14 +34,19 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
   const normalizedDivision = division ?? null;
   const normalizedResult = result ?? null;
 
-  const validationError = validateTimelinePayload({
-    timelineType,
-    eventDate: eventDate ?? null,
-    title,
-    association: normalizedAssociation,
-    division: normalizedDivision,
-    result: normalizedResult,
-  });
+  const validationError = validateTimelinePayload(
+    {
+      timelineType,
+      eventDate: eventDate ?? null,
+      title,
+      association: normalizedAssociation,
+      division: normalizedDivision,
+      result: normalizedResult,
+    },
+    // 수정(PUT)에서는 종류를 그대로 둔 채 다른 필드만 고치는 경우가 흔하므로
+    // legacy 값(career/system/achievement/attendance)도 허용한다.
+    { allowLegacyType: true }
+  );
   if (validationError) {
     return NextResponse.json({ error: validationError }, { status: 400 });
   }

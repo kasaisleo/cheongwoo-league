@@ -44,51 +44,66 @@ export function playerBackgroundLabel(value: string): string {
 // ─────────────────────────────────────────────────────────
 // Timeline 종류 (member_timeline.timeline_type)
 //
-// 2024-XX 정리: UI 선택지에서 "대회 입상(achievement)"과 "출석(attendance)"을
+// 2024-XX 정리(1차): UI 선택지에서 "대회 입상(achievement)"과 "출석(attendance)"을
 // 제거했다. achievement는 result(우승/준우승 등) 개념과 섞여 있던 표현이라
 // "대회(competition)"로 대체했고, attendance는 자동 출석 데이터로 관리되며
 // 더 이상 수동 Timeline 추가 대상이 아니다.
 //
-// DB는 text 컬럼이라 과거에 achievement/attendance로 저장된 row가 여전히
-// 존재한다. 그 값들을 신규 선택 옵션에서만 빼고, 타입/라벨 매핑에서는
-// LegacyTimelineType으로 남겨 기존 데이터 렌더링·수정이 깨지지 않게 한다.
+// 2024-XX 정리(2차): UI 선택지에서 "선수출신(career)"과 "운영(system)"을
+// 추가로 제거했다. 선수출신/직책 정보는 이미 회원등록·회원수정 폼(members
+// 테이블의 player_background 등)에 회원 속성으로 존재하고, Timeline은
+// 회원의 사건/이력 기록이라 같은 개념을 두 군데서 입력받으면 중복·불일치가
+// 생긴다. career/system은 이제 achievement/attendance와 동일하게 legacy로
+// 취급한다.
+//
+// DB는 text 컬럼이라 과거에 career/system/achievement/attendance로 저장된
+// row가 여전히 존재한다. 그 값들을 신규 선택 옵션에서만 빼고, 타입/라벨
+// 매핑에서는 LegacyTimelineType으로 남겨 기존 데이터 렌더링·수정이 깨지지
+// 않게 한다.
 // ─────────────────────────────────────────────────────────
 
-/** 신규 입력에서 선택 가능한 종류. UI 버튼·등록/수정 검증 기준이 된다. */
-export type TimelineType = "join" | "career" | "competition" | "league" | "system" | "custom";
+/** 신규 입력에서 선택 가능한 종류. UI 버튼·신규 등록 검증 기준이 된다. */
+export type TimelineType = "join" | "competition" | "league" | "custom";
 
-/** 과거에 저장됐지만 더 이상 신규 선택지에는 없는 값. 라벨 표시용으로만 남긴다. */
-export type LegacyTimelineType = "achievement" | "attendance";
+/** 과거에 저장됐지만 더 이상 신규 선택지에는 없는 값. 라벨 표시·수정 시 검증용으로만 남긴다. */
+export type LegacyTimelineType = "career" | "system" | "achievement" | "attendance";
 
 /** DB row의 timeline_type을 다룰 때 쓰는 합집합 타입 (저장값/렌더링 기준). */
 export type AnyTimelineType = TimelineType | LegacyTimelineType;
 
-/** Timeline 추가/수정 UI에 노출되는 선택지. achievement/attendance는 제외. */
+/** Timeline 추가/수정 UI에 노출되는 선택지. career/system/achievement/attendance는 제외. */
 export const TIMELINE_TYPE_OPTIONS: { value: TimelineType; label: string }[] = [
   { value: "join", label: "가입" },
-  { value: "career", label: "선수출신" },
   { value: "competition", label: "대회" },
   { value: "league", label: "리그" },
-  { value: "system", label: "운영" },
   { value: "custom", label: "기타" },
 ];
 
 /** 화면 표시(라벨)에만 쓰는 legacy 값 매핑. 신규 선택지에는 포함하지 않는다. */
 const LEGACY_TIMELINE_TYPE_LABELS: Record<LegacyTimelineType, string> = {
+  career: "선수출신",
+  system: "운영",
   achievement: "대회 입상",
   attendance: "출석",
 };
 
 export const TIMELINE_TYPE_VALUES = TIMELINE_TYPE_OPTIONS.map((o) => o.value);
 
-/** 신규 등록/수정 시 검증 기준. legacy 값(achievement/attendance)은 더 이상 통과하지 못한다. */
+export const LEGACY_TIMELINE_TYPE_VALUES = Object.keys(LEGACY_TIMELINE_TYPE_LABELS) as LegacyTimelineType[];
+
+/** 신규 등록 시 검증 기준. legacy 값(career/system/achievement/attendance)은 통과하지 못한다. */
 export function isValidTimelineType(value: string): value is TimelineType {
   return (TIMELINE_TYPE_VALUES as string[]).includes(value);
 }
 
-/** 기존 row가 legacy 값을 갖고 있는지 확인 (필요 시 화면에서 구분하고 싶을 때 사용). */
+/** 기존 row가 legacy 값을 갖고 있는지 확인 (수정 시 검증·화면 표시에 사용). */
 export function isLegacyTimelineType(value: string): value is LegacyTimelineType {
-  return value === "achievement" || value === "attendance";
+  return (LEGACY_TIMELINE_TYPE_VALUES as string[]).includes(value);
+}
+
+/** 신규 값 + legacy 값을 합쳐서 "이미 저장되어 있는 값으로서는 유효한가"를 검증. PUT(수정) 시 사용. */
+export function isValidOrLegacyTimelineType(value: string): value is AnyTimelineType {
+  return isValidTimelineType(value) || isLegacyTimelineType(value);
 }
 
 /** 신규 값 + legacy 값을 모두 라벨로 변환. 목록 표시는 항상 이 함수를 쓴다. */

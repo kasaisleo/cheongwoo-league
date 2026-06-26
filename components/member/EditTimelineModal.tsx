@@ -56,7 +56,14 @@ export function EditTimelineModal({ memberId, existing, onClose, onSaved }: Edit
   function updateValues(patch: Partial<TimelineFormValues>) {
     setValues((prev) => {
       const next = { ...prev, ...patch };
-      if (titleMode === "auto") {
+      // patch에 title이 직접 들어있다면 "사용자가 title 칸을 고친" 경우다.
+      // 이때는 setTitleMode("manual") 호출이 같은 이벤트 핸들러 안에서 비동기로
+      // 배치되어, 이 함수 내부의 titleMode가 아직 이전 값("auto")인 race
+      // condition이 생길 수 있다. patch 자체에 title이 있으면 그 값을 최종으로
+      // 보고 buildTitle로 덮어쓰지 않는다 — 그래야 사용자가 첫 글자를 입력하는
+      // 순간 즉시 지워지는 버그가 생기지 않는다.
+      const isDirectTitleEdit = Object.prototype.hasOwnProperty.call(patch, "title");
+      if (titleMode === "auto" && !isDirectTitleEdit) {
         const autoTitle = schema.buildTitle(next);
         if (autoTitle !== null) {
           next.title = autoTitle;
