@@ -6,6 +6,7 @@ import { MemberDetailActions } from "@/components/member/MemberDetailActions";
 import { BackButton } from "@/components/member/BackButton";
 import { CallButton } from "@/components/member/CallButton";
 import { MemberTimelineSection } from "@/components/member/MemberTimelineSection";
+import { MemberHighlightCareer } from "@/components/member/MemberHighlightCareer";
 import { isAdminSession } from "@/lib/admin-auth";
 import { MATCH_SESSION_DAY_LABEL } from "@/lib/match-session-label";
 import { playerBackgroundLabel } from "@/lib/constants/member-timeline";
@@ -141,6 +142,10 @@ export default async function MemberDetailPage({ params }: MemberDetailPageProps
           </div>
         )}
       </Card>
+
+      {/* 대표 커리어는 회원 상세 가장 상단(프로필 카드 다음)에 단독으로
+          노출한다. 없으면 컴포넌트 자체가 null을 반환해 영역이 숨겨진다. */}
+      <MemberHighlightCareer memberId={typedMember.id} />
 
       {/* 1. 최근 경기 */}
       <section className="mb-4">

@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { EditTimelineModal } from "@/components/member/EditTimelineModal";
 import { groupTimelineByYear, timelineTypeLabel, formatTimelineDate } from "@/lib/constants/member-timeline";
+import { getTimelineSchema } from "@/lib/timeline-schemas";
 import type { MemberTimeline } from "@/lib/supabase/database.types";
 
 interface MemberTimelineSectionProps {
@@ -102,31 +103,41 @@ export function MemberTimelineSection({ memberId, isAdmin }: MemberTimelineSecti
               <div key={group.year}>
                 <p className="mb-1.5 text-sm font-bold text-line-900">{group.year}</p>
                 <div className="space-y-1.5">
-                  {group.items.map((item) => (
-                    <Card
-                      key={item.id}
-                      className={`p-3 ${isAdmin ? "cursor-pointer" : ""}`}
-                      onClick={isAdmin ? () => setEditingItem(item) : undefined}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-1.5">
-                          {item.is_highlight && <Badge tone="clay">대표</Badge>}
-                          <Badge tone="neutral">{timelineTypeLabel(item.timeline_type)}</Badge>
-                          {item.result && <Badge tone="court">{item.result}</Badge>}
+                  {group.items.map((item) => {
+                    const itemSchema = getTimelineSchema(item.timeline_type);
+                    // 상단 MemberHighlightCareer와 동일한 기준: title이 자동조립되는
+                    // 종류는 협회/디비전이 이미 title 문자열에 들어있어 subtitle로
+                    // 또 보여주면 중복된다.
+                    const showSubtitle = !itemSchema.supportsAutoTitle && (item.association || item.division);
+                    return (
+                      <Card
+                        key={item.id}
+                        className={`p-3 ${isAdmin ? "cursor-pointer" : ""}`}
+                        onClick={isAdmin ? () => setEditingItem(item) : undefined}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1.5">
+                            {/* "대표"는 종류·결과와 같은 상태 배지가 아니라 이 항목이
+                                대표 커리어로 지정되어 있다는 표시라, Badge와 다른
+                                형태(트로피 아이콘)로 둬서 한눈에 구분되게 한다. */}
+                            {item.is_highlight && <span aria-label="대표 커리어">🏆</span>}
+                            <Badge tone="neutral">{timelineTypeLabel(item.timeline_type)}</Badge>
+                            {item.result && <Badge tone="court">{item.result}</Badge>}
+                          </div>
+                          <span className="text-xs text-line-400">
+                            {formatTimelineDate(item.event_year, item.event_month)}
+                          </span>
                         </div>
-                        <span className="text-xs text-line-400">
-                          {formatTimelineDate(item.event_year, item.event_month)}
-                        </span>
-                      </div>
-                      <p className="mt-1.5 text-sm font-semibold text-line-900">{item.title}</p>
-                      {(item.association || item.division) && (
-                        <p className="mt-0.5 text-xs text-line-500">
-                          {[item.association, item.division].filter(Boolean).join(" · ")}
-                        </p>
-                      )}
-                      {item.memo && <p className="mt-1 text-xs text-line-400">{item.memo}</p>}
-                    </Card>
-                  ))}
+                        <p className="mt-1.5 text-sm font-semibold text-line-900">{item.title}</p>
+                        {showSubtitle && (
+                          <p className="mt-0.5 text-xs text-line-500">
+                            {[item.association, item.division].filter(Boolean).join(" · ")}
+                          </p>
+                        )}
+                        {item.memo && <p className="mt-1 text-xs text-line-400">{item.memo}</p>}
+                      </Card>
+                    );
+                  })}
                 </div>
               </div>
             ))}
