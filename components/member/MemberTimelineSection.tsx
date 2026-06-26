@@ -28,9 +28,43 @@ export function MemberTimelineSection({ memberId, isAdmin }: MemberTimelineSecti
     }
   }
 
+  /**
+   * PUT/POST가 성공하면 서버가 돌려준 최신 row를 받아 즉시 반영한다.
+   * loadTimeline()의 GET 응답이 늦게 오거나 일시적으로 실패해도, 화면은
+   * 이 시점부터 이미 정확한 값을 보여준다 — refetch는 그 뒤에 "진실 동기화"
+   * 목적으로 한 번 더 호출하되, 화면 반영 자체는 이 함수가 보장한다.
+   *
+   * GET 응답과 동일한 정렬 기준(event_date desc, 없으면 created_at desc)을
+   * 그대로 따른다 — groupTimelineByYear는 입력이 이미 정렬되어 있다고
+   * 가정하므로, 여기서 순서가 흐트러지면 연도별 그룹이 깨질 수 있다.
+   */
+  function applySavedItem(saved: MemberTimeline) {
+    setItems((prev) => {
+      const exists = prev.some((item) => item.id === saved.id);
+      const next = exists ? prev.map((item) => (item.id === saved.id ? saved : item)) : [saved, ...prev];
+      return [...next].sort((a, b) => {
+        const aKey = a.event_date ?? "";
+        const bKey = b.event_date ?? "";
+        if (aKey !== bKey) {
+          // event_date가 없는 항목(빈 문자열)은 맨 뒤로 — GET의
+          // nullsFirst:false 정렬과 동일한 순서를 유지한다.
+          if (!aKey) return 1;
+          if (!bKey) return -1;
+          return bKey.localeCompare(aKey);
+        }
+        return b.created_at.localeCompare(a.created_at);
+      });
+    });
+  }
+
   useEffect(() => {
     loadTimeline();
   }, [memberId]);
+
+  /** 삭제 성공 시 해당 id를 목록에서 즉시 제거한다(optimistic). */
+  function removeDeletedItem(deletedId: string) {
+    setItems((prev) => prev.filter((item) => item.id !== deletedId));
+  }
 
   const groups = groupTimelineByYear(items);
 
@@ -94,9 +128,14 @@ export function MemberTimelineSection({ memberId, isAdmin }: MemberTimelineSecti
           memberId={memberId}
           existing={null}
           onClose={() => setShowAddModal(false)}
-          onSaved={() => {
+          onSaved={(saved) => {
             setShowAddModal(false);
+            applySavedItem(saved);
             loadTimeline();
+          }}
+          onDeleted={() => {
+            // existing이 null인 추가 모달에는 삭제 버튼 자체가 없어 호출되지 않는다.
+            setShowAddModal(false);
           }}
         />
       )}
@@ -106,8 +145,14 @@ export function MemberTimelineSection({ memberId, isAdmin }: MemberTimelineSecti
           memberId={memberId}
           existing={editingItem}
           onClose={() => setEditingItem(null)}
-          onSaved={() => {
+          onSaved={(saved) => {
             setEditingItem(null);
+            applySavedItem(saved);
+            loadTimeline();
+          }}
+          onDeleted={(deletedId) => {
+            setEditingItem(null);
+            removeDeletedItem(deletedId);
             loadTimeline();
           }}
         />

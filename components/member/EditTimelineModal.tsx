@@ -17,7 +17,14 @@ interface EditTimelineModalProps {
   /** 수정 모드면 기존 항목, 추가 모드면 null */
   existing: MemberTimeline | null;
   onClose: () => void;
-  onSaved: () => void;
+  /**
+   * 저장(추가/수정) 성공 시 서버가 반환한 최신 row를 그대로 전달한다.
+   * 부모가 이 값으로 목록을 즉시 갱신(optimistic)하면, 별도 GET refetch가
+   * 늦게 도착하거나 실패하더라도 화면은 이미 최신 상태가 되어 있다.
+   */
+  onSaved: (saved: MemberTimeline) => void;
+  /** 삭제 성공 시 호출. 저장과 결과 형태(반환되는 row가 없음)가 달라 분리했다. */
+  onDeleted: (deletedId: string) => void;
 }
 
 function initialValues(existing: MemberTimeline | null): TimelineFormValues {
@@ -36,7 +43,7 @@ function initialValues(existing: MemberTimeline | null): TimelineFormValues {
   };
 }
 
-export function EditTimelineModal({ memberId, existing, onClose, onSaved }: EditTimelineModalProps) {
+export function EditTimelineModal({ memberId, existing, onClose, onSaved, onDeleted }: EditTimelineModalProps) {
   // 기존 row가 legacy 값(achievement/attendance)을 갖고 있을 수 있어 초기값은
   // AnyTimelineType으로 받는다. 사용자가 버튼을 눌러 종류를 바꾸면 신규 값만
   // 선택 가능하므로, 그 시점부터는 자연스럽게 신규 값으로 좁혀진다.
@@ -111,12 +118,19 @@ export function EditTimelineModal({ memberId, existing, onClose, onSaved }: Edit
     }
 
     toast.success("타임라인 항목이 삭제되었습니다.");
-    onSaved();
+    onDeleted(existing.id);
   }
 
   async function handleSubmit() {
     if (!values.title.trim()) {
       toast.error("제목을 입력해주세요.");
+      return;
+    }
+
+    // existing이 있는데 id가 비어있는 경우(이론상 발생하면 안 되지만, 발생하면
+    // PUT이 잘못된 URL로 나가 조용히 실패할 수 있어 사전에 막는다).
+    if (existing && !existing.id) {
+      toast.error("수정할 항목 정보를 찾을 수 없습니다. 모달을 닫고 다시 시도해주세요.");
       return;
     }
 
@@ -165,8 +179,17 @@ export function EditTimelineModal({ memberId, existing, onClose, onSaved }: Edit
       return;
     }
 
+    if (!body?.item) {
+      // 서버가 200을 줬는데 item이 없는 비정상 응답. 화면을 잘못된 상태로
+      // 두지 않기 위해 명확한 에러로 처리한다(조용히 성공 처리하지 않음).
+      const message = "저장은 되었지만 서버 응답을 확인할 수 없습니다. 목록을 새로고침해주세요.";
+      setError(message);
+      toast.error(message);
+      return;
+    }
+
     toast.success(existing ? "타임라인 항목이 수정되었습니다." : "타임라인 항목이 추가되었습니다.");
-    onSaved();
+    onSaved(body.item as MemberTimeline);
   }
 
   return (
