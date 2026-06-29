@@ -97,7 +97,12 @@ function AttendancePageInner() {
 
     async function loadRows() {
       const [{ data: members }, { data: attendance }] = await Promise.all([
-        supabase.from("members").select("*").eq("is_active", true).order("nickname"),
+        supabase
+          .from("members")
+          .select("*")
+          .eq("is_active", true)
+          .eq("is_dormant", false)
+          .order("nickname"),
         supabase.from("attendance").select("*").eq("session_id", selectedSessionId),
       ]);
 
