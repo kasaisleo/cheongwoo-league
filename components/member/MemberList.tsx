@@ -31,6 +31,9 @@ export function MemberList({ members }: MemberListProps) {
   const [memberTypeFilter, setMemberTypeFilter] = useState<MemberTypeFilter>("all");
   const [dormantFilter, setDormantFilter] = useState<MemberDormantFilter>("all");
   const [sortBy, setSortBy] = useState<MemberSortOption>("league_point");
+  // 필터 영역(정렬/마포점수/회원구분/활동·휴면) 접기/펼치기. 검색창과 통계
+  // 카드는 이 상태와 무관하게 항상 노출된다 — 기본값은 펼침이다.
+  const [showFilters, setShowFilters] = useState(true);
 
   // 상단 통계는 검색/필터 적용 전 전체 members 기준으로 고정한다 — 필터를
   // 바꿔도 숫자가 따라 바뀌지 않아야 "전체 중 몇 명이 정회원/휴면인지"를
@@ -59,28 +62,52 @@ export function MemberList({ members }: MemberListProps) {
 
   return (
     <>
-      {/* 검색/필터와 무관하게 항상 전체 members 기준 숫자만 보여준다(stats 참고). */}
+      {/* 검색/필터와 무관하게 항상 전체 members 기준 숫자만 보여준다(stats 참고).
+          각 카드는 버튼이다 — 클릭하면 그 구분에 맞는 필터로 실제 바뀐다. */}
       <div className="mb-4 grid grid-cols-3 gap-1.5 sm:grid-cols-5">
-        <Card className="p-2 text-center">
+        <button
+          type="button"
+          onClick={() => {
+            setMemberTypeFilter("all");
+            setDormantFilter("all");
+          }}
+          className="rounded-xl border border-line-200 bg-line-100 p-2 text-center transition-colors hover:border-clay-400"
+        >
           <p className="text-[10px] font-semibold uppercase tracking-wide text-line-500">전체</p>
           <p className="font-score text-lg font-bold text-line-900">{stats.total}</p>
-        </Card>
-        <Card className="p-2 text-center">
+        </button>
+        <button
+          type="button"
+          onClick={() => setMemberTypeFilter("정회원")}
+          className="rounded-xl border border-line-200 bg-line-100 p-2 text-center transition-colors hover:border-clay-400"
+        >
           <p className="text-[10px] font-semibold uppercase tracking-wide text-line-500">정회원</p>
           <p className="font-score text-lg font-bold text-line-900">{stats.regular}</p>
-        </Card>
-        <Card className="p-2 text-center">
+        </button>
+        <button
+          type="button"
+          onClick={() => setMemberTypeFilter("준회원")}
+          className="rounded-xl border border-line-200 bg-line-100 p-2 text-center transition-colors hover:border-clay-400"
+        >
           <p className="text-[10px] font-semibold uppercase tracking-wide text-line-500">준회원</p>
           <p className="font-score text-lg font-bold text-line-900">{stats.associate}</p>
-        </Card>
-        <Card className="p-2 text-center">
+        </button>
+        <button
+          type="button"
+          onClick={() => setMemberTypeFilter("게스트")}
+          className="rounded-xl border border-line-200 bg-line-100 p-2 text-center transition-colors hover:border-clay-400"
+        >
           <p className="text-[10px] font-semibold uppercase tracking-wide text-line-500">게스트</p>
           <p className="font-score text-lg font-bold text-line-900">{stats.guest}</p>
-        </Card>
-        <Card className="p-2 text-center">
+        </button>
+        <button
+          type="button"
+          onClick={() => setDormantFilter("dormant")}
+          className="rounded-xl border border-line-200 bg-line-100 p-2 text-center transition-colors hover:border-clay-400"
+        >
           <p className="text-[10px] font-semibold uppercase tracking-wide text-line-500">휴면</p>
           <p className="font-score text-lg font-bold text-line-600">{stats.dormant}</p>
-        </Card>
+        </button>
       </div>
 
       <div className="mb-3">
@@ -92,71 +119,84 @@ export function MemberList({ members }: MemberListProps) {
         />
       </div>
 
-      <div className="mb-2 flex items-center justify-between">
-        <p className="text-xs font-semibold text-line-500">정렬</p>
-        <select
-          value={sortBy}
-          onChange={(e) => setSortBy(e.target.value as MemberSortOption)}
-          className="h-9 rounded-lg border border-line-200 bg-line-100 px-2 text-xs font-semibold text-line-800"
-        >
-          {MEMBER_SORT_OPTIONS.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
-      </div>
+      <button
+        type="button"
+        onClick={() => setShowFilters((prev) => !prev)}
+        className="mb-2 flex w-full items-center justify-between rounded-lg border border-line-200 bg-line-100 px-3 py-2 text-xs font-semibold text-line-700"
+      >
+        {showFilters ? "필터 숨기기" : "필터 보기"}
+        <span aria-hidden>{showFilters ? "▲" : "▼"}</span>
+      </button>
 
-      <div className="mb-2 flex flex-wrap gap-1.5">
-        {MAPO_SCORE_FILTER_OPTIONS.map((option) => (
-          <button
-            key={option.value}
-            type="button"
-            onClick={() => setMapoFilter(option.value)}
-            className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
-              mapoFilter === option.value
-                ? "border-clay-400 bg-clay-400 text-line-25"
-                : "border-line-200 bg-line-50 text-line-800"
-            }`}
-          >
-            {option.label}
-          </button>
-        ))}
-      </div>
+      {showFilters && (
+        <>
+          <div className="mb-2 flex items-center justify-between">
+            <p className="text-xs font-semibold text-line-500">정렬</p>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as MemberSortOption)}
+              className="h-9 rounded-lg border border-line-200 bg-line-100 px-2 text-xs font-semibold text-line-800"
+            >
+              {MEMBER_SORT_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
 
-      <div className="mb-2 flex flex-wrap gap-1.5">
-        {MEMBER_TYPE_FILTER_OPTIONS.map((option) => (
-          <button
-            key={option.value}
-            type="button"
-            onClick={() => setMemberTypeFilter(option.value)}
-            className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
-              memberTypeFilter === option.value
-                ? "border-clay-400 bg-clay-400 text-line-25"
-                : "border-line-200 bg-line-50 text-line-800"
-            }`}
-          >
-            {option.label}
-          </button>
-        ))}
-      </div>
+          <div className="mb-2 flex flex-wrap gap-1.5">
+            {MAPO_SCORE_FILTER_OPTIONS.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => setMapoFilter(option.value)}
+                className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
+                  mapoFilter === option.value
+                    ? "border-clay-400 bg-clay-400 text-line-25"
+                    : "border-line-200 bg-line-50 text-line-800"
+                }`}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
 
-      <div className="mb-4 flex flex-wrap gap-1.5">
-        {MEMBER_DORMANT_FILTER_OPTIONS.map((option) => (
-          <button
-            key={option.value}
-            type="button"
-            onClick={() => setDormantFilter(option.value)}
-            className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
-              dormantFilter === option.value
-                ? "border-clay-400 bg-clay-400 text-line-25"
-                : "border-line-200 bg-line-50 text-line-800"
-            }`}
-          >
-            {option.label}
-          </button>
-        ))}
-      </div>
+          <div className="mb-2 flex flex-wrap gap-1.5">
+            {MEMBER_TYPE_FILTER_OPTIONS.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => setMemberTypeFilter(option.value)}
+                className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
+                  memberTypeFilter === option.value
+                    ? "border-clay-400 bg-clay-400 text-line-25"
+                    : "border-line-200 bg-line-50 text-line-800"
+                }`}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="mb-4 flex flex-wrap gap-1.5">
+            {MEMBER_DORMANT_FILTER_OPTIONS.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => setDormantFilter(option.value)}
+                className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
+                  dormantFilter === option.value
+                    ? "border-clay-400 bg-clay-400 text-line-25"
+                    : "border-line-200 bg-line-50 text-line-800"
+                }`}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
 
       {filteredMembers.length === 0 ? (
         <Card className="p-6 text-center text-sm text-line-400">
