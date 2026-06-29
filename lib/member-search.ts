@@ -1,4 +1,4 @@
-import type { MemberWithStats } from "@/lib/supabase/database.types";
+import type { MemberType, MemberWithStats } from "@/lib/supabase/database.types";
 
 export type MapoScoreFilter = "all" | "le3" | "le4" | "le5" | "none";
 
@@ -8,6 +8,25 @@ export const MAPO_SCORE_FILTER_OPTIONS: { value: MapoScoreFilter; label: string 
   { value: "le4", label: "4점 이하" },
   { value: "le5", label: "5점 이하" },
   { value: "none", label: "점수 없음" },
+];
+
+/** 회원구분(member_type) 필터. "all"이면 정회원/준회원/게스트 구분 없이 전부 통과. */
+export type MemberTypeFilter = "all" | MemberType;
+
+export const MEMBER_TYPE_FILTER_OPTIONS: { value: MemberTypeFilter; label: string }[] = [
+  { value: "all", label: "전체" },
+  { value: "정회원", label: "정회원" },
+  { value: "준회원", label: "준회원" },
+  { value: "게스트", label: "게스트" },
+];
+
+/** 휴면 여부(is_dormant) 필터. is_active(삭제/숨김)와는 무관 — 휴면회원도 항상 목록에 노출되고, 이 필터로만 활동/휴면을 나눠 본다. */
+export type MemberDormantFilter = "all" | "active" | "dormant";
+
+export const MEMBER_DORMANT_FILTER_OPTIONS: { value: MemberDormantFilter; label: string }[] = [
+  { value: "all", label: "전체" },
+  { value: "active", label: "활동" },
+  { value: "dormant", label: "휴면" },
 ];
 
 /**
@@ -38,6 +57,24 @@ export function matchesMapoScoreFilter(member: MemberWithStats, filter: MapoScor
   if (filter === "le4") return member.mapo_score <= 4;
   if (filter === "le5") return member.mapo_score <= 5;
   return true;
+}
+
+/** 회원구분(member_type) 필터 조건에 맞는지 확인 */
+export function matchesMemberTypeFilter(member: MemberWithStats, filter: MemberTypeFilter): boolean {
+  if (filter === "all") return true;
+  return member.member_type === filter;
+}
+
+/**
+ * 휴면 여부(is_dormant) 필터 조건에 맞는지 확인.
+ * is_active(삭제/숨김)는 이 필터의 대상이 아니다 — 휴면회원은 정책상 항상
+ * 목록에 노출되어야 하므로(Step 7-2/7-3), 이 필터는 그 노출된 목록 안에서
+ * "활동 중인지/휴면인지"만 한 번 더 나눠 보는 용도다.
+ */
+export function matchesDormantFilter(member: MemberWithStats, filter: MemberDormantFilter): boolean {
+  if (filter === "all") return true;
+  if (filter === "active") return !member.is_dormant;
+  return member.is_dormant;
 }
 
 export type MemberSortOption = "league_point" | "name" | "mapo_score" | "win_rate" | "matches_played";

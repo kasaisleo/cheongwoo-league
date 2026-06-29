@@ -7,11 +7,17 @@ import { CallButton } from "@/components/member/CallButton";
 import {
   MAPO_SCORE_FILTER_OPTIONS,
   MEMBER_SORT_OPTIONS,
+  MEMBER_TYPE_FILTER_OPTIONS,
+  MEMBER_DORMANT_FILTER_OPTIONS,
   matchesMapoScoreFilter,
   matchesMemberSearch,
+  matchesMemberTypeFilter,
+  matchesDormantFilter,
   sortMembers,
   type MapoScoreFilter,
   type MemberSortOption,
+  type MemberTypeFilter,
+  type MemberDormantFilter,
 } from "@/lib/member-search";
 import type { MemberWithStats } from "@/lib/supabase/database.types";
 
@@ -22,17 +28,61 @@ interface MemberListProps {
 export function MemberList({ members }: MemberListProps) {
   const [query, setQuery] = useState("");
   const [mapoFilter, setMapoFilter] = useState<MapoScoreFilter>("all");
+  const [memberTypeFilter, setMemberTypeFilter] = useState<MemberTypeFilter>("all");
+  const [dormantFilter, setDormantFilter] = useState<MemberDormantFilter>("all");
   const [sortBy, setSortBy] = useState<MemberSortOption>("league_point");
+
+  // 상단 통계는 검색/필터 적용 전 전체 members 기준으로 고정한다 — 필터를
+  // 바꿔도 숫자가 따라 바뀌지 않아야 "전체 중 몇 명이 정회원/휴면인지"를
+  // 일관되게 볼 수 있다. filteredMembers와는 별개의 계산이다.
+  const stats = useMemo(
+    () => ({
+      total: members.length,
+      regular: members.filter((m) => m.member_type === "정회원").length,
+      associate: members.filter((m) => m.member_type === "준회원").length,
+      guest: members.filter((m) => m.member_type === "게스트").length,
+      dormant: members.filter((m) => m.is_dormant).length,
+    }),
+    [members]
+  );
 
   const filteredMembers = useMemo(() => {
     const filtered = members.filter(
-      (member) => matchesMemberSearch(member, query) && matchesMapoScoreFilter(member, mapoFilter)
+      (member) =>
+        matchesMemberSearch(member, query) &&
+        matchesMapoScoreFilter(member, mapoFilter) &&
+        matchesMemberTypeFilter(member, memberTypeFilter) &&
+        matchesDormantFilter(member, dormantFilter)
     );
     return sortMembers(filtered, sortBy);
-  }, [members, query, mapoFilter, sortBy]);
+  }, [members, query, mapoFilter, memberTypeFilter, dormantFilter, sortBy]);
 
   return (
     <>
+      {/* 검색/필터와 무관하게 항상 전체 members 기준 숫자만 보여준다(stats 참고). */}
+      <div className="mb-4 grid grid-cols-3 gap-1.5 sm:grid-cols-5">
+        <Card className="p-2 text-center">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-line-500">전체</p>
+          <p className="font-score text-lg font-bold text-line-900">{stats.total}</p>
+        </Card>
+        <Card className="p-2 text-center">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-line-500">정회원</p>
+          <p className="font-score text-lg font-bold text-line-900">{stats.regular}</p>
+        </Card>
+        <Card className="p-2 text-center">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-line-500">준회원</p>
+          <p className="font-score text-lg font-bold text-line-900">{stats.associate}</p>
+        </Card>
+        <Card className="p-2 text-center">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-line-500">게스트</p>
+          <p className="font-score text-lg font-bold text-line-900">{stats.guest}</p>
+        </Card>
+        <Card className="p-2 text-center">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-line-500">휴면</p>
+          <p className="font-score text-lg font-bold text-line-600">{stats.dormant}</p>
+        </Card>
+      </div>
+
       <div className="mb-3">
         <input
           value={query}
@@ -57,7 +107,7 @@ export function MemberList({ members }: MemberListProps) {
         </select>
       </div>
 
-      <div className="mb-4 flex flex-wrap gap-1.5">
+      <div className="mb-2 flex flex-wrap gap-1.5">
         {MAPO_SCORE_FILTER_OPTIONS.map((option) => (
           <button
             key={option.value}
@@ -65,6 +115,40 @@ export function MemberList({ members }: MemberListProps) {
             onClick={() => setMapoFilter(option.value)}
             className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
               mapoFilter === option.value
+                ? "border-clay-400 bg-clay-400 text-line-25"
+                : "border-line-200 bg-line-50 text-line-800"
+            }`}
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="mb-2 flex flex-wrap gap-1.5">
+        {MEMBER_TYPE_FILTER_OPTIONS.map((option) => (
+          <button
+            key={option.value}
+            type="button"
+            onClick={() => setMemberTypeFilter(option.value)}
+            className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
+              memberTypeFilter === option.value
+                ? "border-clay-400 bg-clay-400 text-line-25"
+                : "border-line-200 bg-line-50 text-line-800"
+            }`}
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="mb-4 flex flex-wrap gap-1.5">
+        {MEMBER_DORMANT_FILTER_OPTIONS.map((option) => (
+          <button
+            key={option.value}
+            type="button"
+            onClick={() => setDormantFilter(option.value)}
+            className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
+              dormantFilter === option.value
                 ? "border-clay-400 bg-clay-400 text-line-25"
                 : "border-line-200 bg-line-50 text-line-800"
             }`}
