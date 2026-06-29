@@ -43,6 +43,10 @@ function AttendancePageInner() {
   const [processingSessionId, setProcessingSessionId] = useState<string | null>(null);
   // closed 세션에서 운영진이 "명단 수정" 버튼을 눌러야만 토글이 활성화된다.
   const [editingClosedSession, setEditingClosedSession] = useState(false);
+  // 명단 검색/상태 필터(UX 전용 — 서버 조회나 통계 집계에는 영향을 주지
+  // 않는다. 통계 카드 숫자는 항상 rows 전체 기준으로 고정한다).
+  const [memberQuery, setMemberQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<AttendanceStatus | "all">("all");
 
   // 휴일매치/이벤트매치 생성 폼
   const [showCustomForm, setShowCustomForm] = useState(false);
@@ -81,6 +85,8 @@ function AttendancePageInner() {
   // 2. 선택된 세션의 출석 현황 불러오기
   useEffect(() => {
     setEditingClosedSession(false);
+    setMemberQuery("");
+    setStatusFilter("all");
 
     if (!selectedSessionId) {
       setRows([]);
@@ -304,6 +310,20 @@ function AttendancePageInner() {
   const selectedSession = openSessions.find((s) => s.id === selectedSessionId) ?? null;
   const selectedSessionIsCustom =
     selectedSession?.session_day === "holiday" || selectedSession?.session_day === "custom";
+
+  // 명단에 실제로 표시할 목록 — 검색어(이름/닉네임 기준)와 상태 필터를 AND로
+  // 적용한다. 통계 숫자(attending/undecided/absent/shortage)는 위에서 이미
+  // rows 전체로 계산해뒀으므로 이 필터링과 무관하게 그대로 유지된다 —
+  // "출석 카드를 눌러서 목록만 좁혀 봐도, 전체 통계는 흔들리지 않아야" 한다.
+  const normalizedQuery = memberQuery.trim().toLowerCase();
+  const displayedRows = rows.filter((row) => {
+    const matchesQuery =
+      normalizedQuery === "" ||
+      row.member.name?.toLowerCase().includes(normalizedQuery) ||
+      row.member.nickname?.toLowerCase().includes(normalizedQuery);
+    const matchesStatus = statusFilter === "all" || row.status === statusFilter;
+    return matchesQuery && matchesStatus;
+  });
 
   return (
     <main className="px-4 pt-6">
@@ -549,19 +569,46 @@ function AttendancePageInner() {
             )}
           </div>
 
+          {/* 카드를 누르면 그 상태로 명단을 좁혀 본다. 이미 선택된 카드를 다시
+              누르면 "전체"로 돌아간다(토글) — 한 번 더 누르는 것 외에 별도
+              "전체 보기" 버튼을 만들지 않아도 빠르게 되돌릴 수 있다. */}
           <div className="mb-4 grid grid-cols-3 gap-2">
-            <Card className="p-3 text-center">
+            <button
+              type="button"
+              onClick={() => setStatusFilter((prev) => (prev === "attending" ? "all" : "attending"))}
+              className={`rounded-xl border p-3 text-center transition-colors ${
+                statusFilter === "attending"
+                  ? "border-court-400 bg-court-400/10"
+                  : "border-line-200 bg-line-100"
+              }`}
+            >
               <p className="font-score text-2xl font-bold text-court-400">{attending}</p>
               <p className="text-xs text-line-500">출석</p>
-            </Card>
-            <Card className="p-3 text-center">
+            </button>
+            <button
+              type="button"
+              onClick={() => setStatusFilter((prev) => (prev === "undecided" ? "all" : "undecided"))}
+              className={`rounded-xl border p-3 text-center transition-colors ${
+                statusFilter === "undecided"
+                  ? "border-amber-400 bg-amber-400/10"
+                  : "border-line-200 bg-line-100"
+              }`}
+            >
               <p className="font-score text-2xl font-bold text-amber-400">{undecided}</p>
               <p className="text-xs text-line-500">미정</p>
-            </Card>
-            <Card className="p-3 text-center">
+            </button>
+            <button
+              type="button"
+              onClick={() => setStatusFilter((prev) => (prev === "absent" ? "all" : "absent"))}
+              className={`rounded-xl border p-3 text-center transition-colors ${
+                statusFilter === "absent"
+                  ? "border-fault-400 bg-fault-50"
+                  : "border-line-200 bg-line-100"
+              }`}
+            >
               <p className="font-score text-2xl font-bold text-fault-400">{absent}</p>
               <p className="text-xs text-line-500">불참</p>
-            </Card>
+            </button>
           </div>
 
           <div className="mb-4 flex justify-center">
@@ -572,12 +619,34 @@ function AttendancePageInner() {
             )}
           </div>
 
+          <div className="mb-3">
+            <input
+              value={memberQuery}
+              onChange={(e) => setMemberQuery(e.target.value)}
+              placeholder="이름, 닉네임으로 검색"
+              className="box-border block h-11 w-full min-w-0 max-w-full rounded-lg border border-line-200 bg-line-100 px-3 text-sm text-line-900 placeholder:text-line-400"
+            />
+          </div>
+
           {loadingRows ? (
             <p className="text-center text-sm text-line-400">불러오는 중...</p>
+          ) : displayedRows.length === 0 ? (
+            <Card className="p-6 text-center text-sm text-line-400">
+              {rows.length === 0 ? "명단이 비어 있어요." : "검색/필터 조건에 맞는 회원이 없어요."}
+            </Card>
           ) : (
             <div className="space-y-2">
-              {rows.map(({ member, status }) => (
-                <Card key={member.id} className="flex items-center justify-between gap-2 p-3">
+              {displayedRows.map(({ member, status }) => (
+                <Card
+                  key={member.id}
+                  className={`flex items-center justify-between gap-2 border-l-4 p-3 ${
+                    status === "attending"
+                      ? "border-l-court-400"
+                      : status === "absent"
+                        ? "border-l-fault-400"
+                        : "border-l-amber-400"
+                  }`}
+                >
                   <div className="flex flex-wrap items-center gap-1.5">
                     <span className="text-sm font-medium text-line-900">
                       {getDisambiguatedName(member, allMembers)}
