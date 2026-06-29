@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
-import { requireAdmin } from "@/lib/admin-auth";
+import { requireRole } from "@/lib/admin-auth";
 import type { StagingMember } from "@/lib/supabase/database.types";
 
 interface CommitImportBody {
@@ -12,9 +12,11 @@ interface CommitImportBody {
  * 신규 회원만 반영 가능 — validation_status가 'valid'인 행만 허용한다.
  * (duplicate, missing_required, needs_review 등은 운영진이 staging_members에서
  * 직접 보정하거나 건너뛰어야 하며, 이 API는 그 상태를 그대로 반영하지 않는다.)
+ *
+ * 권한(Step 8-3): owner 전용 — 일괄 임포트 플로우의 일부.
  */
 export async function POST(request: NextRequest) {
-  const authError = requireAdmin();
+  const authError = requireRole("owner");
   if (authError) return authError;
 
   const body = (await request.json()) as CommitImportBody;

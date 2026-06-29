@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
-import { requireAdmin } from "@/lib/admin-auth";
+import { requireAdmin, requireRole, getAdminRole } from "@/lib/admin-auth";
 import { isValidPlayerBackground } from "@/lib/constants/member-timeline";
 import type { MemberGrade, MemberRole } from "@/lib/supabase/database.types";
 
@@ -41,13 +41,18 @@ interface RouteParams {
 }
 
 /**
- * 회원 정보 수정. manager 이상이 수행해야 하지만, 권한 시스템 도입 전이라
- * 운영진 비밀번호 인증(isAdminSession)으로 대체한다.
+ * 회원 정보 수정. manager 이상 가능.
  * 추후 카카오 로그인 도입 시: 본인은 자신의 정보를 수정할 수 있게 허용 예정.
  *
  * 수정 가능 항목: 이름, 닉네임, 전화번호, 나이, 주소, district, grade, 마포점수,
  * 직책(role), 휴면 여부(isDormant), 메모, 선수출신. 그 외 항목(회원구분/LP/승패 등)은
  * 이 API의 대상이 아니다.
+ *
+ * 권한 세분화(Step 8-3): 직책(role)만 owner 전용이다. body에 role 필드가
+ * 포함되어 있는데 owner가 아니면, 그 필드만 조용히 무시하지 않고 요청
+ * 전체를 403으로 거부한다 — 권한 없는 필드 변경 시도를 명확하게 실패시켜야
+ * "저장은 됐는데 직책만 안 바뀌었다"는 혼란을 막을 수 있고, 디버깅/QA도
+ * 쉬워진다. 이 체크는 DB 조회보다 먼저 수행해 부분 처리가 생기지 않게 한다.
  */
 export async function PUT(request: NextRequest, { params }: RouteParams) {
   const authError = requireAdmin();
@@ -69,6 +74,17 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     memo,
     playerBackground,
   } = body;
+
+  // role(직책) 변경은 owner 전용. body에 role 키 자체가 있으면(null로 직책을
+  // 해제하는 경우도 포함) owner 여부를 확인한다 — manager가 role: null을
+  // 보내 직책을 지우는 것도 막아야 하므로 "값이 truthy인지"가 아니라
+  // "필드가 존재하는지"로 판단한다.
+  if (role !== undefined && getAdminRole() !== "owner") {
+    return NextResponse.json(
+      { error: "직책 변경은 owner만 가능합니다." },
+      { status: 403 }
+    );
+  }
 
   const supabase = createServiceClient();
 
@@ -207,11 +223,13 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 /**
  * 회원 soft delete. 실제로 행을 지우지 않고 is_active=false로만 표시한다.
  * 경기/출석/LP 이력은 member_id로 연결되어 있어 그대로 보존된다.
- * manager 이상이 수행해야 하지만, 권한 시스템 도입 전이라 운영진 인증으로 대체.
- * 추후 카카오 로그인 도입 시에도 본인 삭제는 허용하지 않는다 — 항상 운영진만 가능.
+ *
+ * 권한(Step 8-3): owner 전용. soft delete라도 회원이 모든 화면에서 즉시
+ * 사라지는 가장 파급력 큰 동작이고, 복구 API/UI가 없어 신중함이 필요하다.
+ * 추후 카카오 로그인 도입 시에도 본인 삭제는 허용하지 않는다 — 항상 owner만 가능.
  */
 export async function DELETE(_request: NextRequest, { params }: RouteParams) {
-  const authError = requireAdmin();
+  const authError = requireRole("owner");
   if (authError) return authError;
 
   const memberId = params.id;

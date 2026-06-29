@@ -1,10 +1,13 @@
 import { NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
-import { requireAdmin } from "@/lib/admin-auth";
+import { requireRole } from "@/lib/admin-auth";
 
-/** staging_members 전체를 조회한다. imported 상태도 포함해서 보여준다(이미 반영된 것 구분용). */
+/**
+ * staging_members 전체를 조회한다. imported 상태도 포함해서 보여준다(이미 반영된 것 구분용).
+ * 권한(Step 8-3): owner 전용 — 일괄 임포트 플로우의 일부.
+ */
 export async function GET() {
-  const authError = requireAdmin();
+  const authError = requireRole("owner");
   if (authError) return authError;
 
   const supabase = createServiceClient();

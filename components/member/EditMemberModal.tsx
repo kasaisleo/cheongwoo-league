@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { toast } from "@/components/ui/Toast";
 import { PLAYER_BACKGROUND_OPTIONS, type PlayerBackground } from "@/lib/constants/member-timeline";
+import { useAdminRole } from "@/lib/hooks/useAdminRole";
 import type { MemberRole, MemberWithStats } from "@/lib/supabase/database.types";
 
 interface EditMemberModalProps {
@@ -37,6 +38,12 @@ function sanitizePhoneDigits(value: string): string {
 }
 
 export function EditMemberModal({ member, onClose, onSaved, onDeleted }: EditMemberModalProps) {
+  // 직책(role) 변경은 owner 전용 — 서버(PUT /api/members/[id])가 최종적으로
+  // 강제하지만, manager에게는 애초에 select를 비활성화해서 "바꿀 수 없는
+  // 항목"임을 명확히 보여준다. role이 아직 로딩 중(null)이면 일단 비활성으로
+  // 둔다 — "확실히 owner라고 확인되기 전까지는 막아둔다"는 보수적 기본값.
+  const adminRole = useAdminRole();
+  const isOwner = adminRole === "owner";
   const [name, setName] = useState(member.name);
   const [nickname, setNickname] = useState(member.nickname);
   const [phoneDigits, setPhoneDigits] = useState(member.phone ?? "");
@@ -83,7 +90,11 @@ export function EditMemberModal({ member, onClose, onSaved, onDeleted }: EditMem
         addressFull: addressFull.trim() || null,
         district: district.trim() || null,
         mapoScore,
-        role: role === NO_ROLE ? null : role,
+        // role(직책)은 owner만 보낸다 — manager는 select가 disabled라 값이
+        // 바뀔 수 없지만, 만약을 위해 payload 자체에서도 필드를 빼서 서버의
+        // "role 필드가 있으면 owner 검증" 분기를 건드리지 않는다. 이러면
+        // manager가 다른 필드만 고치는 정상적인 수정은 막히지 않는다.
+        ...(isOwner ? { role: role === NO_ROLE ? null : role } : {}),
         isDormant,
         memo: memo.trim() || null,
         playerBackground: isPlayerOrigin ? playerBackgroundDetail : "none",
@@ -224,7 +235,12 @@ export function EditMemberModal({ member, onClose, onSaved, onDeleted }: EditMem
             <select
               value={role}
               onChange={(e) => setRole(e.target.value)}
-              className="h-11 w-full rounded-lg border border-line-200 bg-line-25 px-3 text-sm text-line-900"
+              disabled={!isOwner}
+              className={`h-11 w-full rounded-lg border px-3 text-sm ${
+                isOwner
+                  ? "border-line-200 bg-line-25 text-line-900"
+                  : "border-line-200 bg-line-200/40 text-line-500"
+              }`}
             >
               <option value={NO_ROLE}>직책 없음</option>
               {ROLES.map((r) => (
@@ -233,6 +249,9 @@ export function EditMemberModal({ member, onClose, onSaved, onDeleted }: EditMem
                 </option>
               ))}
             </select>
+            {!isOwner && (
+              <p className="mt-1.5 text-xs text-line-400">직책 변경은 owner만 가능합니다.</p>
+            )}
           </div>
 
           <div>
