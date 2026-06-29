@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
-import { requireAdmin } from "@/lib/admin-auth";
+import { requireAdmin, getAdminRole } from "@/lib/admin-auth";
 import type { MemberGrade, MemberRole, MemberType } from "@/lib/supabase/database.types";
 
 interface CreateMemberBody {
@@ -42,6 +42,21 @@ export async function POST(request: NextRequest) {
   const body = (await request.json()) as CreateMemberBody;
   const { name, nickname, phone, grade, role, mapoScore, memberType, addressFull, district, age } =
     body;
+
+  // role(직책) 지정은 owner 전용. POST의 role은 필수 필드(CreateMemberBody.role)라
+  // PUT처럼 "필드가 존재하는지(!== undefined)"로는 판단할 수 없다 — 매번
+  // 항상 존재하기 때문이다. 그래서 "null이 아닌 값을 보냈는지"로 판단한다.
+  // null(직책 없음)은 manager도 보낼 수 있고, 정상 등록 폼은 항상 null을
+  // 보내도록 이미 UI에서 강제되어 있어 일상 흐름에서는 이 체크에 걸리지
+  // 않는다 — 이건 API를 직접 호출하는 시도를 막는 안전망이다.
+  // 다른 입력 검증이나 phone 중복 체크(DB 조회)보다 먼저 막아서, 권한이
+  // 없는 요청이 부분적으로라도 처리되지 않게 한다.
+  if (role !== null && getAdminRole() !== "owner") {
+    return NextResponse.json(
+      { error: "직책 지정은 owner만 가능합니다." },
+      { status: 403 }
+    );
+  }
 
   // --- 필수값 검증 ---
   if (!name?.trim()) {
