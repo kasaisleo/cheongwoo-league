@@ -60,18 +60,38 @@ export function MemberList({ members }: MemberListProps) {
     return sortMembers(filtered, sortBy);
   }, [members, query, mapoFilter, memberTypeFilter, dormantFilter, sortBy]);
 
+  // 통계 카드의 "선택됨" 표시는 그 카드가 의미하는 조건과 현재 필터 state가
+  // 정확히 일치할 때만 켜진다. "전체" 카드는 검색어/마포점수까지 포함해
+  // 모든 필터가 기본값일 때만 active다 — 그래야 "전체를 눌렀다"는 게 곧
+  // "아무 필터도 안 걸려 있다"는 뜻과 정확히 같아진다.
+  const isAllCardActive =
+    query.trim() === "" && mapoFilter === "all" && memberTypeFilter === "all" && dormantFilter === "all";
+  const isRegularCardActive = memberTypeFilter === "정회원";
+  const isAssociateCardActive = memberTypeFilter === "준회원";
+  const isGuestCardActive = memberTypeFilter === "게스트";
+  const isDormantCardActive = dormantFilter === "dormant";
+
+  function statCardClassName(active: boolean): string {
+    return `rounded-xl border p-2 text-center transition-colors ${
+      active ? "border-clay-400 bg-clay-400/10" : "border-line-200 bg-line-100 hover:border-clay-400"
+    }`;
+  }
+
   return (
     <>
       {/* 검색/필터와 무관하게 항상 전체 members 기준 숫자만 보여준다(stats 참고).
-          각 카드는 버튼이다 — 클릭하면 그 구분에 맞는 필터로 실제 바뀐다. */}
+          각 카드는 버튼이다 — 클릭하면 그 구분에 맞는 필터로 실제 바뀌고,
+          현재 필터 상태와 정확히 일치하는 카드만 선택됨으로 표시된다. */}
       <div className="mb-4 grid grid-cols-3 gap-1.5 sm:grid-cols-5">
         <button
           type="button"
           onClick={() => {
+            setQuery("");
+            setMapoFilter("all");
             setMemberTypeFilter("all");
             setDormantFilter("all");
           }}
-          className="rounded-xl border border-line-200 bg-line-100 p-2 text-center transition-colors hover:border-clay-400"
+          className={statCardClassName(isAllCardActive)}
         >
           <p className="text-[10px] font-semibold uppercase tracking-wide text-line-500">전체</p>
           <p className="font-score text-lg font-bold text-line-900">{stats.total}</p>
@@ -79,7 +99,7 @@ export function MemberList({ members }: MemberListProps) {
         <button
           type="button"
           onClick={() => setMemberTypeFilter("정회원")}
-          className="rounded-xl border border-line-200 bg-line-100 p-2 text-center transition-colors hover:border-clay-400"
+          className={statCardClassName(isRegularCardActive)}
         >
           <p className="text-[10px] font-semibold uppercase tracking-wide text-line-500">정회원</p>
           <p className="font-score text-lg font-bold text-line-900">{stats.regular}</p>
@@ -87,7 +107,7 @@ export function MemberList({ members }: MemberListProps) {
         <button
           type="button"
           onClick={() => setMemberTypeFilter("준회원")}
-          className="rounded-xl border border-line-200 bg-line-100 p-2 text-center transition-colors hover:border-clay-400"
+          className={statCardClassName(isAssociateCardActive)}
         >
           <p className="text-[10px] font-semibold uppercase tracking-wide text-line-500">준회원</p>
           <p className="font-score text-lg font-bold text-line-900">{stats.associate}</p>
@@ -95,7 +115,7 @@ export function MemberList({ members }: MemberListProps) {
         <button
           type="button"
           onClick={() => setMemberTypeFilter("게스트")}
-          className="rounded-xl border border-line-200 bg-line-100 p-2 text-center transition-colors hover:border-clay-400"
+          className={statCardClassName(isGuestCardActive)}
         >
           <p className="text-[10px] font-semibold uppercase tracking-wide text-line-500">게스트</p>
           <p className="font-score text-lg font-bold text-line-900">{stats.guest}</p>
@@ -103,7 +123,7 @@ export function MemberList({ members }: MemberListProps) {
         <button
           type="button"
           onClick={() => setDormantFilter("dormant")}
-          className="rounded-xl border border-line-200 bg-line-100 p-2 text-center transition-colors hover:border-clay-400"
+          className={statCardClassName(isDormantCardActive)}
         >
           <p className="text-[10px] font-semibold uppercase tracking-wide text-line-500">휴면</p>
           <p className="font-score text-lg font-bold text-line-600">{stats.dormant}</p>
