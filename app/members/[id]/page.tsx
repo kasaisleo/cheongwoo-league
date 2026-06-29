@@ -80,7 +80,7 @@ export default async function MemberDetailPage({ params }: MemberDetailPageProps
           </div>
           <div className="mb-2 flex items-center justify-center gap-1.5">
             <p className="text-sm text-line-500">{typedMember.name}</p>
-            {typedMember.role !== "정회원" && (
+            {typedMember.role !== null && (
               <span className="rounded-full bg-line-200 px-2 py-0.5 text-[11px] font-semibold text-line-700">
                 {typedMember.role}
               </span>
