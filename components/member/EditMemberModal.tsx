@@ -354,19 +354,21 @@ export function EditMemberModal({ member, onClose, onSaved, onDeleted }: EditMem
           {submitting ? "저장 중..." : "수정 내용 저장"}
         </button>
 
-        <div className="mt-6 border-t border-line-200 pt-4">
-          <p className="mb-2 text-center text-[11px] font-semibold uppercase tracking-widest text-line-400">
-            위험 구역
-          </p>
-          <button
-            type="button"
-            disabled={deleting}
-            onClick={handleDelete}
-            className="h-11 w-full rounded-lg border border-fault-400 text-xs font-semibold text-fault-400 disabled:opacity-40"
-          >
-            {deleting ? "삭제 중..." : "회원 삭제"}
-          </button>
-        </div>
+        {isOwner && (
+          <div className="mt-6 border-t border-line-200 pt-4">
+            <p className="mb-2 text-center text-[11px] font-semibold uppercase tracking-widest text-line-400">
+              위험 구역
+            </p>
+            <button
+              type="button"
+              disabled={deleting}
+              onClick={handleDelete}
+              className="h-11 w-full rounded-lg border border-fault-400 text-xs font-semibold text-fault-400 disabled:opacity-40"
+            >
+              {deleting ? "삭제 중..." : "회원 삭제"}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

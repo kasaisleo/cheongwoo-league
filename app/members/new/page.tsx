@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
+import { useAdminRole } from "@/lib/hooks/useAdminRole";
 import type { MemberRole, MemberType } from "@/lib/supabase/database.types";
 
 const ROLES: MemberRole[] = [
@@ -39,6 +40,13 @@ function formatPhoneForDisplay(digits: string): string {
 
 export default function NewMemberPage() {
   const router = useRouter();
+  // 직책(role) 지정은 owner 전용 — 서버(POST /api/members)는 현재 이 필드를
+  // owner 검증 없이 그대로 받는 상태라(별도 Step에서 보완 예정), 이번
+  // Step에서는 UI만 막아 정상적인 사용 흐름에서 manager가 직책을 지정하지
+  // 못하게 한다. role이 아직 로딩 중(null)이면 일단 비활성으로 둔다 —
+  // EditMemberModal과 동일한 보수적 기본값.
+  const adminRole = useAdminRole();
+  const isOwner = adminRole === "owner";
   const [name, setName] = useState("");
   const [nickname, setNickname] = useState("");
   const [phoneDigits, setPhoneDigits] = useState("");
@@ -93,7 +101,11 @@ export default function NewMemberPage() {
         nickname: nickname.trim() || null,
         phone: phoneDigits,
         grade: DEFAULT_GRADE,
-        role: role === NO_ROLE ? null : role,
+        // role(직책)은 owner만 보낸다 — manager는 select가 disabled라 값이
+        // 바뀔 수 없지만, payload에서도 명시적으로 빼서 의도를 분명히 한다.
+        // (서버는 현재 이 필드를 owner 검증 없이 받으므로, 이건 UI 차원의
+        // 방어이고 근본적인 차단은 별도 Step에서 서버에 추가해야 한다.)
+        role: isOwner ? (role === NO_ROLE ? null : role) : null,
         mapoScore,
         memberType,
       }),
@@ -185,7 +197,12 @@ export default function NewMemberPage() {
             <select
               value={role}
               onChange={(e) => setRole(e.target.value)}
-              className="h-11 w-full rounded-lg border border-line-200 bg-line-25 px-3 text-sm text-line-900"
+              disabled={!isOwner}
+              className={`h-11 w-full rounded-lg border px-3 text-sm ${
+                isOwner
+                  ? "border-line-200 bg-line-25 text-line-900"
+                  : "border-line-200 bg-line-200/40 text-line-500"
+              }`}
             >
               <option value={NO_ROLE}>직책 없음</option>
               {ROLES.map((r) => (
@@ -194,6 +211,9 @@ export default function NewMemberPage() {
                 </option>
               ))}
             </select>
+            {!isOwner && (
+              <p className="mt-1.5 text-xs text-line-400">직책 지정은 owner만 가능합니다.</p>
+            )}
           </div>
 
           <div>
