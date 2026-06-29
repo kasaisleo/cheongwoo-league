@@ -78,7 +78,7 @@ export default async function MemberDetailPage({ params }: MemberDetailPageProps
           <div className="mb-1 flex items-center justify-center gap-1.5">
             <h1 className="font-display text-2xl font-bold uppercase tracking-tight text-line-900">{typedMember.nickname}</h1>
           </div>
-          <div className="mb-2 flex items-center justify-center gap-1.5">
+          <div className="mb-2 flex flex-wrap items-center justify-center gap-1.5">
             <p className="text-sm text-line-500">{typedMember.name}</p>
             {typedMember.role !== null && (
               <span className="rounded-full bg-line-200 px-2 py-0.5 text-[11px] font-semibold text-line-700">
@@ -88,6 +88,11 @@ export default async function MemberDetailPage({ params }: MemberDetailPageProps
             {typedMember.player_background !== "none" && (
               <span className="rounded-full bg-amber-400/20 px-2 py-0.5 text-[11px] font-semibold text-amber-400">
                 {playerBackgroundLabel(typedMember.player_background)}
+              </span>
+            )}
+            {typedMember.is_dormant && (
+              <span className="rounded-full bg-line-200 px-2 py-0.5 text-[11px] font-semibold text-line-600">
+                휴면
               </span>
             )}
           </div>

@@ -91,6 +91,11 @@ export function MemberList({ members }: MemberListProps) {
                         {member.role}
                       </span>
                     )}
+                    {member.is_dormant && (
+                      <span className="rounded-full bg-line-200 px-1.5 py-0.5 text-[10px] font-semibold text-line-600">
+                        휴면
+                      </span>
+                    )}
                   </p>
                   <p className="text-xs text-line-500">{member.name}</p>
                   <p className="mt-1 text-xs font-semibold">
