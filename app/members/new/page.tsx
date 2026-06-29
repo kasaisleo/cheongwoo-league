@@ -14,9 +14,10 @@ const ROLES: MemberRole[] = [
   "홍보이사",
   "운영이사",
   "섭외이사",
-  "정회원",
   "고문",
 ];
+/** select에서 "직책 없음"을 표현하는 센티널 값. 제출 시 null로 변환한다. */
+const NO_ROLE = "__none__";
 const MEMBER_TYPES: MemberType[] = ["정회원", "준회원", "게스트"];
 const MAPO_SCORES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
@@ -41,7 +42,7 @@ export default function NewMemberPage() {
   const [name, setName] = useState("");
   const [nickname, setNickname] = useState("");
   const [phoneDigits, setPhoneDigits] = useState("");
-  const [role, setRole] = useState<MemberRole>("정회원");
+  const [role, setRole] = useState<string>(NO_ROLE);
   const [memberType, setMemberType] = useState<MemberType | null>(null);
   const [mapoScore, setMapoScore] = useState<number | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -92,7 +93,7 @@ export default function NewMemberPage() {
         nickname: nickname.trim() || null,
         phone: phoneDigits,
         grade: DEFAULT_GRADE,
-        role,
+        role: role === NO_ROLE ? null : role,
         mapoScore,
         memberType,
       }),
@@ -183,9 +184,10 @@ export default function NewMemberPage() {
             <label className="mb-1 block text-xs font-semibold text-line-600">직책</label>
             <select
               value={role}
-              onChange={(e) => setRole(e.target.value as MemberRole)}
+              onChange={(e) => setRole(e.target.value)}
               className="h-11 w-full rounded-lg border border-line-200 bg-line-25 px-3 text-sm text-line-900"
             >
+              <option value={NO_ROLE}>직책 없음</option>
               {ROLES.map((r) => (
                 <option key={r} value={r}>
                   {r}
