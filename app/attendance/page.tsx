@@ -11,6 +11,7 @@ import { toast } from "@/components/ui/Toast";
 import { AttendanceToggle } from "@/components/attendance/AttendanceToggle";
 import { getDisambiguatedName } from "@/lib/member-display";
 import { MATCH_SESSION_DAY_LABEL, fetchActiveSessions } from "@/lib/match-session-label";
+import { useIsAdmin } from "@/lib/hooks/useIsAdmin";
 import type { AttendanceStatus, AttendanceSession, Member } from "@/lib/supabase/database.types";
 
 const MIN_REQUIRED_PLAYERS = 4;
@@ -29,7 +30,10 @@ function AttendancePageInner() {
   const searchParams = useSearchParams();
   const initialSessionId = searchParams.get("session_id");
   const supabase = useMemo(() => createClient(), []);
-  const [isAdmin, setIsAdmin] = useState(false);
+  // 운영진 여부 확인 — manager 이상만 세션 생성/명단확정/명단보관 버튼을 본다.
+  // 카카오 로그인 + permission_role 도입 전까지는 운영진 비밀번호 인증으로 대체.
+  // (useIsAdmin 훅이 /api/auth/status 조회를 담당한다)
+  const isAdmin = useIsAdmin();
   const [openSessions, setOpenSessions] = useState<AttendanceSession[]>([]);
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
   const [rows, setRows] = useState<MemberAttendance[]>([]);
@@ -46,15 +50,6 @@ function AttendancePageInner() {
   const [customDay, setCustomDay] = useState<"holiday" | "custom">("custom");
   const [customTitle, setCustomTitle] = useState("");
   const [creatingCustom, setCreatingCustom] = useState(false);
-
-  // 0. 운영진 여부 확인 — manager 이상만 세션 생성/명단확정/명단보관 버튼을 본다.
-  // 카카오 로그인 + permission_role 도입 전까지는 운영진 비밀번호 인증으로 대체.
-  useEffect(() => {
-    fetch("/api/auth/status")
-      .then((res) => res.json())
-      .then((body) => setIsAdmin(Boolean(body?.isAdmin)))
-      .catch(() => setIsAdmin(false));
-  }, []);
 
   // 1. open 상태인 세션 목록 불러오기. URL의 session_id가 있고 목록에 실제로 존재하면 그걸 우선 선택한다.
   useEffect(() => {
@@ -582,10 +577,15 @@ function AttendancePageInner() {
           ) : (
             <div className="space-y-2">
               {rows.map(({ member, status }) => (
-                <Card key={member.id} className="flex items-center justify-between p-3">
-                  <span className="text-sm font-medium text-line-900">
-                    {getDisambiguatedName(member, allMembers)}
-                  </span>
+                <Card key={member.id} className="flex items-center justify-between gap-2 p-3">
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="text-sm font-medium text-line-900">
+                      {getDisambiguatedName(member, allMembers)}
+                    </span>
+                    {member.member_type !== "정회원" && (
+                      <Badge tone="neutral">{member.member_type}</Badge>
+                    )}
+                  </div>
                   <AttendanceToggle
                     value={status}
                     onChange={(s) => updateStatus(member.id, s)}
