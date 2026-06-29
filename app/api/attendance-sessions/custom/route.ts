@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
-import { isAdminSession } from "@/lib/admin-auth";
+import { requireAdmin } from "@/lib/admin-auth";
 import type { Member, SessionDay } from "@/lib/supabase/database.types";
 
 interface CreateCustomSessionBody {
@@ -11,9 +11,8 @@ interface CreateCustomSessionBody {
 
 export async function POST(request: NextRequest) {
   // manager 이상이 수행해야 하지만, 권한 시스템 도입 전 단계라 운영진 인증으로 대체.
-  if (!isAdminSession()) {
-    return NextResponse.json({ error: "운영진 인증이 필요합니다." }, { status: 401 });
-  }
+  const authError = requireAdmin();
+  if (authError) return authError;
 
   const body = (await request.json()) as CreateCustomSessionBody;
   const { sessionDate, sessionDay, title } = body;

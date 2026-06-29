@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import * as XLSX from "xlsx";
 import { createServiceClient } from "@/lib/supabase/server";
-import { isAdminSession } from "@/lib/admin-auth";
+import { requireAdmin } from "@/lib/admin-auth";
 import { normalizeStagingRow, normalizePhone } from "@/lib/member-import";
 
 /**
@@ -41,9 +41,8 @@ function normalizeHeader(header: string): string | null {
 }
 
 export async function POST(request: NextRequest) {
-  if (!isAdminSession()) {
-    return NextResponse.json({ error: "운영진 인증이 필요합니다." }, { status: 401 });
-  }
+  const authError = requireAdmin();
+  if (authError) return authError;
 
   const formData = await request.formData();
   const file = formData.get("file");

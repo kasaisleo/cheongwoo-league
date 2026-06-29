@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
-import { isAdminSession } from "@/lib/admin-auth";
+import { requireAdmin } from "@/lib/admin-auth";
 import type { MemberGrade, MemberRole, MemberType } from "@/lib/supabase/database.types";
 
 interface CreateMemberBody {
@@ -36,9 +36,8 @@ const PHONE_REGEX = /^010\d{8}$/;
 export async function POST(request: NextRequest) {
   // members에는 휴대폰/주소/나이 등 개인정보가 포함되므로, RLS로 anon insert를
   // 열어두지 않고 항상 이 서버 라우트(운영진 인증 + service-role)를 통해서만 등록한다.
-  if (!isAdminSession()) {
-    return NextResponse.json({ error: "운영진 인증이 필요합니다." }, { status: 401 });
-  }
+  const authError = requireAdmin();
+  if (authError) return authError;
 
   const body = (await request.json()) as CreateMemberBody;
   const { name, nickname, phone, grade, role, mapoScore, memberType, addressFull, district, age } =

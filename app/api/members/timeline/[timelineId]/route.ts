@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
-import { isAdminSession } from "@/lib/admin-auth";
+import { requireAdmin } from "@/lib/admin-auth";
 import { validateTimelinePayload, buildEventDate, ensureSingleHighlight } from "@/lib/member-timeline-validation";
 
 interface UpdateTimelineBody {
@@ -30,9 +30,8 @@ interface RouteParams {
 
 /** Timeline 항목 수정. 운영진만 가능. */
 export async function PUT(request: NextRequest, { params }: RouteParams) {
-  if (!isAdminSession()) {
-    return NextResponse.json({ error: "운영진 인증이 필요합니다." }, { status: 401 });
-  }
+  const authError = requireAdmin();
+  if (authError) return authError;
 
   const timelineId = params.timelineId;
   const body = (await request.json()) as UpdateTimelineBody;
@@ -132,9 +131,8 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
 /** Timeline 항목 삭제. 운영진만 가능. 실제 이력 데이터라 soft delete 없이 바로 삭제한다. */
 export async function DELETE(_request: NextRequest, { params }: RouteParams) {
-  if (!isAdminSession()) {
-    return NextResponse.json({ error: "운영진 인증이 필요합니다." }, { status: 401 });
-  }
+  const authError = requireAdmin();
+  if (authError) return authError;
 
   const timelineId = params.timelineId;
   const supabase = createServiceClient();

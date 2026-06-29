@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
-import { isAdminSession } from "@/lib/admin-auth";
+import { requireAdmin } from "@/lib/admin-auth";
 import { isValidPlayerBackground } from "@/lib/constants/member-timeline";
 import type { MemberGrade, MemberRole } from "@/lib/supabase/database.types";
 
@@ -50,9 +50,8 @@ interface RouteParams {
  * 이 API의 대상이 아니다.
  */
 export async function PUT(request: NextRequest, { params }: RouteParams) {
-  if (!isAdminSession()) {
-    return NextResponse.json({ error: "운영진 인증이 필요합니다." }, { status: 401 });
-  }
+  const authError = requireAdmin();
+  if (authError) return authError;
 
   const memberId = params.id;
   const body = (await request.json()) as UpdateMemberBody;
@@ -212,9 +211,8 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
  * 추후 카카오 로그인 도입 시에도 본인 삭제는 허용하지 않는다 — 항상 운영진만 가능.
  */
 export async function DELETE(_request: NextRequest, { params }: RouteParams) {
-  if (!isAdminSession()) {
-    return NextResponse.json({ error: "운영진 인증이 필요합니다." }, { status: 401 });
-  }
+  const authError = requireAdmin();
+  if (authError) return authError;
 
   const memberId = params.id;
   const supabase = createServiceClient();

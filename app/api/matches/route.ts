@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
-import { isAdminSession } from "@/lib/admin-auth";
+import { requireAdmin } from "@/lib/admin-auth";
 import { applyMatch } from "@/lib/match-engine";
 import type { Member, Guest } from "@/lib/supabase/database.types";
 
@@ -33,9 +33,8 @@ function isValidPlayer(p: unknown): p is PlayerInput {
 }
 
 export async function POST(request: NextRequest) {
-  if (!isAdminSession()) {
-    return NextResponse.json({ error: "운영진 인증이 필요합니다." }, { status: 401 });
-  }
+  const authError = requireAdmin();
+  if (authError) return authError;
 
   const body = (await request.json()) as CreateMatchBody;
   const {

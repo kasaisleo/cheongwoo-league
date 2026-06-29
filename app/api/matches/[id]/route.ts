@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
-import { isAdminSession } from "@/lib/admin-auth";
+import { requireAdmin } from "@/lib/admin-auth";
 import { applyMatch, rollbackMatch } from "@/lib/match-engine";
 import type { Match, Member, Guest } from "@/lib/supabase/database.types";
 
@@ -44,9 +44,8 @@ interface RouteParams {
  * 이 순서를 지켜야 LP/wins/losses가 항상 "현재 저장된 경기 내용"과 일치하는 상태를 유지한다.
  */
 export async function PUT(request: NextRequest, { params }: RouteParams) {
-  if (!isAdminSession()) {
-    return NextResponse.json({ error: "운영진 인증이 필요합니다." }, { status: 401 });
-  }
+  const authError = requireAdmin();
+  if (authError) return authError;
 
   const matchId = params.id;
   const body = (await request.json()) as UpdateMatchBody;
@@ -202,9 +201,8 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
  * rollback이 남긴 보정 레코드(및 기존 이력)는 그대로 보존된다(match_id만 null이 됨).
  */
 export async function DELETE(_request: NextRequest, { params }: RouteParams) {
-  if (!isAdminSession()) {
-    return NextResponse.json({ error: "운영진 인증이 필요합니다." }, { status: 401 });
-  }
+  const authError = requireAdmin();
+  if (authError) return authError;
 
   const matchId = params.id;
   const supabase = createServiceClient();

@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import { NextResponse } from "next/server";
 import crypto from "crypto";
 
 /**
@@ -70,4 +71,25 @@ export function isAdminSession(): boolean {
   const token = cookies().get(COOKIE_NAME)?.value;
   if (!token) return false;
   return verifyToken(token);
+}
+
+/**
+ * API route 인증 가드. 운영진이 아니면 401 NextResponse를 반환하고,
+ * 운영진이면 null을 반환한다. 14개 route에 반복되던
+ * `if (!isAdminSession()) return NextResponse.json(...)` 패턴을 한 곳으로
+ * 모은 것일 뿐, 응답 형식/상태 코드/에러 메시지는 기존과 완전히 동일하다.
+ *
+ * 사용:
+ *   const authError = requireAdmin();
+ *   if (authError) return authError;
+ */
+export function requireAdmin(): NextResponse | null {
+  if (!isAdminSession()) {
+    return NextResponse.json(
+      { error: "운영진 인증이 필요합니다." },
+      { status: 401 }
+    );
+  }
+
+  return null;
 }

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
-import { isAdminSession } from "@/lib/admin-auth";
+import { requireAdmin } from "@/lib/admin-auth";
 import type { Member } from "@/lib/supabase/database.types";
 
 /**
@@ -28,9 +28,8 @@ function toDateString(d: Date): string {
 }
 
 export async function POST() {
-  if (!isAdminSession()) {
-    return NextResponse.json({ error: "운영진 인증이 필요합니다." }, { status: 401 });
-  }
+  const authError = requireAdmin();
+  if (authError) return authError;
 
   const supabase = createServiceClient();
   const today = new Date();

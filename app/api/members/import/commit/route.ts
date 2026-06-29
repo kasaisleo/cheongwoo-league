@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
-import { isAdminSession } from "@/lib/admin-auth";
+import { requireAdmin } from "@/lib/admin-auth";
 import type { StagingMember } from "@/lib/supabase/database.types";
 
 interface CommitImportBody {
@@ -14,9 +14,8 @@ interface CommitImportBody {
  * 직접 보정하거나 건너뛰어야 하며, 이 API는 그 상태를 그대로 반영하지 않는다.)
  */
 export async function POST(request: NextRequest) {
-  if (!isAdminSession()) {
-    return NextResponse.json({ error: "운영진 인증이 필요합니다." }, { status: 401 });
-  }
+  const authError = requireAdmin();
+  if (authError) return authError;
 
   const body = (await request.json()) as CommitImportBody;
   const { stagingIds } = body;

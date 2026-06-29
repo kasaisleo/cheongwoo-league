@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { EditMemberModal } from "@/components/member/EditMemberModal";
+import { useIsAdmin } from "@/lib/hooks/useIsAdmin";
 import type { MemberWithStats } from "@/lib/supabase/database.types";
 
 interface MemberDetailActionsProps {
@@ -12,22 +13,15 @@ interface MemberDetailActionsProps {
 /**
  * 회원 상세 화면의 운영진 전용 액션. manager 이상이 수행해야 하지만, 권한
  * 시스템 도입 전이라 isAdminSession으로 대체한다(서버에서 내려준 isAdmin
- * 여부를 클라이언트에서 다시 확인).
+ * 여부를 클라이언트에서 다시 확인 — useIsAdmin 훅이 그 fetch를 담당한다).
  *
  * 삭제 버튼은 이 화면(상세 바로가기)이 아니라 수정 모달 하단에 둔다 — 우발적
  * 클릭으로 회원이 바로 삭제되는 사고를 줄이기 위함(EditMemberModal 참고).
  */
 export function MemberDetailActions({ member }: MemberDetailActionsProps) {
   const router = useRouter();
-  const [isAdmin, setIsAdmin] = useState(false);
+  const isAdmin = useIsAdmin();
   const [showEditModal, setShowEditModal] = useState(false);
-
-  useEffect(() => {
-    fetch("/api/auth/status")
-      .then((res) => res.json())
-      .then((body) => setIsAdmin(Boolean(body?.isAdmin)))
-      .catch(() => setIsAdmin(false));
-  }, []);
 
   if (!isAdmin) return null;
 

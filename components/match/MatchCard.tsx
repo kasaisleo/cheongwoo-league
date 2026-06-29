@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { toast } from "@/components/ui/Toast";
 import { EditMatchModal } from "@/components/match/EditMatchModal";
+import { useIsAdmin } from "@/lib/hooks/useIsAdmin";
 import type { DisplayMatch } from "@/lib/match-display";
 
 interface MatchCardProps {
@@ -14,17 +15,11 @@ interface MatchCardProps {
 
 export function MatchCard({ match }: MatchCardProps) {
   const router = useRouter();
-  const [isAdmin, setIsAdmin] = useState(false);
+  // manager 이상만 수정/삭제 가능 — 권한 시스템 도입 전까지는 운영진 인증으로 대체
+  // (useIsAdmin 훅이 /api/auth/status 조회를 담당한다)
+  const isAdmin = useIsAdmin();
   const [showEditModal, setShowEditModal] = useState(false);
   const [deleting, setDeleting] = useState(false);
-
-  // manager 이상만 수정/삭제 가능 — 권한 시스템 도입 전까지는 운영진 인증으로 대체
-  useEffect(() => {
-    fetch("/api/auth/status")
-      .then((res) => res.json())
-      .then((body) => setIsAdmin(Boolean(body?.isAdmin)))
-      .catch(() => setIsAdmin(false));
-  }, []);
 
   async function handleDelete() {
     const confirmed = window.confirm("정말 이 경기를 삭제하시겠습니까?");
