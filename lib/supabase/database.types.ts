@@ -10,7 +10,6 @@ export type MemberRole =
   | "홍보이사"
   | "운영이사"
   | "섭외이사"
-  | "정회원"
   | "고문";
 export type MemberType = "정회원" | "준회원" | "게스트";
 export type PermissionRole = "member" | "scorer" | "manager" | "admin" | "master";
@@ -35,7 +34,8 @@ export interface Member {
   nickname: string;
   /** @deprecated 0004부터 미사용. 실력 등급 — LP 시스템으로 대체됨. 신규 코드에서 참조하지 말 것. */
   grade: MemberGrade;
-  role: MemberRole;
+  /** 클럽 내 운영 직책. 직책이 없으면 null(회원 구분은 member_type을 본다). */
+  role: MemberRole | null;
   phone: string | null;
   mapo_score: number | null;
   /** @deprecated 0004부터 미사용. ELO 레이팅 — league_point로 대체됨. 신규 코드에서 참조하지 말 것. */
@@ -43,6 +43,8 @@ export interface Member {
   wins: number;
   losses: number;
   is_active: boolean;
+  /** 휴면회원 여부. is_active(삭제/숨김)와 별개의 축 — 자격/이력은 유지하되 신규 활동 대상에서만 제외한다. */
+  is_dormant: boolean;
   member_type: MemberType;
   league_point: number;
   permission_role: PermissionRole;

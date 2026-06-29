@@ -8,7 +8,8 @@ interface CreateMemberBody {
   nickname?: string | null;
   phone: string;
   grade: MemberGrade;
-  role: MemberRole;
+  /** 운영 직책. 직책이 없으면 null. */
+  role: MemberRole | null;
   mapoScore: number;
   memberType: MemberType;
   addressFull?: string | null;
@@ -25,7 +26,6 @@ const VALID_ROLES: MemberRole[] = [
   "홍보이사",
   "운영이사",
   "섭외이사",
-  "정회원",
   "고문",
 ];
 const VALID_MEMBER_TYPES: MemberType[] = ["정회원", "준회원", "게스트"];
@@ -81,7 +81,8 @@ export async function POST(request: NextRequest) {
   if (!VALID_GRADES.includes(grade)) {
     return NextResponse.json({ error: "실력 등급이 올바르지 않습니다." }, { status: 400 });
   }
-  if (!VALID_ROLES.includes(role)) {
+  // role은 직책이 없으면 null — 그 자체로 유효하다. 값이 있을 때만 VALID_ROLES로 검증한다.
+  if (role !== null && !VALID_ROLES.includes(role)) {
     return NextResponse.json({ error: "직책이 올바르지 않습니다." }, { status: 400 });
   }
 
@@ -108,6 +109,8 @@ export async function POST(request: NextRequest) {
   }
 
   // --- 등록 ---
+  // is_active/is_dormant는 DB DEFAULT(true/false)에 암묵적으로 의존하지 않고
+  // 명시적으로 지정한다 — 신규 회원 등록 기본값 정책을 코드가 직접 보장한다.
   const { data: member, error: insertError } = await supabase
     .from("members")
     .insert({
@@ -126,11 +129,14 @@ export async function POST(request: NextRequest) {
       losses: 0,
       permission_role: "member",
       is_kakao_linked: false,
+      is_active: true,
+      is_dormant: false,
     })
     .select()
     .single();
 
   if (insertError || !member) {
+    console.error("[members POST] insert 실패:", insertError);
     return NextResponse.json({ error: "회원 등록에 실패했습니다." }, { status: 500 });
   }
 

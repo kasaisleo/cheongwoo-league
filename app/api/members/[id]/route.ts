@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { isAdminSession } from "@/lib/admin-auth";
 import { isValidPlayerBackground } from "@/lib/constants/member-timeline";
-import type { MemberGrade } from "@/lib/supabase/database.types";
+import type { MemberGrade, MemberRole } from "@/lib/supabase/database.types";
 
 interface UpdateMemberBody {
   name?: string;
@@ -13,11 +13,23 @@ interface UpdateMemberBody {
   district?: string | null;
   grade?: MemberGrade;
   mapoScore?: number | null;
+  /** 운영 직책. null이면 직책 없음으로 변경. */
+  role?: MemberRole | null;
   memo?: string | null;
   playerBackground?: string;
 }
 
 const VALID_GRADES: MemberGrade[] = ["A", "B", "C", "D"];
+const VALID_ROLES: MemberRole[] = [
+  "회장",
+  "부회장",
+  "총무",
+  "경기이사",
+  "홍보이사",
+  "운영이사",
+  "섭외이사",
+  "고문",
+];
 
 /** 010으로 시작하는 숫자만 11자리 */
 const PHONE_REGEX = /^010\d{8}$/;
@@ -31,8 +43,8 @@ interface RouteParams {
  * 운영진 비밀번호 인증(isAdminSession)으로 대체한다.
  * 추후 카카오 로그인 도입 시: 본인은 자신의 정보를 수정할 수 있게 허용 예정.
  *
- * 수정 가능 항목: 이름, 닉네임, 전화번호, 나이, 주소, district, grade, 마포점수, 메모, 선수출신.
- * 그 외 항목(직책/회원구분/LP/승패 등)은 이 API의 대상이 아니다.
+ * 수정 가능 항목: 이름, 닉네임, 전화번호, 나이, 주소, district, grade, 마포점수,
+ * 직책(role), 메모, 선수출신. 그 외 항목(회원구분/LP/승패 등)은 이 API의 대상이 아니다.
  */
 export async function PUT(request: NextRequest, { params }: RouteParams) {
   if (!isAdminSession()) {
@@ -41,7 +53,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
   const memberId = params.id;
   const body = (await request.json()) as UpdateMemberBody;
-  const { name, nickname, phone, age, addressFull, district, grade, mapoScore, memo, playerBackground } =
+  const { name, nickname, phone, age, addressFull, district, grade, mapoScore, role, memo, playerBackground } =
     body;
 
   const supabase = createServiceClient();
@@ -131,6 +143,15 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       );
     }
     updates.mapo_score = mapoScore;
+  }
+
+  if (role !== undefined) {
+    // role은 직책이 없으면 null — 그 자체로 유효하다(QA 케이스: 직책 있음 → 없음).
+    // 값이 있을 때만 VALID_ROLES로 검증한다.
+    if (role !== null && !VALID_ROLES.includes(role)) {
+      return NextResponse.json({ error: "직책이 올바르지 않습니다." }, { status: 400 });
+    }
+    updates.role = role;
   }
 
   if (memo !== undefined) {

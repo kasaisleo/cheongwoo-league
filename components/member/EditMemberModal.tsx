@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { toast } from "@/components/ui/Toast";
 import { PLAYER_BACKGROUND_OPTIONS, type PlayerBackground } from "@/lib/constants/member-timeline";
-import type { MemberWithStats } from "@/lib/supabase/database.types";
+import type { MemberRole, MemberWithStats } from "@/lib/supabase/database.types";
 
 interface EditMemberModalProps {
   member: MemberWithStats;
@@ -11,6 +11,19 @@ interface EditMemberModalProps {
   onSaved: () => void;
   onDeleted: () => void;
 }
+
+const ROLES: MemberRole[] = [
+  "회장",
+  "부회장",
+  "총무",
+  "경기이사",
+  "홍보이사",
+  "운영이사",
+  "섭외이사",
+  "고문",
+];
+/** select에서 "직책 없음"을 표현하는 센티널 값. 제출 시 null로 변환한다(신규 등록 폼과 동일한 패턴). */
+const NO_ROLE = "__none__";
 
 /** 010-0000-0000 형태로 화면에 보여줄 포맷 (숫자만 입력받고 화면엔 자동 포맷) */
 function formatPhoneForDisplay(digits: string): string {
@@ -31,6 +44,7 @@ export function EditMemberModal({ member, onClose, onSaved, onDeleted }: EditMem
   const [addressFull, setAddressFull] = useState(member.address_full ?? "");
   const [district, setDistrict] = useState(member.district ?? "");
   const [mapoScore, setMapoScore] = useState<number | null>(member.mapo_score);
+  const [role, setRole] = useState<string>(member.role ?? NO_ROLE);
   const [memo, setMemo] = useState(member.memo ?? "");
   const initialPlayerBackground = (member.player_background as PlayerBackground) || "none";
   const [isPlayerOrigin, setIsPlayerOrigin] = useState(initialPlayerBackground !== "none");
@@ -68,6 +82,7 @@ export function EditMemberModal({ member, onClose, onSaved, onDeleted }: EditMem
         addressFull: addressFull.trim() || null,
         district: district.trim() || null,
         mapoScore,
+        role: role === NO_ROLE ? null : role,
         memo: memo.trim() || null,
         playerBackground: isPlayerOrigin ? playerBackgroundDetail : "none",
       }),
@@ -200,6 +215,22 @@ export function EditMemberModal({ member, onClose, onSaved, onDeleted }: EditMem
                 </button>
               ))}
             </div>
+          </div>
+
+          <div>
+            <label className="mb-1 block text-xs font-semibold text-line-600">직책</label>
+            <select
+              value={role}
+              onChange={(e) => setRole(e.target.value)}
+              className="h-11 w-full rounded-lg border border-line-200 bg-line-25 px-3 text-sm text-line-900"
+            >
+              <option value={NO_ROLE}>직책 없음</option>
+              {ROLES.map((r) => (
+                <option key={r} value={r}>
+                  {r}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div>

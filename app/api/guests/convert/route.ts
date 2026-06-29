@@ -39,7 +39,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "이미 정회원으로 전환된 게스트입니다." }, { status: 409 });
   }
 
-  // 2. 회원으로 등록 (역할은 기본값 '정회원')
+  // 2. 회원으로 등록. role은 직책 없음(null), member_type은 정회원으로 명시한다 —
+  // DB 컬럼 DEFAULT에 암묵적으로 의존하지 않는다(DEFAULT가 바뀌면 여기 의도와
+  // 다르게 조용히 따라 바뀔 수 있어, 신규 회원 등록 기본값 정책을 코드에서
+  // 직접 보장한다).
   const { data: newMember, error: insertError } = await supabase
     .from("members")
     .insert({
@@ -47,6 +50,10 @@ export async function POST(request: NextRequest) {
       nickname: nickname.trim(),
       grade,
       phone: phone?.trim() || null,
+      role: null,
+      member_type: "정회원",
+      is_active: true,
+      is_dormant: false,
     })
     .select()
     .single();

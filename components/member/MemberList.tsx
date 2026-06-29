@@ -86,7 +86,7 @@ export function MemberList({ members }: MemberListProps) {
                 <div>
                   <p className="flex items-center gap-1.5 text-sm font-semibold text-line-900">
                     {member.nickname}
-                    {member.role !== "정회원" && (
+                    {member.role !== null && (
                       <span className="rounded-full bg-line-200 px-1.5 py-0.5 text-[10px] font-semibold text-line-700">
                         {member.role}
                       </span>

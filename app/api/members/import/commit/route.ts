@@ -44,12 +44,15 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // is_active/is_dormant는 DB DEFAULT(true/false)에 암묵적으로 의존하지 않고
+  // 명시적으로 지정한다 — 일괄 임포트로 들어오는 회원도 신규 등록과 같은
+  // 기본값 정책(role: null, is_active: true, is_dormant: false)을 따른다.
   const memberInserts = (rows as StagingMember[]).map((r) => ({
     name: r.normalized_name!,
     nickname: r.normalized_nickname || r.normalized_name!,
     phone: r.normalized_phone,
     grade: "C" as const,
-    role: "정회원" as const,
+    role: null,
     mapo_score: r.normalized_mapo_score,
     member_type: (r.normalized_member_type as "정회원" | "준회원" | "게스트") ?? "정회원",
     address_full: r.normalized_address,
@@ -60,6 +63,8 @@ export async function POST(request: NextRequest) {
     losses: 0,
     permission_role: "member" as const,
     is_kakao_linked: false,
+    is_active: true,
+    is_dormant: false,
   }));
 
   const { data: insertedMembers, error: insertError } = await supabase
