@@ -45,6 +45,7 @@ export function EditMemberModal({ member, onClose, onSaved, onDeleted }: EditMem
   const [district, setDistrict] = useState(member.district ?? "");
   const [mapoScore, setMapoScore] = useState<number | null>(member.mapo_score);
   const [role, setRole] = useState<string>(member.role ?? NO_ROLE);
+  const [isDormant, setIsDormant] = useState(member.is_dormant);
   const [memo, setMemo] = useState(member.memo ?? "");
   const initialPlayerBackground = (member.player_background as PlayerBackground) || "none";
   const [isPlayerOrigin, setIsPlayerOrigin] = useState(initialPlayerBackground !== "none");
@@ -83,6 +84,7 @@ export function EditMemberModal({ member, onClose, onSaved, onDeleted }: EditMem
         district: district.trim() || null,
         mapoScore,
         role: role === NO_ROLE ? null : role,
+        isDormant,
         memo: memo.trim() || null,
         playerBackground: isPlayerOrigin ? playerBackgroundDetail : "none",
       }),
@@ -231,6 +233,37 @@ export function EditMemberModal({ member, onClose, onSaved, onDeleted }: EditMem
                 </option>
               ))}
             </select>
+          </div>
+
+          <div>
+            <label className="mb-1 block text-xs font-semibold text-line-600">회원 상태</label>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setIsDormant(false)}
+                className={`flex-1 rounded-lg border py-2 text-sm font-semibold ${
+                  !isDormant
+                    ? "border-clay-400 bg-clay-400 text-line-25"
+                    : "border-line-200 text-line-600"
+                }`}
+              >
+                활동
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsDormant(true)}
+                className={`flex-1 rounded-lg border py-2 text-sm font-semibold ${
+                  isDormant
+                    ? "border-clay-400 bg-clay-400 text-line-25"
+                    : "border-line-200 text-line-600"
+                }`}
+              >
+                휴면
+              </button>
+            </div>
+            <p className="mt-1.5 text-xs text-line-400">
+              휴면회원은 목록과 랭킹에는 남지만, 출석 체크와 신규 경기 등록 대상에서는 제외됩니다.
+            </p>
           </div>
 
           <div>

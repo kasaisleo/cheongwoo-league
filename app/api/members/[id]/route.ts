@@ -15,6 +15,8 @@ interface UpdateMemberBody {
   mapoScore?: number | null;
   /** 운영 직책. null이면 직책 없음으로 변경. */
   role?: MemberRole | null;
+  /** 휴면회원 여부. is_active(삭제/숨김)와 별개 — false는 활동, true는 휴면. */
+  isDormant?: boolean;
   memo?: string | null;
   playerBackground?: string;
 }
@@ -44,7 +46,8 @@ interface RouteParams {
  * 추후 카카오 로그인 도입 시: 본인은 자신의 정보를 수정할 수 있게 허용 예정.
  *
  * 수정 가능 항목: 이름, 닉네임, 전화번호, 나이, 주소, district, grade, 마포점수,
- * 직책(role), 메모, 선수출신. 그 외 항목(회원구분/LP/승패 등)은 이 API의 대상이 아니다.
+ * 직책(role), 휴면 여부(isDormant), 메모, 선수출신. 그 외 항목(회원구분/LP/승패 등)은
+ * 이 API의 대상이 아니다.
  */
 export async function PUT(request: NextRequest, { params }: RouteParams) {
   if (!isAdminSession()) {
@@ -53,8 +56,20 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
   const memberId = params.id;
   const body = (await request.json()) as UpdateMemberBody;
-  const { name, nickname, phone, age, addressFull, district, grade, mapoScore, role, memo, playerBackground } =
-    body;
+  const {
+    name,
+    nickname,
+    phone,
+    age,
+    addressFull,
+    district,
+    grade,
+    mapoScore,
+    role,
+    isDormant,
+    memo,
+    playerBackground,
+  } = body;
 
   const supabase = createServiceClient();
 
@@ -152,6 +167,13 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: "직책이 올바르지 않습니다." }, { status: 400 });
     }
     updates.role = role;
+  }
+
+  if (isDormant !== undefined) {
+    if (typeof isDormant !== "boolean") {
+      return NextResponse.json({ error: "휴면 여부가 올바르지 않습니다." }, { status: 400 });
+    }
+    updates.is_dormant = isDormant;
   }
 
   if (memo !== undefined) {
