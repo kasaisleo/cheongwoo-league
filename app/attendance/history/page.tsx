@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/Card";
 import { toast } from "@/components/ui/Toast";
 import { getDisambiguatedName } from "@/lib/member-display";
 import { MATCH_SESSION_DAY_LABEL } from "@/lib/match-session-label";
+import { useIsAdmin } from "@/lib/hooks/useIsAdmin";
 import type { AttendanceSession, AttendanceStatus, Member } from "@/lib/supabase/database.types";
 
 interface SessionSummary {
@@ -23,21 +24,15 @@ interface MemberAttendanceRow {
 
 export default function AttendanceHistoryPage() {
   const supabase = useMemo(() => createClient(), []);
-  const [isAdmin, setIsAdmin] = useState(false);
+  // manager 이상만 "보관 해제" 가능 — 권한 시스템 도입 전까지는 운영진 인증으로 대체
+  // (useIsAdmin 훅이 /api/auth/status 조회를 담당한다)
+  const isAdmin = useIsAdmin();
   const [summaries, setSummaries] = useState<SessionSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedSessionId, setExpandedSessionId] = useState<string | null>(null);
   const [detailRows, setDetailRows] = useState<MemberAttendanceRow[]>([]);
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [restoringSessionId, setRestoringSessionId] = useState<string | null>(null);
-
-  // manager 이상만 "보관 해제" 가능 — 권한 시스템 도입 전까지는 운영진 인증으로 대체
-  useEffect(() => {
-    fetch("/api/auth/status")
-      .then((res) => res.json())
-      .then((body) => setIsAdmin(Boolean(body?.isAdmin)))
-      .catch(() => setIsAdmin(false));
-  }, []);
 
   // 보관(archived)/마감(closed) 세션 목록 + 각 세션의 출석 요약을 불러온다.
   async function loadSummaries() {

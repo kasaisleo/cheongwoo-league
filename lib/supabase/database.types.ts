@@ -56,6 +56,8 @@ export interface Member {
   memo: string | null;
   player_background: string;
   created_at: string;
+  /** Step 10-1: Supabase Auth(auth.users)와 연결된 식별자. null이면 카카오 로그인으로 아직 연결되지 않은 회원. */
+  auth_user_id: string | null;
 }
 
 export interface MemberWithStats extends Member {
