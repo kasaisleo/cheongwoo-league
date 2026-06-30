@@ -73,9 +73,9 @@ export function MatchCard({ match }: MatchCardProps) {
           <span
             className={match.winner_team === "A" ? "font-semibold text-line-900" : "text-line-500"}
           >
-            {match.teamAPlayer1.nickname}
+            {match.teamAPlayer1.name}
             {match.teamAPlayer1.isGuest && <span className="text-court-400"> G</span>} ·{" "}
-            {match.teamAPlayer2.nickname}
+            {match.teamAPlayer2.name}
             {match.teamAPlayer2.isGuest && <span className="text-court-400"> G</span>}
           </span>
           <span className="font-score font-bold text-line-900">
@@ -89,9 +89,9 @@ export function MatchCard({ match }: MatchCardProps) {
           <span
             className={match.winner_team === "B" ? "font-semibold text-line-900" : "text-line-500"}
           >
-            {match.teamBPlayer1.nickname}
+            {match.teamBPlayer1.name}
             {match.teamBPlayer1.isGuest && <span className="text-court-400"> G</span>} ·{" "}
-            {match.teamBPlayer2.nickname}
+            {match.teamBPlayer2.name}
             {match.teamBPlayer2.isGuest && <span className="text-court-400"> G</span>}
           </span>
         </div>

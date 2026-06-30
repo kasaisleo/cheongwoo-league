@@ -39,7 +39,7 @@ export default function NewGuestPage() {
       .from("members")
       .select("*")
       .eq("is_active", true)
-      .order("nickname")
+      .order("name")
       .then(({ data }) => setMembers(data ?? []));
   }, []);
 
@@ -167,7 +167,7 @@ export default function NewGuestPage() {
                 <option value="">선택 안 함</option>
                 {members.map((m) => (
                   <option key={m.id} value={m.id}>
-                    {m.nickname}
+                    {m.name}
                   </option>
                 ))}
               </select>

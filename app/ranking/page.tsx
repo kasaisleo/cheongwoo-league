@@ -55,7 +55,7 @@ export default async function RankingPage() {
 
                   <div className="flex-1">
                     <div className="flex flex-wrap items-center gap-1.5">
-                      <span className="font-semibold text-line-900">{member.nickname}</span>
+                      <span className="font-semibold text-line-900">{member.name}</span>
                       {member.mapo_score !== null && (
                         <span className="rounded-full bg-line-200 px-1.5 py-0.5 text-[10px] font-semibold text-line-700">
                           MAPO {member.mapo_score}

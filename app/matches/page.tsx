@@ -37,7 +37,7 @@ export default async function MatchesPage({ searchParams }: MatchesPageProps) {
     .from("members")
     .select("*")
     .eq("is_active", true)
-    .order("nickname");
+    .order("name");
 
   let matchesQuery = supabase
     .from("matches")
@@ -146,7 +146,7 @@ export default async function MatchesPage({ searchParams }: MatchesPageProps) {
                   : "border-line-200 bg-line-50 text-line-800"
               }`}
             >
-              {member.nickname}
+              {member.name}
             </span>
           </Link>
         ))}

@@ -76,10 +76,12 @@ export default async function MemberDetailPage({ params }: MemberDetailPageProps
       <Card className="mb-4 overflow-hidden p-0 text-center">
         <div className="border-b-2 border-clay-400 bg-line-200/40 px-5 pb-5 pt-6">
           <div className="mb-1 flex items-center justify-center gap-1.5">
-            <h1 className="font-display text-2xl font-bold uppercase tracking-tight text-line-900">{typedMember.nickname}</h1>
+            <h1 className="font-display text-2xl font-bold uppercase tracking-tight text-line-900">{typedMember.name}</h1>
           </div>
           <div className="mb-2 flex flex-wrap items-center justify-center gap-1.5">
-            <p className="text-sm text-line-500">{typedMember.name}</p>
+            {typedMember.nickname && typedMember.nickname !== typedMember.name && (
+              <p className="text-sm text-line-500">{typedMember.nickname}</p>
+            )}
             {typedMember.role !== null && (
               <span className="rounded-full bg-line-200 px-2 py-0.5 text-[11px] font-semibold text-line-700">
                 {typedMember.role}
@@ -182,13 +184,13 @@ export default async function MemberDetailPage({ params }: MemberDetailPageProps
                   </div>
                   <div className="mt-1.5 flex items-center justify-between text-sm">
                     <span className="text-line-700">
-                      {typedMember.nickname}
-                      {summary.partner && ` / ${summary.partner.nickname}`}
+                      {typedMember.name}
+                      {summary.partner && ` / ${summary.partner.name}`}
                     </span>
                     <Badge tone={summary.won ? "court" : "fault"}>{summary.won ? "승" : "패"}</Badge>
                   </div>
                   <p className="mt-1 text-xs text-line-500">
-                    vs {summary.opponents.map((o) => o.nickname).join(" / ")}
+                    vs {summary.opponents.map((o) => o.name).join(" / ")}
                   </p>
                   <div className="mt-1.5 flex items-center justify-between">
                     <span className="font-score text-sm font-bold text-line-900">
@@ -316,7 +318,7 @@ export default async function MemberDetailPage({ params }: MemberDetailPageProps
           <div className="space-y-1.5">
             {recentPartners.map((partner) => (
               <Card key={`${partner.isGuest ? "guest" : "member"}:${partner.id}`} className="flex items-center justify-between p-3">
-                <span className="text-sm font-medium text-line-900">{partner.nickname}</span>
+                <span className="text-sm font-medium text-line-900">{partner.name}</span>
                 <span className="text-xs font-semibold text-line-500">{partner.count}회</span>
               </Card>
             ))}

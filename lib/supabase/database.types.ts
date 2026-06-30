@@ -88,7 +88,8 @@ export interface Match {
 /** 경기 화면에 표시할 선수 정보. 회원이든 게스트든 동일한 모양으로 다룬다. */
 export interface MatchPlayerDisplay {
   id: string;
-  nickname: string;
+  /** 표시명. 회원이면 members.name, 게스트면 guests.name. */
+  name: string;
   isGuest: boolean;
 }
 

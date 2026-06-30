@@ -8,20 +8,20 @@ import type { MatchPlayerDisplay, SessionDay } from "@/lib/supabase/database.typ
 export const MATCH_SELECT_WITH_PLAYERS = `
   id, played_at, session_id, score_a, score_b, score_a_tiebreak, score_b_tiebreak, winner_team, created_at,
   session:attendance_sessions!matches_session_id_fkey(session_day, title),
-  team_a_player1_member_row:members!matches_team_a_player1_member_fkey(id, nickname),
+  team_a_player1_member_row:members!matches_team_a_player1_member_fkey(id, name, nickname),
   team_a_player1_guest_row:guests!matches_team_a_player1_guest_fkey(id, name),
-  team_a_player2_member_row:members!matches_team_a_player2_member_fkey(id, nickname),
+  team_a_player2_member_row:members!matches_team_a_player2_member_fkey(id, name, nickname),
   team_a_player2_guest_row:guests!matches_team_a_player2_guest_fkey(id, name),
-  team_b_player1_member_row:members!matches_team_b_player1_member_fkey(id, nickname),
+  team_b_player1_member_row:members!matches_team_b_player1_member_fkey(id, name, nickname),
   team_b_player1_guest_row:guests!matches_team_b_player1_guest_fkey(id, name),
-  team_b_player2_member_row:members!matches_team_b_player2_member_fkey(id, nickname),
+  team_b_player2_member_row:members!matches_team_b_player2_member_fkey(id, name, nickname),
   team_b_player2_guest_row:guests!matches_team_b_player2_guest_fkey(id, name)
 `;
 
 interface RawSlot {
   id: string;
-  nickname?: string;
   name?: string;
+  nickname?: string;
 }
 
 interface RawSessionInfo {
@@ -70,12 +70,12 @@ export interface DisplayMatch {
 
 function resolveSlot(memberRow: RawSlot | null, guestRow: RawSlot | null): MatchPlayerDisplay {
   if (memberRow) {
-    return { id: memberRow.id, nickname: memberRow.nickname ?? "회원", isGuest: false };
+    return { id: memberRow.id, name: memberRow.name ?? "회원", isGuest: false };
   }
   if (guestRow) {
-    return { id: guestRow.id, nickname: guestRow.name ?? "게스트", isGuest: true };
+    return { id: guestRow.id, name: guestRow.name ?? "게스트", isGuest: true };
   }
-  return { id: "", nickname: "알수없음", isGuest: false };
+  return { id: "", name: "알수없음", isGuest: false };
 }
 
 /** Supabase 조회 결과(raw, any 타입)를 화면에서 쓰기 쉬운 DisplayMatch로 변환한다. */

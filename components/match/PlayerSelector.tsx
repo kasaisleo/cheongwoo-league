@@ -2,11 +2,13 @@
 
 import { useState } from "react";
 import { clsx } from "clsx";
+import { getMemberDisplayLabel } from "@/lib/member-display";
 import type { Member, Guest } from "@/lib/supabase/database.types";
 
 export interface SelectedPlayer {
   id: string;
-  nickname: string;
+  /** 표시명 — members.name 기반. nickname이 다를 경우 "이름 · 닉네임" 형식. */
+  name: string;
   isGuest: boolean;
 }
 
@@ -72,12 +74,14 @@ export function PlayerSelector({
             const key = playerKey(member.id, false);
             const isSelected = value !== null && playerKey(value.id, value.isGuest) === key;
             const isTakenByOther = excludeKeys.includes(key) && !isSelected;
+            // 버튼 라벨: "이름 · 닉네임" 또는 "이름"
+            const displayLabel = getMemberDisplayLabel(member);
             return (
               <button
                 key={key}
                 type="button"
                 disabled={isTakenByOther}
-                onClick={() => onChange({ id: member.id, nickname: member.nickname, isGuest: false })}
+                onClick={() => onChange({ id: member.id, name: displayLabel, isGuest: false })}
                 className={clsx(
                   "flex items-center gap-1 rounded-full border px-3 py-1.5 text-sm transition-colors",
                   isSelected
@@ -87,7 +91,7 @@ export function PlayerSelector({
                     : "border-line-200 bg-line-50 text-line-800 hover:border-clay-400"
                 )}
               >
-                {member.nickname}
+                {displayLabel}
                 <span className={clsx("text-[10px]", isSelected ? "text-line-25/70" : "text-line-500")}>
                   {member.grade}
                 </span>
@@ -107,7 +111,7 @@ export function PlayerSelector({
                 key={key}
                 type="button"
                 disabled={isTakenByOther}
-                onClick={() => onChange({ id: guest.id, nickname: guest.name, isGuest: true })}
+                onClick={() => onChange({ id: guest.id, name: guest.name, isGuest: true })}
                 className={clsx(
                   "flex items-center gap-1 rounded-full border px-3 py-1.5 text-sm transition-colors",
                   isSelected

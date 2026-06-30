@@ -177,7 +177,7 @@ export default async function HomePage() {
                 </div>
                 <div className="mt-2 flex items-center justify-between text-sm">
                   <span className={match.winner_team === "A" ? "font-semibold text-line-900" : "text-line-500"}>
-                    {match.teamAPlayer1.nickname} · {match.teamAPlayer2.nickname}
+                    {match.teamAPlayer1.name} · {match.teamAPlayer2.name}
                   </span>
                   <span className="font-score font-bold text-line-900">
                     {match.score_a} : {match.score_b}
@@ -188,7 +188,7 @@ export default async function HomePage() {
                     )}
                   </span>
                   <span className={match.winner_team === "B" ? "font-semibold text-line-900" : "text-line-500"}>
-                    {match.teamBPlayer1.nickname} · {match.teamBPlayer2.nickname}
+                    {match.teamBPlayer1.name} · {match.teamBPlayer2.name}
                   </span>
                 </div>
               </Card>

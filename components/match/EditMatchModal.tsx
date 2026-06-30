@@ -21,7 +21,7 @@ interface EditMatchModalProps {
 }
 
 function toSelectedPlayer(p: DisplayMatch["teamAPlayer1"]): SelectedPlayer {
-  return { id: p.id, nickname: p.nickname, isGuest: p.isGuest };
+  return { id: p.id, name: p.name, isGuest: p.isGuest };
 }
 
 export function EditMatchModal({ match, onClose, onSaved }: EditMatchModalProps) {
@@ -58,7 +58,7 @@ export function EditMatchModal({ match, onClose, onSaved }: EditMatchModalProps)
     async function loadData() {
       const supabase = createClient();
       const [{ data: memberData }, { data: guestData }, activeSessions] = await Promise.all([
-        supabase.from("members").select("*").eq("is_active", true).order("nickname"),
+        supabase.from("members").select("*").eq("is_active", true).order("name"),
         supabase
           .from("guests")
           .select("*")
@@ -125,7 +125,7 @@ export function EditMatchModal({ match, onClose, onSaved }: EditMatchModalProps)
 
   function handleGuestCreated(guest: Guest) {
     setGuests((prev) => [guest, ...prev]);
-    const selected: SelectedPlayer = { id: guest.id, nickname: guest.name, isGuest: true };
+    const selected: SelectedPlayer = { id: guest.id, name: guest.name, isGuest: true };
 
     if (guestModalTarget === "teamAPlayer1") setTeamAPlayer1(selected);
     if (guestModalTarget === "teamAPlayer2") setTeamAPlayer2(selected);

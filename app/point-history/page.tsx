@@ -18,7 +18,7 @@ interface PointHistoryRow {
   point_change: number;
   reason: string;
   created_at: string;
-  member: Pick<Member, "nickname"> | null;
+  member: Pick<Member, "name"> | null;
   match: {
     played_at: string;
     session: { session_day: "saturday" | "sunday" | "holiday" | "custom"; title: string } | null;
@@ -43,13 +43,13 @@ export default async function PointHistoryPage({ searchParams }: PointHistoryPag
     .from("members")
     .select("*")
     .eq("is_active", true)
-    .order("nickname");
+    .order("name");
 
   let historyQuery: any = supabase
     .from("point_history")
     .select(
       `id, match_id, member_id, point_before, point_after, point_change, reason, created_at,
-       member:members!point_history_member_id_fkey(nickname),
+       member:members!point_history_member_id_fkey(name),
        match:matches!point_history_match_id_fkey(played_at, session:attendance_sessions!matches_session_id_fkey(session_day, title))`
     )
     .order("created_at", { ascending: false })
@@ -99,7 +99,7 @@ export default async function PointHistoryPage({ searchParams }: PointHistoryPag
                   : "border-line-200 bg-line-50 text-line-800"
               }`}
             >
-              {member.nickname}
+              {member.name}
             </span>
           </Link>
         ))}
@@ -132,7 +132,7 @@ export default async function PointHistoryPage({ searchParams }: PointHistoryPag
                 </div>
                 <div className="mt-1.5 flex items-center justify-between">
                   <span className="text-sm font-semibold text-line-900">
-                    {row.member?.nickname ?? "알 수 없음"}
+                    {row.member?.name ?? "알 수 없음"}
                   </span>
                   <span
                     className={`font-score text-lg font-bold ${

@@ -14,8 +14,8 @@ const PARTNER_AGGREGATION_MATCH_LIMIT = 30;
 
 export interface MemberMatchSummary {
   match: DisplayMatch;
-  partner: { id: string; nickname: string; isGuest: boolean } | null;
-  opponents: { id: string; nickname: string; isGuest: boolean }[];
+  partner: { id: string; name: string; isGuest: boolean } | null;
+  opponents: { id: string; name: string; isGuest: boolean }[];
   won: boolean;
   myScore: number;
   opponentScore: number;
@@ -41,7 +41,7 @@ export interface MemberPointHistoryEntry {
 
 export interface MemberPartnerSummary {
   id: string;
-  nickname: string;
+  name: string;
   isGuest: boolean;
   count: number;
 }
@@ -278,7 +278,7 @@ export async function fetchMemberRecentPartners(
     } else {
       countByPartner.set(key, {
         id: summary.partner.id,
-        nickname: summary.partner.nickname,
+        name: summary.partner.name,
         isGuest: summary.partner.isGuest,
         count: 1,
       });
