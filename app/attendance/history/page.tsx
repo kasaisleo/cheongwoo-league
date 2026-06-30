@@ -167,7 +167,7 @@ export default function AttendanceHistoryPage() {
                       className={`rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${
                         session.status === "archived"
                           ? "bg-line-300 text-line-700"
-                          : "bg-amber-400/20 text-amber-400"
+                          : "bg-clay-400/10 text-clay-400"
                       }`}
                     >
                       {session.status === "archived" ? "보관됨" : "확정됨"}
@@ -206,10 +206,10 @@ export default function AttendanceHistoryPage() {
                           <span
                             className={
                               status === "attending"
-                                ? "text-xs font-semibold text-win"
+                                ? "text-xs font-semibold text-gold"
                                 : status === "absent"
-                                ? "text-xs font-semibold text-loss"
-                                : "text-xs font-semibold text-amber-400"
+                                ? "text-xs font-semibold text-line-500"
+                                : "text-xs font-semibold text-clay-400"
                             }
                           >
                             {status === "attending" ? "출석" : status === "absent" ? "불참" : "미정"}

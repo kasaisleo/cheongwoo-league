@@ -13,7 +13,7 @@ import type { MemberWithStats } from "@/lib/supabase/database.types";
  *
  * RankMovement: 현재 rank_history 없으므로 delta=0 → showFlat=false → 미표시
  * 승/패: wins=win 컬러, losses=loss 컬러로 색상 구분
- * win_rate: member_stats 뷰가 0~1 비율로 저장하므로 *100 처리
+ * win_rate: member_stats 뷰가 0~100 값으로 저장됨 (이미 % 값)
  */
 export default async function RankingPage() {
   const supabase = createClient();
@@ -85,7 +85,7 @@ export default async function RankingPage() {
                         <span className="font-semibold text-line-500">{first.losses}L</span>
                         <span className="mx-1.5 text-line-300">|</span>
                         <span className="text-line-500">
-                          {Math.round(first.win_rate * 100)}% Win Rate
+                          {Math.round(first.win_rate)}% Win Rate
                         </span>
                       </p>
                     </div>
@@ -186,7 +186,7 @@ export default async function RankingPage() {
                           <span className="mx-0.5 text-line-400">·</span>
                           <span className="text-line-500">{member.losses}L</span>
                           <span className="ml-1.5 text-line-500">
-                            {Math.round(member.win_rate * 100)}%
+                            {Math.round(member.win_rate)}%
                           </span>
                         </p>
                       </div>

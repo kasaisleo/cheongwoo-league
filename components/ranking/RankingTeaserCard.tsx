@@ -81,7 +81,7 @@ export function RankingTeaserCard({
                   <p className="mt-0.5 text-xs text-line-500">
                     {first.wins}승 {first.losses}패
                     <span className="mx-1 text-line-300">·</span>
-                    {Math.round(first.win_rate * 100)}%
+                    {Math.round(first.win_rate)}%
                   </p>
                 </div>
                 <div className="flex items-center gap-2">

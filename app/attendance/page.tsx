@@ -715,9 +715,9 @@ function AttendancePageInner() {
 
           <div className="mb-4 flex justify-center">
             {shortage > 0 ? (
-              <Badge tone="fault">{shortage}명 더 필요해요</Badge>
+              <Badge tone="loss">{shortage}명 더 필요해요</Badge>
             ) : (
-              <Badge tone="court">복식 경기 가능</Badge>
+              <Badge tone="clay">복식 경기 가능</Badge>
             )}
           </div>
 
@@ -753,15 +753,13 @@ function AttendancePageInner() {
                   value={memberQuery}
                   onChange={(e) => setMemberQuery(e.target.value)}
                   placeholder="이름, 닉네임으로 검색"
-                  className="box-border block h-11 w-full min-w-0 max-w-full rounded-lg border border-line-200 bg-line-100 px-3 text-sm text-line-900 placeholder:text-line-400"
+                  className="box-border block h-11 w-full min-w-0 max-w-full rounded-sm border border-line-200/40 bg-line-50 px-3 text-sm text-line-900 placeholder:text-line-500"
                 />
               </div>
               {loadingRows ? (
                 <p className="text-center text-sm text-line-400">불러오는 중...</p>
               ) : displayedRows.length === 0 ? (
-                <Card className="p-6 text-center text-sm text-line-400">
-                  {rows.length === 0 ? "명단이 비어 있어요." : "검색/필터 조건에 맞는 회원이 없어요."}
-                </Card>
+                <div className="rounded-[14px] border border-line-200/40 bg-line-50 p-8 text-center"><p className="font-display text-xs font-bold uppercase tracking-widest text-line-500">{rows.length === 0 ? "명단이 비어 있어요." : "검색/필터 조건에 맞는 회원이 없어요."}</p></div>
               ) : (
                 <div className="space-y-2">
                   {displayedRows.map(({ member, status }) => (
@@ -769,10 +767,10 @@ function AttendancePageInner() {
                       key={member.id}
                       className={`flex items-center justify-between gap-2 border-l-4 p-3 ${
                         status === "attending"
-                          ? "border-l-win"
+                          ? "border-l-gold"
                           : status === "absent"
-                            ? "border-l-loss"
-                            : "border-l-amber-400"
+                            ? "border-l-line-300"
+                            : "border-l-clay-400"
                       }`}
                     >
                       {/* 이름만 표시 — 전화번호/메모 등 민감 정보 제외 */}
@@ -783,9 +781,9 @@ function AttendancePageInner() {
                       <Badge
                         tone={
                           status === "attending"
-                            ? "court"
+                            ? "win"
                             : status === "absent"
-                              ? "fault"
+                              ? "loss"
                               : "amber"
                         }
                       >
@@ -805,15 +803,13 @@ function AttendancePageInner() {
                   value={memberQuery}
                   onChange={(e) => setMemberQuery(e.target.value)}
                   placeholder="이름, 닉네임으로 검색"
-                  className="box-border block h-11 w-full min-w-0 max-w-full rounded-lg border border-line-200 bg-line-100 px-3 text-sm text-line-900 placeholder:text-line-400"
+                  className="box-border block h-11 w-full min-w-0 max-w-full rounded-sm border border-line-200/40 bg-line-50 px-3 text-sm text-line-900 placeholder:text-line-500"
                 />
               </div>
               {loadingRows ? (
                 <p className="text-center text-sm text-line-400">불러오는 중...</p>
               ) : displayedRows.length === 0 ? (
-                <Card className="p-6 text-center text-sm text-line-400">
-                  {rows.length === 0 ? "명단이 비어 있어요." : "검색/필터 조건에 맞는 회원이 없어요."}
-                </Card>
+                <div className="rounded-[14px] border border-line-200/40 bg-line-50 p-8 text-center"><p className="font-display text-xs font-bold uppercase tracking-widest text-line-500">{rows.length === 0 ? "명단이 비어 있어요." : "검색/필터 조건에 맞는 회원이 없어요."}</p></div>
               ) : (
                 <div className="space-y-2">
                   {displayedRows.map(({ member, status }) => (
@@ -821,10 +817,10 @@ function AttendancePageInner() {
                       key={member.id}
                       className={`flex items-center justify-between gap-2 border-l-4 p-3 ${
                         status === "attending"
-                          ? "border-l-win"
+                          ? "border-l-gold"
                           : status === "absent"
-                            ? "border-l-loss"
-                            : "border-l-amber-400"
+                            ? "border-l-line-300"
+                            : "border-l-clay-400"
                       }`}
                     >
                       <div className="flex flex-wrap items-center gap-1.5">
