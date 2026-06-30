@@ -1,28 +1,28 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
-import { toast } from "@/components/ui/Toast";
-import { MemberAttendanceCard } from "@/components/attendance/MemberAttendanceCard";
 import { createClient } from "@/lib/supabase/client";
-import { MATCH_SESSION_DAY_LABEL } from "@/lib/match-session-label";
 import type { User } from "@supabase/supabase-js";
-import type { MemberWithStats, AttendanceStatus, AttendanceSession } from "@/lib/supabase/database.types";
+import type { MemberWithStats, AttendanceStatus } from "@/lib/supabase/database.types";
 
 /**
- * 마이페이지 v3 — 회원 정보, 카카오 연동, 활동 통계, 최근 출석 이력, 이번 출석 신청.
+ * 마이페이지 v4 — 내 회원 정보 확인 중심.
  *
- * 인증: getSession()으로 로그인 여부 확인.
+ * Step 14-4: "신청 가능한 일정" 출석 신청 섹션 제거.
+ * 출석 신청은 홈(HomeAttendanceSection)과 /attendance에서만 담당한다.
+ *
+ * 섹션 구성:
+ *   1. 회원 정보
+ *   2. 카카오 연동
+ *   3. 활동 통계
+ *   4. 최근 출석 이력
+ *
+ * 인증:
  *   - 미로그인 → /login 이동
- *   - 로그인 됐지만 members.auth_user_id 미연결 → 안내 문구 표시(리다이렉트 없음)
- *
- * "이번 출석 신청" 섹션:
- *   - attendance_sessions.status = 'open' AND session_date >= 오늘 인 세션을 표시
- *   - 각 세션별로 참석/미정/불참 버튼 제공
- *   - 변경 시 POST /api/member/attendance 호출 (본인 확인은 서버에서 처리)
- *   - 기존 관리자 출석 관리(app/api/attendance/admin-update)와 완전히 독립
+ *   - 로그인 됐지만 members.auth_user_id 미연결 → 안내 문구 표시
  */
 
 const RECENT_ATTENDANCE_LIMIT = 5;
@@ -32,7 +32,6 @@ interface AttendanceRow {
   event_date: string;
 }
 
-/** attendance 전체 row에서 통계와 최근 목록을 한 번에 계산 */
 interface AttendanceData {
   totalResponses: number;
   attendingCount: number;
@@ -66,67 +65,21 @@ const STATUS_TONE: Record<AttendanceStatus, "court" | "amber" | "fault" | "neutr
   absent: "fault",
 };
 
-/** 출석 신청 가능한 세션 + 현재 내 상태 */
-interface SessionWithMyStatus {
-  session: AttendanceSession;
-  myStatus: AttendanceStatus | null;  // null = 아직 응답 없음
-}
-
 export default function MyPage() {
   const router = useRouter();
+  // initialized: 세션 확인 전 null 반환으로 MemberAuthBar 높이만큼 화면이 점프하는 것 방지
   const [initialized, setInitialized] = useState(false);
   const [authUser, setAuthUser] = useState<User | null>(null);
   const [member, setMember] = useState<MemberWithStats | null>(null);
   const [attendanceData, setAttendanceData] = useState<AttendanceData | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // 이번 출석 신청 섹션
-  const [openSessions, setOpenSessions] = useState<SessionWithMyStatus[]>([]);
-  const [submittingSessionId, setSubmittingSessionId] = useState<string | null>(null);
-
-  const loadOpenSessions = useCallback(async (memberId: string) => {
-    const supabase = createClient();
-    const today = new Date().toISOString().slice(0, 10);
-
-    // 신청 가능 세션: open + session_date >= 오늘, 오름차순
-    const { data: sessions } = await supabase
-      .from("attendance_sessions")
-      .select("*")
-      .eq("status", "open")
-      .gte("session_date", today)
-      .order("session_date", { ascending: true });
-
-    if (!sessions || sessions.length === 0) {
-      setOpenSessions([]);
-      return;
-    }
-
-    const sessionIds = sessions.map((s) => s.id);
-
-    // 현재 내 attendance 상태 조회
-    const { data: myAttendances } = await supabase
-      .from("attendance")
-      .select("session_id, status")
-      .eq("member_id", memberId)
-      .in("session_id", sessionIds);
-
-    const statusMap = new Map<string, AttendanceStatus>(
-      (myAttendances ?? []).map((a) => [a.session_id as string, a.status as AttendanceStatus])
-    );
-
-    setOpenSessions(
-      sessions.map((session) => ({
-        session: session as AttendanceSession,
-        myStatus: statusMap.get(session.id) ?? null,
-      }))
-    );
-  }, []);
-
   useEffect(() => {
     const supabase = createClient();
 
     void (async () => {
       try {
+        // 1) 세션 확인 — 미로그인이면 /login으로 이동
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) {
           router.replace("/login");
@@ -137,6 +90,7 @@ export default function MyPage() {
         setAuthUser(user);
         setInitialized(true);
 
+        // 2) member_stats 조회 (auth_user_id 기준)
         const { data: memberData } = await supabase
           .from("member_stats")
           .select("*")
@@ -146,8 +100,8 @@ export default function MyPage() {
         const typedMember = memberData as MemberWithStats | null;
         setMember(typedMember);
 
+        // 3) 출석 통계 + 최근 이력 조회
         if (typedMember) {
-          // 출석 통계 + 최근 이력
           const { data: rows } = await supabase
             .from("attendance")
             .select("status, event_date")
@@ -155,58 +109,14 @@ export default function MyPage() {
             .order("event_date", { ascending: false });
 
           setAttendanceData(buildAttendanceData((rows ?? []) as AttendanceRow[]));
-
-          // 이번 출석 신청 세션 로드
-          await loadOpenSessions(typedMember.id);
         }
       } finally {
         setLoading(false);
       }
     })();
-  }, [router, loadOpenSessions]);
+  }, [router]);
 
-  async function handleAttendanceChange(sessionId: string, status: AttendanceStatus) {
-    setSubmittingSessionId(sessionId);
-
-    // 낙관적 업데이트 — 응답 전에 UI 먼저 반영
-    setOpenSessions((prev) =>
-      prev.map((s) =>
-        s.session.id === sessionId ? { ...s, myStatus: status } : s
-      )
-    );
-
-    try {
-      const res = await fetch("/api/member/attendance", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sessionId, status }),
-      });
-
-      const data = await res.json().catch(() => null);
-
-      if (!res.ok) {
-        // 실패 시 낙관적 업데이트 롤백
-        setOpenSessions((prev) =>
-          prev.map((s) =>
-            s.session.id === sessionId
-              ? { ...s, myStatus: s.myStatus }  // 이미 반영됐으므로 재조회
-              : s
-          )
-        );
-        toast.error(data?.error ?? "출석 변경에 실패했습니다.");
-        // 정확한 상태로 재조회
-        if (member) await loadOpenSessions(member.id);
-      } else {
-        toast.success(`${STATUS_LABEL[status]}으로 변경되었습니다.`);
-      }
-    } catch {
-      toast.error("출석 변경 중 오류가 발생했습니다.");
-      if (member) await loadOpenSessions(member.id);
-    } finally {
-      setSubmittingSessionId(null);
-    }
-  }
-
+  // 세션 확인 전 — null 반환으로 레이아웃 점프 방지
   if (!initialized) return null;
 
   if (loading) {
@@ -238,6 +148,7 @@ export default function MyPage() {
         </h1>
       </header>
 
+      {/* 회원 미연결 상태 */}
       {!member && (
         <Card className="p-6 text-center">
           <p className="text-sm font-semibold text-line-900">회원 정보와 연결되지 않았습니다.</p>
@@ -320,27 +231,6 @@ export default function MyPage() {
                     <span className="text-sm text-line-700">{formatDate(row.event_date)}</span>
                     <Badge tone={STATUS_TONE[row.status]}>{STATUS_LABEL[row.status]}</Badge>
                   </div>
-                ))}
-              </div>
-            )}
-          </Card>
-
-          {/* 5. 신청 가능한 일정 (보조 진입점 — 홈/출석 페이지가 메인) */}
-          <Card className="p-4">
-            <SectionTitle>신청 가능한 일정</SectionTitle>
-            {openSessions.length === 0 ? (
-              <p className="text-sm text-line-400">현재 신청 가능한 세션이 없습니다.</p>
-            ) : (
-              <div className="space-y-3">
-                {openSessions.map(({ session, myStatus }) => (
-                  <MemberAttendanceCard
-                    key={session.id}
-                    session={session}
-                    myStatus={myStatus}
-                    onStatusChange={(s) => handleAttendanceChange(session.id, s)}
-                    submitting={submittingSessionId === session.id}
-                    showStats={false}
-                  />
                 ))}
               </div>
             )}
