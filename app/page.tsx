@@ -5,8 +5,9 @@ import { Badge } from "@/components/ui/Badge";
 import { MATCH_SELECT_WITH_PLAYERS, toDisplayMatches } from "@/lib/match-display";
 import { MATCH_SESSION_DAY_LABEL, selectHomeSessions } from "@/lib/match-session-label";
 import { HomeAttendanceSection } from "@/components/attendance/HomeAttendanceSection";
+import { RankingTeaserCard } from "@/components/ranking/RankingTeaserCard";
 import { isAdminSession } from "@/lib/admin-auth";
-import type { AttendanceSession } from "@/lib/supabase/database.types";
+import type { AttendanceSession, MemberWithStats } from "@/lib/supabase/database.types";
 
 const MAIN_SESSION_LIMIT = 5;
 
@@ -32,7 +33,7 @@ export default async function HomePage() {
   const week = thisWeekRange();
   const today = new Date().toISOString().slice(0, 10);
 
-  const [{ data: activeSessionRows }, { data: recentMatchRows }, { data: weeklyGuests }] =
+  const [{ data: activeSessionRows }, { data: recentMatchRows }, { data: weeklyGuests }, { data: topRankRows }] =
     await Promise.all([
       supabase
         .from("attendance_sessions")
@@ -50,6 +51,16 @@ export default async function HomePage() {
         .gte("visit_date", week.start)
         .lte("visit_date", week.end)
         .order("visit_date", { ascending: true }),
+      // 랭킹 상위 3명 — RankingTeaserCard 전용
+      supabase
+        .from("member_stats")
+        .select("*")
+        .eq("is_active", true)
+        .eq("is_dormant", false)
+        .order("league_point", { ascending: false })
+        .order("win_rate", { ascending: false })
+        .order("wins", { ascending: false })
+        .limit(3),
     ]);
 
   const allSessions = selectHomeSessions((activeSessionRows ?? []) as AttendanceSession[]);
@@ -79,6 +90,7 @@ export default async function HomePage() {
 
   const recentMatches = toDisplayMatches(recentMatchRows);
   const guestsThisWeek = weeklyGuests ?? [];
+  const topRanked = (topRankRows ?? []) as MemberWithStats[];
 
   // 운영진 여부 — 게스트 섹션 표시 제어용.
   // lib/admin-auth.ts는 수정 금지이므로 isAdminSession()을 그대로 호출한다.
@@ -100,6 +112,11 @@ export default async function HomePage() {
 
       {/* 1. 출석 신청 CTA — 로그인 회원에게만 표시, 미로그인/세션 없으면 자동 숨김 */}
       <HomeAttendanceSection />
+
+      {/* 2. 랭킹 티저 — ATP 스타일 상위 3명, /ranking으로 자연스럽게 진입 */}
+      {topRanked.length > 0 && (
+        <RankingTeaserCard members={topRanked} />
+      )}
 
       {/* 2. 다음 일정 — 읽기 전용 세션 카드. 출석 페이지로 딥링크.
           HomeAttendanceSection이 출석 신청 UI를 담당하므로,
