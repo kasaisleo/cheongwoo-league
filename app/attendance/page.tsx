@@ -477,7 +477,7 @@ function AttendancePageInner() {
       </header>
 
       {showCustomForm && isAdmin && (
-        <Card className="mb-4 space-y-3 overflow-hidden p-4">
+        <div className="mb-4 space-y-3 overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50 p-4">
           <div className="flex items-center justify-between">
             <p className="text-sm font-bold uppercase tracking-wide text-clay-400">휴일매치/이벤트매치 생성</p>
             <button
@@ -542,18 +542,20 @@ function AttendancePageInner() {
           >
             {creatingCustom ? "생성 중..." : "세션 생성"}
           </button>
-        </Card>
+        </div>
       )}
 
       {/* 세션 선택 — 드롭다운 방식. 휴일매치/이벤트매치가 늘어나도 화면이 밀리지 않음 */}
       {loadingSessions ? (
         <p className="text-center text-sm text-line-400">세션을 불러오는 중...</p>
       ) : openSessions.length === 0 ? (
-        <Card className="mb-4 p-6 text-center text-sm text-line-400">
-          {isAdmin
-            ? "현재 진행 중인 출석 세션이 없어요. 우측 상단 ⚙ 메뉴에서 세션을 만들어주세요."
-            : "현재 진행 중인 출석 세션이 없어요."}
-        </Card>
+        <div className="mb-4 rounded-[14px] border border-line-200/40 bg-line-50 p-8 text-center">
+          <p className="font-display text-xs font-bold uppercase tracking-widest text-line-500">
+            {isAdmin
+              ? "현재 진행 중인 출석 세션이 없어요. 우측 상단 ⚙ 메뉴에서 세션을 만들어주세요."
+              : "현재 진행 중인 출석 세션이 없어요."}
+          </p>
+        </div>
       ) : (
         <div className="mb-4">
           <Dropdown
@@ -623,7 +625,7 @@ function AttendancePageInner() {
                   className={`ml-1.5 rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${
                     editingClosedSession
                       ? "bg-clay-400/20 text-clay-400"
-                      : "bg-amber-400/20 text-amber-400"
+                      : "bg-line-200 text-line-500"
                   }`}
                 >
                   {editingClosedSession ? "수정 중" : "확정됨"}
@@ -676,37 +678,37 @@ function AttendancePageInner() {
             <button
               type="button"
               onClick={() => setStatusFilter((prev) => (prev === "attending" ? "all" : "attending"))}
-              className={`rounded-xl border p-3 text-center transition-colors ${
+              className={`rounded-[14px] border p-3 text-center transition-colors ${
                 statusFilter === "attending"
-                  ? "border-win bg-win/10"
-                  : "border-line-200 bg-line-100"
+                  ? "border-gold bg-gold/10"
+                  : "border-line-200/40 bg-line-50"
               }`}
             >
-              <p className="font-score text-2xl font-bold text-win">{attending}</p>
+              <p className="font-score text-2xl font-bold text-gold">{attending}</p>
               <p className="text-xs text-line-500">출석</p>
             </button>
             <button
               type="button"
               onClick={() => setStatusFilter((prev) => (prev === "undecided" ? "all" : "undecided"))}
-              className={`rounded-xl border p-3 text-center transition-colors ${
+              className={`rounded-[14px] border p-3 text-center transition-colors ${
                 statusFilter === "undecided"
-                  ? "border-amber-400 bg-amber-400/10"
-                  : "border-line-200 bg-line-100"
+                  ? "border-clay-400 bg-clay-400/10"
+                  : "border-line-200/40 bg-line-50"
               }`}
             >
-              <p className="font-score text-2xl font-bold text-amber-400">{undecided}</p>
+              <p className="font-score text-2xl font-bold text-clay-400">{undecided}</p>
               <p className="text-xs text-line-500">미정</p>
             </button>
             <button
               type="button"
               onClick={() => setStatusFilter((prev) => (prev === "absent" ? "all" : "absent"))}
-              className={`rounded-xl border p-3 text-center transition-colors ${
+              className={`rounded-[14px] border p-3 text-center transition-colors ${
                 statusFilter === "absent"
-                  ? "border-loss bg-loss/10"
-                  : "border-line-200 bg-line-100"
+                  ? "border-line-300 bg-line-200"
+                  : "border-line-200/40 bg-line-50"
               }`}
             >
-              <p className="font-score text-2xl font-bold text-loss">{absent}</p>
+              <p className="font-score text-2xl font-bold text-line-500">{absent}</p>
               <p className="text-xs text-line-500">불참</p>
             </button>
           </div>

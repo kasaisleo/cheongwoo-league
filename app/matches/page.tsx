@@ -133,7 +133,7 @@ export default async function MatchesPage({ searchParams }: MatchesPageProps) {
           <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold transition-colors ${
             !filterSessionType
               ? "border-clay-400 bg-clay-400 text-line-25"
-              : "border-line-200/60 bg-line-100 text-line-600"
+              : "border-line-200/40 bg-line-50 text-line-500"
           }`}>
             전체
           </span>
@@ -143,7 +143,7 @@ export default async function MatchesPage({ searchParams }: MatchesPageProps) {
             <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold transition-colors ${
               filterSessionType === f.value
                 ? "border-clay-400 bg-clay-400 text-line-25"
-                : "border-line-200/60 bg-line-100 text-line-600"
+                : "border-line-200/40 bg-line-50 text-line-500"
             }`}>
               {f.label}
             </span>
@@ -186,7 +186,7 @@ export default async function MatchesPage({ searchParams }: MatchesPageProps) {
                 sessionType: filterSessionType ?? undefined,
                 showPlayers: true,
               })}
-              className="inline-flex items-center gap-1 rounded-full border border-line-200/60 bg-line-100 px-3 py-1 text-xs font-semibold text-line-500 transition-colors hover:border-line-300 hover:text-line-700"
+              className="inline-flex items-center gap-1 rounded-full border border-line-200/40 bg-line-50 px-3 py-1 text-xs font-semibold text-line-500 transition-colors hover:border-line-300 hover:text-line-700"
             >
               <span>선수 필터</span>
               <span className="text-line-400">↓</span>
@@ -215,7 +215,7 @@ export default async function MatchesPage({ searchParams }: MatchesPageProps) {
               <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold transition-colors ${
                 !filterMemberId
                   ? "border-clay-400 bg-clay-400 text-line-25"
-                  : "border-line-200/60 bg-line-100 text-line-600"
+                  : "border-line-200/40 bg-line-50 text-line-500"
               }`}>
                 전체
               </span>
@@ -228,7 +228,7 @@ export default async function MatchesPage({ searchParams }: MatchesPageProps) {
                 <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold transition-colors ${
                   filterMemberId === member.id
                     ? "border-clay-400 bg-clay-400 text-line-25"
-                    : "border-line-200/60 bg-line-100 text-line-600"
+                    : "border-line-200/40 bg-line-50 text-line-500"
                 }`}>
                   {member.name}
                 </span>

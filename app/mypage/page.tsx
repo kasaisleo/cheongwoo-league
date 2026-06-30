@@ -228,7 +228,7 @@ export default function MyPage() {
                 </p>
               </div>
               <div className="px-4 py-3 text-center">
-                <p className="font-score text-2xl font-bold tabular-nums text-win">
+                <p className="font-score text-2xl font-bold tabular-nums text-gold">
                   {winRate}
                   <span className="ml-0.5 text-sm font-semibold">%</span>
                 </p>
@@ -342,7 +342,7 @@ export default function MyPage() {
               </div>
               <div className="flex items-center justify-between px-4 py-2.5">
                 <span className="text-xs text-line-500">연동 상태</span>
-                <Badge tone="win">연동 완료</Badge>
+                <Badge tone="clay">연동 완료</Badge>
               </div>
             </div>
           </div>
@@ -390,17 +390,15 @@ function KpiBox({
   number: number;
   unit: string;
   sub?: string;
-  tone?: "win" | "loss" | "muted";
+  tone?: "gold" | "muted";
   displayValue?: string;
 }) {
   const numColor =
-    tone === "win"
-      ? "text-win"
-      : tone === "loss"
-        ? "text-loss"
-        : tone === "muted"
-          ? "text-line-400"
-          : "text-line-900";
+    tone === "gold"
+      ? "text-gold"
+      : tone === "muted"
+        ? "text-line-400"
+        : "text-line-900";
 
   return (
     <div className="rounded-lg border border-line-200 bg-line-50 p-3 text-center">

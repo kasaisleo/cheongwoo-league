@@ -92,7 +92,7 @@ export function MemberList({ members }: MemberListProps) {
       <button
         type="button"
         onClick={() => setShowFilters((prev) => !prev)}
-        className="mb-2 flex w-full items-center justify-between rounded-lg border border-line-200 bg-line-100 px-3 py-2 text-xs font-semibold text-line-700"
+        className="mb-2 flex w-full items-center justify-between rounded-[14px] border border-line-200/40 bg-line-50 px-3 py-2 text-xs font-semibold text-line-600"
       >
         {showFilters ? "필터 숨기기" : "필터 보기"}
         <span aria-hidden>{showFilters ? "▲" : "▼"}</span>
@@ -105,7 +105,7 @@ export function MemberList({ members }: MemberListProps) {
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as MemberSortOption)}
-              className="h-9 rounded-lg border border-line-200 bg-line-100 px-2 text-xs font-semibold text-line-800"
+              className="h-9 rounded-sm border border-line-200/60 bg-line-100 px-2 text-xs font-semibold text-line-800"
             >
               {MEMBER_SORT_OPTIONS.map((option) => (
                 <option key={option.value} value={option.value}>
