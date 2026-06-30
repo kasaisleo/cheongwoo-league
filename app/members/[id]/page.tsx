@@ -124,11 +124,11 @@ export default async function MemberDetailPage({ params }: MemberDetailPageProps
         {/* 승/패 상세는 보조 정보로 유지 */}
         <div className="grid grid-cols-2 gap-2 border-t border-line-200 px-5 py-3 text-center">
           <div>
-            <p className="font-score text-lg font-bold text-win">{typedMember.wins}</p>
+            <p className="font-score text-lg font-bold text-gold">{typedMember.wins}</p>
             <p className="text-xs text-line-500">승</p>
           </div>
           <div>
-            <p className="font-score text-lg font-bold text-fault-400">{typedMember.losses}</p>
+            <p className="font-score text-lg font-bold text-line-500">{typedMember.losses}</p>
             <p className="text-xs text-line-500">패</p>
           </div>
         </div>
@@ -198,7 +198,7 @@ export default async function MemberDetailPage({ params }: MemberDetailPageProps
                     </span>
                     <span
                       className={`text-xs font-semibold ${
-                        summary.lpChange && summary.lpChange > 0 ? "text-win" : "text-line-500"
+                        summary.lpChange && summary.lpChange > 0 ? "text-gold" : "text-line-500"
                       }`}
                     >
                       {summary.lpChange && summary.lpChange > 0 ? `+${summary.lpChange} LP` : "LP 변화 없음"}
@@ -291,9 +291,9 @@ export default async function MemberDetailPage({ params }: MemberDetailPageProps
                       <span
                         className={`font-score text-sm font-bold ${
                           entry.pointChange > 0
-                            ? "text-win"
+                            ? "text-gold"
                             : entry.pointChange < 0
-                            ? "text-loss"
+                            ? "text-line-500"
                             : "text-line-500"
                         }`}
                       >

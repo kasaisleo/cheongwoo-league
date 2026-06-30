@@ -80,9 +80,9 @@ export default async function RankingPage() {
                         {first.name}
                       </p>
                       <p className="mt-1 text-xs">
-                        <span className="font-semibold text-win">{first.wins}W</span>
+                        <span className="font-semibold text-gold">{first.wins}W</span>
                         <span className="mx-1 text-line-400">·</span>
-                        <span className="font-semibold text-loss">{first.losses}L</span>
+                        <span className="font-semibold text-line-500">{first.losses}L</span>
                         <span className="mx-1.5 text-line-300">|</span>
                         <span className="text-line-500">
                           {Math.round(first.win_rate * 100)}% Win Rate
@@ -125,9 +125,9 @@ export default async function RankingPage() {
                           {member.name}
                         </p>
                         <p className="mt-0.5 text-[10px]">
-                          <span className="text-win">{member.wins}W</span>
+                          <span className="text-gold">{member.wins}W</span>
                           <span className="mx-0.5 text-line-400">·</span>
-                          <span className="text-loss">{member.losses}L</span>
+                          <span className="text-line-500">{member.losses}L</span>
                         </p>
                         <div className="mt-2">
                           <p className="font-score text-xl font-bold tabular-nums text-line-800">
@@ -182,9 +182,9 @@ export default async function RankingPage() {
                           {member.name}
                         </p>
                         <p className="text-[10px]">
-                          <span className="text-win">{member.wins}W</span>
+                          <span className="text-gold">{member.wins}W</span>
                           <span className="mx-0.5 text-line-400">·</span>
-                          <span className="text-loss">{member.losses}L</span>
+                          <span className="text-line-500">{member.losses}L</span>
                           <span className="ml-1.5 text-line-500">
                             {Math.round(member.win_rate * 100)}%
                           </span>
