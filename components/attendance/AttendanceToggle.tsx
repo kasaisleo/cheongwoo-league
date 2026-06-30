@@ -16,9 +16,9 @@ const OPTIONS: { status: AttendanceStatus; label: string }[] = [
 ];
 
 const activeClasses: Record<AttendanceStatus, string> = {
-  attending: "bg-court-400 text-line-25 border-court-400",
+  attending: "bg-win text-win-foreground border-win",
   undecided: "bg-amber-400 text-line-25 border-amber-400",
-  absent: "bg-fault-400 text-line-25 border-fault-400",
+  absent: "bg-loss text-loss-foreground border-loss",
 };
 
 export function AttendanceToggle({ value, onChange, disabled }: AttendanceToggleProps) {

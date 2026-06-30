@@ -59,10 +59,10 @@ const STATUS_LABEL: Record<AttendanceStatus, string> = {
   absent: "불참",
 };
 
-const STATUS_TONE: Record<AttendanceStatus, "court" | "amber" | "fault" | "neutral"> = {
-  attending: "court",
+const STATUS_TONE: Record<AttendanceStatus, "win" | "amber" | "loss" | "neutral"> = {
+  attending: "win",
   undecided: "amber",
-  absent: "fault",
+  absent: "loss",
 };
 
 export default function MyPage() {
@@ -182,7 +182,7 @@ export default function MyPage() {
               <Row label="카카오 닉네임" value={kakaoNickname ?? "—"} />
               <Row label="이메일" value={kakaoEmail ?? "—"} />
               <Row label="연동 상태">
-                <Badge tone="court">연동 완료</Badge>
+                <Badge tone="win">연동 완료</Badge>
               </Row>
             </div>
           </Card>
@@ -206,7 +206,7 @@ export default function MyPage() {
                 label="승률"
                 number={winRate}
                 unit="%"
-                tone="court"
+                tone="win"
                 sub={matchesPlayed > 0 ? `${member.wins}승 ${member.losses}패` : undefined}
               />
               <KpiBox
@@ -279,14 +279,14 @@ function KpiBox({
   number: number;
   unit: string;
   sub?: string;
-  tone?: "court" | "fault" | "muted";
+  tone?: "win" | "loss" | "muted";
   displayValue?: string;
 }) {
   const numColor =
-    tone === "court"
-      ? "text-court-400"
-      : tone === "fault"
-        ? "text-fault-400"
+    tone === "win"
+      ? "text-win"
+      : tone === "loss"
+        ? "text-loss"
         : tone === "muted"
           ? "text-line-400"
           : "text-line-900";

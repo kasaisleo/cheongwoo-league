@@ -106,7 +106,7 @@ export default async function MemberDetailPage({ params }: MemberDetailPageProps
         {/* 우선 노출 지표: 마포구 점수 / 경기수 / 승률 (LP는 위에서 이미 크게 표시됨) */}
         <div className="grid grid-cols-3 gap-2 px-5 py-4 text-center">
           <div>
-            <p className="font-score text-xl font-bold text-court-400">
+            <p className="font-score text-xl font-bold text-clay-400">
               {typedMember.mapo_score !== null ? typedMember.mapo_score : "—"}
             </p>
             <p className="text-xs text-line-500">마포구 점수</p>
@@ -124,7 +124,7 @@ export default async function MemberDetailPage({ params }: MemberDetailPageProps
         {/* 승/패 상세는 보조 정보로 유지 */}
         <div className="grid grid-cols-2 gap-2 border-t border-line-200 px-5 py-3 text-center">
           <div>
-            <p className="font-score text-lg font-bold text-court-400">{typedMember.wins}</p>
+            <p className="font-score text-lg font-bold text-win">{typedMember.wins}</p>
             <p className="text-xs text-line-500">승</p>
           </div>
           <div>
@@ -198,7 +198,7 @@ export default async function MemberDetailPage({ params }: MemberDetailPageProps
                     </span>
                     <span
                       className={`text-xs font-semibold ${
-                        summary.lpChange && summary.lpChange > 0 ? "text-court-400" : "text-line-500"
+                        summary.lpChange && summary.lpChange > 0 ? "text-win" : "text-line-500"
                       }`}
                     >
                       {summary.lpChange && summary.lpChange > 0 ? `+${summary.lpChange} LP` : "LP 변화 없음"}
@@ -291,9 +291,9 @@ export default async function MemberDetailPage({ params }: MemberDetailPageProps
                       <span
                         className={`font-score text-sm font-bold ${
                           entry.pointChange > 0
-                            ? "text-court-400"
+                            ? "text-win"
                             : entry.pointChange < 0
-                            ? "text-fault-400"
+                            ? "text-loss"
                             : "text-line-500"
                         }`}
                       >

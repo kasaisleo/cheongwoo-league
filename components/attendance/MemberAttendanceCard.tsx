@@ -18,10 +18,10 @@ const STATUS_LABEL: Record<AttendanceStatus, string> = {
   absent: "불참",
 };
 
-const STATUS_TONE: Record<AttendanceStatus, "court" | "amber" | "fault"> = {
-  attending: "court",
+const STATUS_TONE: Record<AttendanceStatus, "win" | "amber" | "loss"> = {
+  attending: "win",
   undecided: "amber",
-  absent: "fault",
+  absent: "loss",
 };
 
 interface AttendanceStats {

@@ -9,9 +9,9 @@ const STATUS_LABEL: Record<AttendanceStatus, string> = {
 };
 
 const ACTIVE_CLASS: Record<AttendanceStatus, string> = {
-  attending: "border-court-400 bg-court-400 text-line-25",
+  attending: "border-win bg-win text-win-foreground",
   undecided: "border-amber-400 bg-amber-400 text-line-900",
-  absent: "border-fault-400 bg-fault-400 text-line-25",
+  absent: "border-loss bg-loss text-loss-foreground",
 };
 
 interface AttendanceStatusButtonsProps {

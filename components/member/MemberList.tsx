@@ -246,7 +246,7 @@ export function MemberList({ members }: MemberListProps) {
                   <p className="mt-1 text-xs font-semibold">
                     <span className="text-clay-400">LP {member.league_point}</span>
                     {member.mapo_score !== null && (
-                      <span className="text-court-400"> · 마포 {member.mapo_score}점</span>
+                      <span className="text-line-600"> · 마포 {member.mapo_score}점</span>
                     )}
                     <span className="text-line-500">
                       {" "}

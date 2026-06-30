@@ -24,7 +24,7 @@ export function CallButton({ phone }: CallButtonProps) {
         e.preventDefault();
         window.location.href = `tel:${phone}`;
       }}
-      className="flex h-8 w-8 items-center justify-center rounded-full border border-court-400 text-court-400"
+      className="flex h-8 w-8 items-center justify-center rounded-full border border-line-300 text-line-600"
       aria-label={`${phone}로 전화하기`}
     >
       <span aria-hidden="true">📞</span>

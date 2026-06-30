@@ -206,9 +206,9 @@ export default function AttendanceHistoryPage() {
                           <span
                             className={
                               status === "attending"
-                                ? "text-xs font-semibold text-court-400"
+                                ? "text-xs font-semibold text-win"
                                 : status === "absent"
-                                ? "text-xs font-semibold text-fault-400"
+                                ? "text-xs font-semibold text-loss"
                                 : "text-xs font-semibold text-amber-400"
                             }
                           >
