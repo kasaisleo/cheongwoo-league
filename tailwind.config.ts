@@ -48,6 +48,38 @@ module.exports = {
           400: "#FFB13D",
           500: "#F59B1C",
         },
+
+        // ── Step 15-2 ATP 스타일 시맨틱 토큰 ──────────────────────────────
+        //
+        // win: 승리 / 상승 / 긍정 결과
+        //   DEFAULT = 중간 채도 그린, 시안 레퍼런스의 oklch(0.62 0.14 155)와 동일 계열
+        //   muted   = 행 배경 강조용 (투명도 처리는 Tailwind /N 슬래시로)
+        win: {
+          DEFAULT: "#2EA86B",   // 승리 그린
+          foreground: "#E8FFF5",
+          muted: "#1A3D2B",     // 배경 강조용 (bg-win-muted)
+        },
+        // loss: 패배 / 하락 / 부정 결과
+        //   fault-400(#FF5C72)과 같은 계열을 명시적으로 "결과" 의미로 별칭
+        loss: {
+          DEFAULT: "#FF5C72",   // 패배 레드 (fault-400과 동일 값, 의미적 구분)
+          foreground: "#FFF0F2",
+          muted: "#3A1820",     // fault-50과 동일 값
+        },
+        // wimbledon: 윔블던 시즌 오버레이용 다크 그린
+        //   기본 스타일에는 사용하지 않고, 시즌 테마 적용 시에만 활성화
+        wimbledon: {
+          DEFAULT: "#1A5C3A",
+          light: "#236B47",
+          foreground: "#E8F5EE",
+        },
+        // gold: Championship Gold — 1위/트로피/최상위 강조
+        //   clay-400(#D4FF3D, 일렉트릭 옐로우)과 구분되는 클래식 골드
+        gold: {
+          DEFAULT: "#D4B84A",
+          foreground: "#1A1400",
+          muted: "#2A2410",
+        },
       },
       fontFamily: {
         display: ["var(--font-display)", "sans-serif"],
@@ -58,6 +90,7 @@ module.exports = {
         DEFAULT: "10px",
         lg: "14px",
         xl: "20px",
+        sm: "6px",    // Step 15-2 추가: 배지/pip 전용 소형 radius
       },
       boxShadow: {
         card: "0 1px 2px 0 rgba(0, 0, 0, 0.4), 0 1px 3px 0 rgba(0, 0, 0, 0.3)",
