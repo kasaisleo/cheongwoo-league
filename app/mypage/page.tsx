@@ -3,7 +3,9 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/Badge";
+import { ResultBadge } from "@/components/ui/ResultBadge";
 import { createClient } from "@/lib/supabase/client";
+import { MATCH_SELECT_WITH_PLAYERS, toDisplayMatches, type DisplayMatch } from "@/lib/match-display";
 import type { User } from "@supabase/supabase-js";
 import type { MemberWithStats, AttendanceStatus } from "@/lib/supabase/database.types";
 
@@ -71,6 +73,7 @@ export default function MyPage() {
   const [authUser, setAuthUser] = useState<User | null>(null);
   const [member, setMember] = useState<MemberWithStats | null>(null);
   const [attendanceData, setAttendanceData] = useState<AttendanceData | null>(null);
+  const [recentMatches, setRecentMatches] = useState<DisplayMatch[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -101,13 +104,25 @@ export default function MyPage() {
 
         // 3) 출석 통계 + 최근 이력 조회
         if (typedMember) {
-          const { data: rows } = await supabase
-            .from("attendance")
-            .select("status, event_date")
-            .eq("member_id", typedMember.id)
-            .order("event_date", { ascending: false });
+          const [{ data: rows }, { data: matchRows }] = await Promise.all([
+            supabase
+              .from("attendance")
+              .select("status, event_date")
+              .eq("member_id", typedMember.id)
+              .order("event_date", { ascending: false }),
+            // 4) 최근 경기 조회 — 내가 참여한 경기 5건
+            supabase
+              .from("matches")
+              .select(MATCH_SELECT_WITH_PLAYERS)
+              .or(
+                `team_a_player1_member.eq.${typedMember.id},team_a_player2_member.eq.${typedMember.id},team_b_player1_member.eq.${typedMember.id},team_b_player2_member.eq.${typedMember.id}`
+              )
+              .order("played_at", { ascending: false })
+              .limit(5),
+          ]);
 
           setAttendanceData(buildAttendanceData((rows ?? []) as AttendanceRow[]));
+          setRecentMatches(toDisplayMatches(matchRows));
         }
       } finally {
         setLoading(false);
@@ -234,6 +249,53 @@ export default function MyPage() {
               </div>
             </div>
           </div>
+
+          {/* ── Recent Activity — 최근 경기 (Ranking Table 행 문법) ── */}
+          {recentMatches.length > 0 && (
+            <div className="overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50">
+              <div className="border-b border-line-200/40 bg-line-100/40 px-4 py-2">
+                <span className="font-display text-[10px] font-bold uppercase tracking-widest text-line-500">
+                  Recent Matches
+                </span>
+              </div>
+              {recentMatches.map((match, idx) => {
+                const isLast = idx === recentMatches.length - 1;
+                // 내가 어느 팀인지 파악 (member.id로 비교 불가 — name으로 근사)
+                // winner_team A/B를 기반으로 내 팀 찾기
+                const myTeamIsA =
+                  match.teamAPlayer1.name === member.name ||
+                  match.teamAPlayer2.name === member.name;
+                const iWon =
+                  (myTeamIsA && match.winner_team === "A") ||
+                  (!myTeamIsA && match.winner_team === "B");
+                const myScore = myTeamIsA ? match.score_a : match.score_b;
+                const oppScore = myTeamIsA ? match.score_b : match.score_a;
+                const partners = myTeamIsA
+                  ? [match.teamAPlayer1, match.teamAPlayer2].filter(p => p.name !== member.name)
+                  : [match.teamBPlayer1, match.teamBPlayer2].filter(p => p.name !== member.name);
+
+                return (
+                  <div
+                    key={match.id}
+                    className={`flex items-center gap-3 px-4 py-2.5 ${
+                      isLast ? "" : "border-b border-line-200/30"
+                    }`}
+                  >
+                    <ResultBadge result={iWon ? "win" : "loss"} size="sm" />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-xs font-semibold text-line-800">
+                        {partners.map(p => p.name).join(" · ") || "—"}
+                      </p>
+                      <p className="text-[10px] text-line-500">{match.played_at}</p>
+                    </div>
+                    <span className="shrink-0 font-score text-sm font-bold tabular-nums text-line-700">
+                      {myScore} : {oppScore}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
 
           {/* ── 최근 출석 — Ranking Table 행 문법 ── */}
           {attendanceData && attendanceData.recent.length > 0 && (

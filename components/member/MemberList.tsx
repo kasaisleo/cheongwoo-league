@@ -80,63 +80,12 @@ export function MemberList({ members }: MemberListProps) {
 
   return (
     <>
-      {/* 검색/필터와 무관하게 항상 전체 members 기준 숫자만 보여준다(stats 참고).
-          각 카드는 버튼이다 — 클릭하면 그 구분에 맞는 필터로 실제 바뀌고,
-          현재 필터 상태와 정확히 일치하는 카드만 선택됨으로 표시된다. */}
-      <div className="mb-4 grid grid-cols-3 gap-1.5 sm:grid-cols-5">
-        <button
-          type="button"
-          onClick={() => {
-            setQuery("");
-            setMapoFilter("all");
-            setMemberTypeFilter("all");
-            setDormantFilter("all");
-          }}
-          className={statCardClassName(isAllCardActive)}
-        >
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-line-500">전체</p>
-          <p className="font-score text-lg font-bold text-line-900">{stats.total}</p>
-        </button>
-        <button
-          type="button"
-          onClick={() => setMemberTypeFilter("정회원")}
-          className={statCardClassName(isRegularCardActive)}
-        >
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-line-500">정회원</p>
-          <p className="font-score text-lg font-bold text-line-900">{stats.regular}</p>
-        </button>
-        <button
-          type="button"
-          onClick={() => setMemberTypeFilter("준회원")}
-          className={statCardClassName(isAssociateCardActive)}
-        >
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-line-500">준회원</p>
-          <p className="font-score text-lg font-bold text-line-900">{stats.associate}</p>
-        </button>
-        <button
-          type="button"
-          onClick={() => setMemberTypeFilter("게스트")}
-          className={statCardClassName(isGuestCardActive)}
-        >
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-line-500">게스트</p>
-          <p className="font-score text-lg font-bold text-line-900">{stats.guest}</p>
-        </button>
-        <button
-          type="button"
-          onClick={() => setDormantFilter("dormant")}
-          className={statCardClassName(isDormantCardActive)}
-        >
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-line-500">휴면</p>
-          <p className="font-score text-lg font-bold text-line-600">{stats.dormant}</p>
-        </button>
-      </div>
-
       <div className="mb-3">
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="이름, 닉네임, 전화번호로 검색"
-          className="box-border block h-11 w-full min-w-0 max-w-full rounded-lg border border-line-200 bg-line-100 px-3 text-sm text-line-900 placeholder:text-line-400"
+          className="box-border block h-11 w-full min-w-0 max-w-full rounded-[14px] border border-line-200/50 bg-line-100 px-3 text-sm text-line-900 placeholder:text-line-400"
         />
       </div>
 
@@ -224,8 +173,11 @@ export function MemberList({ members }: MemberListProps) {
       ) : (
         /* Ranking Table 문법: rounded-[14px], bg-line-50, border-line-200/40, 행 구분선 */
         <div className="overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50">
-          {/* 테이블 헤더 */}
-          <div className="grid grid-cols-[1fr_auto] items-center gap-3 border-b border-line-200/40 bg-line-100/40 px-4 py-2">
+          {/* Ranking Table 헤더: # / Player / LP */}
+          <div className="grid grid-cols-[2rem_1fr_auto] items-center gap-3 border-b border-line-200/40 bg-line-100/40 px-4 py-2">
+            <span className="font-display text-[10px] font-bold uppercase tracking-widest text-line-500 text-center">
+              #
+            </span>
             <span className="font-display text-[10px] font-bold uppercase tracking-widest text-line-500">
               Player
             </span>
@@ -238,11 +190,16 @@ export function MemberList({ members }: MemberListProps) {
             const isLast = idx === filteredMembers.length - 1;
             return (
               <Link key={member.id} href={`/members/${member.id}`}>
-                <div className={`flex items-center gap-3 px-4 py-3 transition-colors hover:bg-line-100/40 ${
+                <div className={`grid grid-cols-[2rem_1fr_auto] items-center gap-3 px-4 py-3 transition-colors hover:bg-line-100/40 ${
                   isLast ? "" : "border-b border-line-200/30"
                 }`}>
+                  {/* 순위 번호 — Ranking Table 문법 */}
+                  <span className="font-display text-sm font-bold tabular-nums text-line-500 text-center">
+                    {idx + 1}
+                  </span>
+
                   {/* 이름 + 전적 */}
-                  <div className="min-w-0 flex-1">
+                  <div className="min-w-0">
                     <div className="flex items-center gap-1.5">
                       <p className="truncate text-sm font-semibold text-line-900">
                         {member.name}
@@ -261,10 +218,10 @@ export function MemberList({ members }: MemberListProps) {
                         </span>
                       )}
                     </div>
-                    <p className="mt-0.5 text-[10px] text-line-500">
+                    <p className="mt-0.5 text-[10px]">
                       <span className="text-gold">{member.wins}W</span>
-                      <span className="mx-0.5">·</span>
-                      <span>{member.losses}L</span>
+                      <span className="mx-0.5 text-line-400">·</span>
+                      <span className="text-line-500">{member.losses}L</span>
                       {member.mapo_score !== null && (
                         <span className="ml-1.5 text-line-500">마포 {member.mapo_score}점</span>
                       )}
