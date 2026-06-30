@@ -6,7 +6,6 @@ import { createClient } from "@/lib/supabase/client";
 import { PlayerSelector, playerKey, type SelectedPlayer } from "@/components/match/PlayerSelector";
 import { ScoreStepper } from "@/components/match/ScoreStepper";
 import { QuickGuestModal } from "@/components/match/QuickGuestModal";
-import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Dropdown, DropdownItem } from "@/components/ui/Dropdown";
 import { MATCH_SESSION_DAY_LABEL, fetchActiveSessions } from "@/lib/match-session-label";
@@ -14,12 +13,19 @@ import type { Member, Guest, AttendanceSession } from "@/lib/supabase/database.t
 
 type GuestModalTarget = "teamAPlayer1" | "teamAPlayer2" | "teamBPlayer1" | "teamBPlayer2";
 
+/** 세션 attendee 목록 */
+interface SessionAttendees {
+  attending: string[];  // member_id[]
+  undecided: string[];
+}
+
 export default function NewMatchPage() {
   const router = useRouter();
   const [members, setMembers] = useState<Member[]>([]);
   const [guests, setGuests] = useState<Guest[]>([]);
   const [sessions, setSessions] = useState<AttendanceSession[]>([]);
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
+  const [attendees, setAttendees] = useState<SessionAttendees>({ attending: [], undecided: [] });
   const [loading, setLoading] = useState(true);
 
   const [teamAPlayer1, setTeamAPlayer1] = useState<SelectedPlayer | null>(null);
@@ -34,28 +40,16 @@ export default function NewMatchPage() {
   const [winnerTeam, setWinnerTeam] = useState<"A" | "B" | null>(null);
 
   const [guestModalTarget, setGuestModalTarget] = useState<GuestModalTarget | null>(null);
-
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadData();
-  }, []);
+  useEffect(() => { loadData(); }, []);
 
   async function loadData() {
     const supabase = createClient();
     const [{ data: memberData }, { data: guestData }, sessionList] = await Promise.all([
-      supabase
-        .from("members")
-        .select("*")
-        .eq("is_active", true)
-        .eq("is_dormant", false)
-        .order("name"),
-      supabase
-        .from("guests")
-        .select("*")
-        .is("converted_to_member_id", null)
-        .order("created_at", { ascending: false }),
+      supabase.from("members").select("*").eq("is_active", true).eq("is_dormant", false).order("name"),
+      supabase.from("guests").select("*").is("converted_to_member_id", null).order("created_at", { ascending: false }),
       fetchActiveSessions(supabase),
     ]);
     setMembers(memberData ?? []);
@@ -64,9 +58,25 @@ export default function NewMatchPage() {
     setLoading(false);
   }
 
+  /** 세션 선택 시 attendee 목록 로딩 */
+  async function handleSessionSelect(sessionId: string) {
+    setSelectedSessionId(sessionId);
+    const supabase = createClient();
+    const { data } = await supabase
+      .from("attendance")
+      .select("member_id, status")
+      .eq("session_id", sessionId)
+      .in("status", ["attending", "undecided"]);
+
+    const rows = data ?? [];
+    setAttendees({
+      attending: rows.filter((r) => r.status === "attending").map((r) => r.member_id),
+      undecided: rows.filter((r) => r.status === "undecided").map((r) => r.member_id),
+    });
+  }
+
   const isTiebreakSet = (scoreA === 7 && scoreB === 6) || (scoreA === 6 && scoreB === 7);
 
-  // 점수를 입력하면 승리팀을 자동으로 추정 (동점이면 수동 선택 유지)
   useEffect(() => {
     if (scoreA === scoreB) return;
     setWinnerTeam(scoreA > scoreB ? "A" : "B");
@@ -82,34 +92,23 @@ export default function NewMatchPage() {
   }
 
   const selectedSession = sessions.find((s) => s.id === selectedSessionId) ?? null;
-  const selectedSessionIsCustom =
-    selectedSession?.session_day === "holiday" || selectedSession?.session_day === "custom";
+  const selectedSessionIsCustom = selectedSession?.session_day === "holiday" || selectedSession?.session_day === "custom";
   const selectedSessionLabel = selectedSession
-    ? `${MATCH_SESSION_DAY_LABEL[selectedSession.session_day]}${
-        selectedSessionIsCustom ? ` · ${selectedSession.title}` : ""
-      } (${selectedSession.session_date})`
+    ? `${MATCH_SESSION_DAY_LABEL[selectedSession.session_day]}${selectedSessionIsCustom ? ` · ${selectedSession.title}` : ""} (${selectedSession.session_date})`
     : null;
 
   const isReadyToSubmit = Boolean(
-    selectedSessionId &&
-      teamAPlayer1 &&
-      teamAPlayer2 &&
-      teamBPlayer1 &&
-      teamBPlayer2 &&
-      winnerTeam &&
-      (!isTiebreakSet || tiebreakA !== tiebreakB) &&
-      !submitting
+    selectedSessionId && teamAPlayer1 && teamAPlayer2 && teamBPlayer1 && teamBPlayer2 &&
+    winnerTeam && (!isTiebreakSet || tiebreakA !== tiebreakB) && !submitting
   );
 
   function handleGuestCreated(guest: Guest) {
     setGuests((prev) => [guest, ...prev]);
     const selected: SelectedPlayer = { id: guest.id, name: guest.name, isGuest: true };
-
     if (guestModalTarget === "teamAPlayer1") setTeamAPlayer1(selected);
     if (guestModalTarget === "teamAPlayer2") setTeamAPlayer2(selected);
     if (guestModalTarget === "teamBPlayer1") setTeamBPlayer1(selected);
     if (guestModalTarget === "teamBPlayer2") setTeamBPlayer2(selected);
-
     setGuestModalTarget(null);
   }
 
@@ -117,7 +116,6 @@ export default function NewMatchPage() {
     if (!isReadyToSubmit) return;
     setSubmitting(true);
     setError(null);
-
     const res = await fetch("/api/matches", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -128,22 +126,18 @@ export default function NewMatchPage() {
         teamAPlayer2: { id: teamAPlayer2!.id, isGuest: teamAPlayer2!.isGuest },
         teamBPlayer1: { id: teamBPlayer1!.id, isGuest: teamBPlayer1!.isGuest },
         teamBPlayer2: { id: teamBPlayer2!.id, isGuest: teamBPlayer2!.isGuest },
-        scoreA,
-        scoreB,
+        scoreA, scoreB,
         scoreATiebreak: isTiebreakSet ? tiebreakA : null,
         scoreBTiebreak: isTiebreakSet ? tiebreakB : null,
         winnerTeam,
       }),
     });
-
     setSubmitting(false);
-
     if (!res.ok) {
       const body = await res.json().catch(() => null);
       setError(body?.error ?? "저장에 실패했습니다. 다시 시도해주세요.");
       return;
     }
-
     router.push("/ranking");
     router.refresh();
   }
@@ -157,30 +151,32 @@ export default function NewMatchPage() {
   }
 
   return (
-    <main className="px-4 pt-6">
+    <main className="px-4 pt-6 pb-10">
+      {/* ── 헤더 ─────────────────────────────────────────── */}
       <header className="mb-5">
-        <p className="font-score text-xs font-semibold uppercase tracking-[0.2em] text-clay-400">
-          Match Result
-        </p>
-        <h1 className="font-display text-3xl font-bold uppercase tracking-tight text-line-900">경기 결과 입력</h1>
+        <p className="eyebrow-en text-clay-400">Match Result</p>
+        <h1 className="headline-kr text-4xl text-line-900">경기 결과 입력</h1>
       </header>
 
-      <Card className="mb-4 p-4">
-        <p className="mb-2 text-xs font-bold uppercase tracking-widest text-line-600">세션 선택 *</p>
+      {/* ── 세션 선택 ─────────────────────────────────────── */}
+      <div className="mb-4 overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50 p-4">
+        <p className="mb-2 font-display text-[10px] font-bold uppercase tracking-widest text-line-500">
+          Session *
+        </p>
         {sessions.length === 0 ? (
-          <p className="text-sm text-line-400">
+          <p className="text-sm text-line-500">
             선택 가능한 출석 세션이 없어요. 출석 체크 화면에서 세션을 먼저 만들어주세요.
           </p>
         ) : (
           <Dropdown
             align="left"
-            triggerClassName="flex w-full items-center justify-between rounded-lg border border-line-200 bg-line-25 px-4 py-3 text-left"
+            triggerClassName="flex w-full items-center justify-between rounded-sm border border-line-200/40 bg-line-100 px-3 py-2.5 text-left"
             trigger={
               <>
                 <span className="text-sm font-semibold text-line-900">
                   {selectedSessionLabel ?? "세션을 선택해주세요"}
                 </span>
-                <span className="text-line-500">▼</span>
+                <span className="text-line-500 text-xs">▼</span>
               </>
             }
           >
@@ -191,10 +187,7 @@ export default function NewMatchPage() {
                   return (
                     <DropdownItem
                       key={session.id}
-                      onClick={() => {
-                        setSelectedSessionId(session.id);
-                        close();
-                      }}
+                      onClick={() => { handleSessionSelect(session.id); close(); }}
                     >
                       <span className={selectedSessionId === session.id ? "text-clay-400" : ""}>
                         {MATCH_SESSION_DAY_LABEL[session.session_day]}
@@ -207,84 +200,81 @@ export default function NewMatchPage() {
             )}
           </Dropdown>
         )}
-      </Card>
+      </div>
 
-      <Card className="mb-4 p-4">
-        <p className="mb-3 text-sm font-bold uppercase tracking-wide text-clay-400">청팀</p>
-        <div className="space-y-3">
-          <PlayerSelector
-            label="선수 1"
-            members={members}
-            guests={guests}
-            selectedKeys={selectedKeys}
-            excludeKeys={excludeKeysFor(teamAPlayer1)}
-            value={teamAPlayer1}
-            onChange={setTeamAPlayer1}
-            onRequestAddGuest={() => setGuestModalTarget("teamAPlayer1")}
-          />
-          <PlayerSelector
-            label="선수 2"
-            members={members}
-            guests={guests}
-            selectedKeys={selectedKeys}
-            excludeKeys={excludeKeysFor(teamAPlayer2)}
-            value={teamAPlayer2}
-            onChange={setTeamAPlayer2}
-            onRequestAddGuest={() => setGuestModalTarget("teamAPlayer2")}
-          />
+      {/* ── 청팀 ─────────────────────────────────────────── */}
+      <div className="relative mb-4 overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50 p-4">
+        <div className="absolute left-0 top-0 h-full w-1 bg-clay-400/50" />
+        <p className="mb-3 pl-2 font-display text-xs font-bold uppercase tracking-widest text-clay-400">
+          Team A
+        </p>
+        <div className="space-y-4">
+          {(["teamAPlayer1", "teamAPlayer2"] as const).map((field, i) => {
+            const val = field === "teamAPlayer1" ? teamAPlayer1 : teamAPlayer2;
+            const setter = field === "teamAPlayer1" ? setTeamAPlayer1 : setTeamAPlayer2;
+            return (
+              <PlayerSelector
+                key={field}
+                label={`선수 ${i + 1}`}
+                members={members}
+                guests={guests}
+                attendingMemberIds={attendees.attending}
+                undecidedMemberIds={attendees.undecided}
+                selectedKeys={selectedKeys}
+                excludeKeys={excludeKeysFor(val)}
+                value={val}
+                onChange={setter}
+                onRequestAddGuest={() => setGuestModalTarget(field)}
+              />
+            );
+          })}
         </div>
-      </Card>
+      </div>
 
-      <Card className="mb-4 p-4">
-        <p className="mb-3 text-sm font-bold uppercase tracking-wide text-court-400">우팀</p>
-        <div className="space-y-3">
-          <PlayerSelector
-            label="선수 1"
-            members={members}
-            guests={guests}
-            selectedKeys={selectedKeys}
-            excludeKeys={excludeKeysFor(teamBPlayer1)}
-            value={teamBPlayer1}
-            onChange={setTeamBPlayer1}
-            onRequestAddGuest={() => setGuestModalTarget("teamBPlayer1")}
-          />
-          <PlayerSelector
-            label="선수 2"
-            members={members}
-            guests={guests}
-            selectedKeys={selectedKeys}
-            excludeKeys={excludeKeysFor(teamBPlayer2)}
-            value={teamBPlayer2}
-            onChange={setTeamBPlayer2}
-            onRequestAddGuest={() => setGuestModalTarget("teamBPlayer2")}
-          />
+      {/* ── 우팀 ─────────────────────────────────────────── */}
+      <div className="relative mb-4 overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50 p-4">
+        <div className="absolute left-0 top-0 h-full w-1 bg-line-300/50" />
+        <p className="mb-3 pl-2 font-display text-xs font-bold uppercase tracking-widest text-line-500">
+          Team B
+        </p>
+        <div className="space-y-4">
+          {(["teamBPlayer1", "teamBPlayer2"] as const).map((field, i) => {
+            const val = field === "teamBPlayer1" ? teamBPlayer1 : teamBPlayer2;
+            const setter = field === "teamBPlayer1" ? setTeamBPlayer1 : setTeamBPlayer2;
+            return (
+              <PlayerSelector
+                key={field}
+                label={`선수 ${i + 1}`}
+                members={members}
+                guests={guests}
+                attendingMemberIds={attendees.attending}
+                undecidedMemberIds={attendees.undecided}
+                selectedKeys={selectedKeys}
+                excludeKeys={excludeKeysFor(val)}
+                value={val}
+                onChange={setter}
+                onRequestAddGuest={() => setGuestModalTarget(field)}
+              />
+            );
+          })}
         </div>
-      </Card>
+      </div>
 
-      <Card className="mb-4 p-4">
-        <p className="mb-3 text-center text-xs font-bold uppercase tracking-widest text-line-600">스코어</p>
+      {/* ── 스코어 ────────────────────────────────────────── */}
+      <div className="mb-4 overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50 p-4">
+        <p className="mb-3 text-center font-display text-[10px] font-bold uppercase tracking-widest text-line-500">
+          Score
+        </p>
         <div className="flex items-center justify-center gap-6">
-          <ScoreStepper
-            label="청팀"
-            value={scoreA}
-            onChange={setScoreA}
-            highlight={winnerTeam === "A"}
-            max={7}
-          />
-          <span className="text-line-400">vs</span>
-          <ScoreStepper
-            label="우팀"
-            value={scoreB}
-            onChange={setScoreB}
-            highlight={winnerTeam === "B"}
-            max={7}
-          />
+          <ScoreStepper label="청팀" value={scoreA} onChange={setScoreA} highlight={winnerTeam === "A"} max={7} />
+          <span className="text-line-400 text-sm">vs</span>
+          <ScoreStepper label="우팀" value={scoreB} onChange={setScoreB} highlight={winnerTeam === "B"} max={7} />
         </div>
 
         {isTiebreakSet && (
-          <div className="mt-4 border-t border-line-200 pt-4">
-            <p className="mb-2 text-center text-[11px] font-semibold uppercase tracking-widest text-amber-400">
-              타이브레이크
+          <div className="mt-4 border-t border-line-200/40 pt-4">
+            <p className="mb-2 text-center font-display text-[10px] font-bold uppercase tracking-widest text-line-500">
+              Tiebreak
             </p>
             <div className="flex items-center justify-center gap-4">
               <ScoreStepper label="청팀" value={tiebreakA} onChange={setTiebreakA} compact />
@@ -299,14 +289,15 @@ export default function NewMatchPage() {
           </div>
         )}
 
+        {/* 승리팀 선택 */}
         <div className="mt-4 flex gap-2">
           <button
             type="button"
             onClick={() => setWinnerTeam("A")}
-            className={`flex-1 rounded-lg border py-2 text-sm font-semibold ${
+            className={`flex-1 rounded-sm border py-2 text-sm font-semibold transition-colors ${
               winnerTeam === "A"
                 ? "border-clay-400 bg-clay-400 text-line-25"
-                : "border-line-200 text-line-600"
+                : "border-line-200/40 text-line-600"
             }`}
           >
             청팀 승리
@@ -314,16 +305,16 @@ export default function NewMatchPage() {
           <button
             type="button"
             onClick={() => setWinnerTeam("B")}
-            className={`flex-1 rounded-lg border py-2 text-sm font-semibold ${
+            className={`flex-1 rounded-sm border py-2 text-sm font-semibold transition-colors ${
               winnerTeam === "B"
-                ? "border-court-400 bg-court-400 text-line-25"
-                : "border-line-200 text-line-600"
+                ? "border-gold bg-gold/15 text-gold"
+                : "border-line-200/40 text-line-600"
             }`}
           >
             우팀 승리
           </button>
         </div>
-      </Card>
+      </div>
 
       {error && <p className="mb-3 text-sm text-fault-400">{error}</p>}
 
