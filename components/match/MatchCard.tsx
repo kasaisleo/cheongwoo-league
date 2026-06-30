@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Card } from "@/components/ui/Card";
 import { ResultBadge } from "@/components/ui/ResultBadge";
 import { toast } from "@/components/ui/Toast";
 import { EditMatchModal } from "@/components/match/EditMatchModal";
@@ -11,36 +10,28 @@ import { MATCH_SESSION_DAY_LABEL } from "@/lib/match-session-label";
 import type { DisplayMatch } from "@/lib/match-display";
 
 /**
- * MatchCard v2 — ATP 스타일 경기 결과 카드 (Step 15-3).
+ * MatchCard v3 — ATP Design Language Rollout (Step 17).
  *
- * 변경 전:
- *   1행 가로 레이아웃 — "팀A · 팀B | 점수 | 청팀 승/우팀 승 배지"
- *   누가 이겼는지 0.3초 안에 읽기 어려움
+ * v2 → v3 변경:
+ *   Surface:    Card(bg-line-100) → div(bg-line-50) — 앱 전체 surface 통일
+ *   승자 배경:  bg-win/5(초록 5%) → bg-gold/5(금 5%) — W=gold 원칙 적용
+ *               색차 분석: bg-gold/5 = 색차 11.4 (미묘, 배경이 배지보다 먼저 보이지 않음)
+ *   수정 버튼:  rounded-full → rounded-sm, border-line-200 → border-line-200/40
+ *   삭제 버튼:  border-fault-400 text-fault-400 → border-line-200/40 text-line-500
+ *               (fault Legacy 제거 — confirm 다이얼로그가 이미 안전장치)
+ *   게스트 G:   text-court-400 → text-line-500 (Legacy court 제거)
  *
- * 변경 후:
- *   2행 세로 레이아웃
- *   ┌──────────────────────────────────┐
- *   │ 날짜  ·  세션명           [수정][삭제]│ ← 상단 메타 바
- *   ├──────────────────────────────────┤
- *   │ [WIN]  김경희 · 홍길동    6 : 3  │ ← 승자 행 (bg-win/5)
- *   ├──────────────────────────────────┤
- *   │ [LOSS] 박민수 · 이지영    3 : 6  │ ← 패자 행
- *   └──────────────────────────────────┘
- *
- * 승자를 항상 위에 표시 — winner_team A/B에 관계없이 재정렬.
- *
- * LP 변동: DisplayMatch에 LP 데이터가 없어 이번 Step에서 생략.
- *   point_history 조인이 추가되면 LpBadge를 하단 메타 바에 추가 예정.
- *
- * 기존 기능 전부 유지:
- *   useIsAdmin(), 수정/삭제 버튼, EditMatchModal, 게스트 G 표시
+ * 유지:
+ *   WIN / LOSS 배지 — ResultBadge 수정 없음, 초록/빨강 유지
+ *   승자 이름: font-semibold text-line-900 ✅
+ *   패자 이름: font-normal text-line-500   ✅
+ *   운영진 수정/삭제 기능 — 로직 변경 없음
  */
 
 interface MatchCardProps {
   match: DisplayMatch;
 }
 
-/** 팀 행 데이터 구조 */
 interface TeamRowData {
   player1: { name: string; isGuest: boolean };
   player2: { name: string; isGuest: boolean };
@@ -75,9 +66,8 @@ export function MatchCard({ match }: MatchCardProps) {
     opponentTiebreak: match.score_a_tiebreak,
   };
 
-  // 승자를 항상 위에 표시
   const winnerData = aWon ? teamAData : teamBData;
-  const loserData = aWon ? teamBData : teamAData;
+  const loserData  = aWon ? teamBData : teamAData;
 
   async function handleDelete() {
     const confirmed = window.confirm("정말 이 경기를 삭제하시겠습니까?");
@@ -96,9 +86,10 @@ export function MatchCard({ match }: MatchCardProps) {
 
   return (
     <>
-      <Card className="overflow-hidden p-0">
+      {/* ── Card surface: bg-line-50 (앱 전체 통일) ── */}
+      <div className="overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50">
 
-        {/* ── 상단 메타 바 ──────────────────────────────── */}
+        {/* ── 상단 메타 바 ────────────────────────────── */}
         <div className="flex items-center justify-between gap-2 border-b border-line-200/40 px-3 py-2">
           <div className="flex min-w-0 items-center gap-1.5 text-xs text-line-500">
             <span className="shrink-0 tabular-nums">{match.played_at}</span>
@@ -106,7 +97,6 @@ export function MatchCard({ match }: MatchCardProps) {
               <>
                 <span className="text-line-300">·</span>
                 <span className="truncate">
-                  {/* Step 14 세션 제목 정책: title 메인, session_day 보조 */}
                   {match.sessionTitle
                     ? match.sessionTitle
                     : MATCH_SESSION_DAY_LABEL[match.sessionDay]}
@@ -114,12 +104,14 @@ export function MatchCard({ match }: MatchCardProps) {
               </>
             )}
           </div>
+
+          {/* 운영진 버튼 — 보조 기능, gray로 조용하게 */}
           {isAdmin && (
             <div className="flex shrink-0 gap-1">
               <button
                 type="button"
                 onClick={() => setShowEditModal(true)}
-                className="rounded-full border border-line-200 px-2 py-0.5 text-[11px] font-semibold text-line-600"
+                className="rounded-sm border border-line-200/40 px-2 py-0.5 text-[11px] font-semibold text-line-500"
               >
                 수정
               </button>
@@ -127,7 +119,7 @@ export function MatchCard({ match }: MatchCardProps) {
                 type="button"
                 disabled={deleting}
                 onClick={handleDelete}
-                className="rounded-full border border-fault-400 px-2 py-0.5 text-[11px] font-semibold text-fault-400 disabled:opacity-40"
+                className="rounded-sm border border-line-200/40 px-2 py-0.5 text-[11px] font-semibold text-line-500 disabled:opacity-40"
               >
                 {deleting ? "삭제 중..." : "삭제"}
               </button>
@@ -135,15 +127,15 @@ export function MatchCard({ match }: MatchCardProps) {
           )}
         </div>
 
-        {/* ── 승자 행 (bg-win/5 미묘한 초록 배경) ────────── */}
+        {/* ── 승자 행 (bg-gold/5 — 색차 11.4, 미묘) ── */}
         <TeamRow data={winnerData} isWinner />
 
         <div className="border-t border-line-200/30" />
 
-        {/* ── 패자 행 ───────────────────────────────────── */}
+        {/* ── 패자 행 ─────────────────────────────────── */}
         <TeamRow data={loserData} isWinner={false} />
 
-      </Card>
+      </div>
 
       {showEditModal && (
         <EditMatchModal
@@ -159,7 +151,6 @@ export function MatchCard({ match }: MatchCardProps) {
   );
 }
 
-/** 팀 행 — WIN/LOSS 배지 + 선수 이름 + 점수 */
 function TeamRow({
   data,
   isWinner,
@@ -167,20 +158,18 @@ function TeamRow({
   data: TeamRowData;
   isWinner: boolean;
 }) {
-  // 점수 표기: "6 : 3" 또는 "6 : 7 (5-7)" — 타이브레이크 포함
   const scoreText = `${data.score} : ${data.opponentScore}`;
   const hasTiebreak = data.tiebreak !== null && data.opponentTiebreak !== null;
 
   return (
     <div
       className={`flex items-center gap-2.5 px-3 py-2.5 ${
-        isWinner ? "bg-win/5" : ""
+        isWinner ? "bg-gold/5" : ""
       }`}
     >
-      {/* WIN / LOSS 배지 — 가장 왼쪽, 결과를 0.3초 안에 인식 */}
+      {/* WIN / LOSS 배지 — ResultBadge 유지, 색상 변경 없음 */}
       <ResultBadge result={isWinner ? "win" : "loss"} size="sm" />
 
-      {/* 선수 이름 — 복식 2명, 게스트 G 표시 */}
       <div className="min-w-0 flex-1">
         <p
           className={`truncate text-sm ${
@@ -195,7 +184,6 @@ function TeamRow({
         </p>
       </div>
 
-      {/* 점수 — 우측 고정, 모노스페이스 tabular-nums */}
       <div className="shrink-0 text-right">
         <span
           className={`font-score text-sm font-bold tabular-nums ${
@@ -214,7 +202,6 @@ function TeamRow({
   );
 }
 
-/** 선수 이름 표시 — 게스트이면 G 배지 추가 */
 function PlayerName({
   player,
 }: {
@@ -224,7 +211,8 @@ function PlayerName({
     <>
       {player.name}
       {player.isGuest && (
-        <span className="ml-0.5 font-score text-[10px] font-bold text-court-400">
+        /* 게스트 G: court-400(Legacy) → text-line-500(muted) */
+        <span className="ml-0.5 font-score text-[10px] font-bold text-line-500">
           G
         </span>
       )}
