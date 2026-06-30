@@ -11,7 +11,7 @@ import { requireAdmin } from "@/lib/admin-auth";
  * Supabase Admin API(service-role)로 auth.users를 조회하므로
  * createServiceClient()를 사용한다.
  */
-export async function GET() {
+export async function GET(request: Request) {
   const authError = requireAdmin();
   if (authError) return authError;
 
@@ -27,9 +27,34 @@ export async function GET() {
     return NextResponse.json({ error: "사용자 목록을 불러오지 못했습니다." }, { status: 500 });
   }
 
-  // 2) 카카오 로그인으로 가입된 사용자만 추린다
-  const kakaoUsers = usersData.users.filter((u) =>
-    u.identities?.some((identity) => identity.provider === "kakao")
+  // 디버그 모드: ?debug=1 쿼리 파라미터가 있으면 첫 번째 user의 raw 데이터를 반환.
+  // identities/app_metadata/user_metadata 구조를 실제로 확인하기 위한 임시 엔드포인트.
+  // 확인 후 반드시 이 블록을 제거할 것.
+  const url = new URL(request.url);
+  if (url.searchParams.get("debug") === "1") {
+    const firstUser = usersData.users[0] ?? null;
+    return NextResponse.json({
+      totalUsers: usersData.users.length,
+      firstUser: firstUser
+        ? {
+            id: firstUser.id,
+            email: firstUser.email,
+            app_metadata: firstUser.app_metadata,
+            user_metadata: firstUser.user_metadata,
+            identities: firstUser.identities,
+            created_at: firstUser.created_at,
+          }
+        : null,
+    });
+  }
+
+  // 2) 카카오 로그인으로 가입된 사용자만 추린다.
+  // identities[].provider === "kakao" 로 필터 — app_metadata.provider도 함께 시도한다.
+  const kakaoUsers = usersData.users.filter(
+    (u) =>
+      u.identities?.some((identity) => identity.provider === "kakao") ||
+      u.app_metadata?.provider === "kakao" ||
+      (u.app_metadata?.providers as string[] | undefined)?.includes("kakao")
   );
 
   if (kakaoUsers.length === 0) {
@@ -59,11 +84,11 @@ export async function GET() {
       return {
         id: u.id,
         email: u.email ?? null,
-        // 카카오 닉네임은 user_metadata에 들어올 수 있다
         nickname:
           (u.user_metadata?.name as string | undefined) ??
           (u.user_metadata?.full_name as string | undefined) ??
           (u.user_metadata?.preferred_username as string | undefined) ??
+          (u.user_metadata?.user_name as string | undefined) ??
           null,
         kakaoId: kakaoIdentity?.identity_data?.id ?? null,
         createdAt: u.created_at,
