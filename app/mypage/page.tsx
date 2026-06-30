@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { createClient } from "@/lib/supabase/client";
 import type { User } from "@supabase/supabase-js";
@@ -140,101 +139,151 @@ export default function MyPage() {
   return (
     <main className="px-4 pt-6 pb-10">
       <header className="mb-5">
-        <p className="eyebrow-en text-clay-400">
-          My Page
-        </p>
-        <h1 className="headline-kr text-4xl text-line-900">
-          마이페이지
-        </h1>
+        <p className="eyebrow-en text-clay-400">My Page</p>
+        <h1 className="headline-kr text-4xl text-line-900">마이페이지</h1>
       </header>
 
       {/* 회원 미연결 상태 */}
       {!member && (
-        <Card className="p-6 text-center">
-          <p className="text-sm font-semibold text-line-900">회원 정보와 연결되지 않았습니다.</p>
-          <p className="mt-1 text-sm text-line-500">운영진에게 회원 연결을 요청해주세요.</p>
-        </Card>
+        <div className="rounded-[14px] border border-line-200/40 bg-line-50 p-8 text-center">
+          <p className="font-display text-xs font-bold uppercase tracking-widest text-line-500">
+            Not Linked
+          </p>
+          <p className="mt-1 text-xs text-line-400">운영진에게 회원 연결을 요청해주세요.</p>
+        </div>
       )}
 
       {member && (
-        <div className="space-y-4">
+        <div className="space-y-3">
 
-          {/* 1. 회원 정보 */}
-          <Card className="p-4">
-            <SectionTitle>회원 정보</SectionTitle>
-            <div className="space-y-2.5">
-              <Row label="이름" value={member.name} />
-              <Row label="닉네임" value={member.nickname} />
-              <Row label="회원 유형">
-                <Badge tone="neutral">{member.member_type}</Badge>
-              </Row>
-              <Row
-                label="마포점수"
-                value={member.mapo_score !== null ? `${member.mapo_score}점` : "—"}
-              />
+          {/* ── Player Hero Block — Ranking Champion 문법 ── */}
+          <div className="relative overflow-hidden rounded-[14px] border border-clay-400/30 bg-line-50">
+            {/* clay accent bar */}
+            <div className="absolute left-0 top-0 h-full w-1.5 bg-clay-400/60" />
+            <div className="px-5 py-4 pl-7">
+              {/* 이름 + 회원 유형 */}
+              <div className="mb-2 flex items-center gap-2">
+                <p className="font-display text-2xl font-bold tracking-tight text-line-900">
+                  {member.name}
+                </p>
+                <span className="rounded-sm bg-line-200 px-2 py-0.5 text-[10px] font-semibold text-line-600">
+                  {member.member_type}
+                </span>
+              </div>
+              {/* 전적 + LP */}
+              <div className="flex items-end justify-between gap-3">
+                <p className="text-xs">
+                  <span className="font-semibold text-gold">{member.wins}W</span>
+                  <span className="mx-1 text-line-400">·</span>
+                  <span className="text-line-500">{member.losses}L</span>
+                  <span className="mx-1.5 text-line-300">|</span>
+                  <span className="text-line-500">{winRate}% Win Rate</span>
+                </p>
+                <div className="shrink-0 text-right">
+                  <p className="font-score text-3xl font-bold tabular-nums text-clay-400">
+                    {member.league_point}
+                  </p>
+                  <p className="font-display text-[9px] font-bold uppercase tracking-widest text-clay-400/60">
+                    LP
+                  </p>
+                </div>
+              </div>
             </div>
-          </Card>
+          </div>
 
-          {/* 2. 카카오 연동 */}
-          <Card className="p-4">
-            <SectionTitle>카카오 연동</SectionTitle>
-            <div className="space-y-2.5">
-              <Row label="카카오 닉네임" value={kakaoNickname ?? "—"} />
-              <Row label="이메일" value={kakaoEmail ?? "—"} />
-              <Row label="연동 상태">
-                <Badge tone="win">연동 완료</Badge>
-              </Row>
+          {/* ── 통계 — 간결한 2×2 grid ── */}
+          <div className="overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50">
+            <div className="grid grid-cols-2 divide-x divide-y divide-line-200/30">
+              <div className="px-4 py-3 text-center">
+                <p className="font-score text-2xl font-bold tabular-nums text-line-900">
+                  {attendanceData ? attendanceData.attendanceRate : 0}
+                  <span className="ml-0.5 text-sm font-semibold">%</span>
+                </p>
+                <p className="font-display text-[9px] font-bold uppercase tracking-widest text-line-500">
+                  Attendance
+                </p>
+              </div>
+              <div className="px-4 py-3 text-center">
+                <p className="font-score text-2xl font-bold tabular-nums text-line-900">
+                  {matchesPlayed}
+                  <span className="ml-0.5 text-sm font-semibold">경기</span>
+                </p>
+                <p className="font-display text-[9px] font-bold uppercase tracking-widest text-line-500">
+                  Played
+                </p>
+              </div>
+              <div className="px-4 py-3 text-center">
+                <p className="font-score text-2xl font-bold tabular-nums text-win">
+                  {winRate}
+                  <span className="ml-0.5 text-sm font-semibold">%</span>
+                </p>
+                <p className="font-display text-[9px] font-bold uppercase tracking-widest text-line-500">
+                  Win Rate
+                </p>
+              </div>
+              <div className="px-4 py-3 text-center">
+                <p className="font-score text-2xl font-bold tabular-nums text-line-900">
+                  {member.mapo_score !== null ? member.mapo_score : "—"}
+                  {member.mapo_score !== null && (
+                    <span className="ml-0.5 text-sm font-semibold">점</span>
+                  )}
+                </p>
+                <p className="font-display text-[9px] font-bold uppercase tracking-widest text-line-500">
+                  Mapo Score
+                </p>
+              </div>
             </div>
-          </Card>
+          </div>
 
-          {/* 3. 활동 통계 */}
-          <Card className="p-4">
-            <SectionTitle>활동 통계</SectionTitle>
-            <div className="grid grid-cols-2 gap-2">
-              <KpiBox
-                label="출석률"
-                number={attendanceData ? attendanceData.attendanceRate : 0}
-                unit="%"
-                sub={
-                  attendanceData
-                    ? `${attendanceData.attendingCount} / ${attendanceData.totalResponses}세션`
-                    : undefined
-                }
-              />
-              <KpiBox label="총 경기" number={matchesPlayed} unit="경기" />
-              <KpiBox
-                label="승률"
-                number={winRate}
-                unit="%"
-                tone="win"
-                sub={matchesPlayed > 0 ? `${member.wins}승 ${member.losses}패` : undefined}
-              />
-              <KpiBox
-                label="마포점수"
-                number={member.mapo_score ?? 0}
-                unit="점"
-                tone={member.mapo_score !== null ? undefined : "muted"}
-                displayValue={member.mapo_score !== null ? undefined : "—"}
-              />
-            </div>
-          </Card>
-
-          {/* 4. 최근 출석 이력 */}
-          <Card className="p-4">
-            <SectionTitle>최근 출석</SectionTitle>
-            {!attendanceData || attendanceData.recent.length === 0 ? (
-              <p className="text-sm text-line-400">아직 출석 기록이 없습니다.</p>
-            ) : (
-              <div className="space-y-2">
-                {attendanceData.recent.map((row) => (
-                  <div key={row.event_date} className="flex items-center justify-between">
-                    <span className="text-sm text-line-700">{formatDate(row.event_date)}</span>
+          {/* ── 최근 출석 — Ranking Table 행 문법 ── */}
+          {attendanceData && attendanceData.recent.length > 0 && (
+            <div className="overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50">
+              <div className="border-b border-line-200/40 bg-line-100/40 px-4 py-2">
+                <span className="font-display text-[10px] font-bold uppercase tracking-widest text-line-500">
+                  Recent Attendance
+                </span>
+              </div>
+              {attendanceData.recent.map((row, idx) => {
+                const isLast = idx === attendanceData.recent.length - 1;
+                return (
+                  <div
+                    key={row.event_date}
+                    className={`flex items-center justify-between px-4 py-2.5 ${
+                      isLast ? "" : "border-b border-line-200/30"
+                    }`}
+                  >
+                    <span className="font-score text-xs tabular-nums text-line-500">
+                      {formatDate(row.event_date)}
+                    </span>
                     <Badge tone={STATUS_TONE[row.status]}>{STATUS_LABEL[row.status]}</Badge>
                   </div>
-                ))}
+                );
+              })}
+            </div>
+          )}
+
+          {/* ── 카카오 연동 (보조 정보, 하단) ── */}
+          <div className="overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50">
+            <div className="border-b border-line-200/40 bg-line-100/40 px-4 py-2">
+              <span className="font-display text-[10px] font-bold uppercase tracking-widest text-line-500">
+                Kakao
+              </span>
+            </div>
+            <div className="divide-y divide-line-200/30">
+              <div className="flex items-center justify-between px-4 py-2.5">
+                <span className="text-xs text-line-500">닉네임</span>
+                <span className="text-xs font-medium text-line-800">{kakaoNickname ?? "—"}</span>
               </div>
-            )}
-          </Card>
+              <div className="flex items-center justify-between px-4 py-2.5">
+                <span className="text-xs text-line-500">이메일</span>
+                <span className="text-xs font-medium text-line-800">{kakaoEmail ?? "—"}</span>
+              </div>
+              <div className="flex items-center justify-between px-4 py-2.5">
+                <span className="text-xs text-line-500">연동 상태</span>
+                <Badge tone="win">연동 완료</Badge>
+              </div>
+            </div>
+          </div>
 
         </div>
       )}

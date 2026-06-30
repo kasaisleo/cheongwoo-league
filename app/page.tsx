@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
+import { MatchCard } from "@/components/match/MatchCard";
 import { MATCH_SELECT_WITH_PLAYERS, toDisplayMatches } from "@/lib/match-display";
 import { MATCH_SESSION_DAY_LABEL, selectHomeSessions } from "@/lib/match-session-label";
 import { HomeAttendanceSection } from "@/components/attendance/HomeAttendanceSection";
@@ -119,9 +119,7 @@ export default async function HomePage() {
         <RankingTeaserCard members={topRanked} />
       )}
 
-      {/* 2. 다음 일정 — 읽기 전용 세션 카드. 출석 페이지로 딥링크.
-          HomeAttendanceSection이 출석 신청 UI를 담당하므로,
-          이 카드는 "어떤 일정이 있는지 확인" 용도로 역할을 명확히 한다. */}
+      {/* 2. 다음 일정 — Ranking 문법: rounded-[14px], bg-line-50, accent bar */}
       <section className="mb-4">
         <SectionHeader
           title="다음 일정"
@@ -140,19 +138,25 @@ export default async function HomePage() {
 
               return (
                 <Link key={session.id} href={`/attendance?session_id=${session.id}`}>
-                  <Card className="border-l-4 border-l-clay-400 p-4">
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <p className="text-sm font-semibold text-line-900">{session.title}</p>
-                        <p className="mt-0.5 text-xs text-line-400">
-                          {typeLabel} · {dateLabel}
-                        </p>
+                  <div className="relative overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50 transition-colors hover:border-clay-400/30">
+                    {/* clay accent bar — Ranking contender block 문법 */}
+                    <div className="absolute left-0 top-0 h-full w-1 bg-clay-400/50" />
+                    <div className="px-4 py-3 pl-6">
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <p className="text-sm font-semibold text-line-900">{session.title}</p>
+                          <p className="mt-0.5 text-xs text-line-500">
+                            {typeLabel} · {dateLabel}
+                          </p>
+                        </div>
                       </div>
+                      <p className="mt-1.5 text-[11px] text-line-500">
+                        출석 <span className="text-win font-semibold">{summary.attending}</span>
+                        {" · "}미정 <span className="text-amber-400 font-semibold">{summary.undecided}</span>
+                        {" · "}불참 <span className="text-line-500">{summary.absent}</span>
+                      </p>
                     </div>
-                    <p className="mt-1.5 text-xs text-line-500">
-                      출석 {summary.attending} · 미정 {summary.undecided} · 불참 {summary.absent}
-                    </p>
-                  </Card>
+                  </div>
                 </Link>
               );
             })}
@@ -160,57 +164,38 @@ export default async function HomePage() {
         )}
       </section>
 
-      {/* 3. 이번 주 게스트 — 운영진에게만 표시 (일반 회원 불필요 정보) */}
+      {/* 3. 이번 주 게스트 — 운영진에게만 표시 */}
       {isAdmin && guestsThisWeek.length > 0 && (
         <section className="mb-4">
           <SectionHeader title="이번 주 게스트" href="/guests" cta="전체보기" />
-          <div className="space-y-2">
-            {guestsThisWeek.map((guest) => (
-              <Card key={guest.id} className="flex items-center justify-between p-3">
+          <div className="overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50">
+            {guestsThisWeek.map((guest, idx) => (
+              <div
+                key={guest.id}
+                className={`flex items-center justify-between px-4 py-3 ${
+                  idx < guestsThisWeek.length - 1 ? "border-b border-line-200/30" : ""
+                }`}
+              >
                 <div className="flex items-center gap-1.5">
                   <span className="text-sm font-semibold text-line-900">{guest.name}</span>
                   {guest.skill_grade && <Badge tone="amber">{guest.skill_grade}급</Badge>}
                 </div>
-                <span className="text-xs text-line-400">{guest.visit_date}</span>
-              </Card>
+                <span className="text-xs text-line-500">{guest.visit_date}</span>
+              </div>
             ))}
           </div>
         </section>
       )}
 
-      {/* 4. 최근 경기 — 전체보기 링크(/matches)로 경기 탭 진입 유도 */}
-      <section>
+      {/* 4. 최근 경기 — MatchCard 재사용 (Ranking table 행 밀도) */}
+      <section className="pb-10">
         <SectionHeader title="최근 경기" href="/matches" cta="전체보기" />
-
         {recentMatches.length === 0 ? (
           <EmptyState message="아직 등록된 경기가 없어요." />
         ) : (
           <div className="space-y-2">
             {recentMatches.map((match) => (
-              <Card key={match.id} className="p-3">
-                <div className="flex items-center justify-between text-xs text-line-400">
-                  <span>{match.played_at}</span>
-                  <Badge tone={match.winner_team === "A" ? "clay" : "court"}>
-                    {match.winner_team === "A" ? "청팀 승" : "우팀 승"}
-                  </Badge>
-                </div>
-                <div className="mt-2 flex items-center justify-between text-sm">
-                  <span className={match.winner_team === "A" ? "font-semibold text-line-900" : "text-line-500"}>
-                    {match.teamAPlayer1.name} · {match.teamAPlayer2.name}
-                  </span>
-                  <span className="font-score font-bold text-line-900">
-                    {match.score_a} : {match.score_b}
-                    {match.score_a_tiebreak !== null && (
-                      <span className="ml-1 text-xs font-normal text-line-500">
-                        ({match.score_a_tiebreak}-{match.score_b_tiebreak})
-                      </span>
-                    )}
-                  </span>
-                  <span className={match.winner_team === "B" ? "font-semibold text-line-900" : "text-line-500"}>
-                    {match.teamBPlayer1.name} · {match.teamBPlayer2.name}
-                  </span>
-                </div>
-              </Card>
+              <MatchCard key={match.id} match={match} />
             ))}
           </div>
         )}

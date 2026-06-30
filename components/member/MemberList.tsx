@@ -222,44 +222,71 @@ export function MemberList({ members }: MemberListProps) {
       {filteredMembers.length === 0 ? (
         <EmptyState message={members.length === 0 ? "등록된 회원이 없어요." : "검색 결과가 없습니다."} />
       ) : (
-        <div className="space-y-2">
-          {filteredMembers.map((member) => (
-            <Link key={member.id} href={`/members/${member.id}`}>
-              <Card className="flex items-center justify-between p-3">
-                <div>
-                  <p className="flex items-center gap-1.5 text-sm font-semibold text-line-900">
-                    {member.name}
-                    {member.nickname && member.nickname !== member.name && (
-                      <span className="ml-1 text-xs font-normal text-line-400">{member.nickname}</span>
-                    )}
-                    {member.role !== null && (
-                      <span className="rounded-full bg-line-200 px-1.5 py-0.5 text-[10px] font-semibold text-line-700">
-                        {member.role}
+        /* Ranking Table 문법: rounded-[14px], bg-line-50, border-line-200/40, 행 구분선 */
+        <div className="overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50">
+          {/* 테이블 헤더 */}
+          <div className="grid grid-cols-[1fr_auto] items-center gap-3 border-b border-line-200/40 bg-line-100/40 px-4 py-2">
+            <span className="font-display text-[10px] font-bold uppercase tracking-widest text-line-500">
+              Player
+            </span>
+            <span className="font-display text-[10px] font-bold uppercase tracking-widest text-line-500 text-right">
+              LP
+            </span>
+          </div>
+
+          {filteredMembers.map((member, idx) => {
+            const isLast = idx === filteredMembers.length - 1;
+            return (
+              <Link key={member.id} href={`/members/${member.id}`}>
+                <div className={`flex items-center gap-3 px-4 py-3 transition-colors hover:bg-line-100/40 ${
+                  isLast ? "" : "border-b border-line-200/30"
+                }`}>
+                  {/* 이름 + 전적 */}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5">
+                      <p className="truncate text-sm font-semibold text-line-900">
+                        {member.name}
+                      </p>
+                      {member.nickname && member.nickname !== member.name && (
+                        <span className="shrink-0 text-xs text-line-500">{member.nickname}</span>
+                      )}
+                      {member.role !== null && (
+                        <span className="shrink-0 rounded-sm bg-line-200 px-1.5 py-0.5 text-[9px] font-semibold text-line-600">
+                          {member.role}
+                        </span>
+                      )}
+                      {member.is_dormant && (
+                        <span className="shrink-0 rounded-sm bg-line-200 px-1.5 py-0.5 text-[9px] font-semibold text-line-500">
+                          휴면
+                        </span>
+                      )}
+                    </div>
+                    <p className="mt-0.5 text-[10px] text-line-500">
+                      <span className="text-gold">{member.wins}W</span>
+                      <span className="mx-0.5">·</span>
+                      <span>{member.losses}L</span>
+                      {member.mapo_score !== null && (
+                        <span className="ml-1.5 text-line-500">마포 {member.mapo_score}점</span>
+                      )}
+                    </p>
+                  </div>
+
+                  {/* LP + 전화 */}
+                  <div className="flex shrink-0 items-center gap-2">
+                    {member.phone && <CallButton phone={member.phone} />}
+                    <div className="text-right">
+                      <span className="font-score text-sm font-bold tabular-nums text-line-800">
+                        {member.league_point}
                       </span>
-                    )}
-                    {member.is_dormant && (
-                      <span className="rounded-full bg-line-200 px-1.5 py-0.5 text-[10px] font-semibold text-line-600">
-                        휴면
+                      <span className="ml-0.5 font-display text-[9px] font-semibold uppercase tracking-wider text-line-500">
+                        LP
                       </span>
-                    )}
-                  </p>
-                  <p className="mt-1 text-xs font-semibold">
-                    <span className="text-clay-400">LP {member.league_point}</span>
-                    {member.mapo_score !== null && (
-                      <span className="text-line-600"> · 마포 {member.mapo_score}점</span>
-                    )}
-                    <span className="text-line-500">
-                      {" "}
-                      · {member.wins}승 {member.losses}패
-                    </span>
-                  </p>
+                    </div>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  {member.phone && <CallButton phone={member.phone} />}
-                </div>
-              </Card>
-            </Link>
-          ))}
+              </Link>
+            );
+          })}
         </div>
       )}
     </>
