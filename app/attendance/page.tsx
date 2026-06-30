@@ -12,7 +12,7 @@ import { AttendanceToggle } from "@/components/attendance/AttendanceToggle";
 import { MemberAttendanceCard } from "@/components/attendance/MemberAttendanceCard";
 import { getDisambiguatedName } from "@/lib/member-display";
 import { MATCH_SESSION_DAY_LABEL, fetchActiveSessions } from "@/lib/match-session-label";
-import { useIsAdmin } from "@/lib/hooks/useIsAdmin";
+import { useAdminRole } from "@/lib/hooks/useAdminRole";
 import type { AttendanceStatus, AttendanceSession, Member } from "@/lib/supabase/database.types";
 
 const MIN_REQUIRED_PLAYERS = 4;
@@ -31,14 +31,20 @@ function AttendancePageInner() {
   const searchParams = useSearchParams();
   const initialSessionId = searchParams.get("session_id");
   const supabase = useMemo(() => createClient(), []);
-  // 운영진 여부 확인 — manager 이상만 세션 생성/명단확정/명단보관 버튼을 본다.
-  // 카카오 로그인 + permission_role 도입 전까지는 운영진 비밀번호 인증으로 대체.
-  // (useIsAdmin 훅이 /api/auth/status 조회를 담당한다)
-  const isAdmin = useIsAdmin();
+
+  // Step 13 권한 체계 — useAdminRole() 하나로 /api/auth/status를 1회만 호출해
+  // owner/manager/비운영진을 구분한다. useIsAdmin()과 별도로 호출하면 같은
+  // 엔드포인트를 2회 호출하므로 useAdminRole()로 통합한다.
+  const role = useAdminRole();          // "owner" | "manager" | null
+  const isAdmin = role !== null;        // manager 이상 (기존 isAdmin 동작 동일)
+  const isOwner = role === "owner";     // owner 전용 기능
+  const isManager = role === "manager"; // manager 전용 (owner 제외)
 
   // 회원 카카오 로그인 상태 — "내 출석 신청" 영역 표시 여부 결정.
   // undefined = 아직 확인 중, null = 미로그인 또는 미연결
   const [myMemberId, setMyMemberId] = useState<string | null | undefined>(undefined);
+  const isMember = !!myMemberId; // 카카오 로그인 + 회원 연결 완료
+
   const [mySessionStatus, setMySessionStatus] = useState<AttendanceStatus | null>(null);
   const [mySessionSubmitting, setMySessionSubmitting] = useState(false);
   const [openSessions, setOpenSessions] = useState<AttendanceSession[]>([]);
@@ -545,8 +551,12 @@ function AttendancePageInner() {
             trigger={
               <>
                 <span className="text-sm font-semibold text-line-900">
-                  {selectedSession ? MATCH_SESSION_DAY_LABEL[selectedSession.session_day] : "세션 선택"}
-                  {selectedSessionIsCustom && selectedSession ? ` · ${selectedSession.title}` : ""}
+                  {selectedSession ? selectedSession.title : "세션 선택"}
+                  {selectedSession && (
+                    <span className="ml-1 text-xs font-normal text-line-400">
+                      · {MATCH_SESSION_DAY_LABEL[selectedSession.session_day]}
+                    </span>
+                  )}
                 </span>
                 <span className="text-line-500">▼</span>
               </>
@@ -563,9 +573,10 @@ function AttendancePageInner() {
                     }}
                   >
                     <span className={selectedSessionId === session.id ? "text-clay-400" : ""}>
-                      {MATCH_SESSION_DAY_LABEL[session.session_day]}
-                      {(session.session_day === "holiday" || session.session_day === "custom") &&
-                        ` · ${session.title}`}
+                      {session.title}
+                      <span className="ml-1 text-xs font-normal opacity-60">
+                        · {MATCH_SESSION_DAY_LABEL[session.session_day]}
+                      </span>
                     </span>
                   </DropdownItem>
                 ))}
@@ -697,53 +708,133 @@ function AttendancePageInner() {
             )}
           </div>
 
-          <div className="mb-3">
-            <input
-              value={memberQuery}
-              onChange={(e) => setMemberQuery(e.target.value)}
-              placeholder="이름, 닉네임으로 검색"
-              className="box-border block h-11 w-full min-w-0 max-w-full rounded-lg border border-line-200 bg-line-100 px-3 text-sm text-line-900 placeholder:text-line-400"
-            />
-          </div>
+          {/* ─── 명단 영역 — 권한별 분기 ─────────────────────────────────
+              비로그인     : 통계까지만 표시, 명단 숨김, 로그인 CTA
+              Member       : 이름+상태 읽기 전용 (수정 버튼 없음)
+              Manager/Owner: 기존 풀 기능 (검색, 필터, 수정 토글, 운영 버튼)
+          ──────────────────────────────────────────────────────────── */}
 
-          {loadingRows ? (
-            <p className="text-center text-sm text-line-400">불러오는 중...</p>
-          ) : displayedRows.length === 0 ? (
-            <Card className="p-6 text-center text-sm text-line-400">
-              {rows.length === 0 ? "명단이 비어 있어요." : "검색/필터 조건에 맞는 회원이 없어요."}
+          {/* 비로그인: 명단 대신 안내 + 로그인 CTA */}
+          {myMemberId === null && !isAdmin && (
+            <Card className="p-5 text-center">
+              <p className="text-sm text-line-600">
+                로그인하면 출석 신청과 명단 확인이 가능합니다.
+              </p>
+              <a
+                href="/login"
+                className="mt-3 inline-block rounded-lg bg-[#FEE500] px-5 py-2 text-sm font-bold text-[#191600]"
+              >
+                카카오 로그인
+              </a>
             </Card>
-          ) : (
-            <div className="space-y-2">
-              {displayedRows.map(({ member, status }) => (
-                <Card
-                  key={member.id}
-                  className={`flex items-center justify-between gap-2 border-l-4 p-3 ${
-                    status === "attending"
-                      ? "border-l-court-400"
-                      : status === "absent"
-                        ? "border-l-fault-400"
-                        : "border-l-amber-400"
-                  }`}
-                >
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    <span className="text-sm font-medium text-line-900">
-                      {getDisambiguatedName(member, allMembers)}
-                    </span>
-                    {member.member_type !== "정회원" && (
-                      <Badge tone="neutral">{member.member_type}</Badge>
-                    )}
-                  </div>
-                  <AttendanceToggle
-                    value={status}
-                    onChange={(s) => updateStatus(member.id, s)}
-                    disabled={
-                      updatingMemberId === member.id ||
-                      (selectedSession?.status === "closed" && !(isAdmin && editingClosedSession))
-                    }
-                  />
+          )}
+
+          {/* Member: 이름 + 상태 읽기 전용 명단 (수정 불가) */}
+          {isMember && !isAdmin && (
+            <>
+              <div className="mb-3">
+                <input
+                  value={memberQuery}
+                  onChange={(e) => setMemberQuery(e.target.value)}
+                  placeholder="이름, 닉네임으로 검색"
+                  className="box-border block h-11 w-full min-w-0 max-w-full rounded-lg border border-line-200 bg-line-100 px-3 text-sm text-line-900 placeholder:text-line-400"
+                />
+              </div>
+
+              {loadingRows ? (
+                <p className="text-center text-sm text-line-400">불러오는 중...</p>
+              ) : displayedRows.length === 0 ? (
+                <Card className="p-6 text-center text-sm text-line-400">
+                  {rows.length === 0 ? "명단이 비어 있어요." : "검색/필터 조건에 맞는 회원이 없어요."}
                 </Card>
-              ))}
-            </div>
+              ) : (
+                <div className="space-y-2">
+                  {displayedRows.map(({ member, status }) => (
+                    <Card
+                      key={member.id}
+                      className={`flex items-center justify-between gap-2 border-l-4 p-3 ${
+                        status === "attending"
+                          ? "border-l-court-400"
+                          : status === "absent"
+                            ? "border-l-fault-400"
+                            : "border-l-amber-400"
+                      }`}
+                    >
+                      {/* 이름만 표시 — 전화번호/메모 등 민감 정보 제외 */}
+                      <span className="text-sm font-medium text-line-900">
+                        {getDisambiguatedName(member, allMembers)}
+                      </span>
+                      {/* 읽기 전용 배지 — 수정 토글 없음 */}
+                      <Badge
+                        tone={
+                          status === "attending"
+                            ? "court"
+                            : status === "absent"
+                              ? "fault"
+                              : "amber"
+                        }
+                      >
+                        {status === "attending" ? "참석" : status === "absent" ? "불참" : "미정"}
+                      </Badge>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Manager / Owner: 기존 풀 기능 명단 (검색, 필터, 수정 토글) */}
+          {isAdmin && (
+            <>
+              <div className="mb-3">
+                <input
+                  value={memberQuery}
+                  onChange={(e) => setMemberQuery(e.target.value)}
+                  placeholder="이름, 닉네임으로 검색"
+                  className="box-border block h-11 w-full min-w-0 max-w-full rounded-lg border border-line-200 bg-line-100 px-3 text-sm text-line-900 placeholder:text-line-400"
+                />
+              </div>
+
+              {loadingRows ? (
+                <p className="text-center text-sm text-line-400">불러오는 중...</p>
+              ) : displayedRows.length === 0 ? (
+                <Card className="p-6 text-center text-sm text-line-400">
+                  {rows.length === 0 ? "명단이 비어 있어요." : "검색/필터 조건에 맞는 회원이 없어요."}
+                </Card>
+              ) : (
+                <div className="space-y-2">
+                  {displayedRows.map(({ member, status }) => (
+                    <Card
+                      key={member.id}
+                      className={`flex items-center justify-between gap-2 border-l-4 p-3 ${
+                        status === "attending"
+                          ? "border-l-court-400"
+                          : status === "absent"
+                            ? "border-l-fault-400"
+                            : "border-l-amber-400"
+                      }`}
+                    >
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span className="text-sm font-medium text-line-900">
+                          {getDisambiguatedName(member, allMembers)}
+                        </span>
+                        {member.member_type !== "정회원" && (
+                          <Badge tone="neutral">{member.member_type}</Badge>
+                        )}
+                      </div>
+                      <AttendanceToggle
+                        value={status}
+                        onChange={(s) => updateStatus(member.id, s)}
+                        disabled={
+                          updatingMemberId === member.id ||
+                          (selectedSession?.status === "closed" && !(isAdmin && editingClosedSession))
+                        }
+                      />
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </>
           )}
         </>
       )}
