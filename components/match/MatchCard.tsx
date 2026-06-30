@@ -86,11 +86,14 @@ export function MatchCard({ match }: MatchCardProps) {
 
   return (
     <>
-      {/* ── Card surface: bg-line-50 (앱 전체 통일) ── */}
-      <div className="overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50">
+      {/* ── Card surface + clay accent bar (Ranking/Attendance 동일 문법) ── */}
+      <div className="relative overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50">
+
+        {/* 좌측 clay accent bar — 경기 단위 구분, Contender Block과 동일 */}
+        <div className="absolute left-0 top-0 h-full w-1 bg-clay-400/40" />
 
         {/* ── 상단 메타 바 ────────────────────────────── */}
-        <div className="flex items-center justify-between gap-2 border-b border-line-200/40 px-3 py-2">
+        <div className="flex items-center justify-between gap-2 border-b border-line-200/40 py-2 pl-5 pr-3">
           <div className="flex min-w-0 items-center gap-1.5 text-xs text-line-500">
             <span className="shrink-0 tabular-nums">{match.played_at}</span>
             {match.sessionDay && (
@@ -163,7 +166,7 @@ function TeamRow({
 
   return (
     <div
-      className={`flex items-center gap-2.5 px-3 py-2.5 ${
+      className={`flex items-center gap-2.5 py-2.5 pl-5 pr-3 ${
         isWinner ? "bg-gold/5" : ""
       }`}
     >
