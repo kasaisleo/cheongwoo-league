@@ -1,30 +1,23 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { RankMovement } from "@/components/ui/RankMovement";
+import { applyRankingQuery } from "@/lib/ranking-query";
 import type { MemberWithStats } from "@/lib/supabase/database.types";
 
 /**
  * Ranking Page v2 — ATP Tour 스타일 랭킹 화면 (Step 15-4).
  *
- * 구조:
- *   1) Champion Block (#1) — gold 강조, 대형 카드
- *   2) Contender Block (#2, #3) — 2열 나란히 보조 강조
- *   3) Ranking Table (#4 이하) — ATP ranking list 스타일
+ * 데이터 일관성 수정 (버그 발견: 2026-06-30):
+ *   Home RankingTeaserCard와 동일한 applyRankingQuery() 사용
+ *   → is_dormant: false 추가로 휴면 회원 제외
+ *   → Home Top 3 = Ranking Page Top 3 보장
  *
- * RankMovement: 현재 rank_history 없으므로 delta=0 → showFlat=false → 미표시
- * 승/패: wins=win 컬러, losses=loss 컬러로 색상 구분
  * win_rate: member_stats 뷰가 0~100 값으로 저장됨 (이미 % 값)
  */
 export default async function RankingPage() {
   const supabase = createClient();
 
-  const { data: rankedMembers } = await supabase
-    .from("member_stats")
-    .select("*")
-    .eq("is_active", true)
-    .order("league_point", { ascending: false })
-    .order("win_rate", { ascending: false })
-    .order("wins", { ascending: false });
+  const { data: rankedMembers } = await applyRankingQuery(supabase);
 
   const members = (rankedMembers ?? []) as MemberWithStats[];
 

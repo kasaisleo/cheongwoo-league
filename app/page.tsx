@@ -7,6 +7,7 @@ import { MATCH_SESSION_DAY_LABEL, selectHomeSessions } from "@/lib/match-session
 import { HomeAttendanceSection } from "@/components/attendance/HomeAttendanceSection";
 import { RankingTeaserCard } from "@/components/ranking/RankingTeaserCard";
 import { SectionHeader, EmptyState } from "@/components/ui/SectionHeader";
+import { applyRankingQuery } from "@/lib/ranking-query";
 import { isAdminSession } from "@/lib/admin-auth";
 import type { AttendanceSession, MemberWithStats } from "@/lib/supabase/database.types";
 
@@ -52,16 +53,8 @@ export default async function HomePage() {
         .gte("visit_date", week.start)
         .lte("visit_date", week.end)
         .order("visit_date", { ascending: true }),
-      // 랭킹 상위 3명 — RankingTeaserCard 전용
-      supabase
-        .from("member_stats")
-        .select("*")
-        .eq("is_active", true)
-        .eq("is_dormant", false)
-        .order("league_point", { ascending: false })
-        .order("win_rate", { ascending: false })
-        .order("wins", { ascending: false })
-        .limit(3),
+      // 랭킹 상위 3명 — RankingTeaserCard 전용 (applyRankingQuery로 Ranking 페이지와 동일 조건 보장)
+      applyRankingQuery(supabase, 3),
     ]);
 
   const allSessions = selectHomeSessions((activeSessionRows ?? []) as AttendanceSession[]);
