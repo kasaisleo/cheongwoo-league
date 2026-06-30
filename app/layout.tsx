@@ -5,8 +5,30 @@ import { ToastViewport } from "@/components/ui/Toast";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "마포 청우회 리그",
-  description: "마포 청우회 테니스 클럽 매치 레이팅",
+  title: "청우회 리그",
+  description: "테니스 경기 · 랭킹 · 출석관리",
+  openGraph: {
+    title: "청우회 리그",
+    description: "테니스 경기 · 랭킹 · 출석관리",
+    url: "https://cheongwoo-league.vercel.app",
+    siteName: "청우회 리그",
+    images: [
+      {
+        url: "/og/chungwoo-og.png",
+        width: 1200,
+        height: 630,
+        alt: "청우회 리그",
+      },
+    ],
+    locale: "ko_KR",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "청우회 리그",
+    description: "테니스 경기 · 랭킹 · 출석관리",
+    images: ["/og/chungwoo-og.png"],
+  },
 };
 
 export const viewport: Viewport = {
