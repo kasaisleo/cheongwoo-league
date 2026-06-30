@@ -6,6 +6,7 @@ import { MATCH_SELECT_WITH_PLAYERS, toDisplayMatches } from "@/lib/match-display
 import { MATCH_SESSION_DAY_LABEL, selectHomeSessions } from "@/lib/match-session-label";
 import { HomeAttendanceSection } from "@/components/attendance/HomeAttendanceSection";
 import { RankingTeaserCard } from "@/components/ranking/RankingTeaserCard";
+import { SectionHeader, EmptyState } from "@/components/ui/SectionHeader";
 import { isAdminSession } from "@/lib/admin-auth";
 import type { AttendanceSession, MemberWithStats } from "@/lib/supabase/database.types";
 
@@ -122,18 +123,13 @@ export default async function HomePage() {
           HomeAttendanceSection이 출석 신청 UI를 담당하므로,
           이 카드는 "어떤 일정이 있는지 확인" 용도로 역할을 명확히 한다. */}
       <section className="mb-4">
-        <div className="mb-2 flex items-center justify-between">
-          <h2 className="font-display text-xs font-bold uppercase tracking-widest text-line-500">다음 일정</h2>
-          {hasMoreSessions && (
-            <Link href="/attendance" className="text-xs font-semibold text-clay-400">
-              더보기
-            </Link>
-          )}
-        </div>
+        <SectionHeader
+          title="다음 일정"
+          href={hasMoreSessions ? "/attendance" : undefined}
+          cta={hasMoreSessions ? "더보기" : undefined}
+        />
         {sessions.length === 0 ? (
-          <Card className="border-l-4 border-l-clay-400 p-4 text-sm text-line-400">
-            현재 진행 중인 출석 세션이 없어요.
-          </Card>
+          <EmptyState message="현재 진행 중인 출석 세션이 없어요." />
         ) : (
           <div className="space-y-2">
             {sessions.map((session) => {
@@ -167,12 +163,7 @@ export default async function HomePage() {
       {/* 3. 이번 주 게스트 — 운영진에게만 표시 (일반 회원 불필요 정보) */}
       {isAdmin && guestsThisWeek.length > 0 && (
         <section className="mb-4">
-          <div className="mb-2 flex items-center justify-between">
-            <h2 className="font-display text-xs font-bold uppercase tracking-widest text-line-500">이번 주 게스트</h2>
-            <Link href="/guests" className="text-xs font-semibold text-clay-400">
-              전체보기
-            </Link>
-          </div>
+          <SectionHeader title="이번 주 게스트" href="/guests" cta="전체보기" />
           <div className="space-y-2">
             {guestsThisWeek.map((guest) => (
               <Card key={guest.id} className="flex items-center justify-between p-3">
@@ -189,17 +180,10 @@ export default async function HomePage() {
 
       {/* 4. 최근 경기 — 전체보기 링크(/matches)로 경기 탭 진입 유도 */}
       <section>
-        <div className="mb-2 flex items-center justify-between">
-          <h2 className="font-display text-xs font-bold uppercase tracking-widest text-line-500">최근 경기</h2>
-          <Link href="/matches" className="text-xs font-semibold text-clay-400">
-            전체보기
-          </Link>
-        </div>
+        <SectionHeader title="최근 경기" href="/matches" cta="전체보기" />
 
         {recentMatches.length === 0 ? (
-          <Card className="p-6 text-center text-sm text-line-400">
-            아직 등록된 경기가 없어요.
-          </Card>
+          <EmptyState message="아직 등록된 경기가 없어요." />
         ) : (
           <div className="space-y-2">
             {recentMatches.map((match) => (

@@ -2,62 +2,64 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { clsx } from "clsx";
 
 /**
- * Step 14-1 탭바 재편:
- *   이전: 홈 | 랭킹 | 경기입력(/matches/new) | 출석 | 회원
- *   이후: 홈 | 출석 | 경기 | 회원 | 내 정보
+ * BottomTabBar v2 — ATP/Flashscore 스타일 하단 탭바 (Step 15-6).
  *
- * 제거된 탭:
- *   - 랭킹(/ranking): 탭바에서만 제거. /ranking 페이지와 라우트는 유지.
- *   - 경기입력(/matches/new): 탭바에서만 제거. 이후 /matches 페이지 안의 운영진 버튼으로 노출 예정.
- *
- * 추가된 탭:
- *   - 경기(/matches): 경기 기록 조회. 경기 입력은 해당 페이지 내 운영진 버튼으로 이동 예정.
- *   - 내 정보(/mypage): 마이페이지. 비로그인 시 /mypage 자체의 기존 로직(로그인 안내)이 처리.
- *
- * active 처리:
- *   - "/" 는 정확히 일치할 때만 active (startsWith 쓰면 전체가 active됨)
- *   - 나머지는 pathname.startsWith(tab.href)로 하위 경로까지 active
- *     예: /matches/new, /matches/1 → "경기" 탭 active
- *         /mypage → "내 정보" 탭 active
+ * 변경 전: 아이콘+텍스트, 활성=text-clay-400, 비활성=text-line-400
+ * 변경 후:
+ *   - 탭바 배경: bg-line-25 (가장 어두운 딥 네이비) + 강한 상단 테두리
+ *   - 활성 탭: clay-400 아이콘+텍스트 + 탭 상단 2px clay accent line
+ *   - 비활성 탭: line-500 (이전보다 약간 밝게, 가독성 향상)
+ *   - 탭 라벨: font-display uppercase tracking 적용 (ATP 스타일)
+ *   - 최대 너비 제거: 모바일 full-width가 더 자연스러움
  */
+
 const TABS = [
-  { href: "/", label: "홈", icon: HomeIcon },
+  { href: "/", label: "Home", icon: HomeIcon },
   { href: "/attendance", label: "출석", icon: CalendarIcon },
   { href: "/matches", label: "경기", icon: MatchIcon },
   { href: "/members", label: "회원", icon: UsersIcon },
-  { href: "/mypage", label: "내 정보", icon: PersonIcon },
+  { href: "/mypage", label: "My", icon: PersonIcon },
 ];
 
 export function BottomTabBar() {
   const pathname = usePathname();
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-40 border-t-2 border-clay-400/40 bg-line-25/95 backdrop-blur-sm">
-      <div className="mx-auto flex max-w-md items-stretch justify-between px-1 pb-[env(safe-area-inset-bottom)]">
+    <nav className="fixed bottom-0 left-0 right-0 z-40 bg-line-25 pb-[env(safe-area-inset-bottom)]">
+      {/* 상단 구분선 — 강한 clay accent + 어두운 배경으로 ATP 레이아웃 느낌 */}
+      <div className="h-px bg-gradient-to-r from-transparent via-clay-400/30 to-transparent" />
+
+      <div className="flex items-stretch">
         {TABS.map((tab) => {
           const isActive =
             tab.href === "/" ? pathname === "/" : pathname.startsWith(tab.href);
           const Icon = tab.icon;
+
           return (
             <Link
               key={tab.href}
               href={tab.href}
-              className="flex flex-1 flex-col items-center gap-1 py-2"
+              className="relative flex flex-1 flex-col items-center pt-2 pb-2 gap-1"
             >
+              {/* 활성 탭 상단 accent line */}
+              {isActive && (
+                <span
+                  className="absolute top-0 left-1/2 h-0.5 w-8 -translate-x-1/2 rounded-full bg-clay-400"
+                  aria-hidden="true"
+                />
+              )}
+
               <Icon
-                className={clsx(
-                  "h-6 w-6",
-                  isActive ? "text-clay-400" : "text-line-400"
-                )}
+                className={`h-[22px] w-[22px] transition-colors ${
+                  isActive ? "text-clay-400" : "text-line-500"
+                }`}
               />
               <span
-                className={clsx(
-                  "text-[11px] font-medium",
-                  isActive ? "text-clay-400" : "text-line-400"
-                )}
+                className={`font-display text-[10px] font-bold uppercase tracking-wider transition-colors ${
+                  isActive ? "text-clay-400" : "text-line-500"
+                }`}
               >
                 {tab.label}
               </span>
@@ -87,7 +89,6 @@ function CalendarIcon({ className }: { className?: string }) {
   );
 }
 
-/** 경기 탭 아이콘 — 테니스 라켓 실루엣 */
 function MatchIcon({ className }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -108,7 +109,6 @@ function UsersIcon({ className }: { className?: string }) {
   );
 }
 
-/** 내 정보 탭 아이콘 — 사람 실루엣 */
 function PersonIcon({ className }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

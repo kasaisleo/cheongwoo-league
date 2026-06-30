@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Card } from "@/components/ui/Card";
+import { EmptyState } from "@/components/ui/SectionHeader";
 import { CallButton } from "@/components/member/CallButton";
 import {
   MAPO_SCORE_FILTER_OPTIONS,
@@ -219,9 +220,7 @@ export function MemberList({ members }: MemberListProps) {
       )}
 
       {filteredMembers.length === 0 ? (
-        <Card className="p-6 text-center text-sm text-line-400">
-          {members.length === 0 ? "등록된 회원이 없어요. 첫 회원을 등록해보세요." : "검색 결과가 없습니다"}
-        </Card>
+        <EmptyState message={members.length === 0 ? "등록된 회원이 없어요." : "검색 결과가 없습니다."} />
       ) : (
         <div className="space-y-2">
           {filteredMembers.map((member) => (

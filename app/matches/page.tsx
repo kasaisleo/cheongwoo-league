@@ -5,6 +5,7 @@ import { MatchCard } from "@/components/match/MatchCard";
 import { MATCH_SELECT_WITH_PLAYERS, toDisplayMatches } from "@/lib/match-display";
 import { MATCH_SESSION_DAY_FILTERS, MATCH_SESSION_DAY_LABEL } from "@/lib/match-session-label";
 import { isAdminSession } from "@/lib/admin-auth";
+import { EmptyState } from "@/components/ui/SectionHeader";
 import type { Member, SessionDay } from "@/lib/supabase/database.types";
 
 interface MatchesPageProps {
@@ -169,7 +170,7 @@ export default async function MatchesPage({ searchParams }: MatchesPageProps) {
       </div>
 
       {matches.length === 0 ? (
-        <Card className="p-6 text-center text-sm text-line-400">{emptyMessage}</Card>
+        <EmptyState message={emptyMessage} />
       ) : (
         <div className="space-y-2">
           {matches.map((match) => (

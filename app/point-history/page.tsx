@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { MATCH_SESSION_DAY_LABEL } from "@/lib/match-session-label";
+import { EmptyState } from "@/components/ui/SectionHeader";
 import type { Member } from "@/lib/supabase/database.types";
 
 interface PointHistoryPageProps {
@@ -106,9 +107,7 @@ export default async function PointHistoryPage({ searchParams }: PointHistoryPag
       </div>
 
       {history.length === 0 ? (
-        <Card className="p-6 text-center text-sm text-line-400">
-          {filterMemberId ? "이 회원의 포인트 변동 기록이 없어요." : "아직 포인트 변동 기록이 없어요."}
-        </Card>
+        <EmptyState message={filterMemberId ? "이 회원의 포인트 변동 기록이 없어요." : "아직 포인트 변동 기록이 없어요."} />
       ) : (
         <div className="space-y-2">
           {history.map((row) => {
