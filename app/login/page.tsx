@@ -26,10 +26,7 @@ export default function LoginPage() {
     const { error: oauthError } = await supabase.auth.signInWithOAuth({
       provider: "kakao",
       options: {
-        // Supabase Auth는 기본적으로 account_email scope를 자동 포함하지만,
-        // 현재 카카오 앱에서 account_email 권한이 미승인 상태라 KOE205가 발생한다.
-        // scopes를 명시적으로 지정하면 Supabase 기본 scope 대신 이 값만 사용된다 —
-        // 청우회 앱은 이메일을 사용하지 않으므로 닉네임/프로필 이미지 2개만 요청한다.
+        redirectTo: `${window.location.origin}/auth/callback`,
         scopes: "profile_nickname profile_image",
       },
     });
