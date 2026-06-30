@@ -35,15 +35,29 @@ function AttendancePageInner() {
   // Step 13 권한 체계 — useAdminRole() 하나로 /api/auth/status를 1회만 호출해
   // owner/manager/비운영진을 구분한다. useIsAdmin()과 별도로 호출하면 같은
   // 엔드포인트를 2회 호출하므로 useAdminRole()로 통합한다.
-  const role = useAdminRole();          // "owner" | "manager" | null
-  const isAdmin = role !== null;        // manager 이상 (기존 isAdmin 동작 동일)
-  const isOwner = role === "owner";     // owner 전용 기능
-  const isManager = role === "manager"; // manager 전용 (owner 제외)
+  const role = useAdminRole();    // "owner" | "manager" | null
+  const isAdmin = role !== null;  // manager 이상 — 기존 isAdmin 동작과 동일
+  // isOwner = role === "owner"  향후 owner 전용 기능 추가 시 활성화
+  // isManager = role === "manager"  향후 manager 전용 기능 추가 시 활성화
 
   // 회원 카카오 로그인 상태 — "내 출석 신청" 영역 표시 여부 결정.
   // undefined = 아직 확인 중, null = 미로그인 또는 미연결
   const [myMemberId, setMyMemberId] = useState<string | null | undefined>(undefined);
-  const isMember = !!myMemberId; // 카카오 로그인 + 회원 연결 완료
+
+  // 명단 영역 표시 모드 — myMemberId 로딩(undefined) 구간 동안 깜빡임 없이
+  // 권한별 분기를 결정한다.
+  //   "loading"  : myMemberId 확인 중 (명단 영역 전체 숨김)
+  //   "guest"    : 비로그인 (통계+안내만, 명단 숨김)
+  //   "member"   : 일반 회원 (읽기 전용 명단)
+  //   "admin"    : 운영진 (풀 기능)
+  const viewMode: "loading" | "guest" | "member" | "admin" =
+    isAdmin
+      ? "admin"
+      : myMemberId === undefined
+        ? "loading"
+        : myMemberId === null
+          ? "guest"
+          : "member";
 
   const [mySessionStatus, setMySessionStatus] = useState<AttendanceStatus | null>(null);
   const [mySessionSubmitting, setMySessionSubmitting] = useState(false);
@@ -708,14 +722,18 @@ function AttendancePageInner() {
             )}
           </div>
 
-          {/* ─── 명단 영역 — 권한별 분기 ─────────────────────────────────
-              비로그인     : 통계까지만 표시, 명단 숨김, 로그인 CTA
-              Member       : 이름+상태 읽기 전용 (수정 버튼 없음)
-              Manager/Owner: 기존 풀 기능 (검색, 필터, 수정 토글, 운영 버튼)
+          {/* ─── 명단 영역 — viewMode에 따른 권한별 분기 ────────────────────
+              loading : myMemberId 확인 중 → 명단 전체 숨김 (깜빡임 방지)
+              guest   : 비로그인  → 통계까지만, 안내 + 카카오 로그인 CTA
+              member  : 일반 회원 → 이름+상태 읽기 전용, 수정 불가
+              admin   : 운영진    → 기존 풀 기능
           ──────────────────────────────────────────────────────────── */}
 
-          {/* 비로그인: 명단 대신 안내 + 로그인 CTA */}
-          {myMemberId === null && !isAdmin && (
+          {viewMode === "loading" && (
+            <p className="text-center text-sm text-line-400">불러오는 중...</p>
+          )}
+
+          {viewMode === "guest" && (
             <Card className="p-5 text-center">
               <p className="text-sm text-line-600">
                 로그인하면 출석 신청과 명단 확인이 가능합니다.
@@ -729,8 +747,7 @@ function AttendancePageInner() {
             </Card>
           )}
 
-          {/* Member: 이름 + 상태 읽기 전용 명단 (수정 불가) */}
-          {isMember && !isAdmin && (
+          {viewMode === "member" && (
             <>
               <div className="mb-3">
                 <input
@@ -740,7 +757,6 @@ function AttendancePageInner() {
                   className="box-border block h-11 w-full min-w-0 max-w-full rounded-lg border border-line-200 bg-line-100 px-3 text-sm text-line-900 placeholder:text-line-400"
                 />
               </div>
-
               {loadingRows ? (
                 <p className="text-center text-sm text-line-400">불러오는 중...</p>
               ) : displayedRows.length === 0 ? (
@@ -783,8 +799,7 @@ function AttendancePageInner() {
             </>
           )}
 
-          {/* Manager / Owner: 기존 풀 기능 명단 (검색, 필터, 수정 토글) */}
-          {isAdmin && (
+          {viewMode === "admin" && (
             <>
               <div className="mb-3">
                 <input
@@ -794,7 +809,6 @@ function AttendancePageInner() {
                   className="box-border block h-11 w-full min-w-0 max-w-full rounded-lg border border-line-200 bg-line-100 px-3 text-sm text-line-900 placeholder:text-line-400"
                 />
               </div>
-
               {loadingRows ? (
                 <p className="text-center text-sm text-line-400">불러오는 중...</p>
               ) : displayedRows.length === 0 ? (
