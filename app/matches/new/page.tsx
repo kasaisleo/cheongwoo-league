@@ -159,7 +159,7 @@ export default function NewMatchPage() {
       </header>
 
       {/* ── 세션 선택 ─────────────────────────────────────── */}
-      <div className="mb-4 overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50 p-4">
+      <div className="mb-8 rounded-[14px] border border-line-200/40 bg-line-50 p-4">
         <p className="mb-2 font-display text-[10px] font-bold uppercase tracking-widest text-line-500">
           Session *
         </p>
@@ -203,7 +203,7 @@ export default function NewMatchPage() {
       </div>
 
       {/* ── 청팀 ─────────────────────────────────────────── */}
-      <div className="relative mb-4 overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50 p-4">
+      <div className="relative mb-6 overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50 p-4">
         <div className="absolute left-0 top-0 h-full w-1 bg-clay-400/50" />
         <p className="mb-3 pl-2 font-display text-xs font-bold uppercase tracking-widest text-clay-400">
           Team A
@@ -232,7 +232,7 @@ export default function NewMatchPage() {
       </div>
 
       {/* ── 우팀 ─────────────────────────────────────────── */}
-      <div className="relative mb-4 overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50 p-4">
+      <div className="relative mb-6 overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50 p-4">
         <div className="absolute left-0 top-0 h-full w-1 bg-line-300/50" />
         <p className="mb-3 pl-2 font-display text-xs font-bold uppercase tracking-widest text-line-500">
           Team B
@@ -261,7 +261,7 @@ export default function NewMatchPage() {
       </div>
 
       {/* ── 스코어 ────────────────────────────────────────── */}
-      <div className="mb-4 overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50 p-4">
+      <div className="mb-8 rounded-[14px] border border-line-200/40 bg-line-50 p-4">
         <p className="mb-3 text-center font-display text-[10px] font-bold uppercase tracking-widest text-line-500">
           Score
         </p>
