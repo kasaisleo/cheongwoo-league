@@ -84,5 +84,5 @@ export async function GET(request: Request) {
     });
   }
 
-  return NextResponse.json({ ok: true, users: pendingUsers });
+  return NextResponse.json({ ok: true, pendingUsers });
 }

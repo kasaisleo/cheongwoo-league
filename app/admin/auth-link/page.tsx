@@ -59,7 +59,7 @@ export default function AuthLinkPage() {
 
       if (pendingRes.ok) {
         const data = await pendingRes.json();
-        setPendingUsers(data.users ?? []);
+        setPendingUsers(data.pendingUsers ?? []);
       } else {
         toast.error("대기 중 사용자 목록을 불러오지 못했습니다.");
       }
