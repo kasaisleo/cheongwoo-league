@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/Card";
 import { MatchCard } from "@/components/match/MatchCard";
 import { MATCH_SELECT_WITH_PLAYERS, toDisplayMatches } from "@/lib/match-display";
 import { MATCH_SESSION_DAY_FILTERS, MATCH_SESSION_DAY_LABEL } from "@/lib/match-session-label";
+import { isAdminSession } from "@/lib/admin-auth";
 import type { Member, SessionDay } from "@/lib/supabase/database.types";
 
 interface MatchesPageProps {
@@ -22,6 +23,9 @@ export default async function MatchesPage({ searchParams }: MatchesPageProps) {
   const filterSessionType = isValidSessionType(searchParams.sessionType)
     ? searchParams.sessionType
     : null;
+
+  // 운영진 여부 — "경기 입력" 버튼 노출 제어용
+  const isAdmin = isAdminSession();
 
   // 세션 타입 필터가 걸려있으면, 그 타입에 해당하는 세션 id 목록을 먼저 조회한다.
   let sessionIdsForType: string[] | null = null;
@@ -76,21 +80,33 @@ export default async function MatchesPage({ searchParams }: MatchesPageProps) {
     if (filterSessionType && filterMemberId) return "조건에 맞는 경기 기록이 없어요.";
     if (filterSessionType) return "이 세션 구분에는 아직 등록된 경기가 없어요.";
     if (filterMemberId) return "이 회원의 경기 기록이 없어요.";
-    return "아직 등록된 경기가 없어요. 경기입력 탭에서 첫 경기를 기록해보세요.";
+    return "아직 등록된 경기가 없어요.";
   })();
 
   return (
     <main className="px-4 pt-6">
-      <header className="mb-5">
-        <div className="mb-1 inline-flex items-center gap-2">
-          <span className="h-2 w-2 rounded-full bg-clay-400" />
-          <p className="font-score text-xs font-semibold uppercase tracking-[0.2em] text-clay-400">
-            Match History
-          </p>
+      <header className="mb-5 flex items-center justify-between">
+        <div>
+          <div className="mb-1 inline-flex items-center gap-2">
+            <span className="h-2 w-2 rounded-full bg-clay-400" />
+            <p className="font-score text-xs font-semibold uppercase tracking-[0.2em] text-clay-400">
+              Match History
+            </p>
+          </div>
+          <h1 className="font-display text-3xl font-bold uppercase tracking-tight text-line-900">
+            경기 기록
+          </h1>
         </div>
-        <h1 className="font-display text-3xl font-bold uppercase tracking-tight text-line-900">
-          경기 기록
-        </h1>
+
+        {/* 경기 입력 버튼 — manager/owner 에게만 노출 */}
+        {isAdmin && (
+          <Link
+            href="/matches/new"
+            className="flex h-10 items-center rounded-lg bg-clay-400 px-4 text-sm font-bold text-line-25 transition-colors hover:bg-clay-300"
+          >
+            + 경기 입력
+          </Link>
+        )}
       </header>
 
       {/* 세션 구분 필터: 전체보기 / 토요정기매치 / 일요정기매치 / 휴일매치 / 이벤트매치 */}
@@ -160,10 +176,10 @@ export default async function MatchesPage({ searchParams }: MatchesPageProps) {
             <div key={match.id}>
               {match.sessionDay && (
                 <p className="mb-1 px-1 text-[11px] font-semibold text-line-500">
-                  {MATCH_SESSION_DAY_LABEL[match.sessionDay]}
-                  {(match.sessionDay === "holiday" || match.sessionDay === "custom") &&
-                    match.sessionTitle &&
-                    ` · ${match.sessionTitle}`}
+                  {/* 세션 제목 표시 정책: title 기반 메인, session_day 라벨 보조 */}
+                  {match.sessionTitle
+                    ? `${match.sessionTitle} · ${MATCH_SESSION_DAY_LABEL[match.sessionDay]}`
+                    : MATCH_SESSION_DAY_LABEL[match.sessionDay]}
                 </p>
               )}
               <MatchCard match={match} />
