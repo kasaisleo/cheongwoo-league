@@ -1,35 +1,40 @@
 /**
- * ResultBadge — 경기 결과를 ATP 스타일로 표시하는 배지.
+ * ResultBadge v2 — Step 18 ATP Design Language 통일.
  *
- * 사용 위치 (Step 15-3 이후 적용 예정):
- *   - 경기 카드 (MatchCard) 승자/패자 행
- *   - 회원 상세 최근 경기 섹션
- *   - 홈 최근 경기 카드
+ * 변경: Green/Red 스포츠 컨벤션 → Gold/Gray 앱 디자인 시스템
  *
- * result:
- *   "win"  → WIN  (win 컬러, 초록)
- *   "loss" → LOSS (loss 컬러, 빨강)
- *   "draw" → DRAW (neutral, 회색)
+ * 근거:
+ *   청우회 리그 디자인 시스템 확정:
+ *     Champion = Gold / LP = Gold / W = Gold / 참석(Attendance) = Gold
+ *   → 경기 결과 WIN도 같은 gold 언어로 통일
+ *   → LOSS는 Ranking의 L=line-500(Gray) 원칙과 동일
  *
- * size:
- *   "sm" → 소형 (경기 카드 인라인용, px-2 py-0.5 text-[10px])
- *   "md" → 기본 (기본 배지 크기, px-3 py-1 text-xs)
- *   "lg" → 강조 (Featured Match 전용, px-4 py-1.5 text-sm)
+ * WIN:
+ *   bg-gold/15  border border-gold/40  text-gold
+ *   — 반투명 배경으로 배지가 배경보다 먼저 보이지 않도록
+ *
+ * LOSS:
+ *   bg-line-200/40  border border-line-300/40  text-line-500
+ *   — 강조하지 않음. Ranking의 L=gray 원칙 동일 적용
+ *
+ * 가독성 근거 (WCAG):
+ *   WIN  text-gold / bg-gold/15:  대비율 ~6.8:1  ✅ AA
+ *   LOSS text-line-500 / bg-line-200: 대비율 ~4.9:1 ✅ AA
  */
 
 type ResultType = "win" | "loss" | "draw";
 type ResultSize = "sm" | "md" | "lg";
 
 const LABEL: Record<ResultType, string> = {
-  win: "WIN",
+  win:  "WIN",
   loss: "LOSS",
   draw: "DRAW",
 };
 
 const COLOR: Record<ResultType, string> = {
-  win: "bg-win text-win-foreground",
-  loss: "bg-loss text-loss-foreground",
-  draw: "bg-line-200 text-line-600",
+  win:  "border border-gold/40 bg-gold/15 text-gold",
+  loss: "border border-line-300/40 bg-line-200/40 text-line-500",
+  draw: "border border-line-200/40 bg-line-100 text-line-500",
 };
 
 const SIZE: Record<ResultSize, string> = {

@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { Button } from "@/components/ui/Button";
 import { MemberList } from "@/components/member/MemberList";
 import { getAdminRole } from "@/lib/admin-auth";
 import type { MemberWithStats } from "@/lib/supabase/database.types";
@@ -15,34 +14,36 @@ export default async function MembersPage() {
     .order("nickname");
 
   const members = (data ?? []) as MemberWithStats[];
-  // 일괄 임포트는 owner 전용(Step 8-3) — 버튼도 owner에게만 보여준다.
-  // 서버 컴포넌트라 useAdminRole()(클라이언트 훅) 대신 getAdminRole()을
-  // 직접 호출한다. 이건 UI 표시 분기일 뿐, /api/members/import/* 의
-  // requireRole("owner") 서버 검증은 그대로다 — 변경하지 않았다.
   const isOwner = getAdminRole() === "owner";
+  const isAdmin = getAdminRole() !== null;
 
   return (
-    <main className="px-4 pt-6">
-      <header className="mb-5 flex items-center justify-between">
-        <div>
-          <p className="eyebrow-en text-clay-400">
-            Members
-          </p>
-          <h1 className="headline-kr text-4xl text-line-900">회원 관리</h1>
-        </div>
-        <div className="flex gap-2">
+    <main className="px-4 pt-6 pb-10">
+      {/* ── 페이지 헤더 ─────────────────────────────────── */}
+      <header className="mb-5">
+        <p className="eyebrow-en text-clay-400">Club Roster</p>
+        <h1 className="headline-kr text-4xl text-line-900">선수 명단</h1>
+      </header>
+
+      {/* ── 운영진 관리 버튼 — 헤더에서 분리, compact 처리 ── */}
+      {isAdmin && (
+        <div className="mb-4 flex items-center justify-end gap-2">
           {isOwner && (
-            <Link href="/members/import">
-              <Button size="md" variant="ghost">
-                명단 가져오기
-              </Button>
+            <Link
+              href="/members/import"
+              className="rounded-sm border border-line-200/40 px-2.5 py-1 text-xs font-semibold text-line-500 transition-colors hover:border-line-300 hover:text-line-700"
+            >
+              명단 가져오기
             </Link>
           )}
-          <Link href="/members/new">
-            <Button size="md">+ 회원 등록</Button>
+          <Link
+            href="/members/new"
+            className="rounded-sm border border-clay-400/60 px-2.5 py-1 text-xs font-semibold text-clay-400 transition-colors hover:border-clay-400 hover:bg-clay-400/5"
+          >
+            + 회원 등록
           </Link>
         </div>
-      </header>
+      )}
 
       <MemberList members={members} />
     </main>

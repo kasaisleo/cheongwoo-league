@@ -2,7 +2,6 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/SectionHeader";
 import { CallButton } from "@/components/member/CallButton";
 import {
@@ -22,8 +21,31 @@ import {
 } from "@/lib/member-search";
 import type { MemberWithStats } from "@/lib/supabase/database.types";
 
+/**
+ * MemberList v3 — Step 18 Rankingification.
+ *
+ * Ranking 페이지 문법을 Members에 번역:
+ *   - 필터 기본 접힘 (Ranking에 필터 없음 → 콘텐츠 우선)
+ *   - grid-cols-[2.5rem_1fr_auto] (Ranking Table과 동일)
+ *   - 순위 색상 계층: #1=gold, #2/#3=clay-400, #4~=line-500
+ *   - 필터 chip rounded-sm (rounded-full 제거)
+ *   - 잔존 코드 정리 (statCardClassName, isXxxCardActive)
+ *
+ * 유지:
+ *   - Champion/Contender Block 없음 — Members는 전체 Roster 탐색 목적
+ *   - 검색/필터 기능 로직 변경 없음
+ *   - DB/API 변경 없음
+ */
+
 interface MemberListProps {
   members: MemberWithStats[];
+}
+
+/** 순위 번호에 Ranking 색상 계층 적용 */
+function rankColor(rank: number): string {
+  if (rank === 1) return "text-gold font-bold";
+  if (rank <= 3)  return "text-clay-400 font-bold";
+  return "text-line-500";
 }
 
 export function MemberList({ members }: MemberListProps) {
@@ -32,23 +54,8 @@ export function MemberList({ members }: MemberListProps) {
   const [memberTypeFilter, setMemberTypeFilter] = useState<MemberTypeFilter>("all");
   const [dormantFilter, setDormantFilter] = useState<MemberDormantFilter>("all");
   const [sortBy, setSortBy] = useState<MemberSortOption>("league_point");
-  // 필터 영역(정렬/마포점수/회원구분/활동·휴면) 접기/펼치기. 검색창과 통계
-  // 카드는 이 상태와 무관하게 항상 노출된다 — 기본값은 펼침이다.
-  const [showFilters, setShowFilters] = useState(true);
-
-  // 상단 통계는 검색/필터 적용 전 전체 members 기준으로 고정한다 — 필터를
-  // 바꿔도 숫자가 따라 바뀌지 않아야 "전체 중 몇 명이 정회원/휴면인지"를
-  // 일관되게 볼 수 있다. filteredMembers와는 별개의 계산이다.
-  const stats = useMemo(
-    () => ({
-      total: members.length,
-      regular: members.filter((m) => m.member_type === "정회원").length,
-      associate: members.filter((m) => m.member_type === "준회원").length,
-      guest: members.filter((m) => m.member_type === "게스트").length,
-      dormant: members.filter((m) => m.is_dormant).length,
-    }),
-    [members]
-  );
+  // 기본 접힘 — Members 첫 화면은 선수 리스트가 먼저 보여야 함
+  const [showFilters, setShowFilters] = useState(false);
 
   const filteredMembers = useMemo(() => {
     const filtered = members.filter(
@@ -61,51 +68,47 @@ export function MemberList({ members }: MemberListProps) {
     return sortMembers(filtered, sortBy);
   }, [members, query, mapoFilter, memberTypeFilter, dormantFilter, sortBy]);
 
-  // 통계 카드의 "선택됨" 표시는 그 카드가 의미하는 조건과 현재 필터 state가
-  // 정확히 일치할 때만 켜진다. "전체" 카드는 검색어/마포점수까지 포함해
-  // 모든 필터가 기본값일 때만 active다 — 그래야 "전체를 눌렀다"는 게 곧
-  // "아무 필터도 안 걸려 있다"는 뜻과 정확히 같아진다.
-  const isAllCardActive =
-    query.trim() === "" && mapoFilter === "all" && memberTypeFilter === "all" && dormantFilter === "all";
-  const isRegularCardActive = memberTypeFilter === "정회원";
-  const isAssociateCardActive = memberTypeFilter === "준회원";
-  const isGuestCardActive = memberTypeFilter === "게스트";
-  const isDormantCardActive = dormantFilter === "dormant";
-
-  function statCardClassName(active: boolean): string {
-    return `rounded-xl border p-2 text-center transition-colors ${
-      active ? "border-clay-400 bg-clay-400/10" : "border-line-200 bg-line-100 hover:border-clay-400"
+  // 공통 chip 스타일 (active/inactive)
+  function chipClass(active: boolean): string {
+    return `rounded-sm border px-2.5 py-1 text-xs font-semibold transition-colors ${
+      active
+        ? "border-clay-400 bg-clay-400 text-line-25"
+        : "border-line-200/40 bg-line-50 text-line-500 hover:border-line-300"
     }`;
   }
 
   return (
     <>
-      <div className="mb-3">
+      {/* ── 검색창 + 필터 토글 — 한 줄 ──────────────────── */}
+      <div className="mb-3 flex items-center gap-2">
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="이름, 닉네임, 전화번호로 검색"
-          className="box-border block h-11 w-full min-w-0 max-w-full rounded-[14px] border border-line-200/50 bg-line-100 px-3 text-sm text-line-900 placeholder:text-line-400"
+          placeholder="이름 검색"
+          className="box-border block h-9 min-w-0 flex-1 rounded-sm border border-line-200/40 bg-line-50 px-3 text-sm text-line-900 placeholder:text-line-500"
         />
+        <button
+          type="button"
+          onClick={() => setShowFilters((prev) => !prev)}
+          className="flex shrink-0 items-center gap-1 rounded-sm border border-line-200/40 bg-line-50 px-3 py-2 text-xs font-bold text-line-500 transition-colors hover:border-line-300 hover:text-line-700"
+        >
+          <span className="font-display uppercase tracking-wider">Filter</span>
+          <span aria-hidden className="text-[10px]">{showFilters ? "↑" : "↓"}</span>
+        </button>
       </div>
 
-      <button
-        type="button"
-        onClick={() => setShowFilters((prev) => !prev)}
-        className="mb-2 flex w-full items-center justify-between rounded-[14px] border border-line-200/40 bg-line-50 px-3 py-2 text-xs font-semibold text-line-600"
-      >
-        {showFilters ? "필터 숨기기" : "필터 보기"}
-        <span aria-hidden>{showFilters ? "▲" : "▼"}</span>
-      </button>
-
+      {/* ── 필터 영역 — 기본 접힘 ────────────────────────── */}
       {showFilters && (
-        <>
-          <div className="mb-2 flex items-center justify-between">
-            <p className="text-xs font-semibold text-line-500">정렬</p>
+        <div className="mb-3 space-y-2.5 rounded-[14px] border border-line-200/40 bg-line-50 p-3">
+          {/* 정렬 */}
+          <div className="flex items-center justify-between">
+            <span className="font-display text-[10px] font-bold uppercase tracking-widest text-line-500">
+              Sort
+            </span>
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as MemberSortOption)}
-              className="h-9 rounded-sm border border-line-200/60 bg-line-100 px-2 text-xs font-semibold text-line-800"
+              className="h-8 rounded-sm border border-line-200/40 bg-line-100 px-2 text-xs font-semibold text-line-800"
             >
               {MEMBER_SORT_OPTIONS.map((option) => (
                 <option key={option.value} value={option.value}>
@@ -115,66 +118,58 @@ export function MemberList({ members }: MemberListProps) {
             </select>
           </div>
 
-          <div className="mb-2 flex flex-wrap gap-1.5">
+          {/* 마포점수 필터 */}
+          <div className="flex flex-wrap gap-1.5">
             {MAPO_SCORE_FILTER_OPTIONS.map((option) => (
               <button
                 key={option.value}
                 type="button"
                 onClick={() => setMapoFilter(option.value)}
-                className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
-                  mapoFilter === option.value
-                    ? "border-clay-400 bg-clay-400 text-line-25"
-                    : "border-line-200 bg-line-50 text-line-800"
-                }`}
+                className={chipClass(mapoFilter === option.value)}
               >
                 {option.label}
               </button>
             ))}
           </div>
 
-          <div className="mb-2 flex flex-wrap gap-1.5">
+          {/* 회원 유형 필터 */}
+          <div className="flex flex-wrap gap-1.5">
             {MEMBER_TYPE_FILTER_OPTIONS.map((option) => (
               <button
                 key={option.value}
                 type="button"
                 onClick={() => setMemberTypeFilter(option.value)}
-                className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
-                  memberTypeFilter === option.value
-                    ? "border-clay-400 bg-clay-400 text-line-25"
-                    : "border-line-200 bg-line-50 text-line-800"
-                }`}
+                className={chipClass(memberTypeFilter === option.value)}
               >
                 {option.label}
               </button>
             ))}
           </div>
 
-          <div className="mb-4 flex flex-wrap gap-1.5">
+          {/* 활동/휴면 필터 */}
+          <div className="flex flex-wrap gap-1.5">
             {MEMBER_DORMANT_FILTER_OPTIONS.map((option) => (
               <button
                 key={option.value}
                 type="button"
                 onClick={() => setDormantFilter(option.value)}
-                className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
-                  dormantFilter === option.value
-                    ? "border-clay-400 bg-clay-400 text-line-25"
-                    : "border-line-200 bg-line-50 text-line-800"
-                }`}
+                className={chipClass(dormantFilter === option.value)}
               >
                 {option.label}
               </button>
             ))}
           </div>
-        </>
+        </div>
       )}
 
+      {/* ── Ranking Table ─────────────────────────────────── */}
       {filteredMembers.length === 0 ? (
-        <EmptyState message={members.length === 0 ? "등록된 회원이 없어요." : "검색 결과가 없습니다."} />
+        <EmptyState message={members.length === 0 ? "등록된 선수가 없어요." : "검색 결과가 없습니다."} />
       ) : (
-        /* Ranking Table 문법: rounded-[14px], bg-line-50, border-line-200/40, 행 구분선 */
         <div className="overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50">
-          {/* Ranking Table 헤더: # / Player / LP */}
-          <div className="grid grid-cols-[2rem_1fr_auto] items-center gap-3 border-b border-line-200/40 bg-line-100/40 px-4 py-2">
+
+          {/* 테이블 헤더 — Ranking 페이지와 동일 */}
+          <div className="grid grid-cols-[2.5rem_1fr_auto] items-center gap-3 border-b border-line-200/40 bg-line-100/40 px-4 py-2">
             <span className="font-display text-[10px] font-bold uppercase tracking-widest text-line-500 text-center">
               #
             </span>
@@ -187,15 +182,21 @@ export function MemberList({ members }: MemberListProps) {
           </div>
 
           {filteredMembers.map((member, idx) => {
+            const rank = idx + 1;
             const isLast = idx === filteredMembers.length - 1;
+
             return (
               <Link key={member.id} href={`/members/${member.id}`}>
-                <div className={`grid grid-cols-[2rem_1fr_auto] items-center gap-3 px-4 py-3 transition-colors hover:bg-line-100/40 ${
-                  isLast ? "" : "border-b border-line-200/30"
-                }`}>
-                  {/* 순위 번호 — Ranking Table 문법 */}
-                  <span className="font-display text-sm font-bold tabular-nums text-line-500 text-center">
-                    {idx + 1}
+                <div
+                  className={`grid grid-cols-[2.5rem_1fr_auto] items-center gap-3 px-4 py-3 transition-colors hover:bg-line-100/40 ${
+                    isLast ? "" : "border-b border-line-200/30"
+                  }`}
+                >
+                  {/* 순위 — #1=gold, #2/#3=clay, #4~=line-500 */}
+                  <span
+                    className={`font-display text-sm tabular-nums text-center ${rankColor(rank)}`}
+                  >
+                    {rank}
                   </span>
 
                   {/* 이름 + 전적 */}
