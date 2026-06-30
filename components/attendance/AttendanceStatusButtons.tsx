@@ -45,10 +45,10 @@ export function AttendanceStatusButtons({
           type="button"
           disabled={disabled}
           onClick={() => onSelect(s)}
-          className={`flex-1 rounded-lg border font-semibold transition-colors disabled:opacity-50 ${paddingClass} ${
+          className={`flex-1 rounded-sm border font-semibold transition-colors disabled:opacity-50 ${paddingClass} ${
             currentStatus === s
               ? ACTIVE_CLASS[s]
-              : "border-line-200 bg-line-50 text-line-700 hover:border-line-400"
+              : "border-line-200/60 bg-line-100 text-line-700 hover:border-line-300"
           }`}
         >
           {STATUS_LABEL[s]}

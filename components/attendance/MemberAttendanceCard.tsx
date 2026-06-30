@@ -1,6 +1,5 @@
 "use client";
 
-import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { AttendanceStatusButtons } from "@/components/attendance/AttendanceStatusButtons";
 import { MATCH_SESSION_DAY_LABEL } from "@/lib/match-session-label";
@@ -43,18 +42,21 @@ interface MemberAttendanceCardProps {
 }
 
 /**
- * 세션 출석 신청 공통 카드.
+ * MemberAttendanceCard v2 — Step 17 ATP 디자인 언어 통일.
  *
- * 표시 순서:
- *   1. session.title (메인 — 실제 세션 제목)
- *   2. 구분 · 날짜 (보조 — "이벤트매치 · 2026.06.30")
- *   3. 내 현재 상태 Badge
- *   4. AttendanceStatusButtons (참석/미정/불참)
- *   5. 출석 통계 (showStats=true일 때만)
+ * 변경:
+ *   Card(bg-line-100) → 직접 div (bg-line-50) — Ranking 카드와 동일 surface
+ *   accent bar 추가 — 현재 상태에 따라 win/amber/loss/neutral 색상
+ *   padding 조정 — pl-6 (accent bar 공간) / pr-4 py-4
+ *   날짜 text-line-400 → text-line-500 (가독성)
+ *   통계 text-center → 좌측 정렬
  *
- * 세션 표시명 정책:
- *   메인 = session.title ("청우회 월례대회")
- *   보조 = MATCH_SESSION_DAY_LABEL[session_day] · session_date
+ * 유지:
+ *   AttendanceStatusButtons — 사용성 우선, 구조 변경 없음
+ *   Badge — 내 상태 우측 상단
+ *   버튼 크기/간격 — 기존 그대로
+ *
+ * 목표: "Ranking과 같은 앱에서 나온 것처럼" — Ranking 카드로 만드는 게 아님.
  */
 export function MemberAttendanceCard({
   session,
@@ -68,42 +70,53 @@ export function MemberAttendanceCard({
   const typeLabel = MATCH_SESSION_DAY_LABEL[session.session_day];
   const dateLabel = formatSessionDate(session.session_date);
 
+  // accent bar 색상 — 내 현재 상태를 시각적으로 반영
+  const accentColor =
+    myStatus === "attending" ? "bg-win/70"
+    : myStatus === "absent"  ? "bg-loss/50"
+    : myStatus === "undecided" ? "bg-amber-400/60"
+    : "bg-line-300/50"; // 미응답
+
   return (
-    <Card className="p-4">
-      {/* 세션 제목 (메인) */}
-      <div className="mb-3 flex items-start justify-between gap-2">
-        <div>
-          <p className="text-sm font-semibold text-line-900">{session.title}</p>
-          <p className="mt-0.5 text-xs text-line-400">
-            {typeLabel} · {dateLabel}
-          </p>
+    <div className="relative overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50">
+      {/* 좌측 accent bar — 내 출석 상태 반영 */}
+      <div className={`absolute left-0 top-0 h-full w-1 ${accentColor}`} />
+
+      <div className="px-4 py-4 pl-6">
+        {/* 세션 제목 + 내 상태 배지 */}
+        <div className="mb-3 flex items-start justify-between gap-2">
+          <div>
+            <p className="text-sm font-semibold text-line-900">{session.title}</p>
+            <p className="mt-0.5 text-xs text-line-500">
+              {typeLabel} · {dateLabel}
+            </p>
+          </div>
+          {myStatus ? (
+            <Badge tone={STATUS_TONE[myStatus]}>{STATUS_LABEL[myStatus]}</Badge>
+          ) : (
+            <Badge tone="neutral">미응답</Badge>
+          )}
         </div>
-        {/* 내 현재 상태 */}
-        {myStatus ? (
-          <Badge tone={STATUS_TONE[myStatus]}>{STATUS_LABEL[myStatus]}</Badge>
+
+        {/* 참석/미정/불참 버튼 — 사용성 우선 유지 */}
+        {sessionClosed ? (
+          <p className="text-xs text-line-400">마감된 일정입니다.</p>
         ) : (
-          <Badge tone="neutral">미응답</Badge>
+          <AttendanceStatusButtons
+            currentStatus={myStatus}
+            onSelect={onStatusChange}
+            disabled={submitting}
+            size="md"
+          />
+        )}
+
+        {/* 출석 통계 — 좌측 정렬, text-line-500으로 통일 */}
+        {showStats && stats && (
+          <p className="mt-2 text-xs text-line-500">
+            출석 {stats.attending} · 미정 {stats.undecided} · 불참 {stats.absent}
+          </p>
         )}
       </div>
-
-      {/* 버튼 또는 마감 안내 */}
-      {sessionClosed ? (
-        <p className="text-center text-xs text-line-400">마감된 일정입니다.</p>
-      ) : (
-        <AttendanceStatusButtons
-          currentStatus={myStatus}
-          onSelect={onStatusChange}
-          disabled={submitting}
-          size="md"
-        />
-      )}
-
-      {/* 출석 통계 */}
-      {showStats && stats && (
-        <p className="mt-2 text-center text-xs text-line-400">
-          출석 {stats.attending} · 미정 {stats.undecided} · 불참 {stats.absent}
-        </p>
-      )}
-    </Card>
+    </div>
   );
 }
