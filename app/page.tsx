@@ -151,9 +151,7 @@ export default async function HomePage() {
                         </div>
                       </div>
                       <p className="mt-1.5 text-[11px] text-line-500">
-                        출석 <span className="text-win font-semibold">{summary.attending}</span>
-                        {" · "}미정 <span className="text-amber-400 font-semibold">{summary.undecided}</span>
-                        {" · "}불참 <span className="text-line-500">{summary.absent}</span>
+                        출석 {summary.attending} · 미정 {summary.undecided} · 불참 {summary.absent}
                       </p>
                     </div>
                   </div>

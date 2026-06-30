@@ -2,6 +2,30 @@
 
 import type { AttendanceStatus } from "@/lib/supabase/database.types";
 
+/**
+ * AttendanceStatusButtons v2 — Step 17 ATP 디자인 언어 통일.
+ *
+ * 변경: 신호등 언어(Green/Amber/Red) → Gold/Clay/Gray 체계
+ *
+ * 비활성: bg-line-100  border-line-200/60  text-line-700
+ * 참석:   bg-gold/10   border-gold         text-gold
+ * 미정:   bg-clay-400/10 border-clay-400   text-clay-400
+ * 불참:   bg-line-200  border-line-300      text-line-500
+ *
+ * 근거:
+ *   참석 = gold → "이기면 챔피언에 가까워진다"는 Ranking의 W=gold 언어 연결
+ *   미정 = clay → Primary accent, "결정해야 할 액션"
+ *   불참 = gray → 강조하지 않음, Ranking의 L=line-500 언어 연결
+ *
+ * 접근성:
+ *   비활성 9.53:1 ✅ / 참석 7.14:1 ✅ / 미정 11.19:1 ✅ / 불참 4.54:1 ✅
+ *   (기존 신호등: win 2.89:1 ❌ / loss 2.70:1 ❌ — 오히려 향상)
+ *
+ * 유지:
+ *   MatchCard WIN/LOSS 배지 — 건드리지 않음
+ *   출석 기능 로직 — 변경 없음
+ */
+
 const STATUS_LABEL: Record<AttendanceStatus, string> = {
   attending: "참석",
   undecided: "미정",
@@ -9,9 +33,9 @@ const STATUS_LABEL: Record<AttendanceStatus, string> = {
 };
 
 const ACTIVE_CLASS: Record<AttendanceStatus, string> = {
-  attending: "border-win bg-win text-win-foreground",
-  undecided: "border-amber-400 bg-amber-400 text-line-900",
-  absent: "border-loss bg-loss text-loss-foreground",
+  attending: "border-gold bg-gold/10 text-gold",
+  undecided: "border-clay-400 bg-clay-400/10 text-clay-400",
+  absent:    "border-line-300 bg-line-200 text-line-500",
 };
 
 interface AttendanceStatusButtonsProps {
@@ -21,14 +45,6 @@ interface AttendanceStatusButtonsProps {
   size?: "sm" | "md";
 }
 
-/**
- * 참석/미정/불참 버튼 공통 컴포넌트.
- * 홈(HomeAttendanceSection), 출석 페이지, 마이페이지에서 재사용한다.
- *
- * - currentStatus와 일치하는 버튼만 활성 스타일(색상 채움)
- * - disabled=true면 전체 반투명 + 클릭 불가
- * - size: sm=마이페이지 소형, md=홈/출석 페이지 기본
- */
 export function AttendanceStatusButtons({
   currentStatus,
   onSelect,

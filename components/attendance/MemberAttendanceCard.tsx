@@ -70,12 +70,9 @@ export function MemberAttendanceCard({
   const typeLabel = MATCH_SESSION_DAY_LABEL[session.session_day];
   const dateLabel = formatSessionDate(session.session_date);
 
-  // accent bar 색상 — 내 현재 상태를 시각적으로 반영
-  const accentColor =
-    myStatus === "attending" ? "bg-win/70"
-    : myStatus === "absent"  ? "bg-loss/50"
-    : myStatus === "undecided" ? "bg-amber-400/60"
-    : "bg-line-300/50"; // 미응답
+  // accent bar — "액션 가능한 카드" 신호. 상태는 배지와 버튼이 담당하므로 bar는 clay 단일색.
+  // (이전: 상태별 win/loss/amber/line → 정보 과다, Ranking 언어와 충돌)
+  const accentColor = "bg-clay-400/50";
 
   return (
     <div className="relative overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50">
