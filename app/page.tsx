@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { MATCH_SELECT_WITH_PLAYERS, toDisplayMatches } from "@/lib/match-display";
 import { MATCH_SESSION_DAY_LABEL, selectHomeSessions } from "@/lib/match-session-label";
+import { HomeAttendanceSection } from "@/components/attendance/HomeAttendanceSection";
 import type { AttendanceSession } from "@/lib/supabase/database.types";
 
 const MAIN_SESSION_LIMIT = 5;
@@ -92,6 +93,9 @@ export default async function HomePage() {
         </h1>
       </header>
 
+      {/* 이번 출석 신청 — 클라이언트 컴포넌트, 미로그인/세션없으면 자동 숨김 */}
+      <HomeAttendanceSection />
+
       <section className="mb-4 space-y-2">
         {sessions.length === 0 ? (
           <Card className="border-l-4 border-l-clay-400 p-4 text-sm text-line-400">
@@ -101,21 +105,22 @@ export default async function HomePage() {
           <>
             {sessions.map((session) => {
               const summary = summaryBySession.get(session.id)!;
-              const isCustom = session.session_day === "holiday" || session.session_day === "custom";
+              const typeLabel = MATCH_SESSION_DAY_LABEL[session.session_day];
+              const [, m, d] = session.session_date.split("-");
+              const dateLabel = `${Number(m)}/${Number(d)}`;
 
               return (
                 <Link key={session.id} href={`/attendance?session_id=${session.id}`}>
                   <Card className="border-l-4 border-l-clay-400 p-4">
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm font-semibold text-line-900">
-                        {MATCH_SESSION_DAY_LABEL[session.session_day]}
-                      </p>
-                      <span className="text-xs text-line-400">{session.session_date}</span>
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <p className="text-sm font-semibold text-line-900">{session.title}</p>
+                        <p className="mt-0.5 text-xs text-line-400">
+                          {typeLabel} · {dateLabel}
+                        </p>
+                      </div>
                     </div>
-                    {isCustom && session.title && (
-                      <p className="mt-0.5 text-xs text-line-600">{session.title}</p>
-                    )}
-                    <p className="mt-1 text-xs text-line-500">
+                    <p className="mt-1.5 text-xs text-line-500">
                       출석 {summary.attending} · 미정 {summary.undecided} · 불참 {summary.absent}
                     </p>
                   </Card>

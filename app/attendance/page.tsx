@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState, useCallback } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Dropdown, DropdownItem } from "@/components/ui/Dropdown";
 import { toast } from "@/components/ui/Toast";
 import { AttendanceToggle } from "@/components/attendance/AttendanceToggle";
+import { MemberAttendanceCard } from "@/components/attendance/MemberAttendanceCard";
 import { getDisambiguatedName } from "@/lib/member-display";
 import { MATCH_SESSION_DAY_LABEL, fetchActiveSessions } from "@/lib/match-session-label";
 import { useIsAdmin } from "@/lib/hooks/useIsAdmin";
@@ -34,6 +35,12 @@ function AttendancePageInner() {
   // 카카오 로그인 + permission_role 도입 전까지는 운영진 비밀번호 인증으로 대체.
   // (useIsAdmin 훅이 /api/auth/status 조회를 담당한다)
   const isAdmin = useIsAdmin();
+
+  // 회원 카카오 로그인 상태 — "내 출석 신청" 영역 표시 여부 결정.
+  // undefined = 아직 확인 중, null = 미로그인 또는 미연결
+  const [myMemberId, setMyMemberId] = useState<string | null | undefined>(undefined);
+  const [mySessionStatus, setMySessionStatus] = useState<AttendanceStatus | null>(null);
+  const [mySessionSubmitting, setMySessionSubmitting] = useState(false);
   const [openSessions, setOpenSessions] = useState<AttendanceSession[]>([]);
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
   const [rows, setRows] = useState<MemberAttendance[]>([]);
@@ -54,6 +61,26 @@ function AttendancePageInner() {
   const [customDay, setCustomDay] = useState<"holiday" | "custom">("custom");
   const [customTitle, setCustomTitle] = useState("");
   const [creatingCustom, setCreatingCustom] = useState(false);
+
+  // 0. 카카오 로그인 회원 확인 — "내 출석 신청" 영역을 위한 본인 member_id 조회
+  useEffect(() => {
+    void (async () => {
+      const { data: { session: authSession } } = await supabase.auth.getSession();
+      if (!authSession) { setMyMemberId(null); return; }
+      const { data: member } = await supabase
+        .from("members").select("id")
+        .eq("auth_user_id", authSession.user.id).maybeSingle();
+      setMyMemberId(member?.id ?? null);
+    })();
+  }, [supabase]);
+
+  // 선택 세션이 바뀌면 내 출석 상태도 다시 조회
+  const refreshMyStatus = useCallback(async (sessionId: string, memberId: string) => {
+    const { data } = await supabase
+      .from("attendance").select("status")
+      .eq("session_id", sessionId).eq("member_id", memberId).maybeSingle();
+    setMySessionStatus((data?.status as AttendanceStatus | null) ?? null);
+  }, [supabase]);
 
   // 1. open 상태인 세션 목록 불러오기. URL의 session_id가 있고 목록에 실제로 존재하면 그걸 우선 선택한다.
   useEffect(() => {
@@ -87,10 +114,16 @@ function AttendancePageInner() {
     setEditingClosedSession(false);
     setMemberQuery("");
     setStatusFilter("all");
+    setMySessionStatus(null);
 
     if (!selectedSessionId) {
       setRows([]);
       return;
+    }
+
+    // 내 출석 상태 조회
+    if (myMemberId) {
+      void refreshMyStatus(selectedSessionId, myMemberId);
     }
 
     let isCurrent = true;
@@ -129,7 +162,37 @@ function AttendancePageInner() {
     return () => {
       isCurrent = false;
     };
-  }, [selectedSessionId, supabase]);
+  }, [selectedSessionId, supabase, myMemberId, refreshMyStatus]);
+
+  // 3-my. 회원 본인 출석 신청 핸들러 (POST /api/member/attendance 사용)
+  async function handleMyStatusChange(status: AttendanceStatus) {
+    if (!myMemberId || !selectedSessionId) return;
+    const prev = mySessionStatus;
+    setMySessionStatus(status); // 낙관적 업데이트
+    setMySessionSubmitting(true);
+    try {
+      const res = await fetch("/api/member/attendance", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId: selectedSessionId, status }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        setMySessionStatus(prev);
+        toast.error(data?.error ?? "출석 변경에 실패했습니다.");
+      } else {
+        const LABEL: Record<AttendanceStatus, string> = { attending: "참석", undecided: "미정", absent: "불참" };
+        toast.success(`${LABEL[status]}으로 변경되었습니다.`);
+        // 전체 명단 통계 갱신을 위해 rows 재조회
+        await refreshMyStatus(selectedSessionId, myMemberId);
+      }
+    } catch {
+      setMySessionStatus(prev);
+      toast.error("출석 변경 중 오류가 발생했습니다.");
+    } finally {
+      setMySessionSubmitting(false);
+    }
+  }
 
   // 3. 출석 상태 변경 — 즉시 화면(통계 포함) 반영, 새로고침 없음. 실패 시 롤백.
   //    - open: 회원 본인이 RLS를 통해 직접 upsert
@@ -514,6 +577,21 @@ function AttendancePageInner() {
 
       {selectedSessionId && (
         <>
+          {/* 내 출석 신청 — 로그인한 회원에게만 표시. 선택된 세션 기준으로 연동.
+              미로그인(myMemberId===null) 또는 로딩 중(undefined)이면 숨긴다. */}
+          {myMemberId && selectedSession && (
+            <div className="mb-4">
+              <MemberAttendanceCard
+                session={selectedSession}
+                myStatus={mySessionStatus}
+                onStatusChange={handleMyStatusChange}
+                submitting={mySessionSubmitting}
+                showStats={false}
+                sessionClosed={selectedSession.status !== "open"}
+              />
+            </div>
+          )}
+
           {/* 통계 카드 + 운영진 전용 명단확정/명단보관 버튼을 같은 영역에 노출 */}
           <div className="mb-2 flex items-center justify-between">
             <p className="text-xs font-semibold text-line-500">

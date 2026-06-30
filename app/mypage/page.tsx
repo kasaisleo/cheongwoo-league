@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { toast } from "@/components/ui/Toast";
+import { MemberAttendanceCard } from "@/components/attendance/MemberAttendanceCard";
 import { createClient } from "@/lib/supabase/client";
 import { MATCH_SESSION_DAY_LABEL } from "@/lib/match-session-label";
 import type { User } from "@supabase/supabase-js";
@@ -324,52 +325,23 @@ export default function MyPage() {
             )}
           </Card>
 
-          {/* 5. 이번 출석 신청 */}
+          {/* 5. 신청 가능한 일정 (보조 진입점 — 홈/출석 페이지가 메인) */}
           <Card className="p-4">
-            <SectionTitle>이번 출석 신청</SectionTitle>
+            <SectionTitle>신청 가능한 일정</SectionTitle>
             {openSessions.length === 0 ? (
               <p className="text-sm text-line-400">현재 신청 가능한 세션이 없습니다.</p>
             ) : (
-              <div className="space-y-4">
-                {openSessions.map(({ session, myStatus }) => {
-                  const isSubmitting = submittingSessionId === session.id;
-                  const sessionLabel = MATCH_SESSION_DAY_LABEL[session.session_day];
-                  const dateLabel = formatDate(session.session_date);
-                  return (
-                    <div key={session.id}>
-                      <div className="mb-2 flex items-center justify-between">
-                        <div>
-                          <p className="text-sm font-semibold text-line-900">{sessionLabel}</p>
-                          <p className="text-xs text-line-500">{dateLabel}</p>
-                        </div>
-                        {myStatus && (
-                          <Badge tone={STATUS_TONE[myStatus]}>{STATUS_LABEL[myStatus]}</Badge>
-                        )}
-                      </div>
-                      <div className="flex gap-2">
-                        {(["attending", "undecided", "absent"] as AttendanceStatus[]).map((s) => (
-                          <button
-                            key={s}
-                            type="button"
-                            disabled={isSubmitting}
-                            onClick={() => handleAttendanceChange(session.id, s)}
-                            className={`flex-1 rounded-lg border py-2 text-xs font-semibold transition-colors disabled:opacity-50 ${
-                              myStatus === s
-                                ? s === "attending"
-                                  ? "border-court-400 bg-court-400 text-line-25"
-                                  : s === "absent"
-                                    ? "border-fault-400 bg-fault-400 text-line-25"
-                                    : "border-amber-400 bg-amber-400 text-line-900"
-                                : "border-line-200 bg-line-50 text-line-700"
-                            }`}
-                          >
-                            {STATUS_LABEL[s]}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  );
-                })}
+              <div className="space-y-3">
+                {openSessions.map(({ session, myStatus }) => (
+                  <MemberAttendanceCard
+                    key={session.id}
+                    session={session}
+                    myStatus={myStatus}
+                    onStatusChange={(s) => handleAttendanceChange(session.id, s)}
+                    submitting={submittingSessionId === session.id}
+                    showStats={false}
+                  />
+                ))}
               </div>
             )}
           </Card>
