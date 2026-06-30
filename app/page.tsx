@@ -123,7 +123,7 @@ export default async function HomePage() {
           이 카드는 "어떤 일정이 있는지 확인" 용도로 역할을 명확히 한다. */}
       <section className="mb-4">
         <div className="mb-2 flex items-center justify-between">
-          <h2 className="text-xs font-bold uppercase tracking-widest text-line-600">다음 일정</h2>
+          <h2 className="font-display text-xs font-bold uppercase tracking-widest text-line-500">다음 일정</h2>
           {hasMoreSessions && (
             <Link href="/attendance" className="text-xs font-semibold text-clay-400">
               더보기
@@ -168,7 +168,7 @@ export default async function HomePage() {
       {isAdmin && guestsThisWeek.length > 0 && (
         <section className="mb-4">
           <div className="mb-2 flex items-center justify-between">
-            <h2 className="text-xs font-bold uppercase tracking-widest text-line-600">이번 주 게스트</h2>
+            <h2 className="font-display text-xs font-bold uppercase tracking-widest text-line-500">이번 주 게스트</h2>
             <Link href="/guests" className="text-xs font-semibold text-clay-400">
               전체보기
             </Link>
@@ -190,7 +190,7 @@ export default async function HomePage() {
       {/* 4. 최근 경기 — 전체보기 링크(/matches)로 경기 탭 진입 유도 */}
       <section>
         <div className="mb-2 flex items-center justify-between">
-          <h2 className="text-xs font-bold uppercase tracking-widest text-line-600">최근 경기</h2>
+          <h2 className="font-display text-xs font-bold uppercase tracking-widest text-line-500">최근 경기</h2>
           <Link href="/matches" className="text-xs font-semibold text-clay-400">
             전체보기
           </Link>

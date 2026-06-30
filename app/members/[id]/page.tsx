@@ -215,7 +215,7 @@ export default async function MemberDetailPage({ params }: MemberDetailPageProps
 
       {/* 2. 최근 출석 + 3. 출석률 */}
       <section className="mb-4">
-        <h2 className="mb-2 text-xs font-bold uppercase tracking-widest text-line-600">최근 출석</h2>
+        <h2 className="mb-2 font-display text-xs font-bold uppercase tracking-widest text-line-500">최근 출석</h2>
         {recentAttendance.length === 0 ? (
           <Card className="p-4 text-center text-sm text-line-400">최근 출석 기록이 없습니다.</Card>
         ) : (
@@ -311,7 +311,7 @@ export default async function MemberDetailPage({ params }: MemberDetailPageProps
 
       {/* 6. 최근 파트너 */}
       <section className="mb-4">
-        <h2 className="mb-2 text-xs font-bold uppercase tracking-widest text-line-600">최근 파트너</h2>
+        <h2 className="mb-2 font-display text-xs font-bold uppercase tracking-widest text-line-500">최근 파트너</h2>
         {recentPartners.length === 0 ? (
           <Card className="p-4 text-center text-sm text-line-400">최근 파트너 정보가 없습니다.</Card>
         ) : (
@@ -329,7 +329,7 @@ export default async function MemberDetailPage({ params }: MemberDetailPageProps
       {/* 5. 회원 메모 (운영진 전용 — 조회/수정 모두 운영진만. 수정은 "회원 정보 수정" 모달에서) */}
       {isAdmin && (
         <section className="mb-4">
-          <h2 className="mb-2 text-xs font-bold uppercase tracking-widest text-line-600">회원 메모</h2>
+          <h2 className="mb-2 font-display text-xs font-bold uppercase tracking-widest text-line-500">회원 메모</h2>
           <Card className="p-4 text-sm text-line-700">
             {typedMember.memo ? (
               <p className="whitespace-pre-wrap">{typedMember.memo}</p>

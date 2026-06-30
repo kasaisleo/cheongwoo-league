@@ -140,7 +140,7 @@ export default function MyPage() {
   return (
     <main className="px-4 pt-6 pb-10">
       <header className="mb-5">
-        <p className="font-score text-xs font-semibold uppercase tracking-[0.2em] text-clay-400">
+        <p className="font-display text-xs font-bold uppercase tracking-[0.2em] text-clay-400">
           My Page
         </p>
         <h1 className="font-display text-3xl font-bold uppercase tracking-tight text-line-900">
@@ -244,7 +244,7 @@ export default function MyPage() {
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
-    <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-line-400">
+    <p className="mb-3 font-display text-xs font-bold uppercase tracking-widest text-line-500">
       {children}
     </p>
   );

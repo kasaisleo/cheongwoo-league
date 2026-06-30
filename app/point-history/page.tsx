@@ -68,7 +68,7 @@ export default async function PointHistoryPage({ searchParams }: PointHistoryPag
       <header className="mb-5">
         <div className="mb-1 inline-flex items-center gap-2">
           <span className="h-2 w-2 rounded-full bg-clay-400" />
-          <p className="font-score text-xs font-semibold uppercase tracking-[0.2em] text-clay-400">
+          <p className="font-display text-xs font-bold uppercase tracking-[0.2em] text-clay-400">
             Point History
           </p>
         </div>
@@ -136,7 +136,7 @@ export default async function PointHistoryPage({ searchParams }: PointHistoryPag
                   </span>
                   <span
                     className={`font-score text-lg font-bold ${
-                      isZero ? "text-line-500" : isPositive ? "text-court-400" : "text-fault-400"
+                      isZero ? "text-line-500" : isPositive ? "text-win" : "text-loss"
                     }`}
                   >
                     {isPositive ? "+" : ""}

@@ -414,7 +414,7 @@ function AttendancePageInner() {
         <div>
           <div className="mb-1 inline-flex items-center gap-2">
             <span className="h-2 w-2 rounded-full bg-clay-400" />
-            <p className="font-score text-xs font-semibold uppercase tracking-[0.2em] text-clay-400">
+            <p className="font-display text-xs font-bold uppercase tracking-[0.2em] text-clay-400">
               Attendance
             </p>
           </div>
