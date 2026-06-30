@@ -1,52 +1,48 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 /**
- * ranking-query.ts — 랭킹 조회 공통 함수.
+ * ranking-query.ts — 랭킹 조회 공통 함수 (단일 정렬 로직 소스).
  *
- * 버그 원인 (발견: 2026-06-30):
- *   Home:    .eq("is_dormant", false) 적용 → 휴면 회원 제외
- *   Ranking: is_dormant 필터 없음        → 휴면 회원 포함
- *   → 동일 시점인데 Top 3가 다르게 표시되는 데이터 불일치 발생
+ * 이 파일이 정렬 기준의 단일 진실 공급원(Single Source of Truth)입니다.
+ * Home RankingTeaserCard / Ranking 페이지가 동일 함수를 사용해
+ * 항상 같은 Top 3가 보장됩니다.
  *
- * 수정 원칙:
- *   Home Current Rankings = Ranking Page Top 3 를 보장하려면
- *   동일한 필터 + 동일한 정렬 조건을 사용해야 한다.
+ * ── 확정 정렬 기준 (2026-06-30) ──────────────────────────────
+ * 1. league_point  DESC   — LP 높을수록 상위
+ * 2. win_rate      DESC   — 승률 높을수록 상위
+ * 3. wins          DESC   — 승수 많을수록 상위
+ * 4. score_diff    DESC   — 누적 득점차 클수록 상위 (신규: 0018 migration)
+ * 5. age           DESC NULLS LAST — 연장자 우선, null이면 최하위
  *
- * 확정 정책:
- *   - is_active: true   (삭제/비활성 회원 제외 — 양쪽 동일하게 적용)
- *   - is_dormant: false (휴면 회원 제외 — Ranking 페이지도 동일하게)
- *     근거: 휴면 회원은 현재 시즌에 참여하지 않으므로 랭킹 집계에서 제외
- *   - 정렬: league_point DESC → win_rate DESC → wins DESC
+ * ── 필터 정책 ─────────────────────────────────────────────────
+ * - is_active: true    삭제/비활성 회원 제외
+ * - is_dormant: false  휴면 회원 제외 (현재 시즌 미참여자)
+ *   → Home과 Ranking 페이지가 동일한 회원 풀을 사용
  *
- * 사용처:
- *   - app/page.tsx (Home RankingTeaserCard)
- *   - app/ranking/page.tsx (Ranking 페이지 전체)
+ * ── score_diff 계산 방법 (DB view 0018_ranking_tiebreaker.sql) ──
+ *   복식 경기 A팀: score_a - score_b
+ *   복식 경기 B팀: score_b - score_a
+ *   전체 참여 경기 합산, 경기 없으면 0
  */
 
-export const RANKING_QUERY_BASE = {
-  table: "member_stats" as const,
-  filters: {
-    is_active: true,
-    is_dormant: false,   // 휴면 회원 제외 — 양쪽 동일
-  },
-  orders: [
-    { column: "league_point", ascending: false },
-    { column: "win_rate",     ascending: false },
-    { column: "wins",         ascending: false },
-  ] as const,
-};
-
-/** Supabase 쿼리 빌더에 공통 랭킹 조건 적용 후 반환 */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function applyRankingQuery(supabase: SupabaseClient<any>, limit?: number) {
+export function applyRankingQuery(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: SupabaseClient<any>,
+  limit?: number
+) {
   let q = supabase
-    .from(RANKING_QUERY_BASE.table)
+    .from("member_stats")
     .select("*")
-    .eq("is_active",  RANKING_QUERY_BASE.filters.is_active)
-    .eq("is_dormant", RANKING_QUERY_BASE.filters.is_dormant)
+    .eq("is_active",  true)
+    .eq("is_dormant", false)
+    // ─── 정렬 기준 1~4: DB ORDER BY ──────────────────────────────
     .order("league_point", { ascending: false })
     .order("win_rate",     { ascending: false })
-    .order("wins",         { ascending: false });
+    .order("wins",         { ascending: false })
+    .order("score_diff",   { ascending: false })
+    // ─── 정렬 기준 5: age DESC NULLS LAST ────────────────────────
+    // Supabase JS의 .order()는 nullsFirst 옵션 지원
+    .order("age", { ascending: false, nullsFirst: false });
 
   if (limit !== undefined) {
     q = q.limit(limit);

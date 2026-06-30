@@ -62,6 +62,8 @@ export interface Member {
 
 export interface MemberWithStats extends Member {
   win_rate: number;
+  /** 전체 경기 누적 득점차 (내팀 - 상대팀). 경기 없으면 0. 동점 시 4번째 정렬 기준. */
+  score_diff: number;
 }
 
 export interface Match {
