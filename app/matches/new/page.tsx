@@ -50,7 +50,7 @@ export default function NewMatchPage() {
         .select("*")
         .eq("is_active", true)
         .eq("is_dormant", false)
-        .order("nickname"),
+        .order("name"),
       supabase
         .from("guests")
         .select("*")
@@ -103,7 +103,7 @@ export default function NewMatchPage() {
 
   function handleGuestCreated(guest: Guest) {
     setGuests((prev) => [guest, ...prev]);
-    const selected: SelectedPlayer = { id: guest.id, nickname: guest.name, isGuest: true };
+    const selected: SelectedPlayer = { id: guest.id, name: guest.name, isGuest: true };
 
     if (guestModalTarget === "teamAPlayer1") setTeamAPlayer1(selected);
     if (guestModalTarget === "teamAPlayer2") setTeamAPlayer2(selected);
