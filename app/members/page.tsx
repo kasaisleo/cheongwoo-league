@@ -25,10 +25,10 @@ export default async function MembersPage() {
     <main className="px-4 pt-6">
       <header className="mb-5 flex items-center justify-between">
         <div>
-          <p className="font-display text-xs font-bold uppercase tracking-[0.2em] text-clay-400">
+          <p className="eyebrow-en text-clay-400">
             Members
           </p>
-          <h1 className="font-display text-3xl font-bold uppercase tracking-tight text-line-900">회원 관리</h1>
+          <h1 className="headline-kr text-4xl text-line-900">회원 관리</h1>
         </div>
         <div className="flex gap-2">
           {isOwner && (

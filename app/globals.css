@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,400&display=swap");
 
 @tailwind base;
 @tailwind components;
@@ -23,6 +23,45 @@ body {
   outline: 2px solid theme("colors.clay.500");
   outline-offset: 2px;
 }
+
+/*
+ * Korean Sports Headline System — Step 16-4
+ *
+ * 문제: font-display(Oswald)는 영문 전용 압축 폰트다.
+ *   국문 h1에 font-display를 적용해도 Oswald 한국어 글리프가 없어
+ *   시스템 폰트로 fallback되면서 v0 영문 시안 대비 존재감이 약해진다.
+ *
+ * 해결책: 국문 헤드라인 전용 CSS 클래스 정의
+ *   .headline-kr  = 국문 페이지 타이틀 (h1, 주요 섹션)
+ *   .eyebrow-en   = 영문 eyebrow (Oswald 실제 렌더, 기존 font-display 유지)
+ *
+ * .headline-kr 설계 원칙:
+ *   - font-weight: 800 (extrabold) — Oswald bold보다 더 묵직하게
+ *   - letter-spacing: -0.03em — 한국어 헤드라인은 자간을 좁혀야 ATP 느낌
+ *   - line-height: 1.05 — 타이트하게
+ *   - font-family: Inter, Pretendard — 한국어 지원
+ *
+ * .eyebrow-en 설계 원칙:
+ *   - Oswald 500 유지 — 영문만 완전히 렌더링됨
+ *   - uppercase + tracking-widest — ATP 스타일 그대로
+ */
+.headline-kr {
+  font-family: var(--font-body);  /* Inter → 한국어 시스템 폰트 */
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+  text-transform: none;           /* 한국어는 uppercase 의미 없음 */
+}
+
+/* Eyebrow label은 Oswald가 실제로 렌더링되는 영역 — 영문 유지 */
+.eyebrow-en {
+  font-family: var(--font-display);  /* Oswald */
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  font-size: 0.7rem;
+}
+
 
 @media (prefers-reduced-motion: reduce) {
   *,

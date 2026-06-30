@@ -35,11 +35,11 @@ export default async function RankingPage() {
 
       {/* ── 페이지 헤더 ──────────────────────────────────── */}
       <header className="mb-6">
-        <p className="mb-1 font-display text-xs font-bold uppercase tracking-[0.2em] text-clay-400">
+        <p className="eyebrow-en mb-1.5 text-clay-400">
           League Rankings
         </p>
-        <h1 className="font-display text-3xl font-bold uppercase tracking-tight text-line-900">
-          Championship
+        <h1 className="headline-kr text-4xl text-line-900">
+          챔피언십
         </h1>
       </header>
 

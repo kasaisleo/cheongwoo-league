@@ -100,13 +100,13 @@ export default async function HomePage() {
   return (
     <main className="px-4 pt-6">
       <header className="mb-6">
-        <div className="mb-1 inline-flex items-center gap-2">
-          <span className="h-2 w-2 rounded-full bg-clay-400" />
-          <p className="font-score text-xs font-semibold uppercase tracking-[0.2em] text-clay-400">
+        <div className="mb-1.5 inline-flex items-center gap-2">
+          <span className="h-1.5 w-1.5 rounded-full bg-clay-400" />
+          <p className="eyebrow-en text-clay-400">
             Mapo Cheongwoo Club
           </p>
         </div>
-        <h1 className="font-display text-3xl font-bold uppercase tracking-tight text-line-900">
+        <h1 className="headline-kr text-4xl text-line-900">
           마포 청우회 리그
         </h1>
       </header>

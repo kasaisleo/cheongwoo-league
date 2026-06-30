@@ -88,13 +88,10 @@ export default async function MatchesPage({ searchParams }: MatchesPageProps) {
     <main className="px-4 pt-6">
       <header className="mb-5 flex items-center justify-between">
         <div>
-          <div className="mb-1 inline-flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full bg-clay-400" />
-            <p className="font-display text-xs font-bold uppercase tracking-[0.2em] text-clay-400">
-              Match History
-            </p>
-          </div>
-          <h1 className="font-display text-3xl font-bold uppercase tracking-tight text-line-900">
+          <p className="eyebrow-en text-clay-400">
+            Match History
+          </p>
+          <h1 className="headline-kr text-4xl text-line-900">
             경기 기록
           </h1>
         </div>

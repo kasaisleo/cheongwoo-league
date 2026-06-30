@@ -140,10 +140,10 @@ export default function MyPage() {
   return (
     <main className="px-4 pt-6 pb-10">
       <header className="mb-5">
-        <p className="font-display text-xs font-bold uppercase tracking-[0.2em] text-clay-400">
+        <p className="eyebrow-en text-clay-400">
           My Page
         </p>
-        <h1 className="font-display text-3xl font-bold uppercase tracking-tight text-line-900">
+        <h1 className="headline-kr text-4xl text-line-900">
           마이페이지
         </h1>
       </header>
