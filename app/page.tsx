@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/Badge";
 import { MATCH_SELECT_WITH_PLAYERS, toDisplayMatches } from "@/lib/match-display";
 import { MATCH_SESSION_DAY_LABEL, selectHomeSessions } from "@/lib/match-session-label";
 import { HomeAttendanceSection } from "@/components/attendance/HomeAttendanceSection";
+import { isAdminSession } from "@/lib/admin-auth";
 import type { AttendanceSession } from "@/lib/supabase/database.types";
 
 const MAIN_SESSION_LIMIT = 5;
@@ -79,6 +80,10 @@ export default async function HomePage() {
   const recentMatches = toDisplayMatches(recentMatchRows);
   const guestsThisWeek = weeklyGuests ?? [];
 
+  // 운영진 여부 — 게스트 섹션 표시 제어용.
+  // lib/admin-auth.ts는 수정 금지이므로 isAdminSession()을 그대로 호출한다.
+  const isAdmin = isAdminSession();
+
   return (
     <main className="px-4 pt-6">
       <header className="mb-6">
@@ -93,16 +98,27 @@ export default async function HomePage() {
         </h1>
       </header>
 
-      {/* 이번 출석 신청 — 클라이언트 컴포넌트, 미로그인/세션없으면 자동 숨김 */}
+      {/* 1. 출석 신청 CTA — 로그인 회원에게만 표시, 미로그인/세션 없으면 자동 숨김 */}
       <HomeAttendanceSection />
 
-      <section className="mb-4 space-y-2">
+      {/* 2. 다음 일정 — 읽기 전용 세션 카드. 출석 페이지로 딥링크.
+          HomeAttendanceSection이 출석 신청 UI를 담당하므로,
+          이 카드는 "어떤 일정이 있는지 확인" 용도로 역할을 명확히 한다. */}
+      <section className="mb-4">
+        <div className="mb-2 flex items-center justify-between">
+          <h2 className="text-xs font-bold uppercase tracking-widest text-line-600">다음 일정</h2>
+          {hasMoreSessions && (
+            <Link href="/attendance" className="text-xs font-semibold text-clay-400">
+              더보기
+            </Link>
+          )}
+        </div>
         {sessions.length === 0 ? (
           <Card className="border-l-4 border-l-clay-400 p-4 text-sm text-line-400">
             현재 진행 중인 출석 세션이 없어요.
           </Card>
         ) : (
-          <>
+          <div className="space-y-2">
             {sessions.map((session) => {
               const summary = summaryBySession.get(session.id)!;
               const typeLabel = MATCH_SESSION_DAY_LABEL[session.session_day];
@@ -127,16 +143,12 @@ export default async function HomePage() {
                 </Link>
               );
             })}
-            {hasMoreSessions && (
-              <Link href="/attendance">
-                <Card className="p-3 text-center text-xs font-semibold text-clay-400">더보기</Card>
-              </Link>
-            )}
-          </>
+          </div>
         )}
       </section>
 
-      {guestsThisWeek.length > 0 && (
+      {/* 3. 이번 주 게스트 — 운영진에게만 표시 (일반 회원 불필요 정보) */}
+      {isAdmin && guestsThisWeek.length > 0 && (
         <section className="mb-4">
           <div className="mb-2 flex items-center justify-between">
             <h2 className="text-xs font-bold uppercase tracking-widest text-line-600">이번 주 게스트</h2>
@@ -158,6 +170,7 @@ export default async function HomePage() {
         </section>
       )}
 
+      {/* 4. 최근 경기 — 전체보기 링크(/matches)로 경기 탭 진입 유도 */}
       <section>
         <div className="mb-2 flex items-center justify-between">
           <h2 className="text-xs font-bold uppercase tracking-widest text-line-600">최근 경기</h2>
@@ -168,7 +181,7 @@ export default async function HomePage() {
 
         {recentMatches.length === 0 ? (
           <Card className="p-6 text-center text-sm text-line-400">
-            아직 등록된 경기가 없어요. 경기입력 탭에서 첫 경기를 기록해보세요.
+            아직 등록된 경기가 없어요.
           </Card>
         ) : (
           <div className="space-y-2">
