@@ -10,7 +10,7 @@ import { toast } from "@/components/ui/Toast";
 import { AttendanceToggle } from "@/components/attendance/AttendanceToggle";
 import { getDisambiguatedName } from "@/lib/member-display";
 import { MATCH_SESSION_DAY_LABEL, fetchActiveSessions } from "@/lib/match-session-label";
-import { useAdminRole } from "@/lib/hooks/useAdminRole";
+import { useIsAdminCombined } from "@/lib/hooks/useIsAdminCombined";
 import type { AttendanceStatus, AttendanceSession, Member } from "@/lib/supabase/database.types";
 
 /**
@@ -43,14 +43,13 @@ function AdminAttendanceInner() {
   const initialSessionId = searchParams.get("session_id");
   const supabase = useMemo(() => createClient(), []);
 
-  const role = useAdminRole();
-  const isAdmin = role !== null;
+  const isAdmin = useIsAdminCombined(); // null=로딩, true=관리자, false=비관리자
 
-  // 미인증 상태 처리
+  // 미인증 상태 처리 — null(로딩) 구간은 authChecked가 false로 유지
   const [authChecked, setAuthChecked] = useState(false);
   useEffect(() => {
-    setAuthChecked(true);
-  }, [role]);
+    if (isAdmin !== null) setAuthChecked(true);
+  }, [isAdmin]);
 
   const [openSessions, setOpenSessions] = useState<AttendanceSession[]>([]);
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
@@ -224,7 +223,7 @@ function AdminAttendanceInner() {
   });
 
   // 미인증 접근 차단
-  if (authChecked && !isAdmin) {
+  if (authChecked && isAdmin === false) {
     return (
       <main className="flex min-h-[60vh] flex-col items-center justify-center px-6 text-center">
         <p className="font-display text-xs font-bold uppercase tracking-widest text-line-500">Access Denied</p>
