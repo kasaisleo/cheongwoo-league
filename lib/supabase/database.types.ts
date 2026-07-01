@@ -209,6 +209,8 @@ export interface Guest {
   wins: number;
   losses: number;
   converted_to_member_id: string | null;
+  /** 비활성화 여부. false = 새 경기 입력 후보에서 제외. */
+  is_active: boolean;
   created_at: string;
 }
 

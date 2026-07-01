@@ -49,7 +49,7 @@ export default function NewMatchPage() {
     const supabase = createClient();
     const [{ data: memberData }, { data: guestData }, sessionList] = await Promise.all([
       supabase.from("members").select("*").eq("is_active", true).eq("is_dormant", false).order("name"),
-      supabase.from("guests").select("*").is("converted_to_member_id", null).order("created_at", { ascending: false }),
+      supabase.from("guests").select("*").is("converted_to_member_id", null).eq("is_active", true).order("created_at", { ascending: false }),
       fetchActiveSessions(supabase),
     ]);
     setMembers(memberData ?? []);
