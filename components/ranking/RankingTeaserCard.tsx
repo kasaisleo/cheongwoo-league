@@ -75,7 +75,7 @@ export function RankingTeaserCard({
               {/* 이름 + LP + 변동 */}
               <div className="flex items-end justify-between gap-2">
                 <div>
-                  <p className="font-display text-xl font-bold tracking-tight text-line-900">
+                  <p className="name-kr-lg text-line-900">
                     {first.name}
                   </p>
                   <p className="mt-0.5 text-xs text-line-500">

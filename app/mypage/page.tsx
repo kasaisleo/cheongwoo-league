@@ -178,7 +178,7 @@ export default function MyPage() {
             <div className="px-5 py-4 pl-7">
               {/* 이름 + 회원 유형 */}
               <div className="mb-2 flex items-center gap-2">
-                <p className="font-display text-2xl font-bold tracking-tight text-line-900">
+                <p className="name-kr text-line-900">
                   {member.name}
                 </p>
                 <span className="rounded-sm bg-line-200 px-2 py-0.5 text-[10px] font-semibold text-line-600">

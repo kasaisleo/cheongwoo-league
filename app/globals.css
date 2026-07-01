@@ -17,7 +17,7 @@
 
 :root {
   --font-display: "Oswald", system-ui, sans-serif;
-  --font-body: "Inter", "Noto Sans KR", system-ui, sans-serif;
+  --font-body: "Noto Sans KR", "Inter", system-ui, sans-serif;
   --font-score: "Oswald", "Roboto Mono", ui-monospace, monospace;
   /* 한국어 헤드라인 전용 — Step 16-5에서 Noto Sans KR로 확정 */
   --font-headline-kr: "Noto Sans KR", system-ui, sans-serif;
@@ -359,9 +359,9 @@ input[type="date"]::-webkit-calendar-picker-indicator {
  * 카드 행 높이가 과도하게 커지지 않게 조정.
  * ─────────────────────────────────────────────────────────────────── */
 
-/* 승자 선수명 */
+/* 승자 선수명 — Noto Sans KR (이름은 Oswald 사용 금지) */
 .match-player {
-  font-family: var(--font-headline-kr);
+  font-family: "Noto Sans KR", system-ui, sans-serif;
   font-size: 14px;
   font-weight: 600;
   letter-spacing: -0.02em;
@@ -369,9 +369,9 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   text-shadow: none;
 }
 
-/* 패자 선수명 */
+/* 패자 선수명 — Noto Sans KR (이름은 Oswald 사용 금지) */
 .match-player-muted {
-  font-family: var(--font-headline-kr);
+  font-family: "Noto Sans KR", system-ui, sans-serif;
   font-size: 14px;
   font-weight: 500;
   letter-spacing: -0.02em;
