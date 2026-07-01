@@ -180,7 +180,8 @@ export default async function AdminPage() {
         <div className="overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50">
           {[
             ...(isOwnerOrMaster ? [{ href: "/admin/settings", label: "시스템 설정", sub: "Owner 계정 · 권한 관리" }] : []),
-            { href: "/admin/attendance", label: "출석 관리", sub: "세션 생성 · 명단 확정" },
+            { href: "/admin/matches",    label: "경기 관리",    sub: "경기 입력 · 기록 조회" },
+            { href: "/admin/attendance", label: "출석 관리",    sub: "세션 생성 · 명단 확정" },
             { href: "/members", label: "회원 관리", sub: "선수 명단 · 정보 수정" },
             { href: "/members/import", label: "명단 가져오기", sub: "CSV · XLSX 일괄 등록" },
             { href: "/admin/auth-link", label: "회원 연결", sub: "카카오 로그인 연결 대기자" },
