@@ -30,7 +30,7 @@ function AdminLoginInner() {
       return;
     }
 
-    const redirectTo = searchParams.get("redirect") || "/";
+    const redirectTo = searchParams.get("redirect") || "/admin";
     router.push(redirectTo);
     router.refresh();
   }
