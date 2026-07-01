@@ -225,7 +225,7 @@ export default async function AdminMatchesPage({ searchParams }: PageProps) {
         </p>
         <div className="grid grid-cols-3 gap-2">
           {[
-            { href: "/matches/new", label: "경기 입력", sub: "New Match",   accent: "clay" },
+            { href: "/admin/matches/new", label: "경기 입력", sub: "New Match",   accent: "clay" },
             { href: "/matches",     label: "공개 경기", sub: "Public View", accent: "line" },
             { href: "/admin/share", label: "공유센터",  sub: "Share Links", accent: "gold" },
           ].map((item) => (
@@ -313,7 +313,7 @@ export default async function AdminMatchesPage({ searchParams }: PageProps) {
             <p className="mt-1 text-sm text-line-500">
               {q ? `"${q}" 검색 결과가 없습니다.` : "아직 등록된 경기가 없어요."}
             </p>
-            <Link href="/matches/new"
+            <Link href="/admin/matches/new"
               className="mt-3 inline-block rounded-sm border border-clay-400/60 px-3 py-1.5 text-xs font-semibold text-clay-400">
               첫 경기 입력 →
             </Link>
