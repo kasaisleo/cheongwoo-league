@@ -61,7 +61,7 @@ function AdminMatchCard({
       {/* 상단 메타 */}
       <div className="flex items-center justify-between border-b border-line-200/30 px-4 py-2.5">
         <div className="flex items-center gap-2">
-          <span className="font-display text-[10px] font-bold tabular-nums text-line-500">
+          <span className="font-score text-[10px] font-bold tabular-nums text-line-500">
             {match.played_at}
           </span>
           <span className="rounded-sm border border-line-200/40 bg-line-100 px-1.5 py-0.5 text-[9px] font-semibold text-line-500">
@@ -84,7 +84,7 @@ function AdminMatchCard({
         <div className="mb-3 flex items-center justify-center gap-4">
           {/* 청팀 */}
           <div className={`flex flex-col items-center ${winner && !isAWin ? "opacity-50" : ""}`}>
-            <span className="eyebrow-en text-[9px] text-clay-400">
+            <span className="text-[10px] font-bold text-clay-400">
               {TEAM_LABEL["A"]}
             </span>
             <span className={`font-score text-3xl font-bold tabular-nums ${isAWin ? "text-gold" : "text-line-500"}`}>
@@ -101,7 +101,7 @@ function AdminMatchCard({
 
           {/* 우팀 */}
           <div className={`flex flex-col items-center ${winner && !isBWin ? "opacity-50" : ""}`}>
-            <span className="eyebrow-en text-[9px] text-clay-400">
+            <span className="text-[10px] font-bold text-clay-400">
               {TEAM_LABEL["B"]}
             </span>
             <span className={`font-score text-3xl font-bold tabular-nums ${!isAWin ? "text-gold" : "text-line-500"}`}>
@@ -116,7 +116,7 @@ function AdminMatchCard({
         </div>
 
         {match.score_a_tiebreak != null && (
-          <p className="mb-2 text-center font-display text-[9px] text-line-400">
+          <p className="mb-2 text-center text-[10px] text-line-400">
             타이브레이크 {match.score_a_tiebreak}–{match.score_b_tiebreak}
           </p>
         )}
@@ -124,27 +124,27 @@ function AdminMatchCard({
         {/* 선수 명단 */}
         <div className="grid grid-cols-2 gap-2">
           {/* 청팀 선수 */}
-          <div className={`rounded-sm border p-2 ${isAWin && winner ? "border-gold/30 bg-gold/5" : "border-line-200/30"}`}>
-            <p className="mb-1 font-display text-[9px] font-bold uppercase tracking-wider text-line-400">
+          <div className={`rounded-sm border p-2.5 ${isAWin && winner ? "border-gold/30 bg-gold/5" : "border-line-200/30"}`}>
+            <p className="mb-1 text-[10px] font-semibold text-line-400">
               {TEAM_LABEL["A"]}
             </p>
-            <p className="name-kr-sm text-line-900 truncate">
+            <p className="text-[15px] font-semibold leading-snug text-line-900 break-words">
               {playerName(match.teamAPlayer1.name)}
             </p>
-            <p className="name-kr-sm text-line-900 truncate">
+            <p className="text-[15px] font-semibold leading-snug text-line-900 break-words">
               {playerName(match.teamAPlayer2.name)}
             </p>
           </div>
 
           {/* 우팀 선수 */}
-          <div className={`rounded-sm border p-2 ${isBWin && winner ? "border-gold/30 bg-gold/5" : "border-line-200/30"}`}>
-            <p className="mb-1 font-display text-[9px] font-bold uppercase tracking-wider text-line-400">
+          <div className={`rounded-sm border p-2.5 ${isBWin && winner ? "border-gold/30 bg-gold/5" : "border-line-200/30"}`}>
+            <p className="mb-1 text-[10px] font-semibold text-line-400">
               {TEAM_LABEL["B"]}
             </p>
-            <p className="name-kr-sm text-line-900 truncate">
+            <p className="text-[15px] font-semibold leading-snug text-line-900 break-words">
               {playerName(match.teamBPlayer1.name)}
             </p>
-            <p className="name-kr-sm text-line-900 truncate">
+            <p className="text-[15px] font-semibold leading-snug text-line-900 break-words">
               {playerName(match.teamBPlayer2.name)}
             </p>
           </div>
