@@ -100,21 +100,27 @@ function AdminMatchCard({
 
       {/* 경기 본문 */}
       <div className="px-4 py-3">
-        {/* 스코어 + 승리팀 */}
+        {/* 스코어 + WIN/LOSE */}
         <div className="mb-3 flex items-center justify-center gap-4">
           {/* 청팀 */}
           <div className={`flex flex-col items-center ${winner && !isAWin ? "opacity-50" : ""}`}>
             <span className="text-[10px] font-bold text-clay-400">
               {TEAM_LABEL["A"]}
             </span>
-            <span className={`font-score text-3xl font-bold tabular-nums ${isAWin ? "text-gold" : "text-line-500"}`}>
-              {match.score_a ?? "—"}
-            </span>
-            {isAWin && winner && (
-              <span className="mt-0.5 rounded-sm bg-gold/10 px-1.5 py-0.5 text-[9px] font-bold text-gold">
-                WIN
+            <div className="flex items-center gap-1.5">
+              <span className={`font-score text-3xl font-bold tabular-nums ${isAWin ? "text-gold" : "text-line-500"}`}>
+                {match.score_a ?? "—"}
               </span>
-            )}
+              {winner && (
+                <span className={`rounded-sm px-1.5 py-0.5 text-[9px] font-bold ${
+                  isAWin
+                    ? "bg-gold/10 text-gold"
+                    : "bg-line-200 text-line-400"
+                }`}>
+                  {isAWin ? "WIN" : "LOSE"}
+                </span>
+              )}
+            </div>
           </div>
 
           <span className="font-score text-lg font-bold text-line-400">:</span>
@@ -124,14 +130,20 @@ function AdminMatchCard({
             <span className="text-[10px] font-bold text-clay-400">
               {TEAM_LABEL["B"]}
             </span>
-            <span className={`font-score text-3xl font-bold tabular-nums ${!isAWin ? "text-gold" : "text-line-500"}`}>
-              {match.score_b ?? "—"}
-            </span>
-            {isBWin && winner && (
-              <span className="mt-0.5 rounded-sm bg-gold/10 px-1.5 py-0.5 text-[9px] font-bold text-gold">
-                WIN
+            <div className="flex items-center gap-1.5">
+              <span className={`font-score text-3xl font-bold tabular-nums ${isBWin ? "text-gold" : "text-line-500"}`}>
+                {match.score_b ?? "—"}
               </span>
-            )}
+              {winner && (
+                <span className={`rounded-sm px-1.5 py-0.5 text-[9px] font-bold ${
+                  isBWin
+                    ? "bg-gold/10 text-gold"
+                    : "bg-line-200 text-line-400"
+                }`}>
+                  {isBWin ? "WIN" : "LOSE"}
+                </span>
+              )}
+            </div>
           </div>
         </div>
 
