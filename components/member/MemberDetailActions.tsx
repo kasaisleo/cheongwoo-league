@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { EditMemberModal } from "@/components/member/EditMemberModal";
-import { useIsAdmin } from "@/lib/hooks/useIsAdmin";
+import { useAdminAccess } from "@/lib/hooks/useAdminAccess";
 import type { MemberWithStats } from "@/lib/supabase/database.types";
 
 interface MemberDetailActionsProps {
@@ -20,10 +20,11 @@ interface MemberDetailActionsProps {
  */
 export function MemberDetailActions({ member }: MemberDetailActionsProps) {
   const router = useRouter();
-  const isAdmin = useIsAdmin();
+  const adminAccess = useAdminAccess();
   const [showEditModal, setShowEditModal] = useState(false);
 
-  if (!isAdmin) return null;
+  // 로딩 중(null)이거나 비관리자면 렌더링 안 함
+  if (!adminAccess?.isAdmin) return null;
 
   return (
     <>

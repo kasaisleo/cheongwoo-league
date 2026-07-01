@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { toast } from "@/components/ui/Toast";
 import { PLAYER_BACKGROUND_OPTIONS, type PlayerBackground } from "@/lib/constants/member-timeline";
-import { useAdminRole } from "@/lib/hooks/useAdminRole";
+import { useAdminAccess } from "@/lib/hooks/useAdminAccess";
 import type { MemberRole, MemberWithStats } from "@/lib/supabase/database.types";
 
 interface EditMemberModalProps {
@@ -42,8 +42,10 @@ export function EditMemberModal({ member, onClose, onSaved, onDeleted }: EditMem
   // 강제하지만, manager에게는 애초에 select를 비활성화해서 "바꿀 수 없는
   // 항목"임을 명확히 보여준다. role이 아직 로딩 중(null)이면 일단 비활성으로
   // 둔다 — "확실히 owner라고 확인되기 전까지는 막아둔다"는 보수적 기본값.
-  const adminRole = useAdminRole();
-  const isOwner = adminRole === "owner";
+  const adminAccess = useAdminAccess();
+  // 로딩 중(null)이면 false — 확인되기 전까지 보수적으로 막음
+  const isAdmin = adminAccess?.isAdmin ?? false;
+  const isOwner = adminAccess?.isOwner ?? false;
   const [name, setName] = useState(member.name);
   const [nickname, setNickname] = useState(member.nickname);
   const [phoneDigits, setPhoneDigits] = useState(member.phone ?? "");
@@ -116,13 +118,10 @@ export function EditMemberModal({ member, onClose, onSaved, onDeleted }: EditMem
   }
 
   async function handleDelete() {
-    const confirmedFirst = window.confirm("정말 이 회원을 삭제하시겠습니까?");
-    if (!confirmedFirst) return;
-
-    const confirmedSecond = window.confirm(
-      "회원 목록에서는 숨겨지지만 기존 경기/출석/LP 이력은 보존됩니다."
+    const confirmed = window.confirm(
+      "이 회원을 탈퇴 처리할까요?\n과거 경기 기록은 유지되며, 신규 경기 입력에서는 제외됩니다."
     );
-    if (!confirmedSecond) return;
+    if (!confirmed) return;
 
     setDeleting(true);
     const res = await fetch(`/api/members/${member.id}`, { method: "DELETE" });
@@ -134,7 +133,7 @@ export function EditMemberModal({ member, onClose, onSaved, onDeleted }: EditMem
       return;
     }
 
-    toast.success("회원이 삭제되었습니다.");
+    toast.success("회원이 탈퇴 처리되었습니다.");
     onDeleted();
   }
 
@@ -365,7 +364,7 @@ export function EditMemberModal({ member, onClose, onSaved, onDeleted }: EditMem
               onClick={handleDelete}
               className="h-11 w-full rounded-lg border border-fault-400 text-xs font-semibold text-fault-400 disabled:opacity-40"
             >
-              {deleting ? "삭제 중..." : "회원 삭제"}
+              {deleting ? "처리 중..." : "탈퇴 처리"}
             </button>
           </div>
         )}
