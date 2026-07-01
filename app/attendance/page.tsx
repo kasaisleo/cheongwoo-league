@@ -204,7 +204,12 @@ function AttendancePageInner() {
       } else {
         const LABEL: Record<AttendanceStatus, string> = { attending: "출석", undecided: "미정", absent: "불참" };
         toast.success(`${LABEL[status]}으로 변경되었습니다.`);
-        // 전체 명단 통계 갱신을 위해 rows 재조회
+        // rows도 즉시 갱신 — 카운트/shortage/필터 리스트가 같은 source로 즉시 반영
+        if (myMemberId) {
+          setRows((prev) =>
+            prev.map((row) => (row.member.id === myMemberId ? { ...row, status } : row))
+          );
+        }
         await refreshMyStatus(selectedSessionId, myMemberId);
       }
     } catch {
@@ -245,7 +250,6 @@ function AttendancePageInner() {
       // 명단이 확정된 세션 — 운영진만 보정 가능. 별도 service-role API를 거친다.
       if (!isAdmin) {
         setUpdatingMemberId(null);
-    setPendingStatus(null);
         setPendingStatus(null);
         setRows((prev) =>
           prev.map((row) => (row.member.id === memberId ? { ...row, status: previousStatus } : row))
@@ -393,7 +397,11 @@ function AttendancePageInner() {
   const attending = rows.filter((r) => r.status === "attending").length;
   const undecided = rows.filter((r) => r.status === "undecided").length;
   const absent = rows.filter((r) => r.status === "absent").length;
-  const shortage = Math.max(0, MIN_REQUIRED_PLAYERS - attending);
+  // 복식 가능: 출석 인원이 4명 이상이고 4의 배수일 때
+  const remainder = attending % 4;
+  const shortage = attending >= 4 && remainder === 0
+    ? 0
+    : 4 - (attending % 4 || 4);
   const selectedSession = openSessions.find((s) => s.id === selectedSessionId) ?? null;
   const selectedSessionIsCustom =
     selectedSession?.session_day === "holiday" || selectedSession?.session_day === "custom";
