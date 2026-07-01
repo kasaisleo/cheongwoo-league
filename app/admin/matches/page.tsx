@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { DeleteMatchButton } from "./DeleteMatchButton";
 import { createClient } from "@/lib/supabase/server";
 import { MATCH_SELECT_WITH_PLAYERS, toDisplayMatches, type DisplayMatch } from "@/lib/match-display";
 import { MATCH_SESSION_DAY_LABEL } from "@/lib/match-session-label";
@@ -30,9 +31,11 @@ interface PageProps {
 function AdminMatchCard({
   match,
   canEdit,
+  canDelete,
 }: {
   match: DisplayMatch;
   canEdit: boolean;
+  canDelete: boolean;
 }) {
   const winner = match.winner_team as "A" | "B" | null | undefined ?? null;
   const isAWin = winner === "A";
@@ -68,14 +71,19 @@ function AdminMatchCard({
             {sessionLabel}
           </span>
         </div>
-        {canEdit && (
-          <Link
-            href={`/admin/matches/${match.id}/edit`}
-            className="rounded-sm border border-line-200/40 px-2 py-0.5 text-[10px] font-semibold text-line-500 hover:border-clay-400/60 hover:text-clay-400"
-          >
-            수정
-          </Link>
-        )}
+        <div className="flex items-center gap-1.5">
+          {canDelete && (
+            <DeleteMatchButton matchId={match.id} playedAt={match.played_at} />
+          )}
+          {canEdit && (
+            <Link
+              href={`/admin/matches/${match.id}/edit`}
+              className="rounded-sm border border-line-200/40 px-2 py-0.5 text-[10px] font-semibold text-line-500 hover:border-clay-400/60 hover:text-clay-400"
+            >
+              수정
+            </Link>
+          )}
+        </div>
       </div>
 
       {/* 경기 본문 */}
@@ -317,6 +325,7 @@ export default async function AdminMatchesPage({ searchParams }: PageProps) {
                 key={match.id}
                 match={match}
                 canEdit={access.isAdmin}
+                canDelete={access.isOwner}
               />
             ))}
           </div>
