@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback, useMemo } from "react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { toast } from "@/components/ui/Toast";
-import { useIsAdmin } from "@/lib/hooks/useIsAdmin";
+import { useAdminAccess } from "@/lib/hooks/useAdminAccess";
 import { createClient } from "@/lib/supabase/client";
 
 interface PendingUser {
@@ -33,7 +33,8 @@ interface UnlinkedMember {
  * 서버 API는 requireAdmin()으로 별도 검증하므로 클라이언트 체크는 UX용이다.
  */
 export default function AuthLinkPage() {
-  const isAdmin = useIsAdmin();
+  const adminAccess = useAdminAccess();
+  const isAdmin = adminAccess?.isAdmin ?? false; // null=로딩 중(false로 처리)
   const [pendingUsers, setPendingUsers] = useState<PendingUser[]>([]);
   const [unlinkedMembers, setUnlinkedMembers] = useState<UnlinkedMember[]>([]);
   const [loading, setLoading] = useState(true);
