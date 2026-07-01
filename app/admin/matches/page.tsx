@@ -194,7 +194,7 @@ export default async function AdminMatchesPage({ searchParams }: PageProps) {
                 {/* 경기 수정 링크 */}
                 {access.isAdmin && (
                   <Link
-                    href={`/matches/${match.id}/edit`}
+                    href={`/admin/matches/${match.id}/edit`}
                     className="absolute right-3 top-3 rounded-sm border border-line-200/40 bg-line-50 px-2 py-0.5 text-[10px] font-semibold text-line-500 hover:border-line-300 hover:text-line-700"
                   >
                     수정
