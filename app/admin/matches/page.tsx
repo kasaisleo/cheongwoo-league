@@ -15,13 +15,20 @@ import type { SessionDay } from "@/lib/supabase/database.types";
 
 const SESSION_FILTERS = [
   { key: "all",      label: "전체" },
-  { key: "saturday", label: "토요일" },
-  { key: "sunday",   label: "일요일" },
+  { key: "saturday", label: "토요 정기" },
+  { key: "sunday",   label: "일요 정기" },
   { key: "holiday",  label: "휴일" },
   { key: "custom",   label: "이벤트" },
 ] as const;
 
 const VALID_SESSION_TYPES: SessionDay[] = ["saturday", "sunday", "holiday", "custom"];
+
+const MATCH_TYPE_BADGE: Record<string, { label: string; cls: string }> = {
+  saturday: { label: "토요 정기", cls: "border-clay-400/40 bg-clay-400/10 text-clay-400" },
+  sunday:   { label: "일요 정기", cls: "border-clay-400/40 bg-clay-400/10 text-clay-400" },
+  holiday:  { label: "휴일",     cls: "border-gold/40 bg-gold/10 text-gold" },
+  custom:   { label: "이벤트",   cls: "border-line-300/40 bg-line-100 text-line-500" },
+};
 
 interface PageProps {
   searchParams: { sessionType?: string; q?: string };
@@ -70,6 +77,11 @@ function AdminMatchCard({
           <span className="rounded-sm border border-line-200/40 bg-line-100 px-1.5 py-0.5 text-[9px] font-semibold text-line-500">
             {sessionLabel}
           </span>
+          {match.sessionDay && MATCH_TYPE_BADGE[match.sessionDay] && (
+            <span className={`rounded-sm border px-1.5 py-0.5 text-[9px] font-semibold ${MATCH_TYPE_BADGE[match.sessionDay].cls}`}>
+              {MATCH_TYPE_BADGE[match.sessionDay].label}
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-1.5">
           {canDelete && (
@@ -215,38 +227,11 @@ export default async function AdminMatchesPage({ searchParams }: PageProps) {
       </header>
 
       <p className="mb-5 text-sm text-line-500">
-        매치 기록을 확인하고 수정합니다. 신규 매치는 매치 생성에서 입력합니다.
+        등록된 경기 기록을 확인하고 필터·검색·수정·삭제합니다.
       </p>
 
-      {/* 빠른 작업 */}
-      <section className="mb-5">
-        <p className="mb-2 font-display text-[10px] font-bold uppercase tracking-widest text-line-500">
-          Quick Actions
-        </p>
-        <div className="grid grid-cols-3 gap-2">
-          {[
-            { href: "/admin/matches/new", label: "매치 생성", sub: "New Match",   accent: "clay" },
-            { href: "/matches",     label: "공개 경기", sub: "Public View", accent: "line" },
-            { href: "/admin/share", label: "공유센터",  sub: "Share Links", accent: "gold" },
-          ].map((item) => (
-            <Link key={item.href} href={item.href}>
-              <div className="relative overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50 px-3 py-2.5 transition-colors hover:bg-line-100/40">
-                <div className={`absolute left-0 top-0 h-full w-1 ${
-                  item.accent === "clay" ? "bg-clay-400/50"
-                  : item.accent === "gold" ? "bg-gold/50"
-                  : "bg-line-300/40"
-                }`} />
-                <p className="text-sm font-semibold text-line-900">{item.label}</p>
-                <p className="font-display text-[9px] font-bold uppercase tracking-wider text-line-500">
-                  {item.sub}
-                </p>
-              </div>
-            </Link>
-          ))}
-        </div>
-      </section>
 
-      {/* 세션 타입 필터 */}
+      {/* 매치 타입 필터 */}
       <section className="mb-4">
         <div className="flex flex-wrap gap-1.5">
           {SESSION_FILTERS.map((f) => {
