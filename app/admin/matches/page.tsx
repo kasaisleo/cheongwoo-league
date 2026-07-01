@@ -1,19 +1,15 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { MatchCard } from "@/components/match/MatchCard";
-import { MATCH_SELECT_WITH_PLAYERS, toDisplayMatches } from "@/lib/match-display";
+import { MATCH_SELECT_WITH_PLAYERS, toDisplayMatches, type DisplayMatch } from "@/lib/match-display";
+import { MATCH_SESSION_DAY_LABEL } from "@/lib/match-session-label";
 import { getAdminAccessServer } from "@/lib/admin-permissions";
+import { TEAM_LABEL } from "@/lib/match-team-labels";
 import type { SessionDay } from "@/lib/supabase/database.types";
 
 /**
  * /admin/matches — 관리자 전용 경기 관리 페이지.
- *
- * 권한: requireAdminAccess() → layout.tsx에서 서버 사전 차단.
- *   허용: cw_admin_session owner/manager + kakao manager/admin/master
- *   차단: member, scorer, 비로그인
- *
- * 공개 /matches는 쇼룸으로 유지.
- * 경기 입력/수정 기능은 이 페이지에서 진입.
+ * 공개 MatchCard 대신 관리/검수 중심 AdminMatchCard 사용.
+ * 청팀/우팀 표기 통일. 선수명은 Noto Sans KR.
  */
 
 const SESSION_FILTERS = [
@@ -30,17 +26,144 @@ interface PageProps {
   searchParams: { sessionType?: string; q?: string };
 }
 
+// ── 관리자 경기 카드 ────────────────────────────────────────────────
+function AdminMatchCard({
+  match,
+  canEdit,
+}: {
+  match: DisplayMatch;
+  canEdit: boolean;
+}) {
+  const winner = match.winner_team as "A" | "B" | null | undefined ?? null;
+  const isAWin = winner === "A";
+  const isBWin = winner === "B";
+
+  const sessionLabel =
+    match.sessionTitle
+    ?? (match.sessionDay ? MATCH_SESSION_DAY_LABEL[match.sessionDay] : null)
+    ?? "세션 정보 없음";
+
+  const EMPTY_NAMES = new Set(["", "알수없음", "알 수 없음", "unknown", "Unknown"]);
+  const playerName = (name: string | null | undefined) =>
+    name && !EMPTY_NAMES.has(name) ? name : "선수 미지정";
+
+  const scoreDisplay =
+    match.score_a != null && match.score_b != null
+      ? `${match.score_a} : ${match.score_b}${
+          match.score_a_tiebreak != null
+            ? ` (${match.score_a_tiebreak}–${match.score_b_tiebreak})`
+            : ""
+        }`
+      : "스코어 미입력";
+
+  return (
+    <div className="overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50">
+      {/* 상단 메타 */}
+      <div className="flex items-center justify-between border-b border-line-200/30 px-4 py-2.5">
+        <div className="flex items-center gap-2">
+          <span className="font-display text-[10px] font-bold tabular-nums text-line-500">
+            {match.played_at}
+          </span>
+          <span className="rounded-sm border border-line-200/40 bg-line-100 px-1.5 py-0.5 text-[9px] font-semibold text-line-500">
+            {sessionLabel}
+          </span>
+        </div>
+        {canEdit && (
+          <Link
+            href={`/admin/matches/${match.id}/edit`}
+            className="rounded-sm border border-line-200/40 px-2 py-0.5 text-[10px] font-semibold text-line-500 hover:border-clay-400/60 hover:text-clay-400"
+          >
+            수정
+          </Link>
+        )}
+      </div>
+
+      {/* 경기 본문 */}
+      <div className="px-4 py-3">
+        {/* 스코어 + 승리팀 */}
+        <div className="mb-3 flex items-center justify-center gap-4">
+          {/* 청팀 */}
+          <div className={`flex flex-col items-center ${winner && !isAWin ? "opacity-50" : ""}`}>
+            <span className="eyebrow-en text-[9px] text-clay-400">
+              {TEAM_LABEL["A"]}
+            </span>
+            <span className={`font-score text-3xl font-bold tabular-nums ${isAWin ? "text-gold" : "text-line-500"}`}>
+              {match.score_a ?? "—"}
+            </span>
+            {isAWin && winner && (
+              <span className="mt-0.5 rounded-sm bg-gold/10 px-1.5 py-0.5 text-[9px] font-bold text-gold">
+                WIN
+              </span>
+            )}
+          </div>
+
+          <span className="font-score text-lg font-bold text-line-400">:</span>
+
+          {/* 우팀 */}
+          <div className={`flex flex-col items-center ${winner && !isBWin ? "opacity-50" : ""}`}>
+            <span className="eyebrow-en text-[9px] text-clay-400">
+              {TEAM_LABEL["B"]}
+            </span>
+            <span className={`font-score text-3xl font-bold tabular-nums ${!isAWin ? "text-gold" : "text-line-500"}`}>
+              {match.score_b ?? "—"}
+            </span>
+            {isBWin && winner && (
+              <span className="mt-0.5 rounded-sm bg-gold/10 px-1.5 py-0.5 text-[9px] font-bold text-gold">
+                WIN
+              </span>
+            )}
+          </div>
+        </div>
+
+        {match.score_a_tiebreak != null && (
+          <p className="mb-2 text-center font-display text-[9px] text-line-400">
+            타이브레이크 {match.score_a_tiebreak}–{match.score_b_tiebreak}
+          </p>
+        )}
+
+        {/* 선수 명단 */}
+        <div className="grid grid-cols-2 gap-2">
+          {/* 청팀 선수 */}
+          <div className={`rounded-sm border p-2 ${isAWin && winner ? "border-gold/30 bg-gold/5" : "border-line-200/30"}`}>
+            <p className="mb-1 font-display text-[9px] font-bold uppercase tracking-wider text-line-400">
+              {TEAM_LABEL["A"]}
+            </p>
+            <p className="name-kr-sm text-line-900 truncate">
+              {playerName(match.teamAPlayer1.name)}
+            </p>
+            <p className="name-kr-sm text-line-900 truncate">
+              {playerName(match.teamAPlayer2.name)}
+            </p>
+          </div>
+
+          {/* 우팀 선수 */}
+          <div className={`rounded-sm border p-2 ${isBWin && winner ? "border-gold/30 bg-gold/5" : "border-line-200/30"}`}>
+            <p className="mb-1 font-display text-[9px] font-bold uppercase tracking-wider text-line-400">
+              {TEAM_LABEL["B"]}
+            </p>
+            <p className="name-kr-sm text-line-900 truncate">
+              {playerName(match.teamBPlayer1.name)}
+            </p>
+            <p className="name-kr-sm text-line-900 truncate">
+              {playerName(match.teamBPlayer2.name)}
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── 페이지 ───────────────────────────────────────────────────────────
 export default async function AdminMatchesPage({ searchParams }: PageProps) {
   const access = await getAdminAccessServer();
   const supabase = createClient();
 
-  // 필터 파라미터
   const rawType = searchParams.sessionType ?? "all";
   const sessionType = VALID_SESSION_TYPES.includes(rawType as SessionDay)
     ? (rawType as SessionDay) : null;
   const q = searchParams.q?.trim() ?? "";
 
-  // 경기 목록 조회
   let query: any = supabase
     .from("matches")
     .select(MATCH_SELECT_WITH_PLAYERS)
@@ -53,14 +176,14 @@ export default async function AdminMatchesPage({ searchParams }: PageProps) {
       .select("id")
       .eq("session_day", sessionType);
     const ids = (sessions ?? []).map((s) => s.id);
-    if (ids.length > 0) query = query.in("session_id", ids);
-    else query = query.is("session_id", null); // 해당 타입 세션 없음
+    query = ids.length > 0
+      ? query.in("session_id", ids)
+      : query.is("session_id", null);
   }
 
   const { data: rawMatches } = await query;
   let matches = toDisplayMatches(rawMatches ?? []);
 
-  // 선수명 검색 (클라이언트 필터)
   if (q) {
     matches = matches.filter((m) =>
       [m.teamAPlayer1, m.teamAPlayer2, m.teamBPlayer1, m.teamBPlayer2].some((p) =>
@@ -94,7 +217,7 @@ export default async function AdminMatchesPage({ searchParams }: PageProps) {
         </p>
         <div className="grid grid-cols-3 gap-2">
           {[
-            { href: "/matches/new", label: "경기 입력", sub: "New Match", accent: "clay" },
+            { href: "/matches/new", label: "경기 입력", sub: "New Match",   accent: "clay" },
             { href: "/matches",     label: "공개 경기", sub: "Public View", accent: "line" },
             { href: "/admin/share", label: "공유센터",  sub: "Share Links", accent: "gold" },
           ].map((item) => (
@@ -120,10 +243,14 @@ export default async function AdminMatchesPage({ searchParams }: PageProps) {
         <div className="flex flex-wrap gap-1.5">
           {SESSION_FILTERS.map((f) => {
             const isActive = (f.key === "all" && !sessionType) || f.key === sessionType;
-            const params = new URLSearchParams(searchParams as Record<string, string>);
+            const params = new URLSearchParams(
+              Object.fromEntries(
+                Object.entries(searchParams as Record<string, string>).filter(([, v]) => v)
+              )
+            );
             if (f.key === "all") params.delete("sessionType");
             else params.set("sessionType", f.key);
-            if (q) params.set("q", q);
+            if (q) params.set("q", q); else params.delete("q");
             return (
               <Link key={f.key} href={`/admin/matches?${params.toString()}`}>
                 <span className={`rounded-sm border px-2.5 py-1 text-xs font-semibold transition-colors ${
@@ -140,23 +267,20 @@ export default async function AdminMatchesPage({ searchParams }: PageProps) {
       </section>
 
       {/* 선수 검색 */}
-      <section className="mb-4">
+      <section className="mb-5">
         <form method="GET" action="/admin/matches">
           {sessionType && <input type="hidden" name="sessionType" value={sessionType} />}
           <div className="flex gap-2">
-            <input
-              name="q"
-              defaultValue={q}
-              placeholder="선수명 검색"
-              className="h-9 flex-1 rounded-sm border border-line-200/40 bg-line-50 px-3 text-sm text-line-900 placeholder:text-line-500"
-            />
+            <input name="q" defaultValue={q} placeholder="선수명 검색"
+              className="h-9 flex-1 rounded-sm border border-line-200/40 bg-line-50 px-3 text-sm text-line-900 placeholder:text-line-500" />
             <button type="submit"
               className="rounded-sm border border-line-200/40 px-3 text-xs font-semibold text-line-600">
               검색
             </button>
             {q && (
-              <Link href={`/admin/matches${sessionType ? `?sessionType=${sessionType}` : ""}`}
-                className="rounded-sm border border-line-200/40 px-3 text-xs font-semibold text-line-500 leading-9">
+              <Link
+                href={`/admin/matches${sessionType ? `?sessionType=${sessionType}` : ""}`}
+                className="flex items-center rounded-sm border border-line-200/40 px-3 text-xs font-semibold text-line-500">
                 초기화
               </Link>
             )}
@@ -166,7 +290,7 @@ export default async function AdminMatchesPage({ searchParams }: PageProps) {
 
       {/* 경기 목록 */}
       <section>
-        <div className="mb-2 flex items-center justify-between">
+        <div className="mb-3 flex items-center justify-between">
           <p className="font-display text-[10px] font-bold uppercase tracking-widest text-line-500">
             Recent Matches
             <span className="ml-1.5 text-line-400">({matches.length})</span>
@@ -187,20 +311,13 @@ export default async function AdminMatchesPage({ searchParams }: PageProps) {
             </Link>
           </div>
         ) : (
-          <div className="space-y-2">
+          <div className="space-y-3">
             {matches.map((match) => (
-              <div key={match.id} className="relative">
-                <MatchCard match={match} />
-                {/* 경기 수정 링크 */}
-                {access.isAdmin && (
-                  <Link
-                    href={`/admin/matches/${match.id}/edit`}
-                    className="absolute right-3 top-3 rounded-sm border border-line-200/40 bg-line-50 px-2 py-0.5 text-[10px] font-semibold text-line-500 hover:border-line-300 hover:text-line-700"
-                  >
-                    수정
-                  </Link>
-                )}
-              </div>
+              <AdminMatchCard
+                key={match.id}
+                match={match}
+                canEdit={access.isAdmin}
+              />
             ))}
           </div>
         )}
