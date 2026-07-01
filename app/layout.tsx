@@ -5,6 +5,7 @@ import { ToastViewport } from "@/components/ui/Toast";
 import "./globals.css";
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://cheongwoo-league.vercel.app"),
   title: "청우회 리그",
   description: "테니스 경기 · 랭킹 · 출석관리",
   openGraph: {
