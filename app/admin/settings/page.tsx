@@ -12,8 +12,8 @@ interface AdminMember {
   name: string;
   nickname: string;
   permission_role: string;
-  auth_user_id: string | null;
-  is_kakao_linked: boolean;
+  is_kakao_connected: boolean;
+  auth_user_id_prefix: string | null;
 }
 
 interface SearchMember {
@@ -246,8 +246,8 @@ export default function SettingsPage() {
                 <p className="name-kr-sm text-line-900">{m.name}</p>
                 <p className="text-xs text-line-500">({m.nickname})</p>
                 <span className={`ml-auto rounded-sm border px-1.5 py-0.5 text-[9px] font-semibold ${
-                  m.auth_user_id ? "border-line-200/40 bg-line-100 text-line-500" : "border-line-200/30 text-line-400"}`}>
-                  {m.auth_user_id ? "카카오 연결" : "미연결"}
+                  m.is_kakao_connected ? "border-line-200/40 bg-line-100 text-line-500" : "border-line-200/30 text-line-400"}`}>
+                  {m.is_kakao_connected ? "카카오 연결" : "미연결"}
                 </span>
               </div>
 
@@ -284,7 +284,7 @@ export default function SettingsPage() {
                     </button>
                   )}
 
-                  {m.auth_user_id && (
+                  {m.is_kakao_connected && (
                     <button type="button" disabled={actionId === m.id}
                       onClick={() => handleUnlink(m.id, m.name)}
                       className="rounded-sm border border-line-200/40 px-2 py-0.5 text-[10px] font-semibold text-line-500 disabled:opacity-40 hover:border-fault-400 hover:text-fault-400">

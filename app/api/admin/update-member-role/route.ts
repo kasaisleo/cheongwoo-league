@@ -45,8 +45,9 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const supabase = createClient();
-  const { data: member, error: memberError } = await supabase
+  // 대상 member 조회: service role (RLS 우회 — auth_user_id 정확히 읽음)
+  const supabaseAdmin = createServiceClient();
+  const { data: member, error: memberError } = await supabaseAdmin
     .from("members")
     .select("id, name, permission_role, auth_user_id")
     .eq("id", memberId)
