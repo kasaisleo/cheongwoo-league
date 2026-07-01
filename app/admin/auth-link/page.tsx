@@ -71,15 +71,15 @@ export default function AuthLinkPage() {
 
   useEffect(() => { loadData(); }, [loadData]);
 
-  async function handleLink(pendingUserId: string) {
-    const memberId = selections[pendingUserId];
+  async function handleLink(authUserId: string) {
+    const memberId = selections[authUserId];
     if (!memberId) { toast.error("연결할 회원을 선택해주세요."); return; }
 
-    setLinking(pendingUserId);
+    setLinking(authUserId);
     const res = await fetch("/api/auth/link-member", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ pendingUserId, memberId }),
+      body: JSON.stringify({ authUserId, memberId }),
     });
     const body = await res.json().catch(() => null);
     setLinking(null);
