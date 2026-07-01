@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Dropdown, DropdownItem } from "@/components/ui/Dropdown";
 import { toast } from "@/components/ui/Toast";
 import { AttendanceToggle } from "@/components/attendance/AttendanceToggle";
+import { SessionGuestSection } from "@/components/attendance/SessionGuestSection";
 import { MemberAttendanceCard } from "@/components/attendance/MemberAttendanceCard";
 import { getDisambiguatedName } from "@/lib/member-display";
 import { MATCH_SESSION_DAY_LABEL, fetchActiveSessions } from "@/lib/match-session-label";
@@ -539,6 +540,16 @@ function AttendancePageInner() {
               )}
             </p>
           </div>
+
+          {/* 게스트 참석자 — 읽기 전용 */}
+          {selectedSession && (
+            <div className="mb-4">
+              <SessionGuestSection
+                sessionId={selectedSession.id}
+                editable={false}
+              />
+            </div>
+          )}
 
           {/* 카드를 누르면 그 상태로 명단을 좁혀 본다. 이미 선택된 카드를 다시
               누르면 "전체"로 돌아간다(토글) — 한 번 더 누르는 것 외에 별도

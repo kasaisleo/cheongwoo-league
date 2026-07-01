@@ -25,6 +25,7 @@ export default function NewMatchPage() {
   const router = useRouter();
   const [members, setMembers] = useState<Member[]>([]);
   const [guests, setGuests] = useState<Guest[]>([]);
+  const [sessionGuestIds, setSessionGuestIds] = useState<string[]>([]); // 현재 매치 지정 게스트 IDs
   const [sessions, setSessions] = useState<AttendanceSession[]>([]);
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
   const [attendees, setAttendees] = useState<SessionAttendees>({ attending: [], undecided: [] });
@@ -64,8 +65,20 @@ export default function NewMatchPage() {
     ]);
     setMembers(memberData ?? []);
     setGuests(guestData ?? []);
+  // 세션 선택 시 지정 게스트 IDs 초기화 (세션 선택 후 loadSessionGuestIds 호출)
     setSessions(sessionList);
     setLoading(false);
+  }
+
+  /** 선택된 매치의 지정 게스트 IDs 로드 */
+  async function loadSessionGuestIds(sessionId: string) {
+    try {
+      const res = await fetch(`/api/admin/session-guests?sessionId=${sessionId}`);
+      const body = await res.json().catch(() => null);
+      if (res.ok) {
+        setSessionGuestIds((body.sessionGuests ?? []).map((sg: { guest_id: string }) => sg.guest_id));
+      }
+    } catch { /* 조회 실패해도 경기 입력은 가능 */ }
   }
 
   /** 새 매치(출석 세션) 생성 후 자동 선택 */
@@ -103,7 +116,7 @@ export default function NewMatchPage() {
     setNewSessionTitle("");
   }
 
-  /** 세션 선택 시 attendee 목록 로딩 */
+  /** 세션 선택 시 attendee 목록 + 지정 게스트 로딩 */
   async function handleSessionSelect(sessionId: string) {
     setSelectedSessionId(sessionId);
     const supabase = createClient();

@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Dropdown, DropdownItem } from "@/components/ui/Dropdown";
 import { toast } from "@/components/ui/Toast";
 import { AttendanceToggle } from "@/components/attendance/AttendanceToggle";
+import { SessionGuestSection } from "@/components/attendance/SessionGuestSection";
 import { getDisambiguatedName } from "@/lib/member-display";
 import { MATCH_SESSION_DAY_LABEL, fetchActiveSessions } from "@/lib/match-session-label";
 import type { AttendanceStatus, AttendanceSession, Member } from "@/lib/supabase/database.types";
@@ -465,6 +466,14 @@ function AdminAttendanceInner() {
               })}
             </div>
           </div>
+
+          {/* ── 게스트 참석자 (관리자 편집 모드) ──────── */}
+          {selectedSession.status !== "archived" && (
+            <SessionGuestSection
+              sessionId={selectedSession.id}
+              editable={true}
+            />
+          )}
 
           {/* ── 출석 명단 ──────────────────────────────── */}
           {loadingRows ? (

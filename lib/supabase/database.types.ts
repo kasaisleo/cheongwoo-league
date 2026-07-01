@@ -214,6 +214,16 @@ export interface Guest {
   created_at: string;
 }
 
+export interface SessionGuest {
+  id: string;
+  session_id: string;
+  guest_id: string;
+  added_by: string | null;
+  created_at: string;
+  /** join용 — 조회 시 guests 테이블 join */
+  guest?: Pick<Guest, "id" | "name" | "phone" | "is_active">;
+}
+
 export interface GuestWithStats extends Guest {
   win_rate: number;
 }
