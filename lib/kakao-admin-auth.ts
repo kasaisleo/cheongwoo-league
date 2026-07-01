@@ -19,10 +19,15 @@ import type { PermissionRole } from "@/lib/supabase/database.types";
  */
 
 export const KAKAO_ADMIN_ROLES: PermissionRole[] = ["manager", "admin", "master"];
+export const KAKAO_MASTER_ROLE: PermissionRole = "master";
 
 function isAdminRole(role: PermissionRole | null | undefined): boolean {
   if (!role) return false;
   return (KAKAO_ADMIN_ROLES as string[]).includes(role);
+}
+
+function isMasterRole(role: PermissionRole | null | undefined): boolean {
+  return role === KAKAO_MASTER_ROLE;
 }
 
 /** 서버 컴포넌트/Route Handler 전용 */
@@ -39,6 +44,25 @@ export async function isKakaoAdminServer(): Promise<boolean> {
       .maybeSingle();
 
     return isAdminRole(member?.permission_role);
+  } catch {
+    return false;
+  }
+}
+
+/** 카카오 master 여부 확인 (서버 컴포넌트용) */
+export async function isKakaoMasterServer(): Promise<boolean> {
+  try {
+    const supabase = createClient();
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return false;
+
+    const { data: member } = await supabase
+      .from("members")
+      .select("permission_role")
+      .eq("auth_user_id", session.user.id)
+      .maybeSingle();
+
+    return isMasterRole(member?.permission_role);
   } catch {
     return false;
   }

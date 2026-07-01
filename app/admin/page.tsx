@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getAdminRole } from "@/lib/admin-auth";
-import { isKakaoAdminServer } from "@/lib/kakao-admin-auth";
+import { isKakaoAdminServer, isKakaoMasterServer } from "@/lib/kakao-admin-auth";
 import { AdminLoginForm } from "@/components/admin/AdminLoginForm";
 import { FullSignOutButton } from "@/components/admin/FullSignOutButton";
 
@@ -54,7 +54,10 @@ async function getAdminDashboardData() {
 export default async function AdminPage() {
   const cookieRole = getAdminRole();
   const kakaoAdmin = await isKakaoAdminServer();
+  const kakaoMaster = await isKakaoMasterServer();
   const isAuthenticated = cookieRole !== null || kakaoAdmin;
+  // 시스템 설정 접근: owner(쿠키) 또는 master(카카오)
+  const isOwnerOrMaster = cookieRole === "owner" || kakaoMaster;
 
   if (!isAuthenticated) {
     return <AdminLoginForm />;
@@ -170,7 +173,8 @@ export default async function AdminPage() {
         </p>
         <div className="overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50">
           {[
-            { href: "/attendance", label: "출석 관리", sub: "세션 생성 · 명단 확정" },
+            ...(isOwnerOrMaster ? [{ href: "/admin/settings", label: "시스템 설정", sub: "Owner 계정 · 권한 관리" }] : []),
+            { href: "/admin/attendance", label: "출석 관리", sub: "세션 생성 · 명단 확정" },
             { href: "/members", label: "회원 관리", sub: "선수 명단 · 정보 수정" },
             { href: "/members/import", label: "명단 가져오기", sub: "CSV · XLSX 일괄 등록" },
             { href: "/admin/auth-link", label: "회원 연결", sub: "카카오 로그인 연결 대기자" },
