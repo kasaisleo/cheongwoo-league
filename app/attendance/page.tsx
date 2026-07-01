@@ -421,129 +421,25 @@ function AttendancePageInner() {
         <div className="flex items-center gap-1.5">
           <Link
             href="/attendance/history"
-            className="flex h-10 w-10 items-center justify-center rounded-full border border-line-200 bg-line-100 text-line-700 transition-colors hover:bg-line-200"
+            className="flex h-10 w-10 items-center justify-center rounded-sm border border-line-200/40 bg-line-50 text-line-700 transition-colors hover:bg-line-200"
             aria-label="출석 히스토리 보기"
           >
             <span className="text-base">🕓</span>
           </Link>
 
-          {/* 관리자 메뉴 — 운영진에게만 노출 */}
+          {/* 운영진 → /admin/attendance 이동 */}
           {isAdmin && (
-            <Dropdown
-              align="right"
-              triggerClassName="flex h-10 w-10 items-center justify-center rounded-full border border-line-200 bg-line-100 text-line-700 transition-colors hover:bg-line-200"
-              trigger={<span className="text-lg">⚙</span>}
+            <Link
+              href="/admin/attendance"
+              className="flex h-10 items-center rounded-sm border border-clay-400/60 px-2.5 text-xs font-semibold text-clay-400 transition-colors hover:bg-clay-400/5"
             >
-              {(close) => (
-                <div className="space-y-0.5">
-                  <DropdownItem onClick={() => handleCreateWeeklySessions(close)}>
-                    이번 주 세션 생성
-                  </DropdownItem>
-                  <DropdownItem
-                    onClick={() => {
-                      setCustomDate((prev) => (prev < todayString() ? todayString() : prev));
-                      setShowCustomForm(true);
-                      close();
-                    }}
-                  >
-                    휴일매치/이벤트매치 생성
-                  </DropdownItem>
-                  {selectedSessionId && selectedSession && (
-                    <>
-                      <div className="my-1 h-px bg-line-200" />
-                      {selectedSession.status === "open" && (
-                        <DropdownItem
-                          disabled={processingSessionId === selectedSessionId}
-                          onClick={() => handleSessionStatusChange(selectedSessionId, "closed", close)}
-                        >
-                          명단 확정
-                        </DropdownItem>
-                      )}
-                      {selectedSession.status === "closed" && (
-                        <DropdownItem
-                          disabled={processingSessionId === selectedSessionId}
-                          onClick={() => handleSessionStatusChange(selectedSessionId, "archived", close)}
-                        >
-                          매치 보관
-                        </DropdownItem>
-                      )}
-                    </>
-                  )}
-                </div>
-              )}
-            </Dropdown>
+              출석 관리 →
+            </Link>
           )}
         </div>
       </header>
 
-      {showCustomForm && isAdmin && (
-        <div className="mb-4 space-y-3 overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50 p-4">
-          <div className="flex items-center justify-between">
-            <p className="text-sm font-bold uppercase tracking-wide text-clay-400">휴일매치/이벤트매치 생성</p>
-            <button
-              type="button"
-              onClick={() => setShowCustomForm(false)}
-              className="text-xs font-semibold text-line-500"
-            >
-              닫기
-            </button>
-          </div>
-          <div className="w-full overflow-hidden">
-            <label className="mb-1 block text-xs font-semibold text-line-600">날짜 *</label>
-            <input
-              type="date"
-              value={customDate}
-              min={todayString()}
-              onChange={(e) => setCustomDate(e.target.value)}
-              className="box-border block h-11 w-full min-w-0 max-w-full rounded-lg border border-line-200 bg-line-25 px-3 text-sm text-line-900"
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-semibold text-line-600">구분 *</label>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => setCustomDay("holiday")}
-                className={`flex-1 rounded-lg border py-2 text-sm font-semibold ${
-                  customDay === "holiday"
-                    ? "border-clay-400 bg-clay-400 text-line-25"
-                    : "border-line-200 text-line-600"
-                }`}
-              >
-                휴일매치
-              </button>
-              <button
-                type="button"
-                onClick={() => setCustomDay("custom")}
-                className={`flex-1 rounded-lg border py-2 text-sm font-semibold ${
-                  customDay === "custom"
-                    ? "border-clay-400 bg-clay-400 text-line-25"
-                    : "border-line-200 text-line-600"
-                }`}
-              >
-                이벤트매치
-              </button>
-            </div>
-          </div>
-          <div className="w-full">
-            <label className="mb-1 block text-xs font-semibold text-line-600">제목 *</label>
-            <input
-              value={customTitle}
-              onChange={(e) => setCustomTitle(e.target.value)}
-              placeholder="예: 광복절 특별 매치, 청우회 VS 망원클럽 친선전"
-              className="box-border block h-11 w-full max-w-full rounded-lg border border-line-200 bg-line-25 px-3 text-sm text-line-900 placeholder:text-line-400"
-            />
-          </div>
-          <button
-            type="button"
-            disabled={creatingCustom}
-            onClick={handleCreateCustomSession}
-            className="h-11 w-full rounded-lg bg-clay-400 text-sm font-bold text-line-25 transition-colors disabled:opacity-40"
-          >
-            {creatingCustom ? "생성 중..." : "세션 생성"}
-          </button>
-        </div>
-      )}
+      
 
       {/* 세션 선택 — 드롭다운 방식. 휴일매치/이벤트매치가 늘어나도 화면이 밀리지 않음 */}
       {loadingSessions ? (
@@ -551,9 +447,7 @@ function AttendancePageInner() {
       ) : openSessions.length === 0 ? (
         <div className="mb-4 rounded-[14px] border border-line-200/40 bg-line-50 p-8 text-center">
           <p className="font-display text-xs font-bold uppercase tracking-widest text-line-500">
-            {isAdmin
-              ? "현재 진행 중인 출석 세션이 없어요. 우측 상단 ⚙ 메뉴에서 세션을 만들어주세요."
-              : "현재 진행 중인 출석 세션이 없어요."}
+            "현재 진행 중인 출석 세션이 없어요."
           </p>
         </div>
       ) : (
@@ -632,43 +526,6 @@ function AttendancePageInner() {
                 </span>
               )}
             </p>
-            {isAdmin && selectedSession && (
-              <div className="flex gap-1.5">
-                {selectedSession.status === "open" && (
-                  <button
-                    type="button"
-                    disabled={processingSessionId === selectedSessionId}
-                    onClick={() => handleSessionStatusChange(selectedSessionId, "closed")}
-                    className="rounded-full border border-line-200 px-2.5 py-1 text-[11px] font-semibold text-line-600 disabled:opacity-40"
-                  >
-                    명단 확정
-                  </button>
-                )}
-                {selectedSession.status === "closed" && (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() => setEditingClosedSession((v) => !v)}
-                      className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold ${
-                        editingClosedSession
-                          ? "border-clay-400 bg-clay-400 text-line-25"
-                          : "border-line-200 text-line-600"
-                      }`}
-                    >
-                      {editingClosedSession ? "수정 완료" : "명단 수정"}
-                    </button>
-                    <button
-                      type="button"
-                      disabled={processingSessionId === selectedSessionId}
-                      onClick={() => handleSessionStatusChange(selectedSessionId, "archived")}
-                      className="rounded-full border border-line-200 px-2.5 py-1 text-[11px] font-semibold text-line-600 disabled:opacity-40"
-                    >
-                      매치 보관
-                    </button>
-                  </>
-                )}
-              </div>
-            )}
           </div>
 
           {/* 카드를 누르면 그 상태로 명단을 좁혀 본다. 이미 선택된 카드를 다시
