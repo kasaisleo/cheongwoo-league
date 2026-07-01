@@ -378,3 +378,29 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   line-height: 1.2;
   text-shadow: none;
 }
+
+/* ── 섹션 타이틀 (한글 UI 텍스트 전용) ─────────────────────────────
+ * "다음 일정", "최근 경기", "전체보기" 등 회원이 읽는 UI 텍스트.
+ * Noto Sans KR 사용. Oswald(font-display) 사용 금지.
+ * ─────────────────────────────────────────────────────────────────── */
+.section-title-kr {
+  font-family: "Noto Sans KR", system-ui, sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.3;
+  text-transform: none;
+}
+
+/* ── 하단 네비 라벨 ──────────────────────────────────────────────────
+ * 홈 / 출석 / 경기 / 회원 / 마이 — 한글 정보 텍스트.
+ * Noto Sans KR 사용. Oswald(font-display) + uppercase 사용 금지.
+ * ─────────────────────────────────────────────────────────────────── */
+.nav-label-kr {
+  font-family: "Noto Sans KR", system-ui, sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+  text-transform: none;
+}

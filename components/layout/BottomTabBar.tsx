@@ -16,11 +16,11 @@ import { usePathname } from "next/navigation";
  */
 
 const TABS = [
-  { href: "/", label: "Home", icon: HomeIcon },
+  { href: "/", label: "홈", icon: HomeIcon },
   { href: "/attendance", label: "출석", icon: CalendarIcon },
   { href: "/matches", label: "경기", icon: MatchIcon },
   { href: "/members", label: "회원", icon: UsersIcon },
-  { href: "/mypage", label: "My", icon: PersonIcon },
+  { href: "/mypage", label: "마이", icon: PersonIcon },
 ];
 
 export function BottomTabBar() {
@@ -57,7 +57,7 @@ export function BottomTabBar() {
                 }`}
               />
               <span
-                className={`font-display text-[10px] font-bold uppercase tracking-wider transition-colors ${
+                className={`nav-label-kr transition-colors ${
                   isActive ? "text-clay-400" : "text-line-500"
                 }`}
               >
