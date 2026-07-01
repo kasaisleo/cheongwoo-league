@@ -99,8 +99,8 @@ export function EditMatchPageClient({ match }: { match: DisplayMatch }) {
       {/* 헤더 */}
       <header className="mb-5 flex items-center justify-between">
         <div>
-          <p className="eyebrow-en text-clay-400">Admin · Matches</p>
-          <h1 className="headline-kr text-4xl text-line-900">경기 수정</h1>
+          <p className="eyebrow-en text-clay-400">Admin · Match Record</p>
+          <h1 className="headline-kr text-4xl text-line-900">경기 기록 수정</h1>
         </div>
         <Link href="/admin/matches"
           className="rounded-sm border border-line-200/40 px-2.5 py-1.5 text-xs font-semibold text-line-500 hover:text-line-700">

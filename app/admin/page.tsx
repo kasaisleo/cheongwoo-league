@@ -156,7 +156,7 @@ export default async function AdminPage() {
         <p className="mb-2 font-display text-[10px] font-bold uppercase tracking-widest text-line-500">Quick Actions</p>
         <div className="grid grid-cols-2 gap-2">
           {[
-            { href: "/admin/matches/new", label: "경기 입력", sub: "Match Result", accent: "clay" },
+            { href: "/admin/matches/new", label: "매치 생성", sub: "New Match",    accent: "clay" },
             { href: "/admin/members/new?type=member", label: "회원 등록", sub: "New Member", accent: "line" },
             { href: "/admin/guests", label: "게스트 관리", sub: "Guest List", accent: "line" },
             { href: "/admin/share", label: "공유센터", sub: "Share Links", accent: "gold" },
@@ -180,7 +180,7 @@ export default async function AdminPage() {
         <div className="overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50">
           {[
             ...(isOwnerOrMaster ? [{ href: "/admin/settings", label: "시스템 설정", sub: "Owner 계정 · 권한 관리" }] : []),
-            { href: "/admin/matches",    label: "경기 관리",    sub: "경기 입력 · 기록 조회" },
+            { href: "/admin/matches",    label: "경기 기록",    sub: "매치 목록 · 수정 · 삭제" },
             { href: "/admin/attendance", label: "출석 관리",    sub: "세션 생성 · 명단 확정" },
             { href: "/members", label: "회원 관리", sub: "선수 명단 · 정보 수정" },
             { href: "/admin/guests", label: "게스트 관리", sub: "방문 게스트 · 정회원 전환" },

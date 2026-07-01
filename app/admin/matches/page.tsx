@@ -206,7 +206,7 @@ export default async function AdminMatchesPage({ searchParams }: PageProps) {
       <header className="mb-5 flex items-center justify-between">
         <div>
           <p className="eyebrow-en text-clay-400">Admin · Matches</p>
-          <h1 className="headline-kr text-4xl text-line-900">경기 관리</h1>
+          <h1 className="headline-kr text-4xl text-line-900">경기 기록</h1>
         </div>
         <Link href="/admin"
           className="rounded-sm border border-line-200/40 px-2.5 py-1.5 text-xs font-semibold text-line-500 hover:text-line-700">
@@ -215,7 +215,7 @@ export default async function AdminMatchesPage({ searchParams }: PageProps) {
       </header>
 
       <p className="mb-5 text-sm text-line-500">
-        경기 결과를 입력, 확인, 수정하고 최근 경기 기록을 관리합니다.
+        매치 기록을 확인하고 수정합니다. 신규 매치는 매치 생성에서 입력합니다.
       </p>
 
       {/* 빠른 작업 */}
@@ -225,7 +225,7 @@ export default async function AdminMatchesPage({ searchParams }: PageProps) {
         </p>
         <div className="grid grid-cols-3 gap-2">
           {[
-            { href: "/admin/matches/new", label: "경기 입력", sub: "New Match",   accent: "clay" },
+            { href: "/admin/matches/new", label: "매치 생성", sub: "New Match",   accent: "clay" },
             { href: "/matches",     label: "공개 경기", sub: "Public View", accent: "line" },
             { href: "/admin/share", label: "공유센터",  sub: "Share Links", accent: "gold" },
           ].map((item) => (

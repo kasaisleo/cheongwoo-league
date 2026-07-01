@@ -154,8 +154,9 @@ export default function NewMatchPage() {
     <main className="px-4 pt-6 pb-10">
       {/* ── 헤더 ─────────────────────────────────────────── */}
       <header className="mb-5">
-        <p className="eyebrow-en text-clay-400">Match Result</p>
-        <h1 className="headline-kr text-4xl text-line-900">경기 결과 입력</h1>
+        <p className="eyebrow-en text-clay-400">Admin · New Match</p>
+        <h1 className="headline-kr text-4xl text-line-900">매치 생성</h1>
+        <p className="mt-1 text-sm text-line-500">청우회 리그 매치를 생성하고 경기 기록을 입력합니다.</p>
       </header>
 
       {/* ── 세션 선택 ─────────────────────────────────────── */}
@@ -172,7 +173,7 @@ export default function NewMatchPage() {
             trigger={
               <>
                 <span className="text-sm font-semibold text-line-900">
-                  {selectedSessionLabel ?? "세션을 선택해주세요"}
+                  {selectedSessionLabel ?? "출석 세션을 선택해주세요"}
                 </span>
                 <span className="text-line-500 text-xs">▼</span>
               </>
