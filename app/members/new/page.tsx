@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { useAdminRole } from "@/lib/hooks/useAdminRole";
+import { useAdminAccess } from "@/lib/hooks/useAdminAccess";
 import type { MemberRole, MemberType } from "@/lib/supabase/database.types";
 
 const ROLES: MemberRole[] = [
@@ -45,8 +45,8 @@ export default function NewMemberPage() {
   // Step에서는 UI만 막아 정상적인 사용 흐름에서 manager가 직책을 지정하지
   // 못하게 한다. role이 아직 로딩 중(null)이면 일단 비활성으로 둔다 —
   // EditMemberModal과 동일한 보수적 기본값.
-  const adminRole = useAdminRole();
-  const isOwner = adminRole === "owner";
+  const adminAccess = useAdminAccess();
+  const isOwner = adminAccess?.isOwner ?? false;
   const [name, setName] = useState("");
   const [nickname, setNickname] = useState("");
   const [phoneDigits, setPhoneDigits] = useState("");

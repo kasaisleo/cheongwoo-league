@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { getAdminRole } from "@/lib/admin-auth";
-import { isKakaoAdminServer, isKakaoMasterServer } from "@/lib/kakao-admin-auth";
+import { getAdminAccessServer } from "@/lib/admin-permissions";
 import { AdminLoginForm } from "@/components/admin/AdminLoginForm";
 import { FullSignOutButton } from "@/components/admin/FullSignOutButton";
 
@@ -52,20 +51,13 @@ async function getAdminDashboardData() {
 }
 
 export default async function AdminPage() {
-  // 인증 상태 — 에러가 나더라도 false로 처리해 빈 화면 방지
-  let cookieRole: ReturnType<typeof getAdminRole> = null;
-  let kakaoAdmin = false;
-  let kakaoMaster = false;
-
-  try { cookieRole = getAdminRole(); } catch { /* 쿠키 없음 */ }
-  try { kakaoAdmin = await isKakaoAdminServer(); } catch { /* 세션 없음 */ }
-  try { kakaoMaster = await isKakaoMasterServer(); } catch { /* 세션 없음 */ }
-
-  const isAuthenticated = cookieRole !== null || kakaoAdmin;
-  const isOwnerOrMaster = cookieRole === "owner" || kakaoMaster;
+  // 통합 권한 헬퍼 — 단일 진실 공급원
+  const access = await getAdminAccessServer();
+  const { isAdmin, isOwner, cookieRole } = access;
+  const isOwnerOrMaster = isOwner; // 하위 호환 별칭
 
   // ── 미인증: 로그인 화면 ────────────────────────────
-  if (!isAuthenticated) {
+  if (!isAdmin) {
     return (
       <main className="px-4 pt-10 pb-10">
         <header className="mb-8 text-center">

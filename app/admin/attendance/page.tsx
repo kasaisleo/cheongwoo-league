@@ -10,7 +10,7 @@ import { toast } from "@/components/ui/Toast";
 import { AttendanceToggle } from "@/components/attendance/AttendanceToggle";
 import { getDisambiguatedName } from "@/lib/member-display";
 import { MATCH_SESSION_DAY_LABEL, fetchActiveSessions } from "@/lib/match-session-label";
-import { useIsAdminCombined } from "@/lib/hooks/useIsAdminCombined";
+import { useAdminAccess } from "@/lib/hooks/useAdminAccess";
 import type { AttendanceStatus, AttendanceSession, Member } from "@/lib/supabase/database.types";
 
 /**
@@ -43,13 +43,14 @@ function AdminAttendanceInner() {
   const initialSessionId = searchParams.get("session_id");
   const supabase = useMemo(() => createClient(), []);
 
-  const isAdmin = useIsAdminCombined(); // null=로딩, true=관리자, false=비관리자
+  const access = useAdminAccess(); // null=로딩
+  const isAdmin = access?.isAdmin ?? null;
 
   // 미인증 상태 처리 — null(로딩) 구간은 authChecked가 false로 유지
   const [authChecked, setAuthChecked] = useState(false);
   useEffect(() => {
-    if (isAdmin !== null) setAuthChecked(true);
-  }, [isAdmin]);
+    if (access !== null) setAuthChecked(true);
+  }, [access]);
 
   const [openSessions, setOpenSessions] = useState<AttendanceSession[]>([]);
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);

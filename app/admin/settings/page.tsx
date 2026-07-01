@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useAdminAccess } from "@/lib/hooks/useAdminAccess";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -32,44 +33,37 @@ export default function SettingsPage() {
   const [promoting, setPromoting] = useState(false);
   const [promoteResult, setPromoteResult] = useState<{ success?: string; error?: string } | null>(null);
 
+  const adminAccess = useAdminAccess();
+
   useEffect(() => {
-    async function loadAuthState() {
-      // 1. 쿠키 세션 역할 확인
-      const statusRes = await fetch("/api/auth/status");
-      const statusData = await statusRes.json();
-
-      // 2. 카카오 세션 + permission_role 확인
-      const supabase = createClient();
+    if (adminAccess === null) return; // 로딩 중
+    if (!adminAccess.isOwner) {
+      router.replace("/admin");
+      return;
+    }
+    // adminAccess에서 필요한 정보 추출해 auth 상태 설정
+    async function loadKakaoName() {
+      const supabase = (await import("@/lib/supabase/client")).createClient();
       const { data: { session } } = await supabase.auth.getSession();
-      let kakaoPermission: string | null = null;
       let kakaoName: string | null = null;
-      let memberId: string | null = null;
-
       if (session) {
         const { data: member } = await supabase
           .from("members")
-          .select("id, name, permission_role")
+          .select("name")
           .eq("auth_user_id", session.user.id)
           .maybeSingle();
-        kakaoPermission = member?.permission_role ?? null;
         kakaoName = member?.name ?? null;
-        memberId = member?.id ?? null;
       }
-
-      const cookieRole = statusData?.role ?? null;
-      const isOwner = cookieRole === "owner";
-      const isMaster = kakaoPermission === "master";
-
-      // 접근 권한 없으면 /admin 으로
-      if (!isOwner && !isMaster) {
-        router.replace("/admin");
-        return;
-      }
-
-      setAuth({ cookieRole, kakaoPermission, kakaoName, memberId, loading: false });
+      setAuth({
+        cookieRole: adminAccess!.cookieRole,
+        kakaoPermission: adminAccess!.kakaoRole,
+        kakaoName,
+        memberId: adminAccess!.memberId,
+        loading: false,
+      });
     }
-    loadAuthState();
-  }, [router]);
+    loadKakaoName();
+  }, [adminAccess, router]);
 
   async function handlePromoteOwner() {
     setPromoting(true);
