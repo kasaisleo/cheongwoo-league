@@ -202,7 +202,7 @@ function AttendancePageInner() {
         setMySessionStatus(prev);
         toast.error(data?.error ?? "출석 변경에 실패했습니다.");
       } else {
-        const LABEL: Record<AttendanceStatus, string> = { attending: "참석", undecided: "미정", absent: "불참" };
+        const LABEL: Record<AttendanceStatus, string> = { attending: "출석", undecided: "미정", absent: "불참" };
         toast.success(`${LABEL[status]}으로 변경되었습니다.`);
         // 전체 명단 통계 갱신을 위해 rows 재조회
         await refreshMyStatus(selectedSessionId, myMemberId);
@@ -609,13 +609,31 @@ function AttendancePageInner() {
 
           {viewMode === "member" && (
             <>
-              <div className="mb-3">
+              <div className="mb-3 space-y-2">
                 <input
                   value={memberQuery}
                   onChange={(e) => setMemberQuery(e.target.value)}
                   placeholder="이름, 닉네임으로 검색"
                   className="box-border block h-11 w-full min-w-0 max-w-full rounded-sm border border-line-200/40 bg-line-50 px-3 text-sm text-line-900 placeholder:text-line-500"
                 />
+                {/* 필터 칩 — 전체/출석/미정/불참 */}
+                <div className="flex gap-1.5">
+                  {(["all", "attending", "undecided", "absent"] as const).map((f) => {
+                    const FILTER_LABELS: Record<string, string> = { all: "전체", attending: "출석", undecided: "미정", absent: "불참" };
+                    const isActive = statusFilter === f;
+                    return (
+                      <button key={f} type="button"
+                        onClick={() => setStatusFilter(f === "all" ? "all" : f as AttendanceStatus)}
+                        className={`rounded-sm border px-2.5 py-1 text-xs font-semibold transition-colors ${
+                          isActive
+                            ? "border-clay-400/60 bg-clay-400/10 text-clay-400"
+                            : "border-line-200/40 text-line-500"
+                        }`}>
+                        {FILTER_LABELS[f]}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
               {loadingRows ? (
                 <p className="text-center text-sm text-line-400">불러오는 중...</p>
@@ -648,7 +666,7 @@ function AttendancePageInner() {
                               : "amber"
                         }
                       >
-                        {status === "attending" ? "참석" : status === "absent" ? "불참" : "미정"}
+                        {status === "attending" ? "출석" : status === "absent" ? "불참" : "미정"}
                       </Badge>
                     </Card>
                   ))}
