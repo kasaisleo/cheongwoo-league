@@ -223,7 +223,13 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   }
 }
 
-.cw-loader-wrap {
+/* ── inline variant ─────────────────────────────────────────────────
+ * app/loading.tsx, app/admin/loading.tsx 전용.
+ * 페이지 영역 안에서 전체 높이 중앙 정렬.
+ * background 없음 — 부모(body: bg-line-50) 그대로 사용.
+ * position: fixed / inset-0 / z-index 절대 사용하지 않음.
+ * ─────────────────────────────────────────────────────────────────── */
+.cw-loader-inline {
   display: flex;
   min-height: 100svh;
   flex-direction: column;
@@ -233,7 +239,10 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   animation: cwLoaderFadeIn 0.35s ease both;
 }
 
-/* overlay variant — fixed dimmed 전체 화면 */
+/* ── overlay variant ─────────────────────────────────────────────────
+ * 클라이언트 컴포넌트의 저장/삭제/업데이트 처리 중에만 사용.
+ * Next.js loading.tsx에서 사용 금지.
+ * ─────────────────────────────────────────────────────────────────── */
 .cw-loader-overlay {
   position: fixed;
   inset: 0;
