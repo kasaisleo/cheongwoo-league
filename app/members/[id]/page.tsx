@@ -76,7 +76,7 @@ export default async function MemberDetailPage({ params }: MemberDetailPageProps
       <Card className="mb-4 overflow-hidden p-0 text-center">
         <div className="border-b-2 border-clay-400 bg-line-200/40 px-5 pb-5 pt-6">
           <div className="mb-1 flex items-center justify-center gap-1.5">
-            <h1 className="font-display text-2xl font-bold uppercase tracking-tight text-line-900">{typedMember.name}</h1>
+            <h1 className="name-kr text-line-900">{typedMember.name}</h1>
           </div>
           <div className="mb-2 flex flex-wrap items-center justify-center gap-1.5">
             {typedMember.nickname && typedMember.nickname !== typedMember.name && (

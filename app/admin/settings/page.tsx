@@ -243,7 +243,7 @@ export default function SettingsPage() {
                 <span className={`rounded-sm border px-2 py-0.5 text-[10px] font-bold ${ROLE_CHIP[m.permission_role] ?? ROLE_CHIP.member}`}>
                   {ROLE_LABEL[m.permission_role] ?? m.permission_role}
                 </span>
-                <p className="text-sm font-semibold text-line-900">{m.name}</p>
+                <p className="name-kr-sm text-line-900">{m.name}</p>
                 <p className="text-xs text-line-500">({m.nickname})</p>
                 <span className={`ml-auto rounded-sm border px-1.5 py-0.5 text-[9px] font-semibold ${
                   m.auth_user_id ? "border-line-200/40 bg-line-100 text-line-500" : "border-line-200/30 text-line-400"}`}>
@@ -394,7 +394,7 @@ function MemberRoleAssigner({ onSuccess }: { onSuccess: () => void }) {
               <input type="radio" name="assign-member" value={m.id}
                 checked={selectedId === m.id} onChange={() => setSelectedId(m.id)}
                 className="accent-clay-400" />
-              <span className="text-sm font-semibold text-line-900">{m.name}</span>
+              <span className="name-kr-sm text-line-900">{m.name}</span>
               <span className="text-xs text-line-500">({m.nickname})</span>
               <span className={`ml-auto rounded-sm border px-1.5 py-0.5 text-[9px] font-semibold ${ROLE_CHIP[m.permission_role] ?? ROLE_CHIP.member}`}>
                 {ROLE_LABEL[m.permission_role] ?? m.permission_role}

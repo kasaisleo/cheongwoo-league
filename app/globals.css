@@ -316,3 +316,39 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   font-size: 13px;
   text-align: center;
 }
+
+/* ── 선수명 / 회원명 전용 타이포그래피 ─────────────────────────────
+ * headline-kr는 페이지 제목 전용.
+ * 사람 이름에는 headline-kr 사용 금지. name-kr-* 클래스 사용.
+ * text-shadow / drop-shadow 적용 금지.
+ * ─────────────────────────────────────────────────────────────────── */
+
+/* Champion 카드 1위 선수명 */
+.name-kr-lg {
+  font-family: var(--font-headline-kr);
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 1.12;
+  text-shadow: none;
+}
+
+/* 회원 상세 / 주요 회원명 */
+.name-kr {
+  font-family: var(--font-headline-kr);
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  line-height: 1.15;
+  text-shadow: none;
+}
+
+/* 리스트 / 카드 내부 / 2위 이하 선수명 */
+.name-kr-sm {
+  font-family: var(--font-headline-kr);
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  line-height: 1.2;
+  text-shadow: none;
+}

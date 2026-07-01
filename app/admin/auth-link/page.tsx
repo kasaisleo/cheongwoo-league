@@ -155,7 +155,7 @@ export default function AuthLinkPage() {
                   <span className="rounded-sm border border-clay-400/40 bg-clay-400/10 px-2 py-0.5 text-[10px] font-bold text-clay-400">
                     KAKAO
                   </span>
-                  <p className="text-sm font-semibold text-line-900">
+                  <p className="name-kr-sm text-line-900">
                     {user.nickname ?? "이름 없음"}
                   </p>
                 </div>

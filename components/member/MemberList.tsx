@@ -202,7 +202,7 @@ export function MemberList({ members }: MemberListProps) {
                   {/* 이름 + 전적 */}
                   <div className="min-w-0">
                     <div className="flex items-center gap-1.5">
-                      <p className="truncate text-sm font-semibold text-line-900">
+                      <p className="name-kr-sm truncate text-line-900">
                         {member.name}
                       </p>
                       {member.nickname && member.nickname !== member.name && (

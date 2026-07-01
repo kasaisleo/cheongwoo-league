@@ -429,7 +429,7 @@ function AdminAttendanceInner() {
                   <div key={row.member.id}
                     className={`flex items-center gap-3 border-l-4 ${accentColor} px-4 py-3 ${isLast ? "" : "border-b border-line-200/30"}`}>
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-semibold text-line-900">{label}</p>
+                      <p className="name-kr-sm truncate text-line-900">{label}</p>
                       {row.member.role && (
                         <span className="rounded-sm bg-line-200 px-1.5 py-0.5 text-[9px] font-semibold text-line-600">
                           {row.member.role}

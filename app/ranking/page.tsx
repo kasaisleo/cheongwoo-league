@@ -69,7 +69,7 @@ export default async function RankingPage() {
                   {/* name + stats */}
                   <div className="flex items-end justify-between gap-3">
                     <div>
-                      <p className="font-display text-2xl font-bold tracking-tight text-line-900">
+                      <p className="name-kr-lg text-line-900">
                         {first.name}
                       </p>
                       <p className="mt-1 text-xs">
@@ -114,7 +114,7 @@ export default async function RankingPage() {
                           </span>
                           <RankMovement delta={0} showFlat={false} />
                         </div>
-                        <p className="truncate text-sm font-semibold text-line-900">
+                        <p className="name-kr-sm truncate text-line-900">
                           {member.name}
                         </p>
                         <p className="mt-0.5 text-[10px]">

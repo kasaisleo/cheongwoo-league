@@ -175,9 +175,9 @@ function TeamRow({
 
       <div className="min-w-0 flex-1">
         <p
-          className={`truncate text-sm ${
+          className={`name-kr-sm truncate ${
             isWinner
-              ? "font-semibold text-line-900"
+              ? "text-line-900"
               : "font-normal text-line-500"
           }`}
         >
