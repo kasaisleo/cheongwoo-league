@@ -89,7 +89,7 @@ export function MemberAuthBar() {
     const supabase = createClient();
     // Supabase Auth 세션만 종료한다 — cw_admin_session 쿠키는 건드리지 않는다.
     await supabase.auth.signOut();
-    router.push("/login");
+    router.push("/");
   }
 
   // 초기화 전에는 아무것도 렌더링하지 않아 레이아웃 깜빡임을 방지한다.

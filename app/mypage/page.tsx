@@ -84,7 +84,7 @@ export default function MyPage() {
         // 1) 세션 확인 — 미로그인이면 /login으로 이동
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) {
-          router.replace("/login");
+          router.replace("/");
           return;
         }
 
