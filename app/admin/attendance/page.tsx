@@ -279,6 +279,8 @@ function AdminAttendanceInner() {
         <div className="mb-4 overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50 p-4">
           <p className="mb-3 font-display text-[10px] font-bold uppercase tracking-widest text-line-500">New Match</p>
           <div className="space-y-2">
+            <input type="text" placeholder="매치명 (예: 7월 토요 정기매치)" value={customTitle} onChange={(e) => setCustomTitle(e.target.value)}
+              className="h-10 w-full rounded-sm border border-line-200/40 bg-line-100 px-3 text-sm text-line-900 placeholder:text-line-500" />
             <input type="date" value={customDate} onChange={(e) => setCustomDate(e.target.value)}
               className="h-10 w-full rounded-sm border border-line-200/40 bg-line-100 px-3 text-sm text-line-900" />
             <select value={customDay} onChange={(e) => setCustomDay(e.target.value as any)}
@@ -288,8 +290,6 @@ function AdminAttendanceInner() {
               <option value="holiday">휴일매치</option>
               <option value="custom">이벤트매치</option>
             </select>
-            <input type="text" placeholder="매치명 (예: 7월 토요정기매치)" value={customTitle} onChange={(e) => setCustomTitle(e.target.value)}
-              className="h-10 w-full rounded-sm border border-line-200/40 bg-line-100 px-3 text-sm text-line-900 placeholder:text-line-500" />
             <div className="flex gap-2">
               <button type="button" onClick={() => setShowCustomForm(false)}
                 className="flex-1 rounded-sm border border-line-200/40 py-2 text-sm font-semibold text-line-500">취소</button>
