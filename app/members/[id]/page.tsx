@@ -6,6 +6,7 @@ import { MemberDetailActions } from "@/components/member/MemberDetailActions";
 import { BackButton } from "@/components/member/BackButton";
 import { CallButton } from "@/components/member/CallButton";
 import { MemberTimelineSection } from "@/components/member/MemberTimelineSection";
+import { MemberStatusSection } from "@/components/member/MemberStatusSection";
 import { MemberHighlightCareer } from "@/components/member/MemberHighlightCareer";
 import { MemberCareerProvider } from "@/components/member/MemberCareerProvider";
 import { isAdminSession } from "@/lib/admin-auth";
@@ -54,7 +55,9 @@ export default async function MemberDetailPage({ params }: MemberDetailPageProps
 
   const typedMember = member as MemberWithStats;
   const matchesPlayed = typedMember.wins + typedMember.losses;
-  const isAdmin = isAdminSession();
+  const { getAdminAccessServer } = await import("@/lib/admin-permissions");
+  const access = await getAdminAccessServer();
+  const isAdmin = access.isAdmin;
 
   // 회원 상세의 "최근 활동" 데이터는 모두 이 회원 한 명 기준으로 독립적으로 조회한다.
   // 4개 쿼리를 병렬로 실행 — 서로 의존성이 없으므로 동시에 보내도 안전하다.
@@ -72,11 +75,28 @@ export default async function MemberDetailPage({ params }: MemberDetailPageProps
       <main className="px-4 pt-6">
         <BackButton />
         <MemberDetailActions member={typedMember} />
+        {isAdmin && (
+          <MemberStatusSection
+            memberId={typedMember.id}
+            memberName={typedMember.name}
+            isActive={typedMember.is_active}
+            deletedAt={(typedMember as any).deleted_at ?? null}
+            permissionRole={typedMember.permission_role}
+            isKakaoLinked={typedMember.is_kakao_linked}
+          />
+        )}
 
       <Card className="mb-4 overflow-hidden p-0 text-center">
         <div className="border-b-2 border-clay-400 bg-line-200/40 px-5 pb-5 pt-6">
           <div className="mb-1 flex items-center justify-center gap-1.5">
-            <h1 className="name-kr text-line-900">{typedMember.name}</h1>
+            <div className="flex items-center gap-2">
+              <h1 className="name-kr text-line-900">{typedMember.name}</h1>
+              {!typedMember.is_active && (
+                <span className="rounded-sm border border-line-300/40 bg-line-200 px-2 py-0.5 text-[10px] font-semibold text-line-500">
+                  탈퇴
+                </span>
+              )}
+            </div>
           </div>
           <div className="mb-2 flex flex-wrap items-center justify-center gap-1.5">
             {typedMember.nickname && typedMember.nickname !== typedMember.name && (

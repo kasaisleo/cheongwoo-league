@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { requireAdmin, requireRole, getAdminRole } from "@/lib/admin-auth";
+import { getAdminAccessServer } from "@/lib/admin-permissions";
 import { isValidPlayerBackground } from "@/lib/constants/member-timeline";
 import type { MemberGrade, MemberRole } from "@/lib/supabase/database.types";
 
@@ -55,8 +56,8 @@ interface RouteParams {
  * 쉬워진다. 이 체크는 DB 조회보다 먼저 수행해 부분 처리가 생기지 않게 한다.
  */
 export async function PUT(request: NextRequest, { params }: RouteParams) {
-  const authError = requireAdmin();
-  if (authError) return authError;
+  const putAccess = await getAdminAccessServer();
+  if (!putAccess.isAdmin) return Response.json({ error: "관리자 권한이 필요합니다." }, { status: 403 });
 
   const memberId = params.id;
   const body = (await request.json()) as UpdateMemberBody;
@@ -229,8 +230,8 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
  * 추후 카카오 로그인 도입 시에도 본인 삭제는 허용하지 않는다 — 항상 owner만 가능.
  */
 export async function DELETE(_request: NextRequest, { params }: RouteParams) {
-  const authError = requireRole("owner");
-  if (authError) return authError;
+  const access = await getAdminAccessServer();
+  if (!access.isOwner) return Response.json({ error: "회원 탈퇴 처리는 master/owner만 가능합니다." }, { status: 403 });
 
   const memberId = params.id;
   const supabase = createServiceClient();
@@ -247,7 +248,7 @@ export async function DELETE(_request: NextRequest, { params }: RouteParams) {
 
   const { error: updateError } = await supabase
     .from("members")
-    .update({ is_active: false })
+    .update({ is_active: false, deleted_at: new Date().toISOString() })
     .eq("id", memberId);
 
   if (updateError) {

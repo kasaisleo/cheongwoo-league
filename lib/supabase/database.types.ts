@@ -58,6 +58,8 @@ export interface Member {
   created_at: string;
   /** Step 10-1: Supabase Auth(auth.users)와 연결된 식별자. null이면 카카오 로그인으로 아직 연결되지 않은 회원. */
   auth_user_id: string | null;
+  /** soft delete 처리 시각. null = 활성 회원, 값이 있으면 탈퇴 처리된 회원. */
+  deleted_at: string | null;
 }
 
 export interface MemberWithStats extends Member {
