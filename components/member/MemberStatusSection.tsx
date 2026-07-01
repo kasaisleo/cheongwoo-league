@@ -27,7 +27,7 @@ interface MemberStatusSectionProps {
   isActive: boolean;
   deletedAt: string | null;
   permissionRole: string;
-  isKakaoLinked: boolean;
+  authUserId: string | null;  // auth_user_id 기준 — /api/admin/unlink-member와 동일
 }
 
 /**
@@ -47,11 +47,12 @@ export function MemberStatusSection({
   isActive,
   deletedAt,
   permissionRole,
-  isKakaoLinked: initialKakaoLinked,
+  authUserId,
 }: MemberStatusSectionProps) {
   const router = useRouter();
   const adminAccess = useAdminAccess();
-  const [isKakaoLinked, setIsKakaoLinked] = useState(initialKakaoLinked);
+  // auth_user_id 기준 — /api/admin/unlink-member가 null 처리하는 컬럼과 동일
+  const [isKakaoLinked, setIsKakaoLinked] = useState(Boolean(authUserId));
   const [unlinking, setUnlinking] = useState(false);
   const [confirming, setConfirming] = useState(false);
 

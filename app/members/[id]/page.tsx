@@ -82,7 +82,7 @@ export default async function MemberDetailPage({ params }: MemberDetailPageProps
             isActive={typedMember.is_active}
             deletedAt={(typedMember as any).deleted_at ?? null}
             permissionRole={typedMember.permission_role}
-            isKakaoLinked={typedMember.is_kakao_linked}
+            authUserId={(typedMember as any).auth_user_id ?? null}
           />
         )}
 
