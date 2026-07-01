@@ -223,21 +223,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   }
 }
 
-/* ── inline variant ─────────────────────────────────────────────────
- * app/loading.tsx, app/admin/loading.tsx 전용.
- * 페이지 영역 안에서 전체 높이 중앙 정렬.
- * background 없음 — 부모(body: bg-line-50) 그대로 사용.
- * position: fixed / inset-0 / z-index 절대 사용하지 않음.
- * ─────────────────────────────────────────────────────────────────── */
-.cw-loader-inline {
-  display: flex;
-  min-height: 100svh;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 2.5rem 1rem;
-  animation: cwLoaderFadeIn 0.35s ease both;
-}
+/* inline variant: 부모 <main>이 중앙 정렬 담당 — 별도 클래스 없음 */
 
 /* ── overlay variant ─────────────────────────────────────────────────
  * 클라이언트 컴포넌트의 저장/삭제/업데이트 처리 중에만 사용.
@@ -308,6 +294,8 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 }
 
 .cw-loader-eyebrow {
+  display: block;
+  width: 100%;
   margin: 0 0 5px;
   color: #c8f230;
   font-family: "Helvetica Neue", Arial, sans-serif;
@@ -315,11 +303,16 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   font-weight: 700;
   letter-spacing: 0.18em;
   text-transform: uppercase;
+  text-align: center;
+  white-space: nowrap;
 }
 
 .cw-loader-message {
+  display: block;
+  width: 100%;
   margin: 0;
   color: #7b8fa8;
   font-family: "Helvetica Neue", Arial, sans-serif;
   font-size: 13px;
+  text-align: center;
 }
