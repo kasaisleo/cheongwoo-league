@@ -27,6 +27,13 @@ import type { AttendanceStatus, AttendanceSession, Member } from "@/lib/supabase
 
 const MIN_REQUIRED_PLAYERS = 4;
 
+const SESSION_TYPE_BADGE: Record<string, { label: string; cls: string }> = {
+  saturday: { label: "정기", cls: "border-clay-400/40 bg-clay-400/10 text-clay-400" },
+  sunday:   { label: "정기", cls: "border-clay-400/40 bg-clay-400/10 text-clay-400" },
+  holiday:  { label: "휴일", cls: "border-gold/40 bg-gold/10 text-gold" },
+  custom:   { label: "이벤트", cls: "border-line-300/40 bg-line-100 text-line-500" },
+};
+
 function todayString(): string {
   return new Date().toISOString().slice(0, 10);
 }
@@ -59,7 +66,7 @@ function AdminAttendanceInner() {
   // 커스텀 매치 생성 폼
   const [showCustomForm, setShowCustomForm] = useState(false);
   const [customDate, setCustomDate] = useState(todayString());
-  const [customDay, setCustomDay] = useState<"holiday" | "custom">("custom");
+  const [customDay, setCustomDay] = useState<"saturday" | "sunday" | "holiday" | "custom">("saturday");
   const [customTitle, setCustomTitle] = useState("");
   const [creatingCustom, setCreatingCustom] = useState(false);
 
@@ -174,10 +181,9 @@ function AdminAttendanceInner() {
 
   async function handleCreateCustomSession() {
     if (!customDate) { toast.error("날짜를 선택해주세요."); return; }
-    if (customDate < todayString()) { toast.error("오늘 이전 날짜는 선택할 수 없습니다."); return; }
     if (!customTitle.trim()) { toast.error("제목을 입력해주세요."); return; }
     setCreatingCustom(true);
-    const res = await fetch("/api/attendance-sessions/custom", {
+    const res = await fetch("/api/admin/sessions", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ sessionDate: customDate, sessionDay: customDay, title: customTitle.trim() }),
@@ -271,16 +277,18 @@ function AdminAttendanceInner() {
       {/* ── 커스텀 매치 생성 폼 ──────────────────────── */}
       {showCustomForm && (
         <div className="mb-4 overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50 p-4">
-          <p className="mb-3 font-display text-[10px] font-bold uppercase tracking-widest text-line-500">New Session</p>
+          <p className="mb-3 font-display text-[10px] font-bold uppercase tracking-widest text-line-500">New Match</p>
           <div className="space-y-2">
-            <input type="date" value={customDate} min={todayString()} onChange={(e) => setCustomDate(e.target.value)}
+            <input type="date" value={customDate} onChange={(e) => setCustomDate(e.target.value)}
               className="h-10 w-full rounded-sm border border-line-200/40 bg-line-100 px-3 text-sm text-line-900" />
-            <select value={customDay} onChange={(e) => setCustomDay(e.target.value as "holiday" | "custom")}
+            <select value={customDay} onChange={(e) => setCustomDay(e.target.value as any)}
               className="h-10 w-full rounded-sm border border-line-200/40 bg-line-100 px-3 text-sm text-line-900">
+              <option value="saturday">토요 정기매치</option>
+              <option value="sunday">일요 정기매치</option>
               <option value="holiday">휴일매치</option>
               <option value="custom">이벤트매치</option>
             </select>
-            <input type="text" placeholder="세션 제목" value={customTitle} onChange={(e) => setCustomTitle(e.target.value)}
+            <input type="text" placeholder="매치명 (예: 7월 토요정기매치)" value={customTitle} onChange={(e) => setCustomTitle(e.target.value)}
               className="h-10 w-full rounded-sm border border-line-200/40 bg-line-100 px-3 text-sm text-line-900 placeholder:text-line-500" />
             <div className="flex gap-2">
               <button type="button" onClick={() => setShowCustomForm(false)}
@@ -299,8 +307,8 @@ function AdminAttendanceInner() {
         <p className="text-center text-sm text-line-400">세션을 불러오는 중...</p>
       ) : openSessions.length === 0 ? (
         <div className="mb-4 rounded-[14px] border border-line-200/40 bg-line-50 p-8 text-center">
-          <p className="font-display text-xs font-bold uppercase tracking-widest text-line-500">No Sessions</p>
-          <p className="mt-1 text-xs text-line-400">⚙ 메뉴에서 세션을 먼저 만들어주세요.</p>
+          <p className="font-display text-xs font-bold uppercase tracking-widest text-line-500">No Matches</p>
+          <p className="mt-1 text-xs text-line-400">⚙ 메뉴에서 매치를 먼저 생성해주세요.</p>
         </div>
       ) : (
         <div className="mb-4">
@@ -309,10 +317,17 @@ function AdminAttendanceInner() {
             triggerClassName="flex w-full items-center justify-between rounded-sm border border-line-200/40 bg-line-50 px-3 py-2.5"
             trigger={
               <>
-                <span className="text-sm font-semibold text-line-900">
-                  {selectedSession
-                    ? `${selectedSession.title}${selectedSessionIsCustom ? "" : ` · ${MATCH_SESSION_DAY_LABEL[selectedSession.session_day]}`} · ${selectedSession.session_date}`
-                    : "세션 선택"}
+                <span className="flex items-center gap-2">
+                  <span className="text-sm font-semibold text-line-900">
+                    {selectedSession
+                      ? `${selectedSession.title} · ${selectedSession.session_date}`
+                      : "매치 선택"}
+                  </span>
+                  {selectedSession && SESSION_TYPE_BADGE[selectedSession.session_day] && (
+                    <span className={`rounded-sm border px-1.5 py-0.5 text-[9px] font-semibold ${SESSION_TYPE_BADGE[selectedSession.session_day].cls}`}>
+                      {SESSION_TYPE_BADGE[selectedSession.session_day].label}
+                    </span>
+                  )}
                 </span>
                 <span className="text-xs text-line-500">▼</span>
               </>
@@ -320,13 +335,23 @@ function AdminAttendanceInner() {
           >
             {(close) => (
               <div className="max-h-64 overflow-y-auto">
-                {openSessions.map((session) => (
-                  <DropdownItem key={session.id} onClick={() => { setSelectedSessionId(session.id); close(); }}>
-                    <span className={selectedSessionId === session.id ? "text-clay-400" : ""}>
-                      {session.title} · {session.session_date}
-                    </span>
-                  </DropdownItem>
-                ))}
+                {openSessions.map((session) => {
+                  const badge = SESSION_TYPE_BADGE[session.session_day];
+                  return (
+                    <DropdownItem key={session.id} onClick={() => { setSelectedSessionId(session.id); close(); }}>
+                      <div className="flex items-center gap-2">
+                        <span className={selectedSessionId === session.id ? "text-clay-400" : ""}>
+                          {session.title} · {session.session_date}
+                        </span>
+                        {badge && (
+                          <span className={`rounded-sm border px-1.5 py-0.5 text-[9px] font-semibold ${badge.cls}`}>
+                            {badge.label}
+                          </span>
+                        )}
+                      </div>
+                    </DropdownItem>
+                  );
+                })}
               </div>
             )}
           </Dropdown>
