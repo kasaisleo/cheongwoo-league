@@ -25,7 +25,7 @@ const PLAYER_BG_DETAIL_OPTIONS = PLAYER_BACKGROUND_OPTIONS.filter(
   (o) => o.value !== "none"
 );
 
-const ROLES = ["회장", "부회장", "총무", "경기이사"] as const;
+const ROLES = ["회장", "부회장", "총무", "경기이사", "홍보이사", "섭외이사", "운영이사"] as const;
 const NO_ROLE = "__NO_ROLE__";
 
 // ── 유틸 ─────────────────────────────────────────────────
