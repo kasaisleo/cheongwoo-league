@@ -35,19 +35,21 @@ export async function getAdminAccessServer(): Promise<AdminAccess> {
   } catch { /* 쿠키 없음 */ }
 
   // 2. 카카오 세션 + permission_role 확인
+  //    getSession()은 미들웨어 updateSession 없이 만료될 수 있음.
+  //    getUser()는 JWT를 서버에서 직접 검증 → 더 신뢰할 수 있음.
   let kakaoRole: string | null = null;
   let userId: string | null = null;
   let memberId: string | null = null;
 
   try {
     const supabase = createClient();
-    const { data: { session } } = await supabase.auth.getSession();
-    if (session) {
-      userId = session.user.id;
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      userId = user.id;
       const { data: member } = await supabase
         .from("members")
         .select("id, permission_role")
-        .eq("auth_user_id", session.user.id)
+        .eq("auth_user_id", user.id)
         .maybeSingle();
       if (member) {
         kakaoRole = member.permission_role;
