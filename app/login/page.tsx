@@ -1,51 +1,58 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 import { Card } from "@/components/ui/Card";
 import { createClient } from "@/lib/supabase/client";
 
 /**
  * 일반 회원용 카카오 로그인 진입점.
  *
- * 변경 (리다이렉트 정책 수정):
- *   이미 카카오 세션이 있는 사용자가 /login에 접근하면 "/"로 이동.
- *   세션 확인 중에는 로딩 상태로 처리해 레이아웃 깜빡임 방지.
+ * returnUrl 지원:
+ *   /login?returnUrl=/mypage → 로그인 성공 후 /mypage 복귀
+ *   returnUrl은 /auth/callback의 redirectTo state로 전달됨.
  *
- * 로그인 플로우 (신규):
- *   카카오 동의 → /auth/callback → members.auth_user_id 연결 확인
- *     → 연결됨: "/"
- *     → 미연결: "/auth/pending"
- *
- * admin-auth.ts와 완전히 분리 — 이 파일은 admin-auth.ts를 참조하지 않음.
+ * 보안: returnUrl은 같은 origin 내부 경로만 허용 (외부 URL redirect 방지).
  */
-export default function LoginPage() {
+function LoginInner() {
   const router = useRouter();
-  const [checking, setChecking] = useState(true);  // 세션 확인 중 로딩
+  const searchParams = useSearchParams();
+  const returnUrl = searchParams.get("returnUrl") ?? "";
+  // 같은 origin 내부 경로만 허용 — 절대 URL이나 외부 도메인 차단
+  const safeReturn = returnUrl.startsWith("/") && !returnUrl.startsWith("//") ? returnUrl : "/";
+
+  const [checking, setChecking] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // 이미 로그인된 세션이 있으면 "/" 로 이동
+  // 이미 로그인된 세션이 있으면 returnUrl 또는 "/"로 이동
   useEffect(() => {
     const supabase = createClient();
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
-        router.replace("/");
+        router.replace(safeReturn || "/");
       } else {
         setChecking(false);
       }
     });
-  }, [router]);
+  }, [router, safeReturn]);
 
   async function handleKakaoLogin() {
     setLoading(true);
     setError(null);
 
     const supabase = createClient();
+    // returnUrl을 /auth/callback의 state 파라미터로 전달
+    // Supabase는 redirectTo에 붙은 쿼리를 그대로 콜백 URL에 포함시킨다
+    const callbackUrl = safeReturn
+      ? `${window.location.origin}/auth/callback?returnUrl=${encodeURIComponent(safeReturn)}`
+      : `${window.location.origin}/auth/callback`;
+
     const { error: oauthError } = await supabase.auth.signInWithOAuth({
       provider: "kakao",
       options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
+        redirectTo: callbackUrl,
         scopes: "profile_nickname profile_image",
       },
     });
@@ -56,7 +63,6 @@ export default function LoginPage() {
     }
   }
 
-  // 세션 확인 중 — 빈 화면으로 깜빡임 방지
   if (checking) {
     return (
       <main className="flex min-h-screen flex-col items-center justify-center px-6">
@@ -68,10 +74,7 @@ export default function LoginPage() {
   return (
     <main className="flex min-h-screen flex-col items-center justify-center px-6">
       <Card className="w-full max-w-sm border-clay-400/30 p-6">
-        <div className="mb-1 inline-flex items-center gap-2">
-          <span className="h-2 w-2 rounded-full bg-clay-400" />
-          <p className="eyebrow-en text-clay-400">Mapo Cheongwoo Club</p>
-        </div>
+        <p className="eyebrow-en text-clay-400">Mapo Cheongwoo Club</p>
         <h1 className="headline-kr mt-1 text-2xl text-line-900">회원 로그인</h1>
         <p className="mt-1 text-sm text-line-500">
           카카오 계정으로 로그인하면 내 회원 정보를 확인할 수 있어요.
@@ -89,5 +92,17 @@ export default function LoginPage() {
         {error && <p className="mt-3 text-sm text-fault-400">{error}</p>}
       </Card>
     </main>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <main className="flex min-h-screen items-center justify-center">
+        <p className="text-sm text-line-500">확인 중...</p>
+      </main>
+    }>
+      <LoginInner />
+    </Suspense>
   );
 }
