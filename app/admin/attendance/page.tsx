@@ -10,7 +10,6 @@ import { toast } from "@/components/ui/Toast";
 import { AttendanceToggle } from "@/components/attendance/AttendanceToggle";
 import { getDisambiguatedName } from "@/lib/member-display";
 import { MATCH_SESSION_DAY_LABEL, fetchActiveSessions } from "@/lib/match-session-label";
-import { useAdminAccess } from "@/lib/hooks/useAdminAccess";
 import type { AttendanceStatus, AttendanceSession, Member } from "@/lib/supabase/database.types";
 
 /**
@@ -43,14 +42,8 @@ function AdminAttendanceInner() {
   const initialSessionId = searchParams.get("session_id");
   const supabase = useMemo(() => createClient(), []);
 
-  const access = useAdminAccess(); // null=로딩
-  const isAdmin = access?.isAdmin ?? null;
-
-  // 미인증 상태 처리 — null(로딩) 구간은 authChecked가 false로 유지
-  const [authChecked, setAuthChecked] = useState(false);
-  useEffect(() => {
-    if (access !== null) setAuthChecked(true);
-  }, [access]);
+  // 권한 체크는 layout.tsx의 requireAdminAccess()가 서버에서 처리.
+  // 이 컴포넌트까지 도달했으면 이미 관리자 확인 완료.
 
   const [openSessions, setOpenSessions] = useState<AttendanceSession[]>([]);
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
@@ -222,17 +215,6 @@ function AdminAttendanceInner() {
     const matchesStatus = statusFilter === "all" || row.status === statusFilter;
     return matchesQuery && matchesStatus;
   });
-
-  // 미인증 접근 차단
-  if (authChecked && isAdmin === false) {
-    return (
-      <main className="flex min-h-[60vh] flex-col items-center justify-center px-6 text-center">
-        <p className="font-display text-xs font-bold uppercase tracking-widest text-line-500">Access Denied</p>
-        <p className="mt-1 text-sm text-line-500">운영진 로그인이 필요합니다.</p>
-        <Link href="/admin" className="mt-4 text-sm font-semibold text-clay-400">운영진 로그인 →</Link>
-      </main>
-    );
-  }
 
   return (
     <main className="px-4 pt-6 pb-10">
