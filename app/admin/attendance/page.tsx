@@ -58,6 +58,7 @@ function AdminAttendanceInner() {
   const [loadingSessions, setLoadingSessions] = useState(true);
   const [loadingRows, setLoadingRows] = useState(false);
   const [updatingMemberId, setUpdatingMemberId] = useState<string | null>(null);
+  const [pendingStatus, setPendingStatus] = useState<AttendanceStatus | null>(null);
   const [processingSessionId, setProcessingSessionId] = useState<string | null>(null);
   const [editingClosedSession, setEditingClosedSession] = useState(false);
   const [memberQuery, setMemberQuery] = useState("");
@@ -137,6 +138,7 @@ function AdminAttendanceInner() {
     const previousStatus = rows.find((r) => r.member.id === memberId)?.status ?? "undecided";
     setRows((prev) => prev.map((row) => row.member.id === memberId ? { ...row, status: newStatus } : row));
     setUpdatingMemberId(memberId);
+    setPendingStatus(newStatus);
 
     let succeeded = false;
     let newAttendanceId: string | null = null;
@@ -161,6 +163,7 @@ function AdminAttendanceInner() {
     }
 
     setUpdatingMemberId(null);
+    setPendingStatus(null);
     if (!succeeded) {
       setRows((prev) => prev.map((row) => row.member.id === memberId ? { ...row, status: previousStatus } : row));
       toast.error("출석 변경에 실패했습니다.");
@@ -472,7 +475,7 @@ function AdminAttendanceInner() {
                     </div>
                     <AttendanceToggle value={row.status}
                       onChange={(s) => updateStatus(row.member.id, s)}
-                      loading={isUpdating}
+                      pendingStatus={isUpdating ? pendingStatus : null}
                       disabled={isDisabled} />
                   </div>
                 );
@@ -518,7 +521,7 @@ function AdminAttendanceInner() {
                             </span>
                             <AttendanceToggle value={row.status}
                               onChange={(s) => updateStatus(row.member.id, s)}
-                              loading={isUpdating}
+                              pendingStatus={isUpdating ? pendingStatus : null}
                               disabled={isDisabled}
                               mode="full" />
                           </div>
@@ -554,7 +557,7 @@ function AdminAttendanceInner() {
                           </div>
                           <AttendanceToggle value={row.status}
                             onChange={(s) => updateStatus(row.member.id, s)}
-                            loading={isUpdating}
+                            pendingStatus={isUpdating ? pendingStatus : null}
                             disabled={isDisabled}
                             mode="pending" />
                         </div>

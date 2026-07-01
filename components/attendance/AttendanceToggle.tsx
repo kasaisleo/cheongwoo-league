@@ -6,8 +6,13 @@ interface AttendanceToggleProps {
   value: AttendanceStatus;
   onChange: (status: AttendanceStatus) => void;
   disabled?: boolean;
-  loading?: boolean;   // 요청 중 — 버튼 전체 dim + 현재 버튼 스피너
-  mode?: "full" | "pending"; // full=3버튼, pending=참석/불참만
+  /**
+   * 현재 서버 요청 중인 status.
+   * 이 버튼에 스피너를 표시하고 나머지 버튼은 disabled.
+   * null이면 로딩 없음.
+   */
+  pendingStatus?: AttendanceStatus | null;
+  mode?: "full" | "pending"; // full=참석/미정/불참, pending=참석/불참만
 }
 
 const ACTIVE: Record<AttendanceStatus, string> = {
@@ -31,28 +36,34 @@ export function AttendanceToggle({
   value,
   onChange,
   disabled = false,
-  loading = false,
+  pendingStatus = null,
   mode = "full",
 }: AttendanceToggleProps) {
   const options = mode === "pending" ? PENDING_OPTIONS : FULL_OPTIONS;
+  const isLoading = pendingStatus !== null;
 
   return (
     <div className="flex gap-1.5">
       {options.map((opt) => {
         const isActive  = value === opt.status;
-        const isLoading = loading && isActive;
+        const isSaving  = pendingStatus === opt.status; // 이 버튼이 저장 중
+
         return (
           <button
             key={opt.status}
             type="button"
-            disabled={disabled || loading}
-            onClick={() => onChange(opt.status)}
-            className={`rounded-sm border px-2.5 py-1 text-xs font-semibold transition-colors disabled:opacity-40 ${
-              isActive ? ACTIVE[opt.status] : "border-line-200/40 text-line-500"
-            }`}
+            disabled={disabled || isLoading} // 요청 중에는 모든 버튼 disabled
+            onClick={() => !isSaving && onChange(opt.status)}
+            className={`relative rounded-sm border px-2.5 py-1 text-xs font-semibold transition-colors ${
+              disabled || isLoading ? "opacity-50" : ""
+            } ${isActive ? ACTIVE[opt.status] : "border-line-200/40 text-line-500"}`}
           >
-            {isLoading ? (
-              <span className="inline-block h-3 w-3 animate-spin rounded-full border border-current border-t-transparent" />
+            {isSaving ? (
+              // 저장 중인 버튼에 스피너
+              <span className="flex items-center gap-1">
+                <span className="inline-block h-2.5 w-2.5 animate-spin rounded-full border border-current border-t-transparent" />
+                <span>{opt.label}</span>
+              </span>
             ) : (
               opt.label
             )}
