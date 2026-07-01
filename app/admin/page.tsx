@@ -30,7 +30,7 @@ function AdminLoginForm() {
       return;
     }
 
-    const redirectTo = searchParams.get("redirect") || "/matches/new";
+    const redirectTo = searchParams.get("redirect") || "/";
     router.push(redirectTo);
     router.refresh();
   }

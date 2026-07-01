@@ -1,22 +1,41 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/Card";
 import { createClient } from "@/lib/supabase/client";
 
 /**
- * 일반 회원용 카카오 로그인 진입점. /admin(운영진 비밀번호 로그인)과는
- * 완전히 분리된 별개의 인증 흐름이다 — Step 10 설계 결정에 따라 관리자
- * 인증(lib/admin-auth.ts)과 회원 인증(Supabase Auth + 카카오)을 당분간
- * 분리해서 운영한다. 이 페이지는 admin-auth.ts를 전혀 참조하지 않는다.
+ * 일반 회원용 카카오 로그인 진입점.
  *
- * 로그인 흐름: 카카오 동의 화면 → /auth/callback(서버)에서 세션 교환 및
- * members.auth_user_id 연결 여부 확인 → 결과에 따라 "/" 또는
- * "/auth/pending"으로 이동(이번 Step에서는 전화번호 자동 매칭을 하지 않음).
+ * 변경 (리다이렉트 정책 수정):
+ *   이미 카카오 세션이 있는 사용자가 /login에 접근하면 "/"로 이동.
+ *   세션 확인 중에는 로딩 상태로 처리해 레이아웃 깜빡임 방지.
+ *
+ * 로그인 플로우 (신규):
+ *   카카오 동의 → /auth/callback → members.auth_user_id 연결 확인
+ *     → 연결됨: "/"
+ *     → 미연결: "/auth/pending"
+ *
+ * admin-auth.ts와 완전히 분리 — 이 파일은 admin-auth.ts를 참조하지 않음.
  */
 export default function LoginPage() {
+  const router = useRouter();
+  const [checking, setChecking] = useState(true);  // 세션 확인 중 로딩
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // 이미 로그인된 세션이 있으면 "/" 로 이동
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        router.replace("/");
+      } else {
+        setChecking(false);
+      }
+    });
+  }, [router]);
 
   async function handleKakaoLogin() {
     setLoading(true);
@@ -35,7 +54,15 @@ export default function LoginPage() {
       setLoading(false);
       setError("카카오 로그인을 시작할 수 없습니다. 잠시 후 다시 시도해주세요.");
     }
-    // 성공 시 카카오 동의 화면으로 리다이렉트되므로 여기서 추가로 할 일은 없다.
+  }
+
+  // 세션 확인 중 — 빈 화면으로 깜빡임 방지
+  if (checking) {
+    return (
+      <main className="flex min-h-screen flex-col items-center justify-center px-6">
+        <p className="text-sm text-line-500">확인 중...</p>
+      </main>
+    );
   }
 
   return (
@@ -43,14 +70,12 @@ export default function LoginPage() {
       <Card className="w-full max-w-sm border-clay-400/30 p-6">
         <div className="mb-1 inline-flex items-center gap-2">
           <span className="h-2 w-2 rounded-full bg-clay-400" />
-          <p className="font-score text-xs font-semibold uppercase tracking-[0.2em] text-clay-400">
-            Mapo Cheongwoo Club
-          </p>
+          <p className="eyebrow-en text-clay-400">Mapo Cheongwoo Club</p>
         </div>
-        <h1 className="mt-1 font-display text-2xl font-bold uppercase tracking-tight text-line-900">
-          회원 로그인
-        </h1>
-        <p className="mt-1 text-sm text-line-500">카카오 계정으로 로그인하면 내 회원 정보를 확인할 수 있어요.</p>
+        <h1 className="headline-kr mt-1 text-2xl text-line-900">회원 로그인</h1>
+        <p className="mt-1 text-sm text-line-500">
+          카카오 계정으로 로그인하면 내 회원 정보를 확인할 수 있어요.
+        </p>
 
         <button
           type="button"
