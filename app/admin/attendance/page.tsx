@@ -232,13 +232,7 @@ function AdminAttendanceInner() {
     return matchesQuery && matchesStatus;
   });
 
-  // 이름 검색 필터 (섹션 분리용)
-  const searchedRows = rows.filter((row) => {
-    const label = getDisambiguatedName(row.member, rows.map((r) => r.member));
-    return !memberQuery.trim() || label.toLowerCase().includes(memberQuery.trim().toLowerCase());
-  });
-  const participatingRows = searchedRows.filter((r) => r.status === "attending" || r.status === "absent");
-  const pendingRows = searchedRows.filter((r) => r.status === "undecided");
+
 
   return (
     <main className="px-4 pt-6 pb-10">
@@ -449,131 +443,68 @@ function AdminAttendanceInner() {
             </div>
           </div>
 
-          {/* ── 검색 ─────────────────────────────────── */}
-          <div className="mb-3">
+          {/* ── 검색 + 필터 칩 ───────────────────────── */}
+          <div className="mb-3 space-y-2">
             <input value={memberQuery} onChange={(e) => setMemberQuery(e.target.value)}
               placeholder="이름 검색"
               className="box-border block h-9 w-full rounded-sm border border-line-200/40 bg-line-50 px-3 text-sm text-line-900 placeholder:text-line-500" />
+            <div className="flex gap-1.5">
+              {(["all", "attending", "undecided", "absent"] as const).map((f) => {
+                const LABELS: Record<string, string> = { all: "전체", attending: "출석", undecided: "미정", absent: "불참" };
+                const isActive = statusFilter === f;
+                return (
+                  <button key={f} type="button" onClick={() => setStatusFilter(f === "all" ? "all" : f as AttendanceStatus)}
+                    className={`rounded-sm border px-2.5 py-1 text-xs font-semibold transition-colors ${
+                      isActive
+                        ? "border-clay-400/60 bg-clay-400/10 text-clay-400"
+                        : "border-line-200/40 text-line-500"
+                    }`}>
+                    {LABELS[f]}
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
-          {/* ── 출석 현황 (참여/미참여 분리) ─────────── */}
+          {/* ── 출석 명단 ──────────────────────────────── */}
           {loadingRows ? (
             <p className="text-center text-sm text-line-400">명단을 불러오는 중...</p>
-          ) : statusFilter !== "all" ? (
-            // 통계 탭 필터 선택 시 기존 단일 리스트
+          ) : (
             <div className="overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50">
-              {filteredRows.map((row, idx) => {
+              {filteredRows.length === 0 ? (
+                <div className="p-6 text-center">
+                  <p className="font-display text-[10px] font-bold uppercase tracking-widest text-line-500">No Results</p>
+                  <p className="mt-1 text-sm text-line-400">해당하는 회원이 없습니다.</p>
+                </div>
+              ) : filteredRows.map((row, idx) => {
                 const isLast = idx === filteredRows.length - 1;
                 const label = getDisambiguatedName(row.member, rows.map((r) => r.member));
                 const isUpdating = updatingMemberId === row.member.id;
                 const isDisabled = (selectedSession.status === "closed" && !editingClosedSession) || selectedSession.status === "archived";
+                const accentColor =
+                  row.status === "attending" ? "border-l-gold"
+                  : row.status === "absent"   ? "border-l-line-300"
+                  : "border-l-clay-400";
                 return (
                   <div key={row.member.id}
-                    className={`flex items-center gap-3 px-4 py-3 ${isLast ? "" : "border-b border-line-200/30"}`}>
+                    className={`flex items-center gap-3 border-l-4 ${accentColor} px-4 py-3 ${isLast ? "" : "border-b border-line-200/30"}`}>
                     <div className="min-w-0 flex-1">
                       <p className="name-kr-sm truncate text-line-900">{label}</p>
+                      {row.member.role && (
+                        <span className="rounded-sm bg-line-200 px-1.5 py-0.5 text-[9px] font-semibold text-line-600">
+                          {row.member.role}
+                        </span>
+                      )}
                     </div>
-                    <AttendanceToggle value={row.status}
+                    <AttendanceToggle
+                      value={row.status}
                       onChange={(s) => updateStatus(row.member.id, s)}
                       pendingStatus={isUpdating ? pendingStatus : null}
-                      disabled={isDisabled} />
+                      disabled={isDisabled}
+                    />
                   </div>
                 );
               })}
-              {filteredRows.length === 0 && (
-                <div className="p-6 text-center">
-                  <p className="text-sm text-line-400">해당하는 회원이 없습니다.</p>
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {/* 참여 회원 */}
-              {participatingRows.length > 0 && (
-                <div>
-                  <p className="mb-2 text-[11px] font-semibold text-line-500">
-                    참여 회원 <span className="ml-1 text-line-400">({participatingRows.length})</span>
-                  </p>
-                  <div className="overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50">
-                    {participatingRows.map((row, idx) => {
-                      const isLast = idx === participatingRows.length - 1;
-                      const label = getDisambiguatedName(row.member, rows.map((r) => r.member));
-                      const isUpdating = updatingMemberId === row.member.id;
-                      const isDisabled = (selectedSession.status === "closed" && !editingClosedSession) || selectedSession.status === "archived";
-                      return (
-                        <div key={row.member.id}
-                          className={`flex items-center gap-3 px-4 py-3 ${isLast ? "" : "border-b border-line-200/30"}`}>
-                          <div className="min-w-0 flex-1">
-                            <p className="name-kr-sm truncate text-line-900">{label}</p>
-                            {row.member.role && (
-                              <span className="rounded-sm bg-line-200 px-1.5 py-0.5 text-[9px] font-semibold text-line-600">
-                                {row.member.role}
-                              </span>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className={`rounded-sm border px-2 py-0.5 text-[10px] font-semibold ${
-                              row.status === "attending"
-                                ? "border-gold/40 bg-gold/10 text-gold"
-                                : "border-line-300/40 bg-line-200 text-line-600"
-                            }`}>
-                              {row.status === "attending" ? "참석" : "불참"}
-                            </span>
-                            <AttendanceToggle value={row.status}
-                              onChange={(s) => updateStatus(row.member.id, s)}
-                              pendingStatus={isUpdating ? pendingStatus : null}
-                              disabled={isDisabled}
-                              mode="full" />
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {/* 미참여 회원 */}
-              {pendingRows.length > 0 && (
-                <div>
-                  <p className="mb-2 text-[11px] font-semibold text-line-500">
-                    미참여 회원 <span className="ml-1 text-line-400">({pendingRows.length})</span>
-                  </p>
-                  <div className="overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50">
-                    {pendingRows.map((row, idx) => {
-                      const isLast = idx === pendingRows.length - 1;
-                      const label = getDisambiguatedName(row.member, rows.map((r) => r.member));
-                      const isUpdating = updatingMemberId === row.member.id;
-                      const isDisabled = (selectedSession.status === "closed" && !editingClosedSession) || selectedSession.status === "archived";
-                      return (
-                        <div key={row.member.id}
-                          className={`flex items-center gap-3 px-4 py-3 ${isLast ? "" : "border-b border-line-200/30"}`}>
-                          <div className="min-w-0 flex-1">
-                            <p className="name-kr-sm truncate text-line-500">{label}</p>
-                            {row.member.role && (
-                              <span className="rounded-sm bg-line-200 px-1.5 py-0.5 text-[9px] font-semibold text-line-600">
-                                {row.member.role}
-                              </span>
-                            )}
-                          </div>
-                          <AttendanceToggle value={row.status}
-                            onChange={(s) => updateStatus(row.member.id, s)}
-                            pendingStatus={isUpdating ? pendingStatus : null}
-                            disabled={isDisabled}
-                            mode="pending" />
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {searchedRows.length === 0 && (
-                <div className="rounded-[14px] border border-line-200/40 bg-line-50 p-6 text-center">
-                  <p className="text-sm text-line-400">
-                    {memberQuery ? "검색 결과가 없습니다." : "명단이 없습니다."}
-                  </p>
-                </div>
-              )}
             </div>
           )}
         </>

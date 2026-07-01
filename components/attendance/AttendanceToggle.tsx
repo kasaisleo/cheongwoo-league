@@ -22,13 +22,13 @@ const ACTIVE: Record<AttendanceStatus, string> = {
 };
 
 const FULL_OPTIONS: { status: AttendanceStatus; label: string }[] = [
-  { status: "attending", label: "참석" },
+  { status: "attending", label: "출석" },
   { status: "undecided", label: "미정" },
   { status: "absent",    label: "불참" },
 ];
 
 const PENDING_OPTIONS: { status: AttendanceStatus; label: string }[] = [
-  { status: "attending", label: "참석" },
+  { status: "attending", label: "출석" },
   { status: "absent",    label: "불참" },
 ];
 
