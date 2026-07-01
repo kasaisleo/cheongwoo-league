@@ -1,13 +1,26 @@
-@import url("https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,400&display=swap");
+/*
+ * Font Stack:
+ *   Oswald (Google Fonts)    — 영문 Display / Eyebrow / Score
+ *   Noto Sans KR (Google Fonts) — 한국어 헤드라인 (weight 100~900 지원)
+ *   Inter (Google Fonts)     — 영문 Body / UI
+ *
+ * Step 16-5 검증 결과:
+ *   - Inter는 한글 글리프 없음 → 한국어는 시스템 폰트로 fallback
+ *   - Pretendard: Google Fonts 미지원, 로컬 파일 없음 → 실제 렌더링 안 됨
+ *   - Noto Sans KR: Google Fonts 지원, weight 900까지 — headline-kr에 최적
+ */
+@import url("https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Noto+Sans+KR:wght@400;500;700;800;900&family=Inter:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,400&display=swap");
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  --font-display: "Oswald", "Pretendard", system-ui, sans-serif;
-  --font-body: "Inter", "Pretendard", system-ui, sans-serif;
+  --font-display: "Oswald", system-ui, sans-serif;
+  --font-body: "Inter", "Noto Sans KR", system-ui, sans-serif;
   --font-score: "Oswald", "Roboto Mono", ui-monospace, monospace;
+  /* 한국어 헤드라인 전용 — Step 16-5에서 Noto Sans KR로 확정 */
+  --font-headline-kr: "Noto Sans KR", system-ui, sans-serif;
 }
 
 html {
@@ -46,7 +59,7 @@ body {
  *   - uppercase + tracking-widest — ATP 스타일 그대로
  */
 .headline-kr {
-  font-family: var(--font-body);  /* Inter → 한국어 시스템 폰트 */
+  font-family: var(--font-headline-kr);  /* Noto Sans KR — 한국어 weight 900까지 지원 */
   font-weight: 800;
   letter-spacing: -0.03em;
   line-height: 1.05;
@@ -112,4 +125,167 @@ input[type="date"]::-webkit-date-and-time-value {
 /* 캘린더 아이콘은 남기되, iOS가 그 주변에 강제로 그리는 둥근 버튼 배경만 제거 */
 input[type="date"]::-webkit-calendar-picker-indicator {
   background: transparent;
+}
+
+/* ── 테니스공 바운스 로딩 애니메이션 ────────────────────────────── */
+@keyframes tennis-bounce {
+  0%, 100% {
+    transform: translateY(0);
+    animation-timing-function: cubic-bezier(0.215, 0.61, 0.355, 1);
+  }
+  40% {
+    transform: translateY(-40px);
+    animation-timing-function: cubic-bezier(0.755, 0.05, 0.855, 0.06);
+  }
+  70% {
+    transform: translateY(-18px);
+    animation-timing-function: cubic-bezier(0.215, 0.61, 0.355, 1);
+  }
+  85% {
+    transform: translateY(0);
+    animation-timing-function: cubic-bezier(0.755, 0.05, 0.855, 0.06);
+  }
+  92% {
+    transform: translateY(-6px);
+    animation-timing-function: cubic-bezier(0.215, 0.61, 0.355, 1);
+  }
+}
+
+@keyframes tennis-shadow {
+  0%, 100% {
+    transform: scaleX(1);
+    opacity: 0.35;
+  }
+  40% {
+    transform: scaleX(0.45);
+    opacity: 0.12;
+  }
+  70% {
+    transform: scaleX(0.7);
+    opacity: 0.22;
+  }
+  85% {
+    transform: scaleX(1);
+    opacity: 0.35;
+  }
+  92% {
+    transform: scaleX(0.85);
+    opacity: 0.28;
+  }
+}
+
+@keyframes tennis-seam-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+@keyframes loader-fade-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+/* app/globals.css 에 추가 */
+
+@keyframes cwTennisBallBounce {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-6deg);
+    animation-timing-function: cubic-bezier(0.33, 0, 0.66, 0);
+  }
+
+  50% {
+    transform: translateY(-10px) rotate(10deg);
+    animation-timing-function: cubic-bezier(0.33, 1, 0.66, 1);
+  }
+}
+
+@keyframes cwTennisBallShadow {
+  0%,
+  100% {
+    transform: scaleX(1);
+    opacity: 0.2;
+  }
+
+  50% {
+    transform: scaleX(0.68);
+    opacity: 0.08;
+  }
+}
+
+@keyframes cwLoaderFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.cw-loader-wrap {
+  display: flex;
+  min-height: 220px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-radius: 14px;
+  padding: 2.5rem 1rem;
+  background: #0b1929;
+  animation: cwLoaderFadeIn 0.35s ease both;
+}
+
+.cw-loader-ball-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 1.75rem;
+}
+
+.cw-tennis-ball {
+  position: relative;
+  width: 56px;
+  height: 56px;
+  overflow: hidden;
+  border-radius: 9999px;
+  background: #c8f230;
+  animation: cwTennisBallBounce 1.1s ease-in-out infinite;
+  box-shadow:
+    inset -5px -6px 11px rgba(0, 0, 0, 0.14),
+    inset 3px 4px 7px rgba(255, 255, 255, 0.24);
+}
+
+.cw-tennis-ball-svg {
+  position: absolute;
+  inset: -4px;
+  width: calc(100% + 8px);
+  height: calc(100% + 8px);
+}
+
+.cw-tennis-ball-shadow {
+  width: 46px;
+  height: 5px;
+  margin-top: 5px;
+  border-radius: 9999px;
+  background: #000;
+  opacity: 0.18;
+  filter: blur(3px);
+  animation: cwTennisBallShadow 1.1s ease-in-out infinite;
+}
+
+.cw-loader-eyebrow {
+  margin: 0 0 5px;
+  color: #c8f230;
+  font-family: "Helvetica Neue", Arial, sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.cw-loader-message {
+  margin: 0;
+  color: #7b8fa8;
+  font-family: "Helvetica Neue", Arial, sans-serif;
+  font-size: 13px;
 }
