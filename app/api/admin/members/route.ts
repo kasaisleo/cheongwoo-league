@@ -41,6 +41,7 @@ interface CreateMemberBody {
   district?: string;
   age?: number | null;
   memo?: string;
+  playerBackground?: string;
 }
 
 export async function POST(request: NextRequest) {
@@ -50,7 +51,7 @@ export async function POST(request: NextRequest) {
   }
 
   const body = (await request.json()) as CreateMemberBody;
-  const { name, nickname, phone, grade, memberType, mapoScore, addressFull, district, age, memo } = body;
+  const { name, nickname, phone, grade, memberType, mapoScore, addressFull, district, age, memo, playerBackground } = body;
 
   // 이름 정규화 (내부 공백 제거)
   const normalizedName = normalizeName(name ?? "");
@@ -128,6 +129,7 @@ export async function POST(request: NextRequest) {
       is_dormant: false,
       is_kakao_linked: false,
       auth_user_id: null,
+      player_background: playerBackground ?? "none",
       league_point: 0,
       wins: 0,
       losses: 0,
