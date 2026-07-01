@@ -158,7 +158,7 @@ export default async function AdminPage() {
           {[
             { href: "/matches/new", label: "경기 입력", sub: "Match Result", accent: "clay" },
             { href: "/admin/members/new?type=member", label: "회원 등록", sub: "New Member", accent: "line" },
-            { href: "/admin/members/new?type=guest", label: "게스트 등록", sub: "New Guest", accent: "line" },
+            { href: "/admin/guests", label: "게스트 관리", sub: "Guest List", accent: "line" },
             { href: "/admin/share", label: "공유센터", sub: "Share Links", accent: "gold" },
           ].map((item) => (
             <Link key={item.href} href={item.href}>
@@ -183,6 +183,7 @@ export default async function AdminPage() {
             { href: "/admin/matches",    label: "경기 관리",    sub: "경기 입력 · 기록 조회" },
             { href: "/admin/attendance", label: "출석 관리",    sub: "세션 생성 · 명단 확정" },
             { href: "/members", label: "회원 관리", sub: "선수 명단 · 정보 수정" },
+            { href: "/admin/guests", label: "게스트 관리", sub: "방문 게스트 · 정회원 전환" },
             { href: "/members/import", label: "명단 가져오기", sub: "CSV · XLSX 일괄 등록" },
             { href: "/admin/auth-link", label: "회원 연결", sub: "카카오 로그인 연결 대기자" },
           ].map((item, idx, arr) => (
