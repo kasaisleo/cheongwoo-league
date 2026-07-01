@@ -157,8 +157,8 @@ export default async function AdminPage() {
         <div className="grid grid-cols-2 gap-2">
           {[
             { href: "/matches/new", label: "경기 입력", sub: "Match Result", accent: "clay" },
-            { href: "/members/new", label: "회원 등록", sub: "New Member", accent: "line" },
-            { href: "/guests/new", label: "게스트 등록", sub: "New Guest", accent: "line" },
+            { href: "/admin/members/new?type=member", label: "회원 등록", sub: "New Member", accent: "line" },
+            { href: "/admin/members/new?type=guest", label: "게스트 등록", sub: "New Guest", accent: "line" },
             { href: "/admin/share", label: "공유센터", sub: "Share Links", accent: "gold" },
           ].map((item) => (
             <Link key={item.href} href={item.href}>
