@@ -69,10 +69,8 @@ export default async function AdminMatchesPage({ searchParams }: PageProps) {
     );
   }
 
-  const isOwner = access.isOwner;
-
   return (
-    <main className="px-4 pt-6 pb-10">
+    <main className="px-4 pt-6 pb-28">
       {/* 헤더 */}
       <header className="mb-5 flex items-center justify-between">
         <div>
@@ -194,7 +192,7 @@ export default async function AdminMatchesPage({ searchParams }: PageProps) {
               <div key={match.id} className="relative">
                 <MatchCard match={match} />
                 {/* 경기 수정 링크 */}
-                {isOwner && (
+                {access.isAdmin && (
                   <Link
                     href={`/matches/${match.id}/edit`}
                     className="absolute right-3 top-3 rounded-sm border border-line-200/40 bg-line-50 px-2 py-0.5 text-[10px] font-semibold text-line-500 hover:border-line-300 hover:text-line-700"
