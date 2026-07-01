@@ -237,7 +237,7 @@ export function MemberForm({
             ))}
           </select>
           {!isOwner && (
-            <p className="mt-1 text-[11px] text-line-400">직책 변경은 owner만 가능합니다.</p>
+            <p className="mt-1 text-[11px] text-line-400">직책 변경은 최고관리자만 가능합니다.</p>
           )}
         </div>
       )}

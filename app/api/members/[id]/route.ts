@@ -80,9 +80,9 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
   // 해제하는 경우도 포함) owner 여부를 확인한다 — manager가 role: null을
   // 보내 직책을 지우는 것도 막아야 하므로 "값이 truthy인지"가 아니라
   // "필드가 존재하는지"로 판단한다.
-  if (role !== undefined && getAdminRole() !== "owner") {
+  if (role !== undefined && !putAccess.isOwner) {
     return NextResponse.json(
-      { error: "직책 변경은 owner만 가능합니다." },
+      { error: "직책 변경은 최고관리자만 가능합니다." },
       { status: 403 }
     );
   }
