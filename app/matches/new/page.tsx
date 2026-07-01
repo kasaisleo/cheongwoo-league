@@ -8,7 +8,9 @@ import { ScoreStepper } from "@/components/match/ScoreStepper";
 import { QuickGuestModal } from "@/components/match/QuickGuestModal";
 import { Button } from "@/components/ui/Button";
 import { Dropdown, DropdownItem } from "@/components/ui/Dropdown";
+import { toast } from "@/components/ui/Toast";
 import { MATCH_SESSION_DAY_LABEL, fetchActiveSessions } from "@/lib/match-session-label";
+import type { SessionDay } from "@/lib/supabase/database.types";
 import type { Member, Guest, AttendanceSession } from "@/lib/supabase/database.types";
 
 type GuestModalTarget = "teamAPlayer1" | "teamAPlayer2" | "teamBPlayer1" | "teamBPlayer2";
@@ -41,6 +43,14 @@ export default function NewMatchPage() {
 
   const [guestModalTarget, setGuestModalTarget] = useState<GuestModalTarget | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  // 새 매치 추가 state
+  const [showNewSession, setShowNewSession] = useState(false);
+  const [newSessionTitle, setNewSessionTitle] = useState("");
+  const [newSessionDate, setNewSessionDate] = useState(new Date().toISOString().slice(0, 10));
+  const [newSessionDay, setNewSessionDay] = useState<SessionDay>("saturday");
+  const [creatingSession, setCreatingSession] = useState(false);
+  const [newSessionError, setNewSessionError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => { loadData(); }, []);
@@ -56,6 +66,41 @@ export default function NewMatchPage() {
     setGuests(guestData ?? []);
     setSessions(sessionList);
     setLoading(false);
+  }
+
+  /** 새 매치(출석 세션) 생성 후 자동 선택 */
+  async function handleCreateSession() {
+    if (!newSessionTitle.trim()) { setNewSessionError("매치명을 입력해주세요."); return; }
+    if (!newSessionDate) { setNewSessionError("날짜를 선택해주세요."); return; }
+    setCreatingSession(true); setNewSessionError(null);
+
+    const res = await fetch("/api/admin/sessions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title: newSessionTitle.trim(),
+        sessionDate: newSessionDate,
+        sessionDay: newSessionDay,
+      }),
+    });
+    const body = await res.json().catch(() => null);
+    setCreatingSession(false);
+
+    if (!res.ok) {
+      setNewSessionError(body?.error ?? "매치 추가에 실패했습니다.");
+      return;
+    }
+
+    toast.success("매치가 추가되었습니다.");
+    // 세션 목록 갱신 후 자동 선택
+    const supabase = createClient();
+    const updated = await fetchActiveSessions(supabase);
+    setSessions(updated);
+    if (body.sessionId) {
+      await handleSessionSelect(body.sessionId);
+    }
+    setShowNewSession(false);
+    setNewSessionTitle("");
   }
 
   /** 세션 선택 시 attendee 목록 로딩 */
@@ -154,51 +199,119 @@ export default function NewMatchPage() {
     <main className="px-4 pt-6 pb-10">
       {/* ── 헤더 ─────────────────────────────────────────── */}
       <header className="mb-5">
-        <p className="eyebrow-en text-clay-400">Admin · New Match</p>
-        <h1 className="headline-kr text-4xl text-line-900">매치 생성</h1>
-        <p className="mt-1 text-sm text-line-500">청우회 리그 매치를 생성하고 경기 기록을 입력합니다.</p>
+        <p className="eyebrow-en text-clay-400">Match Result</p>
+        <h1 className="headline-kr text-4xl text-line-900">경기 결과 입력</h1>
+        <p className="mt-1 text-sm text-line-500">생성된 매치를 선택하고 경기 결과를 입력합니다.</p>
       </header>
 
-      {/* ── 세션 선택 ─────────────────────────────────────── */}
-      <div className="mb-8 rounded-[14px] border border-line-200/40 bg-line-50 p-4">
-        <p className="mb-2 text-[11px] font-semibold text-line-500">세션 *</p>
-        {sessions.length === 0 ? (
-          <p className="text-sm text-line-500">
-            선택 가능한 출석 세션이 없어요. 출석 체크 화면에서 세션을 먼저 만들어주세요.
-          </p>
-        ) : (
-          <Dropdown
-            align="left"
-            triggerClassName="flex w-full items-center justify-between rounded-sm border border-line-200/40 bg-line-100 px-3 py-2.5 text-left"
-            trigger={
-              <>
-                <span className="text-sm font-semibold text-line-900">
-                  {selectedSessionLabel ?? "출석 세션을 선택해주세요"}
-                </span>
-                <span className="text-line-500 text-xs">▼</span>
-              </>
-            }
+      {/* ── 출석 기준 매치 선택 ─────────────────────────── */}
+      <div className="mb-8 rounded-[14px] border border-line-200/40 bg-line-50">
+        <div className="flex items-center justify-between border-b border-line-200/30 px-4 py-2.5">
+          <p className="text-[11px] font-semibold text-line-500">매치 *</p>
+          <button
+            type="button"
+            onClick={() => setShowNewSession((v) => !v)}
+            className="rounded-sm border border-clay-400/60 bg-clay-400/10 px-2.5 py-1 text-[10px] font-semibold text-clay-400 hover:bg-clay-400/20"
           >
-            {(close) => (
-              <div className="max-h-64 space-y-0.5 overflow-y-auto">
-                {sessions.map((session) => {
-                  const isCustom = session.session_day === "holiday" || session.session_day === "custom";
-                  return (
-                    <DropdownItem
-                      key={session.id}
-                      onClick={() => { handleSessionSelect(session.id); close(); }}
-                    >
-                      <span className={selectedSessionId === session.id ? "text-clay-400" : ""}>
-                        {MATCH_SESSION_DAY_LABEL[session.session_day]}
-                        {isCustom && ` · ${session.title}`} ({session.session_date})
-                      </span>
-                    </DropdownItem>
-                  );
-                })}
+            {showNewSession ? "취소" : "+ 새 매치 추가"}
+          </button>
+        </div>
+
+        {/* 새 매치 추가 인라인 폼 */}
+        {showNewSession && (
+          <div className="border-b border-line-200/30 bg-line-100/40 px-4 py-4">
+            <p className="mb-3 text-sm font-bold text-line-900">새 매치 추가 (소급 입력)</p>
+            <div className="space-y-3">
+              <div>
+                <label className="mb-1 block text-xs font-semibold text-line-600">
+                  매치명 <span className="text-fault-400">*</span>
+                </label>
+                <input
+                  value={newSessionTitle}
+                  onChange={(e) => setNewSessionTitle(e.target.value)}
+                  placeholder="예: 6월 토요정기매치"
+                  className="h-10 w-full rounded-sm border border-line-200/40 bg-line-50 px-3 text-sm text-line-900 placeholder:text-line-400"
+                />
               </div>
-            )}
-          </Dropdown>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="mb-1 block text-xs font-semibold text-line-600">
+                    날짜 <span className="text-fault-400">*</span>
+                  </label>
+                  <input
+                    type="date"
+                    value={newSessionDate}
+                    onChange={(e) => setNewSessionDate(e.target.value)}
+                    className="h-10 w-full rounded-sm border border-line-200/40 bg-line-50 px-3 text-sm text-line-900"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-semibold text-line-600">매치 타입</label>
+                  <select
+                    value={newSessionDay}
+                    onChange={(e) => setNewSessionDay(e.target.value as any)}
+                    className="h-10 w-full rounded-sm border border-line-200/40 bg-line-50 px-3 text-sm text-line-900"
+                  >
+                    <option value="saturday">토요정기매치</option>
+                    <option value="sunday">일요정기매치</option>
+                    <option value="holiday">휴일매치</option>
+                    <option value="custom">이벤트매치</option>
+                  </select>
+                </div>
+              </div>
+              {newSessionError && <p className="text-[11px] text-fault-400">{newSessionError}</p>}
+              <button
+                type="button"
+                disabled={creatingSession}
+                onClick={handleCreateSession}
+                className="h-10 w-full rounded-sm bg-clay-400 text-sm font-bold text-line-25 disabled:opacity-40"
+              >
+                {creatingSession ? "추가 중..." : "매치 추가"}
+              </button>
+            </div>
+          </div>
         )}
+
+        {/* 드롭다운 */}
+        <div className="px-4 py-3">
+          {sessions.length === 0 ? (
+            <p className="text-sm text-line-500">
+              등록된 매치가 없어요. 출석 관리 화면에서 먼저 매치를 생성해주세요.
+            </p>
+          ) : (
+            <Dropdown
+              align="left"
+              triggerClassName="flex w-full items-center justify-between rounded-sm border border-line-200/40 bg-line-100 px-3 py-2.5 text-left"
+              trigger={
+                <>
+                  <span className="text-sm font-semibold text-line-900">
+                    {selectedSessionLabel ?? "매치를 선택해주세요"}
+                  </span>
+                  <span className="text-line-500 text-xs">▼</span>
+                </>
+              }
+            >
+              {(close) => (
+                <div className="max-h-64 space-y-0.5 overflow-y-auto">
+                  {sessions.map((session) => {
+                    const isCustom = session.session_day === "holiday" || session.session_day === "custom";
+                    return (
+                      <DropdownItem
+                        key={session.id}
+                        onClick={() => { handleSessionSelect(session.id); close(); }}
+                      >
+                        <span className={selectedSessionId === session.id ? "text-clay-400" : ""}>
+                          {MATCH_SESSION_DAY_LABEL[session.session_day]}
+                          {isCustom && ` · ${session.title}`} ({session.session_date})
+                        </span>
+                      </DropdownItem>
+                    );
+                  })}
+                </div>
+              )}
+            </Dropdown>
+          )}
+        </div>
       </div>
 
       {/* ── 청팀 ─────────────────────────────────────────── */}

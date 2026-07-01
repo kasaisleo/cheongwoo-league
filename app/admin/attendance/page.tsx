@@ -56,14 +56,21 @@ function AdminAttendanceInner() {
   const [memberQuery, setMemberQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<AttendanceStatus | "all">("all");
 
-  // 커스텀 세션 생성 폼
+  // 커스텀 매치 생성 폼
   const [showCustomForm, setShowCustomForm] = useState(false);
   const [customDate, setCustomDate] = useState(todayString());
   const [customDay, setCustomDay] = useState<"holiday" | "custom">("custom");
   const [customTitle, setCustomTitle] = useState("");
   const [creatingCustom, setCreatingCustom] = useState(false);
 
-  // 세션 목록 로드
+  // action=create 처리: URL에서 자동으로 커스텀 매치 생성 폼 열기
+  useEffect(() => {
+    if (searchParams.get("action") === "create") {
+      setShowCustomForm(true);
+    }
+  }, [searchParams]);
+
+  // 매치(출석 세션) 목록 로드
   useEffect(() => {
     let isCurrent = true;
     async function loadSessions() {
@@ -157,11 +164,11 @@ function AdminAttendanceInner() {
 
   async function handleCreateWeeklySessions(closeMenu?: () => void) {
     closeMenu?.();
-    if (!window.confirm("기존 열린 토/일 출석 세션을 보관하고 이번 주 토/일 세션을 새로 생성합니다. 진행할까요?")) return;
+    if (!window.confirm("기존 열린 토/일 매치를 보관하고 이번 주 토/일 매치를 새로 생성합니다. 진행할까요?")) return;
     const res = await fetch("/api/attendance-sessions/weekly", { method: "POST" });
     const body = await res.json().catch(() => null);
-    if (!res.ok) { toast.error(body?.error ?? "세션 생성에 실패했습니다."); return; }
-    toast.success("이번 주 출석 세션이 생성되었습니다.");
+    if (!res.ok) { toast.error(body?.error ?? "매치 생성에 실패했습니다."); return; }
+    toast.success("이번 주 매치가 생성되었습니다.");
     window.location.reload();
   }
 
@@ -177,8 +184,8 @@ function AdminAttendanceInner() {
     });
     const body = await res.json().catch(() => null);
     setCreatingCustom(false);
-    if (!res.ok) { toast.error(body?.error ?? "세션 생성에 실패했습니다."); return; }
-    toast.success("세션이 생성되었습니다.");
+    if (!res.ok) { toast.error(body?.error ?? "매치 생성에 실패했습니다."); return; }
+    toast.success("매치가 생성되었습니다.");
     window.location.reload();
   }
 
@@ -228,7 +235,7 @@ function AdminAttendanceInner() {
           <Link href="/attendance/history" className="flex h-10 w-10 items-center justify-center rounded-sm border border-line-200/40 bg-line-50 text-line-500" aria-label="출석 히스토리">
             <span className="text-base">🕓</span>
           </Link>
-          {/* 세션 생성/관리 드롭다운 */}
+          {/* 매치 생성/관리 드롭다운 */}
           <Dropdown
             align="right"
             triggerClassName="flex h-10 w-10 items-center justify-center rounded-sm border border-line-200/40 bg-line-50 text-line-700 transition-colors hover:bg-line-200"
@@ -237,10 +244,10 @@ function AdminAttendanceInner() {
             {(close) => (
               <div className="space-y-0.5">
                 <DropdownItem onClick={() => handleCreateWeeklySessions(close)}>
-                  이번 주 세션 생성
+                  이번 주 매치 생성
                 </DropdownItem>
                 <DropdownItem onClick={() => { setCustomDate((p) => p < todayString() ? todayString() : p); setShowCustomForm(true); close(); }}>
-                  커스텀 세션 생성
+                  커스텀 매치 생성
                 </DropdownItem>
                 {selectedSession?.status === "open" && (
                   <DropdownItem onClick={() => handleSessionStatusChange(selectedSessionId!, "closed", close)}>
@@ -261,7 +268,7 @@ function AdminAttendanceInner() {
         </div>
       </header>
 
-      {/* ── 커스텀 세션 생성 폼 ──────────────────────── */}
+      {/* ── 커스텀 매치 생성 폼 ──────────────────────── */}
       {showCustomForm && (
         <div className="mb-4 overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50 p-4">
           <p className="mb-3 font-display text-[10px] font-bold uppercase tracking-widest text-line-500">New Session</p>
@@ -280,7 +287,7 @@ function AdminAttendanceInner() {
                 className="flex-1 rounded-sm border border-line-200/40 py-2 text-sm font-semibold text-line-500">취소</button>
               <button type="button" disabled={creatingCustom} onClick={handleCreateCustomSession}
                 className="flex-1 rounded-sm bg-clay-400 py-2 text-sm font-bold text-line-25 disabled:opacity-40">
-                {creatingCustom ? "생성 중..." : "세션 생성"}
+                {creatingCustom ? "생성 중..." : "매치 생성"}
               </button>
             </div>
           </div>
