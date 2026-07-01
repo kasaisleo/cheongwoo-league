@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
-import { requireAdmin } from "@/lib/admin-auth";
+import { getAdminAccessServer } from "@/lib/admin-permissions";
 import type { AttendanceStatus } from "@/lib/supabase/database.types";
 
 interface AdminUpdateAttendanceBody {
@@ -23,8 +23,8 @@ const VALID_STATUSES: AttendanceStatus[] = ["attending", "absent", "undecided"];
  * 인증(isAdminSession)으로 대체한다.
  */
 export async function POST(request: NextRequest) {
-  const authError = requireAdmin();
-  if (authError) return authError;
+  const access = await getAdminAccessServer();
+  if (!access.isAdmin) return Response.json({ error: "관리자 권한이 필요합니다." }, { status: 403 });
 
   const body = (await request.json()) as AdminUpdateAttendanceBody;
   const { memberId, sessionId, status } = body;

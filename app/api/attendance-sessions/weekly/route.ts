@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
-import { requireAdmin } from "@/lib/admin-auth";
+import { getAdminAccessServer } from "@/lib/admin-permissions";
 import type { Member } from "@/lib/supabase/database.types";
 
 /**
@@ -28,8 +28,8 @@ function toDateString(d: Date): string {
 }
 
 export async function POST() {
-  const authError = requireAdmin();
-  if (authError) return authError;
+  const access = await getAdminAccessServer();
+  if (!access.isAdmin) return Response.json({ error: "관리자 권한이 필요합니다." }, { status: 403 });
 
   const supabase = createServiceClient();
   const today = new Date();
