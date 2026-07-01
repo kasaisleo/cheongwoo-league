@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/Button";
 import { toast } from "@/components/ui/Toast";
 import { Dropdown, DropdownItem } from "@/components/ui/Dropdown";
 import { MATCH_SESSION_DAY_LABEL, fetchActiveSessions } from "@/lib/match-session-label";
+import { TEAM_LABEL, winnerLabel, scoreLabel } from "@/lib/match-team-labels";
 import type { DisplayMatch } from "@/lib/match-display";
 import type { Member, Guest, AttendanceSession } from "@/lib/supabase/database.types";
 
@@ -151,10 +152,10 @@ export function EditMatchPageClient({ match }: { match: DisplayMatch }) {
             </div>
           </section>
 
-          {/* 팀 A */}
+          {/* 청팀 */}
           <section className="overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50">
             <div className="border-b border-line-200/30 px-4 py-3">
-              <p className="font-display text-[10px] font-bold uppercase tracking-widest text-line-500">Team A</p>
+              <p className="font-display text-[10px] font-bold uppercase tracking-widest text-line-500">{TEAM_LABEL["A"]}</p>
             </div>
             <div className="space-y-2 px-4 py-3">
               <PlayerSelector label="선수 1" value={p1A} members={members} guests={guests}
@@ -174,21 +175,21 @@ export function EditMatchPageClient({ match }: { match: DisplayMatch }) {
             <div className="space-y-4 px-4 py-4">
               <div className="flex items-center gap-4">
                 <div className="flex-1">
-                  <ScoreStepper label="팀 A" value={scoreA} onChange={setScoreA} max={7} />
+                  <ScoreStepper label={scoreLabel("A")} value={scoreA} onChange={setScoreA} max={7} />
                 </div>
                 <span className="font-score text-xl font-bold text-line-500">:</span>
                 <div className="flex-1">
-                  <ScoreStepper label="팀 B" value={scoreB} onChange={setScoreB} max={7} />
+                  <ScoreStepper label={scoreLabel("B")} value={scoreB} onChange={setScoreB} max={7} />
                 </div>
               </div>
               {isTiebreak && (
                 <div className="flex items-center gap-4">
                   <div className="flex-1">
-                    <ScoreStepper label="팀 A 타이브레이크" value={tbA} onChange={setTbA} />
+                    <ScoreStepper label={scoreLabel("A", true)} value={tbA} onChange={setTbA} />
                   </div>
                   <span className="font-score text-xl font-bold text-line-500">:</span>
                   <div className="flex-1">
-                    <ScoreStepper label="팀 B 타이브레이크" value={tbB} onChange={setTbB} />
+                    <ScoreStepper label={scoreLabel("B", true)} value={tbB} onChange={setTbB} />
                   </div>
                 </div>
               )}
@@ -202,7 +203,7 @@ export function EditMatchPageClient({ match }: { match: DisplayMatch }) {
                           ? "border-gold/60 bg-gold/10 text-gold"
                           : "border-line-200/40 bg-line-50 text-line-500"
                       }`}>
-                      팀 {team} 승리
+                      {winnerLabel(team)}
                     </button>
                   ))}
                 </div>
@@ -210,10 +211,10 @@ export function EditMatchPageClient({ match }: { match: DisplayMatch }) {
             </div>
           </section>
 
-          {/* 팀 B */}
+          {/* 우팀 */}
           <section className="overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50">
             <div className="border-b border-line-200/30 px-4 py-3">
-              <p className="font-display text-[10px] font-bold uppercase tracking-widest text-line-500">Team B</p>
+              <p className="font-display text-[10px] font-bold uppercase tracking-widest text-line-500">{TEAM_LABEL["B"]}</p>
             </div>
             <div className="space-y-2 px-4 py-3">
               <PlayerSelector label="선수 1" value={p1B} members={members} guests={guests}
