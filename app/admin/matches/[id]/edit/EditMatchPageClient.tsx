@@ -119,7 +119,7 @@ export function EditMatchPageClient({ match }: { match: DisplayMatch }) {
           {/* 세션 선택 */}
           <section className="overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50">
             <div className="border-b border-line-200/30 px-4 py-3">
-              <p className="font-display text-[10px] font-bold uppercase tracking-widest text-line-500">Session</p>
+              <p className="text-[11px] font-semibold text-line-500">세션</p>
             </div>
             <div className="px-4 py-3">
               <Dropdown align="left"
@@ -155,13 +155,13 @@ export function EditMatchPageClient({ match }: { match: DisplayMatch }) {
           {/* 청팀 */}
           <section className="overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50">
             <div className="border-b border-line-200/30 px-4 py-3">
-              <p className="font-display text-[10px] font-bold uppercase tracking-widest text-line-500">{TEAM_LABEL["A"]}</p>
+              <p className="text-[11px] font-semibold text-line-500">{TEAM_LABEL["A"]}</p>
             </div>
             <div className="space-y-2 px-4 py-3">
-              <PlayerSelector label="선수 1" value={p1A} members={members} guests={guests}
+              <PlayerSelector label="첫 번째 선수" value={p1A} members={members} guests={guests}
                 selectedKeys={selectedKeys} excludeKeys={[p2A, p1B, p2B].filter(Boolean).map((p) => playerKey(p!.id, p!.isGuest))}
                 onChange={setP1A} onRequestAddGuest={() => setGuestSlot("teamAPlayer1")} />
-              <PlayerSelector label="선수 2" value={p2A} members={members} guests={guests}
+              <PlayerSelector label="두 번째 선수" value={p2A} members={members} guests={guests}
                 selectedKeys={selectedKeys} excludeKeys={[p1A, p1B, p2B].filter(Boolean).map((p) => playerKey(p!.id, p!.isGuest))}
                 onChange={setP2A} onRequestAddGuest={() => setGuestSlot("teamAPlayer2")} />
             </div>
@@ -170,7 +170,7 @@ export function EditMatchPageClient({ match }: { match: DisplayMatch }) {
           {/* 스코어 */}
           <section className="overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50">
             <div className="border-b border-line-200/30 px-4 py-3">
-              <p className="font-display text-[10px] font-bold uppercase tracking-widest text-line-500">Score</p>
+              <p className="text-[11px] font-semibold text-line-500">스코어</p>
             </div>
             <div className="space-y-4 px-4 py-4">
               <div className="flex items-center gap-4">
@@ -194,7 +194,7 @@ export function EditMatchPageClient({ match }: { match: DisplayMatch }) {
                 </div>
               )}
               <div>
-                <p className="mb-2 text-xs font-semibold text-line-500">승리팀</p>
+                <p className="mb-2 text-[11px] font-semibold text-line-500">승리 팀 선택</p>
                 <div className="flex gap-2">
                   {(["A", "B"] as const).map((team) => (
                     <button key={team} type="button" onClick={() => setWinner(team)}
@@ -214,13 +214,13 @@ export function EditMatchPageClient({ match }: { match: DisplayMatch }) {
           {/* 우팀 */}
           <section className="overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50">
             <div className="border-b border-line-200/30 px-4 py-3">
-              <p className="font-display text-[10px] font-bold uppercase tracking-widest text-line-500">{TEAM_LABEL["B"]}</p>
+              <p className="text-[11px] font-semibold text-line-500">{TEAM_LABEL["B"]}</p>
             </div>
             <div className="space-y-2 px-4 py-3">
-              <PlayerSelector label="선수 1" value={p1B} members={members} guests={guests}
+              <PlayerSelector label="첫 번째 선수" value={p1B} members={members} guests={guests}
                 selectedKeys={selectedKeys} excludeKeys={[p1A, p2A, p2B].filter(Boolean).map((p) => playerKey(p!.id, p!.isGuest))}
                 onChange={setP1B} onRequestAddGuest={() => setGuestSlot("teamBPlayer1")} />
-              <PlayerSelector label="선수 2" value={p2B} members={members} guests={guests}
+              <PlayerSelector label="두 번째 선수" value={p2B} members={members} guests={guests}
                 selectedKeys={selectedKeys} excludeKeys={[p1A, p2A, p1B].filter(Boolean).map((p) => playerKey(p!.id, p!.isGuest))}
                 onChange={setP2B} onRequestAddGuest={() => setGuestSlot("teamBPlayer2")} />
             </div>

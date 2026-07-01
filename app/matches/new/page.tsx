@@ -160,9 +160,7 @@ export default function NewMatchPage() {
 
       {/* ── 세션 선택 ─────────────────────────────────────── */}
       <div className="mb-8 rounded-[14px] border border-line-200/40 bg-line-50 p-4">
-        <p className="mb-2 font-display text-[10px] font-bold uppercase tracking-widest text-line-500">
-          Session *
-        </p>
+        <p className="mb-2 text-[11px] font-semibold text-line-500">세션 *</p>
         {sessions.length === 0 ? (
           <p className="text-sm text-line-500">
             선택 가능한 출석 세션이 없어요. 출석 체크 화면에서 세션을 먼저 만들어주세요.
@@ -205,9 +203,7 @@ export default function NewMatchPage() {
       {/* ── 청팀 ─────────────────────────────────────────── */}
       <div className="relative mb-6 overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50 p-4">
         <div className="absolute left-0 top-0 h-full w-1 bg-clay-400/50" />
-        <p className="mb-3 pl-2 font-display text-xs font-bold uppercase tracking-widest text-clay-400">
-          Team A
-        </p>
+        <p className="mb-3 pl-2 text-sm font-bold text-clay-400">청팀 선수</p>
         <div className="space-y-4">
           {(["teamAPlayer1", "teamAPlayer2"] as const).map((field, i) => {
             const val = field === "teamAPlayer1" ? teamAPlayer1 : teamAPlayer2;
@@ -234,9 +230,7 @@ export default function NewMatchPage() {
       {/* ── 우팀 ─────────────────────────────────────────── */}
       <div className="relative mb-6 overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50 p-4">
         <div className="absolute left-0 top-0 h-full w-1 bg-line-300/50" />
-        <p className="mb-3 pl-2 font-display text-xs font-bold uppercase tracking-widest text-line-500">
-          Team B
-        </p>
+        <p className="mb-3 pl-2 text-sm font-bold text-line-600">우팀 선수</p>
         <div className="space-y-4">
           {(["teamBPlayer1", "teamBPlayer2"] as const).map((field, i) => {
             const val = field === "teamBPlayer1" ? teamBPlayer1 : teamBPlayer2;
@@ -262,9 +256,7 @@ export default function NewMatchPage() {
 
       {/* ── 스코어 ────────────────────────────────────────── */}
       <div className="mb-8 rounded-[14px] border border-line-200/40 bg-line-50 p-4">
-        <p className="mb-3 text-center font-display text-[10px] font-bold uppercase tracking-widest text-line-500">
-          Score
-        </p>
+        <p className="mb-3 text-center text-[11px] font-semibold text-line-500">스코어</p>
         <div className="flex items-center justify-center gap-6">
           <ScoreStepper label="청팀" value={scoreA} onChange={setScoreA} highlight={winnerTeam === "A"} max={7} />
           <span className="text-line-400 text-sm">vs</span>
@@ -273,9 +265,7 @@ export default function NewMatchPage() {
 
         {isTiebreakSet && (
           <div className="mt-4 border-t border-line-200/40 pt-4">
-            <p className="mb-2 text-center font-display text-[10px] font-bold uppercase tracking-widest text-line-500">
-              Tiebreak
-            </p>
+            <p className="mb-2 text-center text-[11px] font-semibold text-line-500">타이브레이크</p>
             <div className="flex items-center justify-center gap-4">
               <ScoreStepper label="청팀" value={tiebreakA} onChange={setTiebreakA} compact />
               <span className="text-xs text-line-400">:</span>

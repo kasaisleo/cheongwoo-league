@@ -118,12 +118,12 @@ export function PlayerSelector({
     <div>
       {/* 라벨 + 탭 토글 */}
       <div className="mb-2 flex items-center justify-between">
-        <p className="font-display text-[10px] font-bold uppercase tracking-widest text-line-500">
-          {label}
+        <div className="flex items-center gap-1.5">
+          <p className="text-[10px] font-semibold text-line-500">{label}</p>
           {value && (
-            <span className="ml-2 text-clay-400">· {value.name}</span>
+            <span className="text-[13px] font-semibold tracking-normal text-clay-400">{value.name}</span>
           )}
-        </p>
+        </div>
         <div className="flex gap-1">
           <button
             type="button"
@@ -160,7 +160,7 @@ export function PlayerSelector({
             <>
               {attendingMembers.length > 0 ? (
                 <div>
-                  <p className="mb-1.5 font-display text-[9px] font-bold uppercase tracking-wider text-gold/70">
+                  <p className="mb-1.5 text-[9px] font-bold text-gold/70">
                     참석 {attendingMembers.length}명
                   </p>
                   <div className="flex flex-wrap gap-1.5">
@@ -181,7 +181,7 @@ export function PlayerSelector({
                     onClick={() => setShowUndecided((v) => !v)}
                     className="flex items-center gap-1 text-[10px] font-semibold text-line-500 hover:text-line-700"
                   >
-                    <span className="font-display uppercase tracking-wider">
+                    <span className="text-[10px]">
                       미정 {undecidedMembers.length}명
                     </span>
                     <span className="text-[9px]">{showUndecided ? "↑" : "↓"}</span>
