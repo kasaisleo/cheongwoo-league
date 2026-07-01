@@ -67,6 +67,7 @@ function AttendancePageInner() {
   const [loadingSessions, setLoadingSessions] = useState(true);
   const [loadingRows, setLoadingRows] = useState(false);
   const [updatingMemberId, setUpdatingMemberId] = useState<string | null>(null);
+  const [pendingStatus, setPendingStatus] = useState<AttendanceStatus | null>(null);
   const [processingSessionId, setProcessingSessionId] = useState<string | null>(null);
   // closed 세션에서 운영진이 "명단 수정" 버튼을 눌러야만 토글이 활성화된다.
   const [editingClosedSession, setEditingClosedSession] = useState(false);
@@ -234,6 +235,7 @@ function AttendancePageInner() {
     setRows((prev) =>
       prev.map((row) => (row.member.id === memberId ? { ...row, status: newStatus } : row))
     );
+    setPendingStatus(newStatus);
     setUpdatingMemberId(memberId);
 
     let succeeded: boolean;
@@ -243,6 +245,8 @@ function AttendancePageInner() {
       // 명단이 확정된 세션 — 운영진만 보정 가능. 별도 service-role API를 거친다.
       if (!isAdmin) {
         setUpdatingMemberId(null);
+    setPendingStatus(null);
+        setPendingStatus(null);
         setRows((prev) =>
           prev.map((row) => (row.member.id === memberId ? { ...row, status: previousStatus } : row))
         );
@@ -691,6 +695,7 @@ function AttendancePageInner() {
                       <AttendanceToggle
                         value={status}
                         onChange={(s) => updateStatus(member.id, s)}
+                        pendingStatus={updatingMemberId === member.id ? pendingStatus : null}
                         disabled={
                           updatingMemberId === member.id ||
                           (selectedSession?.status === "closed" && !(isAdmin && editingClosedSession))

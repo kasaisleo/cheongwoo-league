@@ -12,7 +12,7 @@ function formatSessionDate(dateStr: string): string {
 }
 
 const STATUS_LABEL: Record<AttendanceStatus, string> = {
-  attending: "참석",
+  attending: "출석",
   undecided: "미정",
   absent: "불참",
 };
