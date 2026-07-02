@@ -29,7 +29,7 @@ interface SessionStats {
 
 // ── 완료 전 검수 경고 ─────────────────────────────────────────────
 interface SubmitWarning {
-  type: "no_session" | "incomplete_players" | "no_winner";
+  type: "no_session" | "incomplete_players" | "no_winner" | "duplicate_player";
   msg: string;
 }
 
@@ -50,6 +50,13 @@ function getSubmitWarnings(params: {
     warnings.push({ type: "no_winner", msg: "승리팀을 선택해주세요." });
   if (params.isTiebreakSet && params.tiebreakA === params.tiebreakB)
     warnings.push({ type: "no_winner", msg: "타이브레이크 점수가 동점입니다." });
+
+  // 중복 선수 검증 (null 제외 후 playerKey 기준)
+  const validPlayers = params.players.filter((p): p is SelectedPlayer => p !== null);
+  const keySet = new Set(validPlayers.map((p) => playerKey(p.id, p.isGuest)));
+  if (keySet.size < validPlayers.length)
+    warnings.push({ type: "duplicate_player", msg: "같은 선수가 중복 선택되어 있어요." });
+
   return warnings;
 }
 
@@ -60,7 +67,7 @@ export default function NewMatchPage() {
 
   const [members, setMembers] = useState<Member[]>([]);
   const [guests, setGuests] = useState<Guest[]>([]);
-  const [sessionGuestIds, setSessionGuestIds] = useState<string[]>([]);
+  const [_sessionGuestIds, setSessionGuestIds] = useState<string[]>([]);  // 게스트 참석 지정용 (향후 PlayerSelector에서 우선 노출)
   const [sessions, setSessions] = useState<AttendanceSession[]>([]);
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
   const [attendees, setAttendees] = useState<SessionAttendees>({ attending: [], undecided: [] });
@@ -80,6 +87,7 @@ export default function NewMatchPage() {
 
   const [guestModalTarget, setGuestModalTarget] = useState<GuestModalTarget | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [finishing, setFinishing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // 새 매치 추가
@@ -109,15 +117,7 @@ export default function NewMatchPage() {
     setLoading(false);
   }
 
-  async function loadSessionGuestIds(sessionId: string) {
-    try {
-      const res = await fetch(`/api/admin/session-guests?sessionId=${sessionId}`);
-      const body = await res.json().catch(() => null);
-      if (res.ok) setSessionGuestIds((body.sessionGuests ?? []).map((sg: { guest_id: string }) => sg.guest_id));
-    } catch { /* 조회 실패해도 경기 입력 가능 */ }
-  }
-
-  // 세션 선택: 출석 목록 + 기존 경기 수 로드
+  // 세션 선택: 출석 목록 + 기존 경기 수 + 지정 게스트 로드
   const handleSessionSelect = useCallback(async (sessionId: string) => {
     setSelectedSessionId(sessionId);
     const supabase = createClient();
@@ -140,8 +140,13 @@ export default function NewMatchPage() {
     const attendingCount = rows.filter((r) => r.status === "attending").length;
     setSessionStats({ gameCount: (matchData ?? []).length, attendingCount, participantIds });
 
-    await loadSessionGuestIds(sessionId);
-  }, []);
+    // 지정 게스트 로드 (실패해도 경기 입력 가능)
+    try {
+      const res = await fetch(`/api/admin/session-guests?sessionId=${sessionId}`);
+      const body = await res.json().catch(() => null);
+      if (res.ok) setSessionGuestIds((body.sessionGuests ?? []).map((sg: { guest_id: string }) => sg.guest_id));
+    } catch { /* 무시 */ }
+  }, []);  // supabase client / setter는 참조 안정 보장
 
   async function handleCreateSession() {
     if (!newSessionTitle.trim()) { setNewSessionError("매치명을 입력해주세요."); return; }
@@ -264,6 +269,7 @@ export default function NewMatchPage() {
 
   // 완료하고 나가기
   async function handleFinish() {
+    if (submitting || finishing) return;  // 저장 중 중복 클릭 방지
     if (!selectedSessionId) { router.push("/admin/matches"); return; }
 
     // 기록 누락 경고
@@ -285,6 +291,7 @@ export default function NewMatchPage() {
       if (!proceed) return;
     }
 
+    setFinishing(true);
     router.push("/admin/matches");
   }
 
@@ -305,9 +312,9 @@ export default function NewMatchPage() {
           <h1 className="headline-kr text-4xl text-line-900">경기 결과 입력</h1>
           <p className="mt-1 text-sm text-line-500">매치를 선택하고 경기 결과를 입력합니다.</p>
         </div>
-        <button type="button" onClick={handleFinish}
-          className="rounded-sm border border-line-200/40 px-2.5 py-1.5 text-xs font-semibold text-line-500 hover:text-line-700">
-          완료 →
+        <button type="button" onClick={handleFinish} disabled={submitting || finishing}
+          className="rounded-sm border border-line-200/40 px-2.5 py-1.5 text-xs font-semibold text-line-500 hover:text-line-700 disabled:opacity-40">
+          {finishing ? "이동 중..." : "완료 →"}
         </button>
       </header>
 
@@ -497,11 +504,20 @@ export default function NewMatchPage() {
       </div>
 
       {/* ── 저장 전 경고 */}
-      {submitWarnings.length > 0 && (teamAPlayer1 || teamAPlayer2 || teamBPlayer1 || teamBPlayer2 || winnerTeam) && (
+      {submitWarnings.length > 0 && (
         <div className="mb-3 rounded-sm border border-line-200/40 bg-line-100/50 px-3 py-2">
-          {submitWarnings.map((w) => (
-            <p key={w.type} className="text-[11px] text-line-500">{w.msg}</p>
-          ))}
+          {submitWarnings
+            // 아무것도 입력 안 한 상태에서는 매치/선수 미선택 경고 숨김 (UX)
+            .filter((w) =>
+              w.type === "duplicate_player" ||
+              w.type === "no_winner" ||
+              (teamAPlayer1 || teamAPlayer2 || teamBPlayer1 || teamBPlayer2 || winnerTeam)
+            )
+            .map((w) => (
+              <p key={w.type} className={`text-[11px] ${w.type === "duplicate_player" ? "font-semibold text-clay-400" : "text-line-500"}`}>
+                {w.msg}
+              </p>
+            ))}
         </div>
       )}
 
