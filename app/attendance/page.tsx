@@ -432,14 +432,6 @@ function AttendancePageInner() {
         </div>
 
         <div className="flex items-center gap-1.5">
-          <Link
-            href="/attendance/history"
-            className="flex h-10 w-10 items-center justify-center rounded-sm border border-line-200/40 bg-line-50 text-line-700 transition-colors hover:bg-line-200"
-            aria-label="매치 히스토리 보기"
-          >
-            <span className="text-base">🕓</span>
-          </Link>
-
           {/* 운영진 → /admin/attendance 이동 */}
           {isAdmin && (
             <Link

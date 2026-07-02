@@ -112,25 +112,36 @@ export default async function MatchesPage({ searchParams }: MatchesPageProps) {
     <main className="px-4 pt-6 pb-10">
 
       {/* ── 헤더 ─────────────────────────────────────────── */}
-      <header className="mb-4 flex items-center justify-between">
+      <header className="mb-3 flex items-center justify-between">
         <div>
-          <p className="eyebrow-en text-clay-400">Match History</p>
-          <h1 className="headline-kr text-4xl text-line-900">경기 기록</h1>
+          <p className="eyebrow-en text-clay-400">Records</p>
+          <h1 className="headline-kr text-4xl text-line-900">기록</h1>
         </div>
         {isAdmin && (
           <Link
             href="/matches/new"
-            className="flex h-10 items-center rounded-lg bg-clay-400 px-4 text-sm font-bold text-line-25 transition-colors hover:bg-clay-300"
+            className="flex h-10 items-center rounded-sm bg-clay-400 px-4 text-sm font-bold text-line-25 transition-colors hover:bg-clay-300"
           >
             + 경기 입력
           </Link>
         )}
       </header>
 
+      {/* ── 기록 탭 — 매치 히스토리 / 경기 기록 ── */}
+      <div className="mb-4 flex gap-2">
+        <Link href="/attendance/history"
+          className="rounded-sm border border-line-200/40 px-3 py-1.5 text-xs font-semibold text-line-500 hover:border-clay-400/60 hover:text-clay-400">
+          매치 히스토리
+        </Link>
+        <span className="rounded-sm border border-clay-400/60 bg-clay-400/10 px-3 py-1.5 text-xs font-semibold text-clay-400">
+          경기 기록
+        </span>
+      </div>
+
       {/* ── 세션 구분 필터 — compact chip row, 항상 표시 ── */}
       <div className="mb-3 flex flex-wrap gap-1.5">
         <Link href={buildHref({ member: filterMemberId })}>
-          <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold transition-colors ${
+          <span className={`inline-flex items-center rounded-sm border px-2.5 py-1 text-xs font-semibold transition-colors ${
             !filterSessionType
               ? "border-clay-400 bg-clay-400 text-line-25"
               : "border-line-200/40 bg-line-50 text-line-500"
@@ -140,7 +151,7 @@ export default async function MatchesPage({ searchParams }: MatchesPageProps) {
         </Link>
         {MATCH_SESSION_DAY_FILTERS.map((f) => (
           <Link key={f.value} href={buildHref({ member: filterMemberId, sessionType: f.value })}>
-            <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold transition-colors ${
+            <span className={`inline-flex items-center rounded-sm border px-2.5 py-1 text-xs font-semibold transition-colors ${
               filterSessionType === f.value
                 ? "border-clay-400 bg-clay-400 text-line-25"
                 : "border-line-200/40 bg-line-50 text-line-500"
@@ -212,7 +223,7 @@ export default async function MatchesPage({ searchParams }: MatchesPageProps) {
           </div>
           <div className="flex flex-wrap gap-1.5">
             <Link href={buildHref({ sessionType: filterSessionType ?? undefined })}>
-              <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold transition-colors ${
+              <span className={`inline-flex items-center rounded-sm border px-2.5 py-1 text-xs font-semibold transition-colors ${
                 !filterMemberId
                   ? "border-clay-400 bg-clay-400 text-line-25"
                   : "border-line-200/40 bg-line-50 text-line-500"
@@ -225,7 +236,7 @@ export default async function MatchesPage({ searchParams }: MatchesPageProps) {
                 key={member.id}
                 href={buildHref({ member: member.id, sessionType: filterSessionType ?? undefined })}
               >
-                <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold transition-colors ${
+                <span className={`inline-flex items-center rounded-sm border px-2.5 py-1 text-xs font-semibold transition-colors ${
                   filterMemberId === member.id
                     ? "border-clay-400 bg-clay-400 text-line-25"
                     : "border-line-200/40 bg-line-50 text-line-500"
