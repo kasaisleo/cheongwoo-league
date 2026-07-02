@@ -5,16 +5,8 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { MATCH_SESSION_DAY_LABEL } from "@/lib/match-session-label";
 import { judgeMatchStatus, type MatchStatus } from "@/lib/records/matchStatus";
+import { pct, fmtPct } from "@/lib/records/dashboardUtils";
 import type { AttendanceStatus } from "@/lib/supabase/database.types";
-
-// ── 유틸 ──────────────────────────────────────────────────────────
-function pct(num: number, den: number): number | null {
-  if (den === 0) return null;
-  return Math.round((num / den) * 100);
-}
-function fmtPct(val: number | null): string {
-  return val === null ? "-" : `${val}%`;
-}
 
 
 const STATUS_STYLE: Record<MatchStatus, string> = {
@@ -65,6 +57,7 @@ export default function RecordsMatchesPage() {
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [filterStatus, setFilterStatus] = useState<MatchStatus | "전체">("전체");
   const [memberNames, setMemberNames] = useState<Map<string, string>>(new Map());
+  const [totalMembersCount, setTotalMembersCount] = useState(0);
 
   useEffect(() => {
     async function load() {
@@ -300,7 +293,7 @@ export default function RecordsMatchesPage() {
                   <span className="text-line-400">불참 {s.absentCount}</span>
                   <span className="text-line-300">미응답 {s.noResponseCount}</span>
                   <span className="ml-auto text-line-500">
-                    출석 체크율 {fmtPct(pct(s.attendingCount + s.absentCount + s.undecidedCount, s.attendingCount + s.absentCount + s.undecidedCount + s.noResponseCount))}
+                    출석 체크율 {fmtPct(pct(s.attendingCount + s.absentCount + s.undecidedCount, totalMembersCount))}
                   </span>
                 </div>
               </div>

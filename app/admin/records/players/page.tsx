@@ -19,10 +19,10 @@ interface PlayerRecord {
   attending: number;     // 출석 수
   noShowCount: number;   // 출석 후 경기 미참여 수
   totalCompleted: number; // 완료 매치 수
-  attendRate: number;    // 출석률 %
-  noShowRate: number;    // 출석 후 경기 미참여율 %
+  attendRate: number;    // 출석 체크율 %
+  noShowRate: number;    // 출석 후 미참여율 %
   gameSessionCount: number; // 실제 경기 참여한 session 수
-  participationRate: number; // 참여율 % = gameSessionCount / totalCompleted
+  participationRate: number; // 경기 참여율 % = gameSessionCount / totalCompleted
   absenceRate: number;   // 미참여도 % = 100 - participationRate
 }
 
@@ -218,6 +218,7 @@ export default function PlayerRecordsPage() {
       // 비율 계산
       for (const [key, p] of statMap) {
         p.winRate = p.games > 0 ? Math.round((p.wins / p.games) * 100) : 0;
+        // 출석 체크율 (개인 기준): 출석 체크 수 / 완료 매치 수
         p.attendRate = p.totalCompleted > 0 ? Math.round((p.attending / p.totalCompleted) * 100) : 0;
         p.noShowRate = p.attending > 0 ? Math.round((p.noShowCount / p.attending) * 100) : 0;
         const gameSessions = gameSessionsPerPlayer.get(key)?.size ?? 0;
@@ -279,7 +280,7 @@ export default function PlayerRecordsPage() {
               {[
                 { label: "참여도", p: top5Participation[0], val: top5Participation[0] ? `${top5Participation[0].games}` : "—", unit: "경기" },
                 { label: "승률",   p: top5WinRate[0],       val: top5WinRate[0] ? `${top5WinRate[0].winRate}` : "—",         unit: "%" },
-                { label: "출석률", p: top5Attend[0],        val: top5Attend[0] ? `${top5Attend[0].attendRate}` : "—",        unit: "%" },
+                { label: "출석 체크율", p: top5Attend[0],        val: top5Attend[0] ? `${top5Attend[0].attendRate}` : "—",        unit: "%" },
                 { label: "LP",     p: top5LP[0],            val: top5LP[0] ? `${top5LP[0].lp}` : "—",                       unit: "LP" },
               ].map(({ label, p, val, unit }) => (
                 <div key={label} className="overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50">
@@ -309,7 +310,7 @@ export default function PlayerRecordsPage() {
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <RankingBoard title="참여도 TOP 5" unit="경기" players={top5Participation.map((p) => ({ ...p, displayValue: `${p.games}` }))} href={playerHref} />
               <RankingBoard title="승률 TOP 5"   unit="%" players={top5WinRate.map((p) => ({ ...p, displayValue: `${p.winRate}%` }))} href={playerHref} />
-              <RankingBoard title="출석률 TOP 5" unit="%" players={top5Attend.map((p) => ({ ...p, displayValue: `${p.attendRate}%` }))} href={playerHref} />
+              <RankingBoard title="출석 체크율 TOP 5" unit="%" players={top5Attend.map((p) => ({ ...p, displayValue: `${p.attendRate}%` }))} href={playerHref} />
               <RankingBoard title="LP TOP 5"     unit="LP" players={top5LP.map((p) => ({ ...p, displayValue: `${p.lp}` }))} href={playerHref} />
             </div>
           </section>
@@ -326,7 +327,7 @@ export default function PlayerRecordsPage() {
                 href={playerHref}
               />
               <SortableSignalBoard
-                title="출석 후 경기 미참여 TOP 5"
+                title="출석 후 미참여 TOP 5"
                 desc="출석 체크 후 경기 기록이 없는 매치 비율"
                 emptyMsg="출석 후 경기 미참여 기록이 없습니다."
                 playersDesc={top5NoShowDesc.map((p) => ({ ...p, displayValue: `${p.noShowCount}/${p.attending} · ${p.noShowRate}%`, subText: `출석 ${p.attending}회` }))}

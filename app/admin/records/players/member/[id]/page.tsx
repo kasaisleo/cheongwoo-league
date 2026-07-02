@@ -1,15 +1,7 @@
 import Link from "next/link";
+import { pct, fmtPct } from "@/lib/records/dashboardUtils";
 import { createClient } from "@/lib/supabase/server";
 import { MATCH_SESSION_DAY_LABEL } from "@/lib/match-session-label";
-
-// ── 유틸 ────────────────────────────────────────────────────────
-function pct(num: number, den: number) {
-  if (den === 0) return null;  // null → "-" 표시
-  return Math.round((num / den) * 100);
-}
-function fmtPct(val: number | null) {
-  return val === null ? "-" : `${val}%`;
-}
 
 // ── 매치명 헬퍼 ─────────────────────────────────────────────────
 function matchTitle(s: { session_day: string; title: string }) {
