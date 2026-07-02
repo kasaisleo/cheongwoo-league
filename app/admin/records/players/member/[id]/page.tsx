@@ -81,6 +81,11 @@ export default async function MemberRecordPage({ params }: { params: { id: strin
   const noShowRate = attending > 0 ? Math.round((noShowCount / attending) * 100) : 0;
   const completedCount = completedIds.size;
   const attendRate = completedCount > 0 ? Math.round((attending / completedCount) * 100) : 0;
+  // 미참여도 = 완료 매치 중 실제 경기 참여가 없는 비율
+  const gameSessionIds = new Set(myMatches.map((m) => m.session_id).filter((sid): sid is string => !!sid && completedIds.has(sid)));
+  const gameSessionCount = gameSessionIds.size;
+  const participationRate = completedCount > 0 ? Math.round((gameSessionCount / completedCount) * 100) : 0;
+  const absenceRate = completedCount > 0 ? 100 - participationRate : 0;
 
   // 최근 경기 (최대 10개)
   const sessionMap = new Map((allSessions ?? []).map((s) => [s.id, s]));
@@ -152,6 +157,18 @@ export default async function MemberRecordPage({ params }: { params: { id: strin
                 <p className="font-score text-4xl font-bold tabular-nums text-clay-400">{noShowRate}%</p>
                 <p className="mt-1 font-display text-[10px] font-bold uppercase tracking-widest text-line-500">경기 미참여</p>
                 <p className="text-[10px] text-line-400">출석 {attending}회 중 {noShowCount}회</p>
+              </div>
+            )}
+            <div className="px-5 py-4">
+              <p className="font-score text-4xl font-bold tabular-nums text-line-900">{participationRate}%</p>
+              <p className="mt-1 font-display text-[10px] font-bold uppercase tracking-widest text-line-500">참여율</p>
+              <p className="text-[10px] text-line-400">완료 {completedCount}매치 중 {gameSessionCount}회</p>
+            </div>
+            {absenceRate > 0 && (
+              <div className="px-5 py-4">
+                <p className="font-score text-4xl font-bold tabular-nums text-clay-400">{absenceRate}%</p>
+                <p className="mt-1 font-display text-[10px] font-bold uppercase tracking-widest text-line-500">미참여도</p>
+                <p className="text-[10px] text-line-400">실제 경기 기록 없는 완료 매치 비율</p>
               </div>
             )}
           </div>
