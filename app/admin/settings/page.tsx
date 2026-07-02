@@ -196,7 +196,7 @@ export default function SettingsPage() {
             <p className="mt-0.5 text-xs text-line-500">현재 로그인한 카카오 계정을 Owner(master) 권한으로 연결합니다.</p>
             {!auth.kakaoName && (
               <div className="mt-3 rounded-sm border border-line-200/40 bg-line-100 px-3 py-2">
-                <p className="text-xs text-line-500">카카오 로그인 세션이 없습니다.
+                <p className="text-xs text-line-500">카카오 로그인 정보가 없습니다.
                   <Link href="/login?returnUrl=/admin/settings" className="ml-1 text-clay-400">카카오 로그인 →</Link>
                 </p>
               </div>

@@ -116,10 +116,10 @@ export function EditMatchPageClient({ match }: { match: DisplayMatch }) {
         </div>
       ) : (
         <div className="space-y-4">
-          {/* 세션 선택 */}
+          {/* 매치 선택 */}
           <section className="overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50">
             <div className="border-b border-line-200/30 px-4 py-3">
-              <p className="text-[11px] font-semibold text-line-500">세션</p>
+              <p className="text-[11px] font-semibold text-line-500">매치</p>
             </div>
             <div className="px-4 py-3">
               <Dropdown align="left"
@@ -129,7 +129,7 @@ export function EditMatchPageClient({ match }: { match: DisplayMatch }) {
                     <span className="text-sm text-line-900">
                       {selectedSession
                         ? `${selectedSession.title} · ${selectedSession.session_date}`
-                        : "세션 없음"}
+                        : "매치 없음"}
                     </span>
                     <span className="text-xs text-line-500">▼</span>
                   </>

@@ -17,10 +17,10 @@ import type { AttendanceStatus, AttendanceSession, Member } from "@/lib/supabase
  * /admin/attendance — 운영진 전용 출석 관리 페이지.
  *
  * Phase 2 이관: /attendance의 관리자 기능을 여기로 이동.
- *   - 세션 생성 (주간/커스텀)
+ *   - 매치 생성 (주간/커스텀)
  *   - 매치 완료 (closed)
- *   - 명단 수정 (closed 세션 강제 수정)
- *   - 전체 명단 출석 토글
+ *   - 출석 수정 (완료된 매치 강제 수정)
+ *   - 출석 현황 토글
  *
  * /attendance (회원용)는 이제 출석 신청 + 현황 조회만 담당한다.
  */
@@ -128,11 +128,11 @@ function AdminAttendanceInner() {
   // 출석 상태 변경 (운영진 전용 — closed 세션 포함)
   const updateStatus = useCallback(async (memberId: string, newStatus: AttendanceStatus) => {
     if (!selectedSessionId || !selectedSession) {
-      toast.error("출석 세션을 선택해주세요.");
+      toast.error("매치를 선택해주세요.");
       return;
     }
     if (selectedSession.status === "archived") {
-      toast.error("보관된 세션은 읽기 전용입니다.");
+      toast.error("보관된 매치는 읽기 전용입니다.");
       return;
     }
     const previousStatus = rows.find((r) => r.member.id === memberId)?.status ?? "undecided";
@@ -199,7 +199,7 @@ function AdminAttendanceInner() {
 
   async function handleSessionStatusChange(sessionId: string, targetStatus: "closed" | "archived", closeMenu?: () => void) {
     closeMenu?.();
-    const msg = targetStatus === "closed" ? "이 출석 명단을 확정하시겠습니까?" : "이 출석 명단을 보관하시겠습니까?";
+    const msg = targetStatus === "closed" ? "이 매치를 완료 처리할까요?" : "이 매치를 보관 처리할까요?";
     if (!window.confirm(msg)) return;
     setProcessingSessionId(sessionId);
     const res = await fetch("/api/attendance-sessions/archive", {
@@ -213,7 +213,7 @@ function AdminAttendanceInner() {
       toast.error(body?.error ?? (targetStatus === "closed" ? "매치 완료 처리 실패" : "보관 처리 실패"));
       return;
     }
-    toast.success(targetStatus === "closed" ? "출석 명단이 확정되었습니다." : "출석 명단이 보관되었습니다.");
+    toast.success(targetStatus === "closed" ? "매치가 완료 처리되었습니다." : "매치가 보관되었습니다.");
     window.location.reload();
   }
 
@@ -248,9 +248,9 @@ function AdminAttendanceInner() {
         </div>
       </header>
 
-      {/* ── 세션 선택 드롭다운 ───────────────────────── */}
+      {/* ── 매치 선택 드롭다운 ───────────────────────── */}
       {loadingSessions ? (
-        <p className="text-center text-sm text-line-400">세션을 불러오는 중...</p>
+        <p className="text-center text-sm text-line-400">매치를 불러오는 중...</p>
       ) : openSessions.length === 0 ? (
         <div className="mb-4 rounded-[14px] border border-line-200/40 bg-line-50 p-8 text-center">
           <p className="font-display text-xs font-bold uppercase tracking-widest text-line-500">No Matches</p>
@@ -346,7 +346,7 @@ function AdminAttendanceInner() {
 
       {selectedSession && (
         <>
-          {/* ── 통계 + 확정/수정 버튼 ─────────────────── */}
+          {/* ── 통계 + 완료/수정 버튼 ─────────────────── */}
           <div className="mb-4">
             <div className="mb-2 flex items-center justify-between">
               <p className="font-display text-[10px] font-bold uppercase tracking-widest text-line-500">
@@ -422,7 +422,7 @@ function AdminAttendanceInner() {
             </div>
           </div>
 
-          {/* ── 게스트 참석자 (통계 아래, 회원 명단 위) ─ */}
+          {/* ── 게스트 참석자 (통계 아래, 출석 현황 위) ─ */}
           {selectedSession.status !== "archived" && (
             <div className="mb-3">
               <SessionGuestSection
@@ -455,9 +455,9 @@ function AdminAttendanceInner() {
             </div>
           </div>
 
-          {/* ── 출석 명단 ──────────────────────────────── */}
+          {/* ── 출석 현황 ──────────────────────────────── */}
           {loadingRows ? (
-            <p className="text-center text-sm text-line-400">명단을 불러오는 중...</p>
+            <p className="text-center text-sm text-line-400">출석 현황을 불러오는 중...</p>
           ) : (
             <div className="overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50">
               {filteredRows.length === 0 ? (

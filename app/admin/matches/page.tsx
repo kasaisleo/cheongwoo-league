@@ -51,7 +51,7 @@ function AdminMatchCard({
   const sessionLabel =
     match.sessionTitle
     ?? (match.sessionDay ? MATCH_SESSION_DAY_LABEL[match.sessionDay] : null)
-    ?? "세션 정보 없음";
+    ?? "매치 정보 없음";
 
   const EMPTY_NAMES = new Set(["", "알수없음", "알 수 없음", "unknown", "Unknown"]);
   const playerName = (name: string | null | undefined) =>
@@ -153,7 +153,7 @@ function AdminMatchCard({
           </p>
         )}
 
-        {/* 선수 명단 */}
+        {/* 경기 참여자 */}
         <div className="grid grid-cols-2 gap-2">
           {/* 청팀 선수 */}
           <div className={`rounded-sm border p-2.5 ${isAWin && winner ? "border-gold/30 bg-gold/5" : "border-line-200/30"}`}>
@@ -293,7 +293,7 @@ export default async function AdminMatchesPage({ searchParams }: PageProps) {
         </form>
       </section>
 
-      {/* 경기 목록 */}
+      {/* 경기 기록 목록 */}
       <section>
         <div className="mb-3 flex items-center justify-between">
           <p className="font-display text-[10px] font-bold uppercase tracking-widest text-line-500">
