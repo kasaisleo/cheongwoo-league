@@ -15,6 +15,7 @@ interface SessionSummary {
   attending: number;
   undecided: number;
   absent: number;
+  matchCount: number;  // 해당 매치에서 진행된 경기 수
 }
 
 interface MemberAttendanceRow {
@@ -47,18 +48,24 @@ export default function AttendanceHistoryPage() {
     const sessionList = (sessions ?? []) as AttendanceSession[];
     const sessionIds = sessionList.map((s) => s.id);
 
-    const { data: attendanceRows } =
+    const [{ data: attendanceRows }, { data: matchRows }] = await Promise.all([
       sessionIds.length > 0
-        ? await supabase.from("attendance").select("session_id, status").in("session_id", sessionIds)
-        : { data: [] };
+        ? supabase.from("attendance").select("session_id, status").in("session_id", sessionIds)
+        : Promise.resolve({ data: [] }),
+      sessionIds.length > 0
+        ? supabase.from("matches").select("id, session_id").in("session_id", sessionIds)
+        : Promise.resolve({ data: [] }),
+    ]);
 
     const result: SessionSummary[] = sessionList.map((session) => {
       const rows = (attendanceRows ?? []).filter((a) => a.session_id === session.id);
+      const mCount = (matchRows ?? []).filter((m) => m.session_id === session.id).length;
       return {
         session,
         attending: rows.filter((r) => r.status === "attending").length,
         undecided: rows.filter((r) => r.status === "undecided").length,
         absent: rows.filter((r) => r.status === "absent").length,
+        matchCount: mCount,
       };
     });
 
@@ -149,7 +156,7 @@ export default function AttendanceHistoryPage() {
         </Card>
       ) : (
         <div className="space-y-2">
-          {summaries.map(({ session, attending, undecided, absent }) => (
+          {summaries.map(({ session, attending, undecided, absent, matchCount }) => (
             <Card key={session.id} className="overflow-hidden p-0">
               <button
                 type="button"
@@ -164,17 +171,20 @@ export default function AttendanceHistoryPage() {
                         ` · ${session.title}`}
                     </p>
                     <span
-                      className={`rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${
+                      className={`rounded-sm px-1.5 py-0.5 text-[10px] font-semibold ${
                         session.status === "archived"
                           ? "bg-line-300 text-line-700"
                           : "bg-clay-400/10 text-clay-400"
                       }`}
                     >
-                      {session.status === "archived" ? "보관됨" : "확정됨"}
+                      {session.status === "archived" ? "보관됨" : "완료됨"}
                     </span>
                   </div>
                   <p className="mt-0.5 text-xs text-line-500">
-                    출석 {attending} · 미정 {undecided} · 불참 {absent}
+                    출석 {attending}명 · 불참 {absent}명
+                  </p>
+                  <p className="text-xs text-line-400">
+                    {matchCount > 0 ? `경기 ${matchCount}게임 진행` : "경기 결과 미입력"}
                   </p>
                 </div>
                 <span className="text-line-500">{expandedSessionId === session.id ? "▲" : "▼"}</span>
@@ -187,7 +197,7 @@ export default function AttendanceHistoryPage() {
                       type="button"
                       disabled={restoringSessionId === session.id}
                       onClick={() => handleRestoreSession(session.id)}
-                      className="mb-3 w-full rounded-lg border border-clay-400 py-2 text-xs font-semibold text-clay-400 disabled:opacity-40"
+                      className="mb-3 w-full rounded-sm border border-clay-400 py-2 text-xs font-semibold text-clay-400 disabled:opacity-40"
                     >
                       {restoringSessionId === session.id ? "처리 중..." : "보관 해제 (출석 수정 가능 상태로 복원)"}
                     </button>
@@ -197,6 +207,8 @@ export default function AttendanceHistoryPage() {
                   ) : detailRows.length === 0 ? (
                     <p className="text-center text-sm text-line-400">출석 기록이 없어요.</p>
                   ) : (
+                    <>
+                    <p className="mb-2 text-[10px] font-semibold text-line-500">출석 현황</p>
                     <div className="space-y-1.5">
                       {detailRows.map(({ member, status }) => (
                         <div key={member.id} className="flex items-center justify-between py-1">
@@ -217,6 +229,7 @@ export default function AttendanceHistoryPage() {
                         </div>
                       ))}
                     </div>
+                    </>
                   )}
                 </div>
               )}
