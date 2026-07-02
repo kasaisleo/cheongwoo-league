@@ -101,7 +101,9 @@ export default async function AdminRecordsPage() {
   }
 
   const top10 = [...statMap.values()]
-    .sort((a, b) => b.games - a.games || b.wins - a.wins || b.winRate - a.winRate || a.name.localeCompare(b.name, "ko"))
+    // 정렬: 경기수↓ → 승률↓ → 승수↓ → 이름 가나다
+    // 이 섹션은 "승수/승률 랭킹"이 아닌 "참여도 랭킹"이므로 경기수가 1순위
+    .sort((a, b) => b.games - a.games || b.winRate - a.winRate || b.wins - a.wins || a.name.localeCompare(b.name, "ko"))
     .slice(0, 10);
 
   // ── 렌더 ────────────────────────────────────────────────────
@@ -198,7 +200,7 @@ export default async function AdminRecordsPage() {
 
       {/* ── 참여자 TOP 10 */}
       <section className="mb-5">
-        <p className="mb-2 font-display text-[10px] font-bold uppercase tracking-widest text-line-500">참여자 TOP 10</p>
+        <p className="mb-2 font-display text-[10px] font-bold uppercase tracking-widest text-line-500">참여도 TOP 10</p>
         {top10.length === 0 ? (
           <div className="rounded-[14px] border border-line-200/40 bg-line-50 p-4 text-center">
             <p className="text-sm text-line-400">경기 기록이 없어요.</p>
