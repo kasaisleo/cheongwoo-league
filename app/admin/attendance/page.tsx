@@ -444,6 +444,16 @@ function AdminAttendanceInner() {
             </div>
           </div>
 
+          {/* ── 게스트 참석자 (통계 아래, 회원 명단 위) ─ */}
+          {selectedSession.status !== "archived" && (
+            <div className="mb-3">
+              <SessionGuestSection
+                sessionId={selectedSession.id}
+                editable={true}
+              />
+            </div>
+          )}
+
           {/* ── 검색 + 필터 칩 ───────────────────────── */}
           <div className="mb-3 space-y-2">
             <input value={memberQuery} onChange={(e) => setMemberQuery(e.target.value)}
@@ -466,14 +476,6 @@ function AdminAttendanceInner() {
               })}
             </div>
           </div>
-
-          {/* ── 게스트 참석자 (관리자 편집 모드) ──────── */}
-          {selectedSession.status !== "archived" && (
-            <SessionGuestSection
-              sessionId={selectedSession.id}
-              editable={true}
-            />
-          )}
 
           {/* ── 출석 명단 ──────────────────────────────── */}
           {loadingRows ? (

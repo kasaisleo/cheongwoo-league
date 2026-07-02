@@ -3,39 +3,31 @@
 import { useEffect, useState, useCallback } from "react";
 import { toast } from "@/components/ui/Toast";
 
+// ── 타입 ───────────────────────────────────────────────────────────
 interface SessionGuest {
   id: string;
   guest_id: string;
-  guests: { id: string; name: string; phone: string | null; is_active: boolean } | null;
+  guests: { id: string; name: string; phone: string | null } | null;
 }
 
 interface GuestCandidate {
   id: string;
   name: string;
   phone: string | null;
+  years_playing: number | null;
 }
 
 interface SessionGuestSectionProps {
   sessionId: string;
-  /** true = 관리자 편집 모드, false = 공개 읽기 전용 */
+  /** true = 관리자 편집 모드 / false = 공개 읽기 전용 */
   editable?: boolean;
 }
 
-/**
- * SessionGuestSection — 매치 참석 게스트 섹션.
- *
- * editable=true  → 관리자 /admin/attendance 전용. 게스트 추가/제거 가능.
- * editable=false → 공개 /attendance. 읽기 전용, 전화번호 미노출.
- */
+// ── 메인 컴포넌트 ─────────────────────────────────────────────────
 export function SessionGuestSection({ sessionId, editable = false }: SessionGuestSectionProps) {
   const [sessionGuests, setSessionGuests] = useState<SessionGuest[]>([]);
   const [loading, setLoading] = useState(true);
-
-  // 관리자 편집 전용 state
-  const [query, setQuery] = useState("");
-  const [candidates, setCandidates] = useState<GuestCandidate[]>([]);
-  const [searching, setSearching] = useState(false);
-  const [addingId, setAddingId] = useState<string | null>(null);
+  const [showAddPanel, setShowAddPanel] = useState(false);
   const [removingId, setRemovingId] = useState<string | null>(null);
 
   const loadSessionGuests = useCallback(async () => {
@@ -48,34 +40,6 @@ export function SessionGuestSection({ sessionId, editable = false }: SessionGues
 
   useEffect(() => { loadSessionGuests(); }, [loadSessionGuests]);
 
-  async function handleSearch() {
-    if (!query.trim()) return;
-    setSearching(true);
-    // 게스트 검색 — 활성, 미전환 게스트만
-    const res = await fetch(`/api/admin/guests/search?q=${encodeURIComponent(query.trim())}`);
-    const body = await res.json().catch(() => null);
-    setSearching(false);
-    if (res.ok) {
-      const addedIds = new Set(sessionGuests.map((sg) => sg.guest_id));
-      setCandidates((body.guests ?? []).filter((g: GuestCandidate) => !addedIds.has(g.id)));
-    }
-  }
-
-  async function handleAdd(guest: GuestCandidate) {
-    setAddingId(guest.id);
-    const res = await fetch("/api/admin/session-guests", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ sessionId, guestId: guest.id }),
-    });
-    const body = await res.json().catch(() => null);
-    setAddingId(null);
-    if (!res.ok) { toast.error(body?.error ?? "추가 실패"); return; }
-    toast.success(body.message);
-    setCandidates((prev) => prev.filter((c) => c.id !== guest.id));
-    await loadSessionGuests();
-  }
-
   async function handleRemove(sgId: string, guestName: string) {
     if (!confirm(`${guestName}을(를) 참석 게스트에서 제거할까요?`)) return;
     setRemovingId(sgId);
@@ -86,26 +50,59 @@ export function SessionGuestSection({ sessionId, editable = false }: SessionGues
     await loadSessionGuests();
   }
 
+  async function handleAdd(guest: GuestCandidate) {
+    const res = await fetch("/api/admin/session-guests", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sessionId, guestId: guest.id }),
+    });
+    const body = await res.json().catch(() => null);
+    if (!res.ok) { toast.error(body?.error ?? "추가 실패"); return; }
+    toast.success(body.message);
+    await loadSessionGuests();
+  }
+
   if (loading) {
     return (
-      <div className="mt-4 rounded-[14px] border border-line-200/40 bg-line-50 px-4 py-3">
+      <div className="overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50 px-4 py-3">
         <p className="text-[11px] text-line-400">게스트 참석자 불러오는 중...</p>
       </div>
     );
   }
 
+  const addedIds = new Set(sessionGuests.map((sg) => sg.guest_id));
+
   return (
-    <div className="mt-4 overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50">
-      <div className="border-b border-line-200/30 px-4 py-2.5">
+    <div className="overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50">
+      {/* 헤더 */}
+      <div className="flex items-center justify-between border-b border-line-200/30 px-4 py-2.5">
         <p className="text-[11px] font-semibold text-line-500">
           게스트 참석자
           {sessionGuests.length > 0 && (
             <span className="ml-1.5 text-line-400">({sessionGuests.length})</span>
           )}
         </p>
+        {editable && !showAddPanel && (
+          <button
+            type="button"
+            onClick={() => setShowAddPanel(true)}
+            className="rounded-sm border border-clay-400/60 bg-clay-400/10 px-2.5 py-1 text-[10px] font-semibold text-clay-400 hover:bg-clay-400/20"
+          >
+            + 게스트 추가
+          </button>
+        )}
+        {editable && showAddPanel && (
+          <button
+            type="button"
+            onClick={() => setShowAddPanel(false)}
+            className="rounded-sm border border-line-200/40 px-2.5 py-1 text-[10px] font-semibold text-line-500"
+          >
+            닫기
+          </button>
+        )}
       </div>
 
-      {/* 현재 추가된 게스트 목록 */}
+      {/* 현재 지정된 게스트 목록 */}
       {sessionGuests.length === 0 ? (
         <div className="px-4 py-3">
           <p className="text-sm text-line-400">지정된 게스트가 없습니다.</p>
@@ -117,7 +114,7 @@ export function SessionGuestSection({ sessionId, editable = false }: SessionGues
             return (
               <div key={sg.id} className="flex items-center justify-between px-4 py-2.5">
                 <div className="flex items-center gap-2">
-                  <p className="text-sm font-semibold text-line-900">{name}</p>
+                  <p className="name-kr-sm text-line-900">{name}</p>
                   <span className="rounded-sm border border-line-200/40 bg-line-100 px-1.5 py-0.5 text-[9px] font-semibold text-line-500">
                     게스트
                   </span>
@@ -138,50 +135,152 @@ export function SessionGuestSection({ sessionId, editable = false }: SessionGues
         </div>
       )}
 
-      {/* 관리자 편집 — 게스트 검색 + 추가 */}
-      {editable && (
-        <div className="border-t border-line-200/30 px-4 py-3">
-          <p className="mb-2 text-[10px] font-semibold text-line-500">게스트 검색 후 추가</p>
-          <div className="flex gap-2">
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-              placeholder="게스트 이름 검색"
-              className="h-9 flex-1 rounded-sm border border-line-200/40 bg-line-100 px-3 text-sm text-line-900 placeholder:text-line-400"
-            />
-            <button
-              type="button"
-              onClick={handleSearch}
-              disabled={searching}
-              className="rounded-sm border border-line-200/40 px-3 text-xs font-semibold text-line-600 disabled:opacity-40"
-            >
-              {searching ? "..." : "검색"}
-            </button>
-          </div>
+      {/* 게스트 추가 패널 — editable + showAddPanel */}
+      {editable && showAddPanel && (
+        <AddGuestPanel
+          addedIds={addedIds}
+          onAdd={async (guest) => { await handleAdd(guest); }}
+        />
+      )}
+    </div>
+  );
+}
 
-          {candidates.length > 0 && (
-            <div className="mt-2 space-y-1">
-              {candidates.map((g) => (
-                <div key={g.id} className="flex items-center justify-between rounded-sm border border-line-200/40 bg-line-50 px-3 py-2">
-                  <div>
-                    <span className="text-sm font-semibold text-line-900">{g.name}</span>
-                    {g.phone && (
-                      <span className="ml-2 text-xs text-line-400">{g.phone}</span>
-                    )}
-                  </div>
+// ── 게스트 추가 패널 ─────────────────────────────────────────────
+function AddGuestPanel({
+  addedIds,
+  onAdd,
+}: {
+  addedIds: Set<string>;
+  onAdd: (guest: GuestCandidate) => Promise<void>;
+}) {
+  const [recentGuests, setRecentGuests] = useState<GuestCandidate[]>([]);
+  const [loadingRecent, setLoadingRecent] = useState(true);
+  const [query, setQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<GuestCandidate[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [addingId, setAddingId] = useState<string | null>(null);
+
+  // 최근 등록 게스트 10명 로드
+  useEffect(() => {
+    async function load() {
+      setLoadingRecent(true);
+      const res = await fetch("/api/admin/guests/recent");
+      const body = await res.json().catch(() => null);
+      setLoadingRecent(false);
+      if (res.ok) setRecentGuests(body.guests ?? []);
+    }
+    load();
+  }, []);
+
+  async function handleSearch() {
+    if (!query.trim()) return;
+    setSearching(true);
+    const res = await fetch(`/api/admin/guests/search?q=${encodeURIComponent(query.trim())}`);
+    const body = await res.json().catch(() => null);
+    setSearching(false);
+    if (res.ok) setSearchResults(body.guests ?? []);
+  }
+
+  async function doAdd(guest: GuestCandidate) {
+    setAddingId(guest.id);
+    await onAdd(guest);
+    setAddingId(null);
+    // 검색 결과에서도 제거
+    setSearchResults((prev) => prev.filter((g) => g.id !== guest.id));
+  }
+
+  const inputCls = "h-9 flex-1 rounded-sm border border-line-200/40 bg-line-100 px-3 text-sm text-line-900 placeholder:text-line-400";
+
+  return (
+    <div className="border-t border-line-200/30 bg-line-50 px-4 pb-4 pt-3">
+      {/* 최근 등록 게스트 */}
+      <p className="mb-2 text-[10px] font-semibold text-line-500">최근 등록 게스트</p>
+      {loadingRecent ? (
+        <p className="mb-3 text-xs text-line-400">불러오는 중...</p>
+      ) : recentGuests.length === 0 ? (
+        <p className="mb-3 text-xs text-line-400">등록된 게스트가 없습니다.</p>
+      ) : (
+        <div className="mb-3 space-y-1">
+          {recentGuests.map((g) => {
+            const alreadyAdded = addedIds.has(g.id);
+            return (
+              <div key={g.id}
+                className="flex items-center justify-between rounded-sm border border-line-200/40 bg-line-50 px-3 py-2">
+                <div className="min-w-0">
+                  <span className="name-kr-sm text-line-900">{g.name}</span>
+                  {g.years_playing != null && (
+                    <span className="ml-1.5 text-[11px] text-line-400">구력 {g.years_playing}년</span>
+                  )}
+                </div>
+                {alreadyAdded ? (
+                  <span className="rounded-sm border border-line-200/40 px-2 py-0.5 text-[10px] font-semibold text-line-400">
+                    추가됨
+                  </span>
+                ) : (
                   <button
                     type="button"
                     disabled={addingId === g.id}
-                    onClick={() => handleAdd(g)}
+                    onClick={() => doAdd(g)}
                     className="rounded-sm border border-clay-400/60 bg-clay-400/10 px-2 py-0.5 text-[10px] font-semibold text-clay-400 disabled:opacity-40"
                   >
-                    {addingId === g.id ? "추가 중..." : "+ 추가"}
+                    {addingId === g.id ? "..." : "+ 추가"}
                   </button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* 이름 검색 */}
+      <p className="mb-2 text-[10px] font-semibold text-line-500">이름 검색</p>
+      <div className="flex gap-2">
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+          placeholder="게스트 이름 검색"
+          className={inputCls}
+        />
+        <button
+          type="button"
+          onClick={handleSearch}
+          disabled={searching}
+          className="rounded-sm border border-line-200/40 px-3 text-xs font-semibold text-line-600 disabled:opacity-40"
+        >
+          {searching ? "..." : "검색"}
+        </button>
+      </div>
+
+      {searchResults.length > 0 && (
+        <div className="mt-2 space-y-1">
+          {searchResults.map((g) => {
+            const alreadyAdded = addedIds.has(g.id);
+            return (
+              <div key={g.id}
+                className="flex items-center justify-between rounded-sm border border-line-200/40 bg-line-50 px-3 py-2">
+                <div>
+                  <span className="name-kr-sm text-line-900">{g.name}</span>
+                  {g.phone && <span className="ml-2 text-xs text-line-400">{g.phone}</span>}
                 </div>
-              ))}
-            </div>
-          )}
+                {alreadyAdded ? (
+                  <span className="rounded-sm border border-line-200/40 px-2 py-0.5 text-[10px] font-semibold text-line-400">
+                    추가됨
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    disabled={addingId === g.id}
+                    onClick={() => doAdd(g)}
+                    className="rounded-sm border border-clay-400/60 bg-clay-400/10 px-2 py-0.5 text-[10px] font-semibold text-clay-400 disabled:opacity-40"
+                  >
+                    {addingId === g.id ? "..." : "+ 추가"}
+                  </button>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
