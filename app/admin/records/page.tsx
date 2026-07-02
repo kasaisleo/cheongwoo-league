@@ -407,8 +407,9 @@ export default async function AdminRecordsPage() {
         <p className="mb-2 font-display text-[10px] font-bold uppercase tracking-widest text-line-500">Quick Links</p>
         <div className="flex flex-wrap gap-2">
           {[
-            { href: "/admin/records/players", label: "개인 기록 검색" },
-            { href: "/admin/records/matches", label: "경기 검수" },
+            { href: "/admin/records/players",    label: "개인 기록 검색" },
+            { href: "/admin/records/matches",     label: "경기 검수" },
+            { href: "/admin/records/attendance",  label: "출석 체크 검수" },
             { href: "/admin/matches",     label: "경기 기록 관리" },
             { href: "/admin/matches/new", label: "경기 결과 입력" },
             { href: "/admin/attendance",  label: "출석 관리" },
