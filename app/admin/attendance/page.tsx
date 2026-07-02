@@ -242,7 +242,7 @@ function AdminAttendanceInner() {
           <h1 className="headline-kr text-4xl text-line-900">출석 관리</h1>
         </div>
         <div className="flex items-center gap-2">
-          <Link href="/attendance/history" className="flex h-10 w-10 items-center justify-center rounded-sm border border-line-200/40 bg-line-50 text-line-500" aria-label="출석 히스토리">
+          <Link href="/matches/history" className="flex h-10 w-10 items-center justify-center rounded-sm border border-line-200/40 bg-line-50 text-line-500" aria-label="매치 히스토리">
             <span className="text-base">🕓</span>
           </Link>
           {/* 매치 생성 버튼 — 커스텀/이번 주 생성 */}
@@ -381,7 +381,7 @@ function AdminAttendanceInner() {
                   </button>
                 )}
                 {selectedSession.status === "closed" && (
-                  <Link href="/attendance/history"
+                  <Link href="/matches/history"
                     className="rounded-sm border border-line-200/40 px-2.5 py-1 text-[11px] font-semibold text-line-500 hover:text-line-700">
                     히스토리
                   </Link>

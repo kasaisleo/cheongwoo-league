@@ -129,7 +129,7 @@ export default async function MatchesPage({ searchParams }: MatchesPageProps) {
 
       {/* ── 기록 탭 — 매치 히스토리 / 경기 기록 ── */}
       <div className="mb-4 flex gap-2">
-        <Link href="/attendance/history"
+        <Link href="/matches/history"
           className="rounded-sm border border-line-200/40 px-3 py-1.5 text-xs font-semibold text-line-500 hover:border-clay-400/60 hover:text-clay-400">
           매치 히스토리
         </Link>
