@@ -172,8 +172,7 @@ function AdminAttendanceInner() {
     setRows((prev) => prev.map((row) => row.member.id === memberId ? { ...row, attendanceId: newAttendanceId } : row));
   }, [selectedSessionId, rows, supabase]);  // eslint-disable-line react-hooks/exhaustive-deps
 
-  async function handleCreateWeeklySessions(closeMenu?: () => void) {
-    closeMenu?.();
+  async function handleCreateWeeklySessions() {
     if (!window.confirm("기존 열린 토/일 매치를 보관하고 이번 주 토/일 매치를 새로 생성합니다. 진행할까요?")) return;
     const res = await fetch("/api/attendance-sessions/weekly", { method: "POST" });
     const body = await res.json().catch(() => null);
@@ -246,28 +245,14 @@ function AdminAttendanceInner() {
           <Link href="/attendance/history" className="flex h-10 w-10 items-center justify-center rounded-sm border border-line-200/40 bg-line-50 text-line-500" aria-label="출석 히스토리">
             <span className="text-base">🕓</span>
           </Link>
-          {/* 매치 생성/관리 드롭다운 */}
-          <Dropdown
-            align="right"
-            triggerClassName="flex h-10 w-10 items-center justify-center rounded-sm border border-line-200/40 bg-line-50 text-line-700 transition-colors hover:bg-line-200"
-            trigger={<span className="text-lg">⚙</span>}
+          {/* 매치 생성 버튼 — 커스텀/이번 주 생성 */}
+          <button
+            type="button"
+            onClick={() => setShowCustomForm((v) => !v)}
+            className="rounded-sm border border-clay-400/60 bg-clay-400/10 px-2.5 py-1.5 text-xs font-semibold text-clay-400 hover:bg-clay-400/20"
           >
-            {(close) => (
-              <div className="space-y-0.5">
-                <DropdownItem onClick={() => handleCreateWeeklySessions(close)}>
-                  이번 주 매치 생성
-                </DropdownItem>
-                <DropdownItem onClick={() => { setCustomDate((p) => p < todayString() ? todayString() : p); setShowCustomForm(true); close(); }}>
-                  커스텀 매치 생성
-                </DropdownItem>
-                {selectedSession?.status === "open" && (
-                  <DropdownItem onClick={() => handleSessionStatusChange(selectedSessionId!, "closed", close)}>
-                    매치 완료
-                  </DropdownItem>
-                )}
-              </div>
-            )}
-          </Dropdown>
+            {showCustomForm ? "취소" : "+ 매치 추가"}
+          </button>
           <Link href="/admin" className="rounded-sm border border-line-200/40 px-2.5 py-1.5 text-xs font-semibold text-line-500 hover:text-line-700">
             ← 관리자
           </Link>
@@ -395,7 +380,12 @@ function AdminAttendanceInner() {
                     수정 완료
                   </button>
                 )}
-
+                {selectedSession.status === "closed" && (
+                  <Link href="/attendance/history"
+                    className="rounded-sm border border-line-200/40 px-2.5 py-1 text-[11px] font-semibold text-line-500 hover:text-line-700">
+                    히스토리
+                  </Link>
+                )}
               </div>
             </div>
 
