@@ -248,9 +248,15 @@ export default async function AdminRecordsPage() {
 
       {/* ── PARTICIPATION BOARD ────────────────────────────────── */}
       <section className="mb-5">
-        <p className="mb-2 font-display text-[10px] font-bold uppercase tracking-widest text-line-500">
-          참여도 TOP 10
-        </p>
+        <div className="mb-2 flex items-center justify-between">
+          <p className="font-display text-[10px] font-bold uppercase tracking-widest text-line-500">
+            참여도 TOP 10
+          </p>
+          <Link href="/admin/records/players"
+            className="rounded-sm border border-line-200/40 px-2.5 py-1 text-[10px] font-semibold text-line-500 hover:border-clay-400/60 hover:text-clay-400">
+            개인 기록 보기 →
+          </Link>
+        </div>
         {top10.length === 0 ? (
           <div className="rounded-[14px] border border-line-200/40 bg-line-50 p-4 text-center">
             <p className="text-sm text-line-400">경기 기록이 없어요.</p>
@@ -297,6 +303,7 @@ export default async function AdminRecordsPage() {
         <p className="mb-2 font-display text-[10px] font-bold uppercase tracking-widest text-line-500">Quick Links</p>
         <div className="flex flex-wrap gap-2">
           {[
+            { href: "/admin/records/players", label: "개인 기록 검색" },
             { href: "/admin/matches",     label: "경기 기록 관리" },
             { href: "/admin/matches/new", label: "경기 결과 입력" },
             { href: "/admin/attendance",  label: "출석 관리" },
