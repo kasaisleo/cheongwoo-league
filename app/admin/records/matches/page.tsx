@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { MATCH_SESSION_DAY_LABEL } from "@/lib/match-session-label";
+import { judgeMatchStatus, type MatchStatus } from "@/lib/records/matchStatus";
 import type { AttendanceStatus } from "@/lib/supabase/database.types";
 
 // ── 유틸 ──────────────────────────────────────────────────────────
@@ -15,24 +16,6 @@ function fmtPct(val: number | null): string {
   return val === null ? "-" : `${val}%`;
 }
 
-// ── 상태 판단 ─────────────────────────────────────────────────────
-type MatchStatus = "정상" | "확인 필요" | "기록 부족" | "완료 전";
-
-interface MatchStatusInput {
-  isCompleted: boolean;
-  gameCount: number;          // 해당 세션의 실제 경기 수
-  attendingCount: number;     // 출석 체크 인원
-  gameParticipantCount: number; // 경기 기록에 등장한 고유 회원 수
-  noShowCount: number;        // 출석 후 미참여 인원
-}
-
-export function judgeMatchStatus(s: MatchStatusInput): MatchStatus {
-  if (!s.isCompleted) return "완료 전";
-  if (s.gameCount === 0) return "기록 부족";
-  if (s.noShowCount > 0) return "확인 필요";
-  if (s.attendingCount > 0 && s.gameParticipantCount === 0) return "확인 필요";
-  return "정상";
-}
 
 const STATUS_STYLE: Record<MatchStatus, string> = {
   "정상":    "border-gold/40 bg-gold/10 text-gold",
