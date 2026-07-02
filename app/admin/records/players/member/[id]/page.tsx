@@ -2,6 +2,22 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { MATCH_SESSION_DAY_LABEL } from "@/lib/match-session-label";
 
+// ── 유틸 ────────────────────────────────────────────────────────
+function pct(num: number, den: number) {
+  if (den === 0) return null;  // null → "-" 표시
+  return Math.round((num / den) * 100);
+}
+function fmtPct(val: number | null) {
+  return val === null ? "-" : `${val}%`;
+}
+
+// ── 매치명 헬퍼 ─────────────────────────────────────────────────
+function matchTitle(s: { session_day: string; title: string }) {
+  const base = MATCH_SESSION_DAY_LABEL[s.session_day as keyof typeof MATCH_SESSION_DAY_LABEL] ?? s.title;
+  return (s.session_day === "holiday" || s.session_day === "custom") ? `${base} · ${s.title}` : base;
+}
+
+// ── 페이지 ──────────────────────────────────────────────────────
 export default async function MemberRecordPage({ params }: { params: { id: string } }) {
   const supabase = createClient();
   const memberId = params.id;
@@ -32,17 +48,18 @@ export default async function MemberRecordPage({ params }: { params: { id: strin
     );
   }
 
+  // ── 완료 매치 집합 ────────────────────────────────────────────
   const completedIds = new Set(
     (allSessions ?? []).filter((s) => s.status === "closed" || s.session_date < today).map((s) => s.id)
   );
+  const completedCount = completedIds.size;  // 분모 (0이면 모두 "-")
 
-  // 이 회원이 참여한 경기
+  // ── 내 경기 ──────────────────────────────────────────────────
   const myMatches = (allMatches ?? []).filter((m) => {
-    const memberSlots = [m.team_a_player1_member, m.team_a_player2_member, m.team_b_player1_member, m.team_b_player2_member];
-    return memberSlots.includes(memberId);
+    return [m.team_a_player1_member, m.team_a_player2_member,
+            m.team_b_player1_member, m.team_b_player2_member].includes(memberId);
   });
 
-  // 승/패
   let wins = 0, losses = 0;
   const recentForms: string[] = [];
   for (const m of myMatches) {
@@ -52,9 +69,18 @@ export default async function MemberRecordPage({ params }: { params: { id: strin
     if (recentForms.length < 5) recentForms.push(isWin ? "W" : "L");
   }
   const games = wins + losses;
-  const winRate = games > 0 ? Math.round((wins / games) * 100) : 0;
+  const winRate = pct(wins, games);  // null if games=0
 
-  // 출석
+  // 실제 경기 참여 session (완료 매치만)
+  const gameSessionIds = new Set(
+    myMatches.map((m) => m.session_id).filter((sid): sid is string => !!sid && completedIds.has(sid))
+  );
+  const gameSessionCount = gameSessionIds.size;
+  const participationRate = pct(gameSessionCount, completedCount);  // 경기 참여율
+  const absenceCount = completedCount - gameSessionCount;
+  const absenceRate = participationRate === null ? null : 100 - participationRate;  // 미참여도
+
+  // ── 출석 ────────────────────────────────────────────────────
   const attendMap = new Map((attendanceRows ?? []).map((r) => [r.session_id, r.status]));
   let attending = 0, absent = 0, undecided = 0;
   for (const [sid, status] of attendMap) {
@@ -63,8 +89,9 @@ export default async function MemberRecordPage({ params }: { params: { id: strin
     else if (status === "absent") absent++;
     else undecided++;
   }
+  const attendRate = pct(attending, completedCount);  // 출석 체크율
 
-  // 세션별 참여자 집합 (출석 후 경기 미참여 계산)
+  // ── 세션별 참여자 집합 ────────────────────────────────────────
   const participantsPerSession = new Map<string, Set<string>>();
   for (const m of allMatches ?? []) {
     if (!m.session_id) continue;
@@ -73,41 +100,42 @@ export default async function MemberRecordPage({ params }: { params: { id: strin
       .filter(Boolean).forEach((id) => participantsPerSession.get(m.session_id)!.add(id!));
   }
 
-  let noShowCount = 0;
+  // 출석 후 미참여 — 어떤 session인지 기록
+  const noShowSessionIds: string[] = [];
   for (const [sid, status] of attendMap) {
     if (!completedIds.has(sid)) continue;
-    if (status === "attending" && !participantsPerSession.get(sid)?.has(memberId)) noShowCount++;
+    if (status === "attending" && !participantsPerSession.get(sid)?.has(memberId)) {
+      noShowSessionIds.push(sid);
+    }
   }
-  const noShowRate = attending > 0 ? Math.round((noShowCount / attending) * 100) : 0;
-  const completedCount = completedIds.size;
-  const attendRate = completedCount > 0 ? Math.round((attending / completedCount) * 100) : 0;
-  // 미참여도 = 완료 매치 중 실제 경기 참여가 없는 비율
-  const gameSessionIds = new Set(myMatches.map((m) => m.session_id).filter((sid): sid is string => !!sid && completedIds.has(sid)));
-  const gameSessionCount = gameSessionIds.size;
-  const participationRate = completedCount > 0 ? Math.round((gameSessionCount / completedCount) * 100) : 0;
-  const absenceRate = completedCount > 0 ? 100 - participationRate : 0;
+  const noShowCount = noShowSessionIds.length;
+  const noShowRate = pct(noShowCount, attending);  // 출석 후 미참여율
 
-  // 최근 경기 (최대 10개)
+  // ── sessionMap / memberNameMap ────────────────────────────────
   const sessionMap = new Map((allSessions ?? []).map((s) => [s.id, s]));
   const memberNameMap = new Map((allMembers ?? []).map((m) => [m.id, m.name]));
+
+  // ── 최근 경기 (최대 10개) ─────────────────────────────────────
   const recentMatchItems = myMatches.slice(0, 10).map((m) => {
     const isTeamA = [m.team_a_player1_member, m.team_a_player2_member].includes(memberId);
     const isWin = (isTeamA && m.winner_team === "A") || (!isTeamA && m.winner_team === "B");
     const session = m.session_id ? sessionMap.get(m.session_id) : null;
-    const partner = isTeamA
+    const partnerId = isTeamA
       ? [m.team_a_player1_member, m.team_a_player2_member].find((id) => id && id !== memberId)
       : [m.team_b_player1_member, m.team_b_player2_member].find((id) => id && id !== memberId);
-    const opponents = isTeamA
+    const opponentIds = isTeamA
       ? [m.team_b_player1_member, m.team_b_player2_member].filter(Boolean)
       : [m.team_a_player1_member, m.team_a_player2_member].filter(Boolean);
-    return {
-      m, isTeamA, isWin, session,
-      partnerName: partner ? (memberNameMap.get(partner) ?? "알수없음") : null,
-      opponentNames: opponents.map((id) => memberNameMap.get(id!) ?? "알수없음"),
+    return { m, isTeamA, isWin, session,
+      partnerName: partnerId ? (memberNameMap.get(partnerId) ?? "알수없음") : null,
+      opponentNames: opponentIds.map((id) => memberNameMap.get(id!) ?? "알수없음"),
     };
   });
 
   const memberTypeLabel: Record<string, string> = { 정회원: "정회원", 준회원: "준회원", 게스트: "게스트" };
+
+  // ── 출석 후 미참여 세션 상세 ──────────────────────────────────
+  const noShowSessions = noShowSessionIds.map((sid) => sessionMap.get(sid)).filter(Boolean);
 
   return (
     <main className="px-4 pt-6 pb-28">
@@ -125,7 +153,46 @@ export default async function MemberRecordPage({ params }: { params: { id: strin
         </Link>
       </header>
 
-      {/* Summary Cards */}
+      {/* ── 시즌 요약 카드 */}
+      {completedCount > 0 && (
+        <section className="mb-5">
+          <p className="mb-2 font-display text-[10px] font-bold uppercase tracking-widest text-line-500">시즌 요약</p>
+          <div className="overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50">
+            <div className="grid grid-cols-3 divide-x divide-line-200/30 border-b border-line-200/30">
+              <div className="px-4 py-3 text-center">
+                <p className="font-score text-2xl font-bold tabular-nums text-line-900">{completedCount}</p>
+                <p className="mt-0.5 font-display text-[9px] font-bold uppercase tracking-widest text-line-400">완료 매치</p>
+              </div>
+              <div className="px-4 py-3 text-center">
+                <p className="font-score text-2xl font-bold tabular-nums text-gold">{gameSessionCount}</p>
+                <p className="mt-0.5 font-display text-[9px] font-bold uppercase tracking-widest text-line-400">참여 매치</p>
+              </div>
+              <div className="px-4 py-3 text-center">
+                <p className={`font-score text-2xl font-bold tabular-nums ${absenceCount > 0 ? "text-clay-400" : "text-line-400"}`}>{absenceCount}</p>
+                <p className="mt-0.5 font-display text-[9px] font-bold uppercase tracking-widest text-line-400">미참여 매치</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-3 divide-x divide-line-200/30">
+              <div className="px-4 py-3 text-center">
+                <p className="font-score text-xl font-bold tabular-nums text-line-900">{fmtPct(participationRate)}</p>
+                <p className="mt-0.5 font-display text-[9px] font-bold uppercase tracking-widest text-line-400">경기 참여율</p>
+              </div>
+              <div className="px-4 py-3 text-center">
+                <p className="font-score text-xl font-bold tabular-nums text-line-900">{fmtPct(attendRate)}</p>
+                <p className="mt-0.5 font-display text-[9px] font-bold uppercase tracking-widest text-line-400">출석 체크율</p>
+              </div>
+              <div className="px-4 py-3 text-center">
+                <p className={`font-score text-xl font-bold tabular-nums ${noShowCount > 0 ? "text-clay-400" : "text-line-400"}`}>
+                  {noShowCount > 0 ? `${noShowCount}회` : "없음"}
+                </p>
+                <p className="mt-0.5 font-display text-[9px] font-bold uppercase tracking-widest text-line-400">출석 후 미참여</p>
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* ── Summary Cards */}
       <section className="mb-5">
         <div className="overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50">
           <div className="grid grid-cols-2 divide-x divide-y divide-line-200/30">
@@ -135,47 +202,40 @@ export default async function MemberRecordPage({ params }: { params: { id: strin
               <p className="text-[10px] text-line-400">{wins}승 {losses}패</p>
             </div>
             <div className="px-5 py-4">
-              <p className="font-score text-4xl font-bold tabular-nums text-gold">{winRate}%</p>
+              <p className="font-score text-4xl font-bold tabular-nums text-gold">{fmtPct(winRate)}</p>
               <p className="mt-1 font-display text-[10px] font-bold uppercase tracking-widest text-line-500">승률</p>
+              {games === 0 && <p className="text-[10px] text-line-400">경기 기록 없음</p>}
             </div>
             <div className="px-5 py-4">
-              <p className="font-score text-4xl font-bold tabular-nums text-line-900">{attending}</p>
-              <p className="mt-1 font-display text-[10px] font-bold uppercase tracking-widest text-line-500">출석</p>
-              <p className="text-[10px] text-line-400">미정 {undecided} · 불참 {absent}</p>
+              <p className="font-score text-4xl font-bold tabular-nums text-line-900">{fmtPct(attendRate)}</p>
+              <p className="mt-1 font-display text-[10px] font-bold uppercase tracking-widest text-line-500">출석 체크율</p>
+              <p className="text-[10px] text-line-400">
+                {completedCount > 0 ? `완료 ${completedCount}매치 중 ${attending}회` : "완료 매치 없음"}
+              </p>
             </div>
             <div className="px-5 py-4">
               <p className="font-score text-4xl font-bold tabular-nums text-line-900">{member.league_point}</p>
               <p className="mt-1 font-display text-[10px] font-bold uppercase tracking-widest text-line-500">현재 LP</p>
             </div>
             <div className="px-5 py-4">
-              <p className="font-score text-4xl font-bold tabular-nums text-line-900">{attendRate}%</p>
-              <p className="mt-1 font-display text-[10px] font-bold uppercase tracking-widest text-line-500">출석 체크율</p>
-              <p className="text-[10px] text-line-400">완료 {completedCount}매치 중 출석 체크 {attending}회</p>
+              <p className="font-score text-4xl font-bold tabular-nums text-line-900">{fmtPct(participationRate)}</p>
+              <p className="mt-1 font-display text-[10px] font-bold uppercase tracking-widest text-line-500">경기 참여율</p>
+              <p className="text-[10px] text-line-400">
+                {completedCount > 0 ? `완료 ${completedCount}매치 중 ${gameSessionCount}회` : "완료 매치 없음"}
+              </p>
             </div>
-            {noShowCount > 0 && (
+            {(absenceRate ?? 0) > 0 && (
               <div className="px-5 py-4">
-                <p className="font-score text-4xl font-bold tabular-nums text-clay-400">{noShowRate}%</p>
-                <p className="mt-1 font-display text-[10px] font-bold uppercase tracking-widest text-line-500">경기 미참여</p>
-                <p className="text-[10px] text-line-400">출석 {attending}회 중 {noShowCount}회</p>
-              </div>
-            )}
-            <div className="px-5 py-4">
-              <p className="font-score text-4xl font-bold tabular-nums text-line-900">{participationRate}%</p>
-              <p className="mt-1 font-display text-[10px] font-bold uppercase tracking-widest text-line-500">실제 참여율</p>
-              <p className="text-[10px] text-line-400">완료 {completedCount}매치 중 경기 기록 {gameSessionCount}회</p>
-            </div>
-            {absenceRate > 0 && (
-              <div className="px-5 py-4">
-                <p className="font-score text-4xl font-bold tabular-nums text-clay-400">{absenceRate}%</p>
+                <p className="font-score text-4xl font-bold tabular-nums text-clay-400">{fmtPct(absenceRate)}</p>
                 <p className="mt-1 font-display text-[10px] font-bold uppercase tracking-widest text-line-500">미참여도</p>
-                <p className="text-[10px] text-line-400">{completedCount - gameSessionCount}회 / 완료 {completedCount}매치 · {absenceRate}%</p>
+                <p className="text-[10px] text-line-400">{absenceCount}회 / 완료 {completedCount}매치</p>
               </div>
             )}
           </div>
         </div>
       </section>
 
-      {/* 최근 폼 */}
+      {/* ── 최근 폼 */}
       {recentForms.length > 0 && (
         <section className="mb-5">
           <p className="mb-2 font-display text-[10px] font-bold uppercase tracking-widest text-line-500">최근 폼</p>
@@ -190,7 +250,7 @@ export default async function MemberRecordPage({ params }: { params: { id: strin
         </section>
       )}
 
-      {/* LP 히스토리 */}
+      {/* ── LP 히스토리 */}
       <section className="mb-5">
         <p className="mb-2 font-display text-[10px] font-bold uppercase tracking-widest text-line-500">LP 히스토리</p>
         {!(pointHistory ?? []).length ? (
@@ -199,7 +259,7 @@ export default async function MemberRecordPage({ params }: { params: { id: strin
             <p className="text-[10px] text-line-400">경기 결과 입력 후 LP가 집계되면 표시됩니다.</p>
           </div>
         ) : (() => {
-          const pts = (pointHistory ?? []);
+          const pts = pointHistory ?? [];
           const values = pts.map((p) => p.point_after);
           const minV = Math.min(...values);
           const maxV = Math.max(...values);
@@ -218,15 +278,12 @@ export default async function MemberRecordPage({ params }: { params: { id: strin
                 </div>
                 <svg width="100%" viewBox={`0 0 ${W} ${H}`} className="mt-1 block">
                   <path d={pathD} fill="none" stroke="#B9A64B" strokeWidth="1.5" strokeLinejoin="round" />
-                  {pts.length > 1 && (
-                    <circle cx={lastX} cy={lastY} r="3" fill="#B9A64B" />
-                  )}
+                  {pts.length > 1 && <circle cx={lastX} cy={lastY} r="3" fill="#B9A64B" />}
                 </svg>
               </div>
               <div className="border-t border-line-200/30 px-4 pb-3 pt-2">
                 <p className="text-[10px] text-line-400">{pts[0]?.created_at.slice(0, 10)} – {pts[pts.length - 1]?.created_at.slice(0, 10)}</p>
               </div>
-              {/* 최근 변동 10개 리스트 */}
               <div className="border-t border-line-200/30">
                 {[...pts].reverse().slice(0, 5).map((ph, idx, arr) => (
                   <div key={ph.id}
@@ -246,7 +303,36 @@ export default async function MemberRecordPage({ params }: { params: { id: strin
         })()}
       </section>
 
-      {/* 최근 경기 */}
+      {/* ── 출석 후 미참여 상세 */}
+      {noShowCount > 0 && (
+        <section className="mb-5">
+          <p className="mb-2 font-display text-[10px] font-bold uppercase tracking-widest text-line-500">
+            출석 후 미참여 상세
+          </p>
+          <div className="overflow-hidden rounded-[14px] border border-clay-400/30 bg-line-50">
+            <div className="border-b border-clay-400/20 px-4 py-2.5">
+              <p className="text-xs font-semibold text-clay-400">
+                출석 체크 후 경기 기록이 없는 매치 {noShowCount}회
+              </p>
+              <p className="text-[9px] text-line-400">부상·대기·운영 참여 등이 포함될 수 있습니다.</p>
+            </div>
+            {noShowSessions.map((s, idx) => s && (
+              <div key={s.id}
+                className={`flex items-center justify-between px-4 py-2.5 ${idx < noShowSessions.length - 1 ? "border-b border-line-200/20" : ""}`}>
+                <div>
+                  <p className="text-[13px] font-semibold text-line-900">{matchTitle(s)}</p>
+                  <p className="font-score text-[10px] tabular-nums text-line-400">{s.session_date}</p>
+                </div>
+                <span className="rounded-sm border border-clay-400/30 bg-clay-400/10 px-1.5 py-0.5 text-[9px] font-semibold text-clay-400">
+                  출석 후 미참여
+                </span>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* ── 최근 경기 */}
       <section className="mb-5">
         <p className="mb-2 font-display text-[10px] font-bold uppercase tracking-widest text-line-500">최근 경기</p>
         {recentMatchItems.length === 0 ? (
@@ -263,7 +349,7 @@ export default async function MemberRecordPage({ params }: { params: { id: strin
                 </span>
                 <div className="min-w-0 flex-1">
                   <p className="text-[13px] font-semibold text-line-900">
-                    {session ? (MATCH_SESSION_DAY_LABEL[session.session_day as keyof typeof MATCH_SESSION_DAY_LABEL] ?? session.title) : m.played_at}
+                    {session ? matchTitle(session) : m.played_at}
                   </p>
                   <p className="font-score text-[10px] tabular-nums text-line-400">
                     {isTeamA ? "청팀" : "우팀"} · {m.score_a}:{m.score_b}
@@ -282,17 +368,25 @@ export default async function MemberRecordPage({ params }: { params: { id: strin
         )}
       </section>
 
-      {/* 출석 후 경기 미참여 */}
-      {noShowCount > 0 && (
-        <section className="mb-5">
-          <div className="rounded-[14px] border border-line-200/40 bg-line-50 px-4 py-3">
-            <p className="font-display text-[10px] font-bold uppercase tracking-widest text-line-500">출석 후 경기 미참여</p>
-            <p className="mt-2 font-score text-3xl font-bold tabular-nums text-clay-400">{noShowRate}%</p>
-            <p className="text-[10px] text-line-400">출석 {attending}회 중 {noShowCount}회 경기 기록 없음</p>
-            <p className="mt-1 text-[9px] text-line-400">부상·대기·운영 인원이 포함될 수 있습니다.</p>
+      {/* ── 출석 기록 */}
+      <section>
+        <p className="mb-2 font-display text-[10px] font-bold uppercase tracking-widest text-line-500">출석 기록</p>
+        <div className="overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50">
+          <div className="grid grid-cols-4 divide-x divide-line-200/30">
+            {[
+              { label: "출석", value: attending, color: "text-gold" },
+              { label: "미정", value: undecided, color: "text-clay-400" },
+              { label: "불참", value: absent, color: "text-line-500" },
+              { label: "미출석", value: completedCount - attending - absent - undecided, color: "text-line-400" },
+            ].map(({ label, value, color }) => (
+              <div key={label} className="px-3 py-3 text-center">
+                <p className={`font-score text-xl font-bold tabular-nums ${color}`}>{value}</p>
+                <p className="mt-0.5 text-[9px] text-line-400">{label}</p>
+              </div>
+            ))}
           </div>
-        </section>
-      )}
+        </div>
+      </section>
 
     </main>
   );
