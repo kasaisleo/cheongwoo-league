@@ -181,6 +181,7 @@ export default async function AdminPage() {
         <p className="mb-2 font-display text-[10px] font-bold uppercase tracking-widest text-line-500">Management</p>
         <div className="overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50">
           {[
+            { href: "/admin/records",    label: "기록 대시보드",  sub: "매치 · 참여 · 경기 통계" },
             { href: "/admin/matches",    label: "경기 기록",    sub: "경기 결과 · 수정 · 삭제" },
             { href: "/admin/attendance", label: "출석 관리",    sub: "매치 운영 · 출석 현황" },
             { href: "/members",          label: "회원 관리",    sub: "회원 목록 · 정보 수정 · 일괄 등록" },
