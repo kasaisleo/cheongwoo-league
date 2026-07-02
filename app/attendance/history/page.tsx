@@ -23,6 +23,14 @@ interface MemberAttendanceRow {
   status: AttendanceStatus;
 }
 
+interface PlayerRecord {
+  id: string;
+  name: string;
+  isGuest: boolean;
+  wins: number;
+  losses: number;
+}
+
 export default function AttendanceHistoryPage() {
   const supabase = useMemo(() => createClient(), []);
   // manager 이상만 "보관 해제" 가능 — 권한 시스템 도입 전까지는 운영진 인증으로 대체
@@ -32,6 +40,7 @@ export default function AttendanceHistoryPage() {
   const [loading, setLoading] = useState(true);
   const [expandedSessionId, setExpandedSessionId] = useState<string | null>(null);
   const [detailRows, setDetailRows] = useState<MemberAttendanceRow[]>([]);
+  const [playerRecords, setPlayerRecords] = useState<PlayerRecord[]>([]);
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [restoringSessionId, setRestoringSessionId] = useState<string | null>(null);
 
@@ -80,15 +89,17 @@ export default function AttendanceHistoryPage() {
   async function toggleExpand(sessionId: string) {
     if (expandedSessionId === sessionId) {
       setExpandedSessionId(null);
+    setPlayerRecords([]);
       return;
     }
 
     setExpandedSessionId(sessionId);
     setLoadingDetail(true);
 
-    const [{ data: members }, { data: attendance }] = await Promise.all([
+    const [{ data: members }, { data: attendance }, { data: matchRows }] = await Promise.all([
       supabase.from("members").select("*").order("nickname"),
       supabase.from("attendance").select("*").eq("session_id", sessionId),
+      supabase.from("matches").select("*").eq("session_id", sessionId),
     ]);
 
     const attendanceByMember = new Map((attendance ?? []).map((a) => [a.member_id, a]));
@@ -101,6 +112,67 @@ export default function AttendanceHistoryPage() {
       }));
 
     setDetailRows(rows);
+
+    // 개인별 승패 계산
+    if (matchRows && matchRows.length > 0) {
+      // 게스트 이름 조회
+      const guestIds = new Set<string>();
+      for (const m of matchRows) {
+        [m.team_a_player1_guest, m.team_a_player2_guest,
+         m.team_b_player1_guest, m.team_b_player2_guest]
+          .filter(Boolean).forEach((id) => guestIds.add(id!));
+      }
+      const { data: guestRows } = guestIds.size > 0
+        ? await supabase.from("guests").select("id, name").in("id", [...guestIds])
+        : { data: [] };
+
+      const memberNameMap = new Map((members ?? []).map((m) => [m.id, m.name]));
+      const guestNameMap = new Map((guestRows ?? []).map((g) => [g.id, g.name]));
+
+      // 승패 집계 맵
+      const recordMap = new Map<string, PlayerRecord>();
+
+      function addResult(id: string | null, isGuest: boolean, isWin: boolean) {
+        if (!id) return;
+        const name = isGuest
+          ? (guestNameMap.get(id) ?? "게스트")
+          : (memberNameMap.get(id) ?? "알수없음");
+        const key = (isGuest ? "G:" : "M:") + id;
+        const prev = recordMap.get(key) ?? { id, name, isGuest, wins: 0, losses: 0 };
+        recordMap.set(key, {
+          ...prev,
+          wins: prev.wins + (isWin ? 1 : 0),
+          losses: prev.losses + (isWin ? 0 : 1),
+        });
+      }
+
+      for (const match of matchRows) {
+        const aWin = match.winner_team === "A";
+        // 청팀(A)
+        addResult(match.team_a_player1_member, false, aWin);
+        addResult(match.team_a_player2_member, false, aWin);
+        addResult(match.team_a_player1_guest, true, aWin);
+        addResult(match.team_a_player2_guest, true, aWin);
+        // 우팀(B)
+        addResult(match.team_b_player1_member, false, !aWin);
+        addResult(match.team_b_player2_member, false, !aWin);
+        addResult(match.team_b_player1_guest, true, !aWin);
+        addResult(match.team_b_player2_guest, true, !aWin);
+      }
+
+      const sorted = [...recordMap.values()].sort((a, b) => {
+        if (b.wins !== a.wins) return b.wins - a.wins;
+        const aTot = a.wins + a.losses;
+        const bTot = b.wins + b.losses;
+        if (bTot !== aTot) return bTot - aTot;
+        return a.name.localeCompare(b.name, "ko");
+      });
+
+      setPlayerRecords(sorted);
+    } else {
+      setPlayerRecords([]);
+    }
+
     setLoadingDetail(false);
   }
 
@@ -230,6 +302,35 @@ export default function AttendanceHistoryPage() {
                       ))}
                     </div>
                     </>
+                  )}
+
+                  {/* 참석자별 기록 */}
+                  {playerRecords.length > 0 && (
+                    <div className="mt-3 border-t border-line-200/30 pt-3">
+                      <p className="mb-2 text-[10px] font-semibold text-line-500">참석자별 기록</p>
+                      <div className="space-y-1.5">
+                        {playerRecords.map((r) => (
+                          <div key={(r.isGuest ? "G:" : "M:") + r.id}
+                            className="flex items-center justify-between">
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-[15px] font-semibold leading-snug text-line-900">
+                                {r.name}
+                              </span>
+                              {r.isGuest && (
+                                <span className="rounded-sm border border-line-200/40 bg-line-100 px-1.5 py-0.5 text-[9px] font-semibold text-line-500">
+                                  게스트
+                                </span>
+                              )}
+                            </div>
+                            <p className="font-score text-sm tabular-nums">
+                              <span className="text-gold">{r.wins}승</span>
+                              <span className="mx-1 text-line-400">·</span>
+                              <span className="text-line-500">{r.losses}패</span>
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   )}
                 </div>
               )}
