@@ -199,8 +199,44 @@ function AdminAttendanceInner() {
 
   async function handleSessionStatusChange(sessionId: string, targetStatus: "closed" | "archived", closeMenu?: () => void) {
     closeMenu?.();
-    const msg = targetStatus === "closed" ? "이 매치를 완료 처리할까요?" : "이 매치를 보관 처리할까요?";
-    if (!window.confirm(msg)) return;
+
+    // 완료 처리 시 경기 기록 / 출석 후 미참여 사전 검수
+    if (targetStatus === "closed") {
+      const supabase = createClient();
+      const [{ data: matchData }, { data: attendData }] = await Promise.all([
+        supabase.from("matches").select("id, team_a_player1_member, team_a_player2_member, team_b_player1_member, team_b_player2_member").eq("session_id", sessionId),
+        supabase.from("attendance").select("member_id, status").eq("session_id", sessionId),
+      ]);
+
+      const warnings: string[] = [];
+
+      if ((matchData ?? []).length === 0) {
+        warnings.push("경기 기록이 없어요.");
+      }
+
+      const participantIds = new Set<string>();
+      for (const m of matchData ?? []) {
+        [m.team_a_player1_member, m.team_a_player2_member, m.team_b_player1_member, m.team_b_player2_member]
+          .filter(Boolean).forEach((id) => participantIds.add(id!));
+      }
+      const attendingIds = (attendData ?? []).filter((r) => r.status === "attending").map((r) => r.member_id);
+      const noShowIds = attendingIds.filter((mid) => !participantIds.has(mid));
+      if (noShowIds.length > 0) {
+        warnings.push(`출석 체크 후 경기 기록이 없는 선수가 ${noShowIds.length}명 있어요.`);
+      }
+
+      if (warnings.length > 0) {
+        const proceed = window.confirm(
+          `⚠️ 완료 전 확인\n\n${warnings.join("\n")}\n\n그래도 완료 처리하시겠습니까?`
+        );
+        if (!proceed) return;
+      } else {
+        if (!window.confirm("이 매치를 완료 처리할까요?")) return;
+      }
+    } else {
+      if (!window.confirm("이 매치를 보관 처리할까요?")) return;
+    }
+
     setProcessingSessionId(sessionId);
     const res = await fetch("/api/attendance-sessions/archive", {
       method: "POST",

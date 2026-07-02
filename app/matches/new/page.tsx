@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { PlayerSelector, playerKey, type SelectedPlayer } from "@/components/match/PlayerSelector";
@@ -15,22 +15,56 @@ import type { Member, Guest, AttendanceSession } from "@/lib/supabase/database.t
 
 type GuestModalTarget = "teamAPlayer1" | "teamAPlayer2" | "teamBPlayer1" | "teamBPlayer2";
 
-/** 세션 attendee 목록 */
 interface SessionAttendees {
-  attending: string[];  // member_id[]
+  attending: string[];
   undecided: string[];
+}
+
+// 세션별 기존 경기 수 + 출석 후 미참여 감지용
+interface SessionStats {
+  gameCount: number;
+  attendingCount: number;
+  participantIds: Set<string>;
+}
+
+// ── 완료 전 검수 경고 ─────────────────────────────────────────────
+interface SubmitWarning {
+  type: "no_session" | "incomplete_players" | "no_winner";
+  msg: string;
+}
+
+function getSubmitWarnings(params: {
+  sessionId: string | null;
+  players: (SelectedPlayer | null)[];
+  winnerTeam: "A" | "B" | null;
+  isTiebreakSet: boolean;
+  tiebreakA: number;
+  tiebreakB: number;
+}): SubmitWarning[] {
+  const warnings: SubmitWarning[] = [];
+  if (!params.sessionId)
+    warnings.push({ type: "no_session", msg: "매치를 선택해주세요." });
+  if (params.players.some((p) => p === null))
+    warnings.push({ type: "incomplete_players", msg: "4명의 선수를 모두 선택해주세요." });
+  if (!params.winnerTeam)
+    warnings.push({ type: "no_winner", msg: "승리팀을 선택해주세요." });
+  if (params.isTiebreakSet && params.tiebreakA === params.tiebreakB)
+    warnings.push({ type: "no_winner", msg: "타이브레이크 점수가 동점입니다." });
+  return warnings;
 }
 
 export default function NewMatchPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const preselectedSessionId = searchParams.get("sessionId");
+
   const [members, setMembers] = useState<Member[]>([]);
   const [guests, setGuests] = useState<Guest[]>([]);
-  const [sessionGuestIds, setSessionGuestIds] = useState<string[]>([]); // 현재 매치 지정 게스트 IDs
+  const [sessionGuestIds, setSessionGuestIds] = useState<string[]>([]);
   const [sessions, setSessions] = useState<AttendanceSession[]>([]);
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
   const [attendees, setAttendees] = useState<SessionAttendees>({ attending: [], undecided: [] });
+  const [sessionStats, setSessionStats] = useState<SessionStats | null>(null);
   const [loading, setLoading] = useState(true);
 
   const [teamAPlayer1, setTeamAPlayer1] = useState<SelectedPlayer | null>(null);
@@ -46,15 +80,15 @@ export default function NewMatchPage() {
 
   const [guestModalTarget, setGuestModalTarget] = useState<GuestModalTarget | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  // 새 매치 추가 state
+  // 새 매치 추가
   const [showNewSession, setShowNewSession] = useState(false);
   const [newSessionTitle, setNewSessionTitle] = useState("");
   const [newSessionDate, setNewSessionDate] = useState(new Date().toISOString().slice(0, 10));
   const [newSessionDay, setNewSessionDay] = useState<SessionDay>("saturday");
   const [creatingSession, setCreatingSession] = useState(false);
   const [newSessionError, setNewSessionError] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => { loadData(); }, []);
 
@@ -67,79 +101,67 @@ export default function NewMatchPage() {
     ]);
     setMembers(memberData ?? []);
     setGuests(guestData ?? []);
-  // 세션 선택 시 지정 게스트 IDs 초기화 (세션 선택 후 loadSessionGuestIds 호출)
     setSessions(sessionList);
-    // searchParams.sessionId가 있으면 해당 세션 자동 선택
     if (preselectedSessionId) {
       const found = sessionList.find((s) => s.id === preselectedSessionId);
-      if (found) {
-        setSelectedSessionId(found.id);
-      }
+      if (found) await handleSessionSelect(found.id);
     }
     setLoading(false);
   }
 
-  /** 선택된 매치의 지정 게스트 IDs 로드 */
   async function loadSessionGuestIds(sessionId: string) {
     try {
       const res = await fetch(`/api/admin/session-guests?sessionId=${sessionId}`);
       const body = await res.json().catch(() => null);
-      if (res.ok) {
-        setSessionGuestIds((body.sessionGuests ?? []).map((sg: { guest_id: string }) => sg.guest_id));
-      }
-    } catch { /* 조회 실패해도 경기 입력은 가능 */ }
+      if (res.ok) setSessionGuestIds((body.sessionGuests ?? []).map((sg: { guest_id: string }) => sg.guest_id));
+    } catch { /* 조회 실패해도 경기 입력 가능 */ }
   }
 
-  /** 새 매치(출석 세션) 생성 후 자동 선택 */
-  async function handleCreateSession() {
-    if (!newSessionTitle.trim()) { setNewSessionError("매치명을 입력해주세요."); return; }
-    if (!newSessionDate) { setNewSessionError("날짜를 선택해주세요."); return; }
-    setCreatingSession(true); setNewSessionError(null);
-
-    const res = await fetch("/api/admin/sessions", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        title: newSessionTitle.trim(),
-        sessionDate: newSessionDate,
-        sessionDay: newSessionDay,
-      }),
-    });
-    const body = await res.json().catch(() => null);
-    setCreatingSession(false);
-
-    if (!res.ok) {
-      setNewSessionError(body?.error ?? "매치 추가에 실패했습니다.");
-      return;
-    }
-
-    toast.success("매치가 추가되었습니다.");
-    // 세션 목록 갱신 후 자동 선택
-    const supabase = createClient();
-    const updated = await fetchActiveSessions(supabase);
-    setSessions(updated);
-    if (body.sessionId) {
-      await handleSessionSelect(body.sessionId);
-    }
-    setShowNewSession(false);
-    setNewSessionTitle("");
-  }
-
-  /** 세션 선택 시 attendee 목록 + 지정 게스트 로딩 */
-  async function handleSessionSelect(sessionId: string) {
+  // 세션 선택: 출석 목록 + 기존 경기 수 로드
+  const handleSessionSelect = useCallback(async (sessionId: string) => {
     setSelectedSessionId(sessionId);
     const supabase = createClient();
-    const { data } = await supabase
-      .from("attendance")
-      .select("member_id, status")
-      .eq("session_id", sessionId)
-      .in("status", ["attending", "undecided"]);
+    const [{ data: attendData }, { data: matchData }] = await Promise.all([
+      supabase.from("attendance").select("member_id, status").eq("session_id", sessionId).in("status", ["attending", "undecided"]),
+      supabase.from("matches").select("id, team_a_player1_member, team_a_player2_member, team_b_player1_member, team_b_player2_member").eq("session_id", sessionId),
+    ]);
 
-    const rows = data ?? [];
+    const rows = attendData ?? [];
     setAttendees({
       attending: rows.filter((r) => r.status === "attending").map((r) => r.member_id),
       undecided: rows.filter((r) => r.status === "undecided").map((r) => r.member_id),
     });
+
+    const participantIds = new Set<string>();
+    for (const m of matchData ?? []) {
+      [m.team_a_player1_member, m.team_a_player2_member, m.team_b_player1_member, m.team_b_player2_member]
+        .filter(Boolean).forEach((id) => participantIds.add(id!));
+    }
+    const attendingCount = rows.filter((r) => r.status === "attending").length;
+    setSessionStats({ gameCount: (matchData ?? []).length, attendingCount, participantIds });
+
+    await loadSessionGuestIds(sessionId);
+  }, []);
+
+  async function handleCreateSession() {
+    if (!newSessionTitle.trim()) { setNewSessionError("매치명을 입력해주세요."); return; }
+    if (!newSessionDate) { setNewSessionError("날짜를 선택해주세요."); return; }
+    setCreatingSession(true); setNewSessionError(null);
+    const res = await fetch("/api/admin/sessions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title: newSessionTitle.trim(), sessionDate: newSessionDate, sessionDay: newSessionDay }),
+    });
+    const body = await res.json().catch(() => null);
+    setCreatingSession(false);
+    if (!res.ok) { setNewSessionError(body?.error ?? "매치 추가에 실패했습니다."); return; }
+    toast.success("매치가 추가되었습니다.");
+    const supabase = createClient();
+    const updated = await fetchActiveSessions(supabase);
+    setSessions(updated);
+    if (body.sessionId) await handleSessionSelect(body.sessionId);
+    setShowNewSession(false);
+    setNewSessionTitle("");
   }
 
   const isTiebreakSet = (scoreA === 7 && scoreB === 6) || (scoreA === 6 && scoreB === 7);
@@ -164,10 +186,31 @@ export default function NewMatchPage() {
     ? `${MATCH_SESSION_DAY_LABEL[selectedSession.session_day]}${selectedSessionIsCustom ? ` · ${selectedSession.title}` : ""} (${selectedSession.session_date})`
     : null;
 
-  const isReadyToSubmit = Boolean(
-    selectedSessionId && teamAPlayer1 && teamAPlayer2 && teamBPlayer1 && teamBPlayer2 &&
-    winnerTeam && (!isTiebreakSet || tiebreakA !== tiebreakB) && !submitting
-  );
+  // 저장 전 검수 경고 (소프트 — 막지 않음)
+  const thisMatchPlayers = [teamAPlayer1, teamAPlayer2, teamBPlayer1, teamBPlayer2];
+  const currentPlayerIds = thisMatchPlayers
+    .filter((p): p is SelectedPlayer => p !== null && !p.isGuest)
+    .map((p) => p.id);
+
+  // 출석 후 미참여 감지: 출석 체크했는데 기존 + 이번 경기 모두 미등장
+  const noShowWarnings: string[] = sessionStats
+    ? attendees.attending.filter((mid) => {
+        const inPrev = sessionStats.participantIds.has(mid);
+        const inThis = currentPlayerIds.includes(mid);
+        return !inPrev && !inThis;
+      }).map((mid) => members.find((m) => m.id === mid)?.name ?? mid)
+    : [];
+
+  const submitWarnings = getSubmitWarnings({
+    sessionId: selectedSessionId,
+    players: thisMatchPlayers,
+    winnerTeam,
+    isTiebreakSet,
+    tiebreakA,
+    tiebreakB,
+  });
+
+  const isReadyToSubmit = submitWarnings.length === 0 && !submitting;
 
   function handleGuestCreated(guest: Guest) {
     setGuests((prev) => [guest, ...prev]);
@@ -205,8 +248,44 @@ export default function NewMatchPage() {
       setError(body?.error ?? "저장에 실패했습니다. 다시 시도해주세요.");
       return;
     }
-    router.push("/ranking");
-    router.refresh();
+
+    toast.success("경기 결과가 저장되었습니다.");
+
+    // 선수 초기화 (같은 매치에서 다음 경기 연속 입력 가능)
+    setTeamAPlayer1(null); setTeamAPlayer2(null);
+    setTeamBPlayer1(null); setTeamBPlayer2(null);
+    setScoreA(0); setScoreB(0);
+    setTiebreakA(0); setTiebreakB(0);
+    setWinnerTeam(null);
+
+    // 세션 stats 갱신 (출석 후 미참여 경고 재계산)
+    if (selectedSessionId) await handleSessionSelect(selectedSessionId);
+  }
+
+  // 완료하고 나가기
+  async function handleFinish() {
+    if (!selectedSessionId) { router.push("/admin/matches"); return; }
+
+    // 기록 누락 경고
+    const warnings: string[] = [];
+    if (sessionStats) {
+      if (sessionStats.gameCount === 0) warnings.push("이 매치에 경기 기록이 없어요.");
+
+      const noShow = attendees.attending.filter((mid) => !sessionStats.participantIds.has(mid));
+      if (noShow.length > 0) {
+        const names = noShow.map((mid) => members.find((m) => m.id === mid)?.name ?? mid).join(", ");
+        warnings.push(`출석 체크 후 경기 기록이 없는 선수: ${names}`);
+      }
+    }
+
+    if (warnings.length > 0) {
+      const proceed = window.confirm(
+        `⚠️ 확인 필요\n\n${warnings.join("\n")}\n\n그래도 완료 처리하시겠습니까?`
+      );
+      if (!proceed) return;
+    }
+
+    router.push("/admin/matches");
   }
 
   if (loading) {
@@ -219,22 +298,25 @@ export default function NewMatchPage() {
 
   return (
     <main className="px-4 pt-6 pb-10">
-      {/* ── 헤더 ─────────────────────────────────────────── */}
-      <header className="mb-5">
-        <p className="eyebrow-en text-clay-400">Match Result</p>
-        <h1 className="headline-kr text-4xl text-line-900">경기 결과 입력</h1>
-        <p className="mt-1 text-sm text-line-500">생성된 매치를 선택하고 경기 결과를 입력합니다.</p>
+      {/* ── 헤더 */}
+      <header className="mb-5 flex items-center justify-between">
+        <div>
+          <p className="eyebrow-en text-clay-400">Match Result</p>
+          <h1 className="headline-kr text-4xl text-line-900">경기 결과 입력</h1>
+          <p className="mt-1 text-sm text-line-500">매치를 선택하고 경기 결과를 입력합니다.</p>
+        </div>
+        <button type="button" onClick={handleFinish}
+          className="rounded-sm border border-line-200/40 px-2.5 py-1.5 text-xs font-semibold text-line-500 hover:text-line-700">
+          완료 →
+        </button>
       </header>
 
-      {/* ── 출석 기준 매치 선택 ─────────────────────────── */}
-      <div className="mb-8 rounded-[14px] border border-line-200/40 bg-line-50">
+      {/* ── 매치 선택 */}
+      <div className="mb-6 rounded-[14px] border border-line-200/40 bg-line-50">
         <div className="flex items-center justify-between border-b border-line-200/30 px-4 py-2.5">
           <p className="text-[11px] font-semibold text-line-500">매치 *</p>
-          <button
-            type="button"
-            onClick={() => setShowNewSession((v) => !v)}
-            className="rounded-sm border border-clay-400/60 bg-clay-400/10 px-2.5 py-1 text-[10px] font-semibold text-clay-400 hover:bg-clay-400/20"
-          >
+          <button type="button" onClick={() => setShowNewSession((v) => !v)}
+            className="rounded-sm border border-clay-400/60 bg-clay-400/10 px-2.5 py-1 text-[10px] font-semibold text-clay-400 hover:bg-clay-400/20">
             {showNewSession ? "취소" : "+ 새 매치 추가"}
           </button>
         </div>
@@ -248,32 +330,20 @@ export default function NewMatchPage() {
                 <label className="mb-1 block text-xs font-semibold text-line-600">
                   매치명 <span className="text-fault-400">*</span>
                 </label>
-                <input
-                  value={newSessionTitle}
-                  onChange={(e) => setNewSessionTitle(e.target.value)}
+                <input value={newSessionTitle} onChange={(e) => setNewSessionTitle(e.target.value)}
                   placeholder="예: 6월 토요정기매치"
-                  className="h-10 w-full rounded-sm border border-line-200/40 bg-line-50 px-3 text-sm text-line-900 placeholder:text-line-400"
-                />
+                  className="h-10 w-full rounded-sm border border-line-200/40 bg-line-50 px-3 text-sm text-line-900 placeholder:text-line-400" />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="mb-1 block text-xs font-semibold text-line-600">
-                    날짜 <span className="text-fault-400">*</span>
-                  </label>
-                  <input
-                    type="date"
-                    value={newSessionDate}
-                    onChange={(e) => setNewSessionDate(e.target.value)}
-                    className="h-10 w-full rounded-sm border border-line-200/40 bg-line-50 px-3 text-sm text-line-900"
-                  />
+                  <label className="mb-1 block text-xs font-semibold text-line-600">날짜 <span className="text-fault-400">*</span></label>
+                  <input type="date" value={newSessionDate} onChange={(e) => setNewSessionDate(e.target.value)}
+                    className="h-10 w-full rounded-sm border border-line-200/40 bg-line-50 px-3 text-sm text-line-900" />
                 </div>
                 <div>
                   <label className="mb-1 block text-xs font-semibold text-line-600">매치 타입</label>
-                  <select
-                    value={newSessionDay}
-                    onChange={(e) => setNewSessionDay(e.target.value as any)}
-                    className="h-10 w-full rounded-sm border border-line-200/40 bg-line-50 px-3 text-sm text-line-900"
-                  >
+                  <select value={newSessionDay} onChange={(e) => setNewSessionDay(e.target.value as SessionDay)}
+                    className="h-10 w-full rounded-sm border border-line-200/40 bg-line-50 px-3 text-sm text-line-900">
                     <option value="saturday">토요정기매치</option>
                     <option value="sunday">일요정기매치</option>
                     <option value="holiday">휴일매치</option>
@@ -282,46 +352,35 @@ export default function NewMatchPage() {
                 </div>
               </div>
               {newSessionError && <p className="text-[11px] text-fault-400">{newSessionError}</p>}
-              <button
-                type="button"
-                disabled={creatingSession}
-                onClick={handleCreateSession}
-                className="h-10 w-full rounded-sm bg-clay-400 text-sm font-bold text-line-25 disabled:opacity-40"
-              >
+              <button type="button" disabled={creatingSession} onClick={handleCreateSession}
+                className="h-10 w-full rounded-sm bg-clay-400 text-sm font-bold text-line-25 disabled:opacity-40">
                 {creatingSession ? "추가 중..." : "매치 추가"}
               </button>
             </div>
           </div>
         )}
 
-        {/* 드롭다운 */}
+        {/* 세션 드롭다운 */}
         <div className="px-4 py-3">
           {sessions.length === 0 ? (
-            <p className="text-sm text-line-500">
-              등록된 매치가 없어요. 출석 관리 화면에서 먼저 매치를 생성해주세요.
-            </p>
+            <p className="text-sm text-line-500">등록된 매치가 없어요. 출석 관리 화면에서 먼저 매치를 생성해주세요.</p>
           ) : (
-            <Dropdown
-              align="left"
+            <Dropdown align="left"
               triggerClassName="flex w-full items-center justify-between rounded-sm border border-line-200/40 bg-line-100 px-3 py-2.5 text-left"
               trigger={
                 <>
                   <span className="text-sm font-semibold text-line-900">
                     {selectedSessionLabel ?? "매치를 선택해주세요"}
                   </span>
-                  <span className="text-line-500 text-xs">▼</span>
+                  <span className="text-xs text-line-500">▼</span>
                 </>
-              }
-            >
+              }>
               {(close) => (
                 <div className="max-h-64 space-y-0.5 overflow-y-auto">
                   {sessions.map((session) => {
                     const isCustom = session.session_day === "holiday" || session.session_day === "custom";
                     return (
-                      <DropdownItem
-                        key={session.id}
-                        onClick={() => { handleSessionSelect(session.id); close(); }}
-                      >
+                      <DropdownItem key={session.id} onClick={() => { handleSessionSelect(session.id); close(); }}>
                         <span className={selectedSessionId === session.id ? "text-clay-400" : ""}>
                           {MATCH_SESSION_DAY_LABEL[session.session_day]}
                           {isCustom && ` · ${session.title}`} ({session.session_date})
@@ -334,9 +393,28 @@ export default function NewMatchPage() {
             </Dropdown>
           )}
         </div>
+
+        {/* 선택된 매치 현황 */}
+        {selectedSession && sessionStats !== null && (
+          <div className="border-t border-line-200/30 px-4 py-2.5">
+            <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[11px]">
+              <span className="text-gold">출석 {attendees.attending.length}명</span>
+              <span className="text-line-500">미정 {attendees.undecided.length}명</span>
+              <span className="font-score tabular-nums text-line-600">{sessionStats.gameCount}경기 기록됨</span>
+              {noShowWarnings.length > 0 && (
+                <span className="text-clay-400">출석 후 미참여 {noShowWarnings.length}명</span>
+              )}
+            </div>
+            {noShowWarnings.length > 0 && (
+              <p className="mt-1 text-[10px] text-clay-400">
+                미참여: {noShowWarnings.join(", ")}
+              </p>
+            )}
+          </div>
+        )}
       </div>
 
-      {/* ── 청팀 ─────────────────────────────────────────── */}
+      {/* ── 청팀 */}
       <div className="relative mb-6 overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50 p-4">
         <div className="absolute left-0 top-0 h-full w-1 bg-clay-400/50" />
         <p className="mb-3 pl-2 text-sm font-bold text-clay-400">청팀 선수</p>
@@ -345,17 +423,13 @@ export default function NewMatchPage() {
             const val = field === "teamAPlayer1" ? teamAPlayer1 : teamAPlayer2;
             const setter = field === "teamAPlayer1" ? setTeamAPlayer1 : setTeamAPlayer2;
             return (
-              <PlayerSelector
-                key={field}
-                label={`선수 ${i + 1}`}
-                members={members}
-                guests={guests}
+              <PlayerSelector key={field} label={`선수 ${i + 1}`}
+                members={members} guests={guests}
                 attendingMemberIds={attendees.attending}
                 undecidedMemberIds={attendees.undecided}
                 selectedKeys={selectedKeys}
                 excludeKeys={excludeKeysFor(val)}
-                value={val}
-                onChange={setter}
+                value={val} onChange={setter}
                 onRequestAddGuest={() => setGuestModalTarget(field)}
               />
             );
@@ -363,7 +437,7 @@ export default function NewMatchPage() {
         </div>
       </div>
 
-      {/* ── 우팀 ─────────────────────────────────────────── */}
+      {/* ── 우팀 */}
       <div className="relative mb-6 overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50 p-4">
         <div className="absolute left-0 top-0 h-full w-1 bg-line-300/50" />
         <p className="mb-3 pl-2 text-sm font-bold text-line-600">우팀 선수</p>
@@ -372,17 +446,13 @@ export default function NewMatchPage() {
             const val = field === "teamBPlayer1" ? teamBPlayer1 : teamBPlayer2;
             const setter = field === "teamBPlayer1" ? setTeamBPlayer1 : setTeamBPlayer2;
             return (
-              <PlayerSelector
-                key={field}
-                label={`선수 ${i + 1}`}
-                members={members}
-                guests={guests}
+              <PlayerSelector key={field} label={`선수 ${i + 1}`}
+                members={members} guests={guests}
                 attendingMemberIds={attendees.attending}
                 undecidedMemberIds={attendees.undecided}
                 selectedKeys={selectedKeys}
                 excludeKeys={excludeKeysFor(val)}
-                value={val}
-                onChange={setter}
+                value={val} onChange={setter}
                 onRequestAddGuest={() => setGuestModalTarget(field)}
               />
             );
@@ -390,12 +460,12 @@ export default function NewMatchPage() {
         </div>
       </div>
 
-      {/* ── 스코어 ────────────────────────────────────────── */}
-      <div className="mb-8 rounded-[14px] border border-line-200/40 bg-line-50 p-4">
+      {/* ── 스코어 */}
+      <div className="mb-6 rounded-[14px] border border-line-200/40 bg-line-50 p-4">
         <p className="mb-3 text-center text-[11px] font-semibold text-line-500">스코어</p>
         <div className="flex items-center justify-center gap-6">
           <ScoreStepper label="청팀" value={scoreA} onChange={setScoreA} highlight={winnerTeam === "A"} max={7} />
-          <span className="text-line-400 text-sm">vs</span>
+          <span className="text-sm text-line-400">vs</span>
           <ScoreStepper label="우팀" value={scoreB} onChange={setScoreB} highlight={winnerTeam === "B"} max={7} />
         </div>
 
@@ -408,39 +478,32 @@ export default function NewMatchPage() {
               <ScoreStepper label="우팀" value={tiebreakB} onChange={setTiebreakB} compact />
             </div>
             {tiebreakA === tiebreakB && (
-              <p className="mt-2 text-center text-xs text-fault-400">
-                타이브레이크 점수는 동점일 수 없어요.
-              </p>
+              <p className="mt-2 text-center text-xs text-fault-400">타이브레이크 점수는 동점일 수 없어요.</p>
             )}
           </div>
         )}
 
         {/* 승리팀 선택 */}
         <div className="mt-4 flex gap-2">
-          <button
-            type="button"
-            onClick={() => setWinnerTeam("A")}
+          <button type="button" onClick={() => setWinnerTeam("A")}
             className={`flex-1 rounded-sm border py-2 text-sm font-semibold transition-colors ${
-              winnerTeam === "A"
-                ? "border-clay-400 bg-clay-400 text-line-25"
-                : "border-line-200/40 text-line-600"
-            }`}
-          >
-            청팀 승리
-          </button>
-          <button
-            type="button"
-            onClick={() => setWinnerTeam("B")}
+              winnerTeam === "A" ? "border-clay-400 bg-clay-400 text-line-25" : "border-line-200/40 text-line-600"
+            }`}>청팀 승리</button>
+          <button type="button" onClick={() => setWinnerTeam("B")}
             className={`flex-1 rounded-sm border py-2 text-sm font-semibold transition-colors ${
-              winnerTeam === "B"
-                ? "border-gold bg-gold/15 text-gold"
-                : "border-line-200/40 text-line-600"
-            }`}
-          >
-            우팀 승리
-          </button>
+              winnerTeam === "B" ? "border-gold bg-gold/15 text-gold" : "border-line-200/40 text-line-600"
+            }`}>우팀 승리</button>
         </div>
       </div>
+
+      {/* ── 저장 전 경고 */}
+      {submitWarnings.length > 0 && (teamAPlayer1 || teamAPlayer2 || teamBPlayer1 || teamBPlayer2 || winnerTeam) && (
+        <div className="mb-3 rounded-sm border border-line-200/40 bg-line-100/50 px-3 py-2">
+          {submitWarnings.map((w) => (
+            <p key={w.type} className="text-[11px] text-line-500">{w.msg}</p>
+          ))}
+        </div>
+      )}
 
       {error && <p className="mb-3 text-sm text-fault-400">{error}</p>}
 
