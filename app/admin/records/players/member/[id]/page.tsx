@@ -64,7 +64,7 @@ export default async function MemberRecordPage({ params }: { params: { id: strin
     else undecided++;
   }
 
-  // 세션별 참여자 집합 for 노쇼
+  // 세션별 참여자 집합 (출석 후 경기 미참여 계산)
   const participantsPerSession = new Map<string, Set<string>>();
   for (const m of allMatches ?? []) {
     if (!m.session_id) continue;
@@ -149,8 +149,8 @@ export default async function MemberRecordPage({ params }: { params: { id: strin
             </div>
             <div className="px-5 py-4">
               <p className="font-score text-4xl font-bold tabular-nums text-line-900">{attendRate}%</p>
-              <p className="mt-1 font-display text-[10px] font-bold uppercase tracking-widest text-line-500">출석률</p>
-              <p className="text-[10px] text-line-400">완료 매치 {completedCount}개 기준</p>
+              <p className="mt-1 font-display text-[10px] font-bold uppercase tracking-widest text-line-500">출석 체크율</p>
+              <p className="text-[10px] text-line-400">완료 {completedCount}매치 중 출석 체크 {attending}회</p>
             </div>
             {noShowCount > 0 && (
               <div className="px-5 py-4">
@@ -161,14 +161,14 @@ export default async function MemberRecordPage({ params }: { params: { id: strin
             )}
             <div className="px-5 py-4">
               <p className="font-score text-4xl font-bold tabular-nums text-line-900">{participationRate}%</p>
-              <p className="mt-1 font-display text-[10px] font-bold uppercase tracking-widest text-line-500">참여율</p>
-              <p className="text-[10px] text-line-400">완료 {completedCount}매치 중 {gameSessionCount}회</p>
+              <p className="mt-1 font-display text-[10px] font-bold uppercase tracking-widest text-line-500">실제 참여율</p>
+              <p className="text-[10px] text-line-400">완료 {completedCount}매치 중 경기 기록 {gameSessionCount}회</p>
             </div>
             {absenceRate > 0 && (
               <div className="px-5 py-4">
                 <p className="font-score text-4xl font-bold tabular-nums text-clay-400">{absenceRate}%</p>
                 <p className="mt-1 font-display text-[10px] font-bold uppercase tracking-widest text-line-500">미참여도</p>
-                <p className="text-[10px] text-line-400">실제 경기 기록 없는 완료 매치 비율</p>
+                <p className="text-[10px] text-line-400">{completedCount - gameSessionCount}회 / 완료 {completedCount}매치 · {absenceRate}%</p>
               </div>
             )}
           </div>

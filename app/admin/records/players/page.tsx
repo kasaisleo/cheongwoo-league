@@ -77,24 +77,45 @@ function RankingBoard({ title, unit, players, href }: {
   );
 }
 
-// ── SignalBoard (Management Signals용) ───────────────────────────
-function SignalBoard({ title, desc, players, href, valueColor = "text-clay-400" }: {
-  title: string; desc: string;
-  players: (PlayerRecord & { displayValue: string; subText?: string })[];
+// ── SortableSignalBoard — 정렬 토글 포함 ──────────────────────────
+function SortableSignalBoard({ title, desc, emptyMsg, playersDesc, playersAsc, href }: {
+  title: string; desc: string; emptyMsg?: string;
+  playersDesc: (PlayerRecord & { displayValue: string; subText?: string })[];
+  playersAsc:  (PlayerRecord & { displayValue: string; subText?: string })[];
   href: (p: PlayerRecord) => string;
-  valueColor?: string;
 }) {
+  const [order, setOrder] = useState<"desc" | "asc">("desc");
+  const players = order === "desc" ? playersDesc : playersAsc;
+  const allZero = order === "desc" && players.every((p) => p.displayValue.startsWith("0/") || p.displayValue === "0%");
   return (
     <div className="overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50">
-      <div className="border-b border-line-200/30 px-4 py-2">
-        <p className="font-display text-[9px] font-bold uppercase tracking-widest text-line-500">{title}</p>
-        <p className="text-[9px] text-line-400">{desc}</p>
+      <div className="flex items-center justify-between border-b border-line-200/30 px-4 py-2">
+        <div>
+          <p className="font-display text-[9px] font-bold uppercase tracking-widest text-line-500">{title}</p>
+          <p className="text-[9px] text-line-400">{desc}</p>
+        </div>
+        <div className="flex gap-1">
+          <button type="button" onClick={() => setOrder("desc")}
+            className={`rounded-sm px-2 py-0.5 text-[9px] font-semibold ${order === "desc" ? "bg-line-200 text-line-700" : "text-line-400 hover:text-line-600"}`}>
+            높은 순
+          </button>
+          <button type="button" onClick={() => setOrder("asc")}
+            className={`rounded-sm px-2 py-0.5 text-[9px] font-semibold ${order === "asc" ? "bg-line-200 text-line-700" : "text-line-400 hover:text-line-600"}`}>
+            낮은 순
+          </button>
+        </div>
       </div>
-      {!players.length ? <p className="px-4 py-3 text-sm text-line-400">기록 없음</p>
-      : players.map((p, idx) => (
+      {!players.length ? (
+        <p className="px-4 py-3 text-sm text-line-400">기록 없음</p>
+      ) : allZero && emptyMsg ? (
+        <div className="px-4 py-4">
+          <p className="text-sm font-semibold text-line-700">{emptyMsg}</p>
+          <p className="mt-1 text-[11px] text-line-400">{desc}</p>
+        </div>
+      ) : players.map((p, idx) => (
         <Link key={(p.isGuest ? "G:" : "M:") + p.id} href={href(p)}>
           <div className={`flex items-center gap-2.5 px-4 py-2.5 transition-colors hover:bg-line-100/40 ${idx < players.length - 1 ? "border-b border-line-200/20" : ""}`}>
-            <span className={`font-score w-5 flex-shrink-0 text-right text-[12px] font-bold tabular-nums ${idx === 0 ? valueColor : "text-line-400"}`}>{idx + 1}</span>
+            <span className={`font-score w-5 flex-shrink-0 text-right text-[12px] font-bold tabular-nums ${idx === 0 && order === "desc" ? "text-clay-400" : "text-line-400"}`}>{idx + 1}</span>
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-1.5">
                 <span className="text-sm font-semibold text-line-900">{p.name}</span>
@@ -102,7 +123,7 @@ function SignalBoard({ title, desc, players, href, valueColor = "text-clay-400" 
               </div>
               {p.subText && <p className="text-[9px] text-line-400">{p.subText}</p>}
             </div>
-            <span className={`font-score text-sm font-bold tabular-nums ${idx === 0 ? valueColor : "text-line-500"}`}>{p.displayValue}</span>
+            <span className={`font-score text-sm font-bold tabular-nums ${idx === 0 && order === "desc" ? "text-clay-400" : "text-line-500"}`}>{p.displayValue}</span>
           </div>
         </Link>
       ))}
@@ -222,9 +243,13 @@ export default function PlayerRecordsPage() {
   const top5WinRate      = [...players].filter((p) => p.games >= 1).sort((a, b) => b.winRate - a.winRate || b.games - a.games || a.name.localeCompare(b.name, "ko")).slice(0, 5);
   const top5Attend       = [...players].filter((p) => !p.isGuest && p.totalCompleted > 0).sort((a, b) => b.attendRate - a.attendRate || b.attending - a.attending || a.name.localeCompare(b.name, "ko")).slice(0, 5);
   const top5LP           = [...players].filter((p) => !p.isGuest && p.lp !== null).sort((a, b) => (b.lp ?? 0) - (a.lp ?? 0)).slice(0, 5);
-  // Management Signals
-  const top5Absence = [...players].filter((p) => !p.isGuest && p.totalCompleted > 0).sort((a, b) => b.absenceRate - a.absenceRate || a.gameSessionCount - b.gameSessionCount || a.name.localeCompare(b.name, "ko")).slice(0, 5);
-  const top5NoShow  = [...players].filter((p) => !p.isGuest && p.attending >= 1).sort((a, b) => b.noShowRate - a.noShowRate || b.noShowCount - a.noShowCount || a.name.localeCompare(b.name, "ko")).slice(0, 5);
+  // Management Signals — 높은 순 / 낮은 순
+  const absenceBase = [...players].filter((p) => !p.isGuest && p.totalCompleted > 0);
+  const top5AbsenceDesc = absenceBase.sort((a, b) => b.absenceRate - a.absenceRate || (b.totalCompleted - b.gameSessionCount) - (a.totalCompleted - a.gameSessionCount) || b.totalCompleted - a.totalCompleted || a.name.localeCompare(b.name, "ko")).slice(0, 5);
+  const top5AbsenceAsc  = [...absenceBase].sort((a, b) => a.absenceRate - b.absenceRate || b.gameSessionCount - a.gameSessionCount || b.totalCompleted - a.totalCompleted || a.name.localeCompare(b.name, "ko")).slice(0, 5);
+  const noShowBase = [...players].filter((p) => !p.isGuest && p.attending >= 1);
+  const top5NoShowDesc = noShowBase.sort((a, b) => b.noShowRate - a.noShowRate || b.noShowCount - a.noShowCount || b.attending - a.attending || a.name.localeCompare(b.name, "ko")).slice(0, 5);
+  const top5NoShowAsc  = [...noShowBase].sort((a, b) => a.noShowRate - b.noShowRate || b.attending - a.attending || a.noShowCount - b.noShowCount || a.name.localeCompare(b.name, "ko")).slice(0, 5);
 
   const playerHref = (p: PlayerRecord) => p.isGuest ? `/admin/records/players/guest/${p.id}` : `/admin/records/players/member/${p.id}`;
 
@@ -293,16 +318,19 @@ export default function PlayerRecordsPage() {
           <section className="mb-5">
             <p className="mb-2 font-display text-[9px] font-bold uppercase tracking-widest text-line-500">Management Signals</p>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <SignalBoard
-                title="미참여도 TOP 5" valueColor="text-clay-400"
+              <SortableSignalBoard
+                title="미참여도 TOP 5"
                 desc="완료 매치 중 실제 경기 기록이 없는 비율"
-                players={top5Absence.map((p) => ({ ...p, displayValue: `${p.absenceRate}%`, subText: `참여 ${p.gameSessionCount}회 / 완료 ${p.totalCompleted}회` }))}
+                playersDesc={top5AbsenceDesc.map((p) => ({ ...p, displayValue: `${p.totalCompleted - p.gameSessionCount}/${p.totalCompleted} · ${p.absenceRate}%`, subText: `참여 ${p.gameSessionCount}회` }))}
+                playersAsc={top5AbsenceAsc.map((p) => ({ ...p, displayValue: `${p.totalCompleted - p.gameSessionCount}/${p.totalCompleted} · ${p.absenceRate}%`, subText: `참여 ${p.gameSessionCount}회` }))}
                 href={playerHref}
               />
-              <SignalBoard
-                title="출석 후 경기 미참여 TOP 5" valueColor="text-clay-400"
+              <SortableSignalBoard
+                title="출석 후 경기 미참여 TOP 5"
                 desc="출석 체크 후 경기 기록이 없는 매치 비율"
-                players={top5NoShow.map((p) => ({ ...p, displayValue: `${p.noShowRate}%`, subText: `출석 ${p.attending}회 중 ${p.noShowCount}회` }))}
+                emptyMsg="출석 후 경기 미참여 기록이 없습니다."
+                playersDesc={top5NoShowDesc.map((p) => ({ ...p, displayValue: `${p.noShowCount}/${p.attending} · ${p.noShowRate}%`, subText: `출석 ${p.attending}회` }))}
+                playersAsc={top5NoShowAsc.map((p) => ({ ...p, displayValue: `${p.noShowCount}/${p.attending} · ${p.noShowRate}%`, subText: `출석 ${p.attending}회` }))}
                 href={playerHref}
               />
             </div>
