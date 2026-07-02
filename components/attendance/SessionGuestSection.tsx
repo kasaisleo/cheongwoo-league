@@ -114,7 +114,7 @@ export function SessionGuestSection({ sessionId, editable = false }: SessionGues
             return (
               <div key={sg.id} className="flex items-center justify-between px-4 py-2.5">
                 <div className="flex items-center gap-2">
-                  <p className="name-kr-sm text-line-900">{name}</p>
+                  <p className="text-[15px] font-semibold leading-snug text-line-900">{name}</p>
                   <span className="rounded-sm border border-line-200/40 bg-line-100 px-1.5 py-0.5 text-[9px] font-semibold text-line-500">
                     게스트
                   </span>
@@ -208,7 +208,7 @@ function AddGuestPanel({
               <div key={g.id}
                 className="flex items-center justify-between rounded-sm border border-line-200/40 bg-line-50 px-3 py-2">
                 <div className="min-w-0">
-                  <span className="name-kr-sm text-line-900">{g.name}</span>
+                  <span className="text-[15px] font-semibold leading-snug text-line-900">{g.name}</span>
                   {g.years_playing != null && (
                     <span className="ml-1.5 text-[11px] text-line-400">구력 {g.years_playing}년</span>
                   )}
@@ -261,7 +261,7 @@ function AddGuestPanel({
               <div key={g.id}
                 className="flex items-center justify-between rounded-sm border border-line-200/40 bg-line-50 px-3 py-2">
                 <div>
-                  <span className="name-kr-sm text-line-900">{g.name}</span>
+                  <span className="text-[15px] font-semibold leading-snug text-line-900">{g.name}</span>
                   {g.phone && <span className="ml-2 text-xs text-line-400">{g.phone}</span>}
                 </div>
                 {alreadyAdded ? (
