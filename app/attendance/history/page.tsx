@@ -203,22 +203,23 @@ export default function AttendanceHistoryPage() {
 
   return (
     <main className="px-4 pt-6">
-      <header className="mb-5 flex items-center justify-between">
+      <header className="mb-3 flex items-center justify-between">
         <div>
-          <div className="mb-1 inline-flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full bg-clay-400" />
-            <p className="font-score text-xs font-semibold uppercase tracking-[0.2em] text-clay-400">
-              Match History
-            </p>
-          </div>
-          <h1 className="font-display text-3xl font-bold uppercase tracking-tight text-line-900">
-            매치 히스토리
-          </h1>
+          <p className="eyebrow-en text-clay-400">Match History</p>
+          <h1 className="headline-kr text-4xl text-line-900">매치 히스토리</h1>
         </div>
-        <Link href="/attendance" className="text-xs font-semibold text-clay-400">
-          ← 출석 체크
-        </Link>
       </header>
+
+      {/* ── 기록 탭 — 매치 히스토리 / 경기 기록 ── */}
+      <div className="mb-4 flex gap-2">
+        <span className="rounded-sm border border-clay-400/60 bg-clay-400/10 px-3 py-1.5 text-xs font-semibold text-clay-400">
+          매치 히스토리
+        </span>
+        <Link href="/matches"
+          className="rounded-sm border border-line-200/40 px-3 py-1.5 text-xs font-semibold text-line-500 hover:border-clay-400/60 hover:text-clay-400">
+          경기 기록
+        </Link>
+      </div>
 
       {loading ? (
         <p className="text-center text-sm text-line-400">불러오는 중...</p>
