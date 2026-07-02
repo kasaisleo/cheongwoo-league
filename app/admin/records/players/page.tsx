@@ -34,32 +34,54 @@ function MemberTypeBadge({ isGuest, memberType }: { isGuest: boolean; memberType
   return null;
 }
 
-// ── TOP 5 섹션 ───────────────────────────────────────────────────
-function Top5Card({ title, players, valueKey, valueSuffix, href }: {
+// ── RankingBoard — 랭킹 보드 스타일 TOP5 ───────────────────────
+function RankingBoard({ title, unit, players, href }: {
   title: string;
+  unit: string;
   players: (PlayerRecord & { displayValue: string })[];
-  valueKey: string;
-  valueSuffix: string;
   href: (p: PlayerRecord) => string;
 }) {
+  if (players.length === 0) return (
+    <div className="overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50">
+      <div className="border-b border-line-200/30 px-4 py-2">
+        <p className="font-display text-[9px] font-bold uppercase tracking-widest text-line-500">{title}</p>
+      </div>
+      <p className="px-4 py-3 text-sm text-line-400">기록 없음</p>
+    </div>
+  );
+  const [first, ...rest] = players;
   return (
     <div className="overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50">
-      <div className="border-b border-line-200/30 px-4 py-2.5">
-        <p className="font-display text-[10px] font-bold uppercase tracking-widest text-line-500">{title}</p>
+      {/* 섹션 라벨 */}
+      <div className="border-b border-line-200/30 px-4 py-2">
+        <p className="font-display text-[9px] font-bold uppercase tracking-widest text-line-500">{title}</p>
       </div>
-      {players.length === 0 ? (
-        <p className="px-4 py-3 text-sm text-line-400">기록 없음</p>
-      ) : players.map((p, idx) => (
+      {/* 1위 강조 */}
+      <Link href={href(first)}>
+        <div className="flex items-center gap-3 border-b border-line-200/30 px-4 py-3 transition-colors hover:bg-line-100/40">
+          <span className="font-score w-5 flex-shrink-0 text-right text-lg font-bold tabular-nums text-gold">1</span>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-1.5">
+              <span className="text-[15px] font-semibold leading-snug text-line-900">{first.name}</span>
+              <MemberTypeBadge isGuest={first.isGuest} memberType={first.memberType} />
+            </div>
+          </div>
+          <div className="text-right">
+            <span className="font-score text-xl font-bold tabular-nums text-gold">{first.displayValue}</span>
+            <span className="ml-0.5 text-[10px] text-gold/60">{unit}</span>
+          </div>
+        </div>
+      </Link>
+      {/* 2~5위 compact */}
+      {rest.map((p, i) => (
         <Link key={(p.isGuest ? "G:" : "M:") + p.id} href={href(p)}>
-          <div className={`flex items-center gap-2.5 px-4 py-2.5 transition-colors hover:bg-line-100/40 ${idx < players.length - 1 ? "border-b border-line-200/20" : ""}`}>
-            <span className={`w-4 flex-shrink-0 text-right font-score text-[12px] font-bold tabular-nums ${idx === 0 ? "text-gold" : "text-line-400"}`}>
-              {idx + 1}
+          <div className={`flex items-center gap-2.5 px-4 py-2 transition-colors hover:bg-line-100/40 ${i < rest.length - 1 ? "border-b border-line-200/20" : ""}`}>
+            <span className={`font-score w-5 flex-shrink-0 text-right text-[12px] font-bold tabular-nums ${i === 0 ? "text-line-600" : "text-line-400"}`}>
+              {i + 2}
             </span>
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-1.5">
-                <span className="text-sm font-semibold text-line-900">{p.name}</span>
-                <MemberTypeBadge isGuest={p.isGuest} memberType={p.memberType} />
-              </div>
+            <div className="min-w-0 flex-1 flex items-center gap-1.5">
+              <span className="text-sm font-semibold text-line-800">{p.name}</span>
+              <MemberTypeBadge isGuest={p.isGuest} memberType={p.memberType} />
             </div>
             <span className="font-score text-sm font-bold tabular-nums text-line-700">{p.displayValue}</span>
           </div>
@@ -194,7 +216,7 @@ export default function PlayerRecordsPage() {
   return (
     <main className="px-4 pt-6 pb-28">
 
-      {/* 헤더 */}
+      {/* ── 헤더 */}
       <header className="mb-4 flex items-center justify-between">
         <div>
           <p className="eyebrow-en text-clay-400">Admin · Player Records</p>
@@ -202,122 +224,132 @@ export default function PlayerRecordsPage() {
         </div>
         <Link href="/admin/records"
           className="rounded-sm border border-line-200/40 px-2.5 py-1.5 text-xs font-semibold text-line-500 hover:text-line-700">
-          ← 기록 대시보드
+          ← 대시보드
         </Link>
       </header>
-
-      {/* 검색 */}
-      <div className="mb-5">
-        <input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="이름 검색 (회원 + 게스트)"
-          className="h-10 w-full rounded-sm border border-line-200/40 bg-line-50 px-3 text-sm text-line-900 placeholder:text-line-400"
-        />
-      </div>
-
-      {/* 검색 결과 */}
-      {query.trim() && (
-        <section className="mb-5">
-          <p className="mb-2 font-display text-[10px] font-bold uppercase tracking-widest text-line-500">
-            검색 결과
-          </p>
-          {filtered.length === 0 ? (
-            <p className="text-sm text-line-400">검색 결과가 없어요.</p>
-          ) : (
-            <div className="overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50">
-              {filtered.slice(0, 15).map((p, idx) => (
-                <Link key={(p.isGuest ? "G:" : "M:") + p.id} href={playerHref(p)}>
-                  <div className={`flex items-center gap-3 px-4 py-3 transition-colors hover:bg-line-100/40 ${idx < Math.min(filtered.length, 15) - 1 ? "border-b border-line-200/30" : ""}`}>
-                    <div className="flex min-w-0 flex-1 items-center gap-1.5">
-                      <span className="text-[15px] font-semibold leading-snug text-line-900">{p.name}</span>
-                      <MemberTypeBadge isGuest={p.isGuest} memberType={p.memberType} />
-                    </div>
-                    <span className="text-xs text-line-400">{p.games}경기 · {p.winRate}%</span>
-                    <span className="text-xs text-line-400">→</span>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          )}
-        </section>
-      )}
 
       {loading ? (
         <p className="text-center text-sm text-line-400">불러오는 중...</p>
       ) : (
         <>
-          {/* TOP 5 그리드 */}
+          {/* ── Hero Ranking Strip — 각 지표 1위 */}
           <section className="mb-5">
-            <p className="mb-2 font-display text-[10px] font-bold uppercase tracking-widest text-line-500">
-              Top 5 Boards
-            </p>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <Top5Card title="참여도 TOP 5" players={top5Participation.map((p) => ({ ...p, displayValue: `${p.games}경기` }))} valueKey="games" valueSuffix="경기" href={playerHref} />
-              <Top5Card title="승률 TOP 5" players={top5WinRate.map((p) => ({ ...p, displayValue: `${p.winRate}%` }))} valueKey="winRate" valueSuffix="%" href={playerHref} />
-              <Top5Card title="출석률 TOP 5" players={top5Attend.map((p) => ({ ...p, displayValue: `${p.attendRate}%` }))} valueKey="attendRate" valueSuffix="%" href={playerHref} />
-              <Top5Card title="LP TOP 5" players={top5LP.map((p) => ({ ...p, displayValue: `${p.lp}LP` }))} valueKey="lp" valueSuffix="LP" href={playerHref} />
+            <p className="mb-2 font-display text-[9px] font-bold uppercase tracking-widest text-line-500">Leaders</p>
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                { label: "참여도", p: top5Participation[0], val: top5Participation[0] ? `${top5Participation[0].games}경기` : "—" },
+                { label: "승률",   p: top5WinRate[0],       val: top5WinRate[0]       ? `${top5WinRate[0].winRate}%`  : "—" },
+                { label: "출석률", p: top5Attend[0],        val: top5Attend[0]        ? `${top5Attend[0].attendRate}%` : "—" },
+                { label: "LP",     p: top5LP[0],            val: top5LP[0]            ? `${top5LP[0].lp} LP`          : "—" },
+              ].map(({ label, p, val }) => (
+                <div key={label} className="overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50">
+                  {p ? (
+                    <Link href={playerHref(p)} className="block px-4 py-3 transition-colors hover:bg-line-100/40">
+                      <p className="font-display text-[9px] font-bold uppercase tracking-widest text-line-500">{label}</p>
+                      <p className="font-score mt-1 text-2xl font-bold tabular-nums text-gold">{val}</p>
+                      <div className="mt-0.5 flex items-center gap-1">
+                        <span className="text-[13px] font-semibold text-line-900">{p.name}</span>
+                        <MemberTypeBadge isGuest={p.isGuest} memberType={p.memberType} />
+                      </div>
+                    </Link>
+                  ) : (
+                    <div className="px-4 py-3">
+                      <p className="font-display text-[9px] font-bold uppercase tracking-widest text-line-500">{label}</p>
+                      <p className="mt-2 text-sm text-line-400">기록 없음</p>
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
           </section>
 
-          {/* 출석 후 경기 미참여 */}
-          <section>
+          {/* ── Ranking Boards */}
+          <section className="mb-5">
+            <p className="mb-2 font-display text-[9px] font-bold uppercase tracking-widest text-line-500">Rankings</p>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <RankingBoard title="참여도 TOP 5" unit="경기" players={top5Participation.map((p) => ({ ...p, displayValue: `${p.games}` }))} href={playerHref} />
+              <RankingBoard title="승률 TOP 5"   unit="%" players={top5WinRate.map((p) => ({ ...p, displayValue: `${p.winRate}%` }))} href={playerHref} />
+              <RankingBoard title="출석률 TOP 5" unit="%" players={top5Attend.map((p) => ({ ...p, displayValue: `${p.attendRate}%` }))} href={playerHref} />
+              <RankingBoard title="LP TOP 5"     unit="LP" players={top5LP.map((p) => ({ ...p, displayValue: `${p.lp}` }))} href={playerHref} />
+            </div>
+          </section>
+
+          {/* ── 출석 후 경기 미참여 */}
+          <section className="mb-5">
             <div className="overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50">
-              <div className="border-b border-line-200/30 px-4 py-2.5">
-                <p className="font-display text-[10px] font-bold uppercase tracking-widest text-line-500">출석 후 경기 미참여</p>
+              <div className="border-b border-line-200/30 px-4 py-2">
+                <p className="font-display text-[9px] font-bold uppercase tracking-widest text-line-500">출석 후 경기 미참여</p>
                 <p className="text-[9px] text-line-400">출석 체크 후 경기 기록이 없는 매치 비율</p>
               </div>
-              {top5NoShow.map((p, idx) => (
+              {top5NoShow.length === 0 ? (
+                <p className="px-4 py-3 text-sm text-line-400">기록 없음</p>
+              ) : top5NoShow.map((p, idx) => (
                 <Link key={"M:" + p.id} href={playerHref(p)}>
                   <div className={`flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-line-100/40 ${idx < top5NoShow.length - 1 ? "border-b border-line-200/20" : ""}`}>
-                    <span className="w-4 flex-shrink-0 text-right font-score text-[12px] font-bold tabular-nums text-line-400">{idx + 1}</span>
+                    <span className={`font-score w-5 flex-shrink-0 text-right text-[12px] font-bold tabular-nums ${idx === 0 ? "text-clay-400" : "text-line-400"}`}>{idx + 1}</span>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-1.5">
                         <span className="text-sm font-semibold text-line-900">{p.name}</span>
                         <MemberTypeBadge isGuest={p.isGuest} memberType={p.memberType} />
                       </div>
-                      <p className="text-[10px] text-line-400">출석 {p.attending}회 중 {p.noShowCount}회</p>
+                      <p className="text-[9px] text-line-400">출석 {p.attending}회 중 {p.noShowCount}회</p>
                     </div>
                     <span className="font-score text-sm font-bold tabular-nums text-clay-400">{p.noShowRate}%</span>
                   </div>
                 </Link>
               ))}
-              {top5NoShow.length === 0 && <p className="px-4 py-3 text-sm text-line-400">기록 없음</p>}
             </div>
           </section>
 
-          {/* 개인 리스트 — 검색 중에는 숨김 (검색 결과가 위에 표시됨) */}
-          {!query.trim() && (
-          <section className="mt-5">
-            <p className="mb-2 font-display text-[10px] font-bold uppercase tracking-widest text-line-500">
-              전체 목록 ({players.length}명)
+          {/* ── 선수 검색 + Directory */}
+          <section>
+            <p className="mb-2 font-display text-[9px] font-bold uppercase tracking-widest text-line-500">
+              Player Directory
             </p>
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="이름 검색"
+              className="mb-2 h-9 w-full rounded-sm border border-line-200/40 bg-line-50 px-3 text-sm text-line-900 placeholder:text-line-400"
+            />
+
+            {query.trim() && filtered.length === 0 && (
+              <p className="py-2 text-sm text-line-400">검색 결과가 없어요.</p>
+            )}
+
             <div className="overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50">
-              {players
+              {/* 컬럼 헤더 */}
+              <div className="flex items-center gap-2 border-b border-line-200/30 px-4 py-1.5">
+                <span className="flex-1 font-display text-[8px] font-bold uppercase tracking-widest text-line-400">선수</span>
+                <span className="w-12 text-right font-display text-[8px] font-bold uppercase tracking-widest text-line-400">경기</span>
+                <span className="w-10 text-right font-display text-[8px] font-bold uppercase tracking-widest text-line-400">승률</span>
+                <span className="w-12 text-right font-display text-[8px] font-bold uppercase tracking-widest text-line-400">출석</span>
+              </div>
+              {(query.trim() ? filtered.slice(0, 15) : players
                 .sort((a, b) => b.games - a.games || b.winRate - a.winRate || a.name.localeCompare(b.name, "ko"))
                 .slice(0, 30)
-                .map((p, idx, arr) => (
-                  <Link key={(p.isGuest ? "G:" : "M:") + p.id} href={playerHref(p)}>
-                    <div className={`flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-line-100/40 ${idx < arr.length - 1 ? "border-b border-line-200/20" : ""}`}>
-                      <div className="flex min-w-0 flex-1 items-center gap-1.5">
-                        <span className="text-[15px] font-semibold leading-snug text-line-900">{p.name}</span>
-                        <MemberTypeBadge isGuest={p.isGuest} memberType={p.memberType} />
-                      </div>
-                      <div className="flex shrink-0 items-center gap-3 text-[11px] text-line-500">
-                        <span className="font-score tabular-nums">{p.games}경기</span>
-                        <span className="font-score tabular-nums text-gold">{p.winRate}%</span>
-                        {!p.isGuest && <span className="font-score tabular-nums">{p.attendRate}%출석</span>}
-                      </div>
-                      <span className="text-[10px] text-line-400">→</span>
+              ).map((p, idx, arr) => (
+                <Link key={(p.isGuest ? "G:" : "M:") + p.id} href={playerHref(p)}>
+                  <div className={`flex items-center gap-2 px-4 py-2.5 transition-colors hover:bg-line-100/40 ${idx < arr.length - 1 ? "border-b border-line-200/20" : ""}`}>
+                    <div className="flex min-w-0 flex-1 items-center gap-1.5">
+                      <span className="text-[14px] font-semibold leading-snug text-line-900">{p.name}</span>
+                      <MemberTypeBadge isGuest={p.isGuest} memberType={p.memberType} />
                     </div>
-                  </Link>
-                ))}
-              {players.length > 30 && (
-                <p className="px-4 py-2 text-center text-[10px] text-line-400">상위 30명 표시 · 검색으로 찾기</p>
+                    <span className="w-12 text-right font-score text-[12px] tabular-nums text-line-600">{p.games}</span>
+                    <span className="w-10 text-right font-score text-[12px] font-bold tabular-nums text-gold">{p.winRate}%</span>
+                    <span className="w-12 text-right font-score text-[12px] tabular-nums text-line-500">
+                      {p.isGuest ? "—" : `${p.attendRate}%`}
+                    </span>
+                  </div>
+                </Link>
+              ))}
+              {!query.trim() && players.length > 30 && (
+                <p className="border-t border-line-200/20 px-4 py-2 text-center text-[10px] text-line-400">
+                  상위 30명 · 검색으로 찾기
+                </p>
               )}
             </div>
           </section>
-          )}
         </>
       )}
     </main>

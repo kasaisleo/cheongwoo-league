@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { PlayerSelector, playerKey, type SelectedPlayer } from "@/components/match/PlayerSelector";
 import { ScoreStepper } from "@/components/match/ScoreStepper";
@@ -23,6 +23,8 @@ interface SessionAttendees {
 
 export default function NewMatchPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const preselectedSessionId = searchParams.get("sessionId");
   const [members, setMembers] = useState<Member[]>([]);
   const [guests, setGuests] = useState<Guest[]>([]);
   const [sessionGuestIds, setSessionGuestIds] = useState<string[]>([]); // 현재 매치 지정 게스트 IDs
@@ -67,6 +69,13 @@ export default function NewMatchPage() {
     setGuests(guestData ?? []);
   // 세션 선택 시 지정 게스트 IDs 초기화 (세션 선택 후 loadSessionGuestIds 호출)
     setSessions(sessionList);
+    // searchParams.sessionId가 있으면 해당 세션 자동 선택
+    if (preselectedSessionId) {
+      const found = sessionList.find((s) => s.id === preselectedSessionId);
+      if (found) {
+        setSelectedSessionId(found.id);
+      }
+    }
     setLoading(false);
   }
 

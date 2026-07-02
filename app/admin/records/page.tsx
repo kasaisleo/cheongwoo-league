@@ -202,7 +202,7 @@ export default async function AdminRecordsPage() {
                   <p className="text-[15px] font-semibold leading-snug text-line-900">{matchTitle(s)}</p>
                   <p className="font-score text-[10px] font-bold tabular-nums text-line-400">{s.session_date}</p>
                 </div>
-                <Link href="/admin/matches/new"
+                <Link href={`/admin/matches/new?sessionId=${s.id}`}
                   className="ml-3 flex-shrink-0 rounded-sm border border-clay-400/60 bg-clay-400/10 px-2.5 py-1 text-[11px] font-semibold text-clay-400 hover:bg-clay-400/20">
                   결과 입력
                 </Link>
