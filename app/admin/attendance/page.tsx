@@ -18,8 +18,7 @@ import type { AttendanceStatus, AttendanceSession, Member } from "@/lib/supabase
  *
  * Phase 2 이관: /attendance의 관리자 기능을 여기로 이동.
  *   - 세션 생성 (주간/커스텀)
- *   - 명단 확정 (closed)
- *   - 명단 보관 (archived)
+ *   - 매치 완료 (closed)
  *   - 명단 수정 (closed 세션 강제 수정)
  *   - 전체 명단 출석 토글
  *
@@ -212,7 +211,7 @@ function AdminAttendanceInner() {
     const body = await res.json().catch(() => null);
     setProcessingSessionId(null);
     if (!res.ok) {
-      toast.error(body?.error ?? (targetStatus === "closed" ? "명단 확정 실패" : "명단 보관 실패"));
+      toast.error(body?.error ?? (targetStatus === "closed" ? "매치 완료 처리 실패" : "보관 처리 실패"));
       return;
     }
     toast.success(targetStatus === "closed" ? "출석 명단이 확정되었습니다." : "출석 명단이 보관되었습니다.");
@@ -263,12 +262,7 @@ function AdminAttendanceInner() {
                 </DropdownItem>
                 {selectedSession?.status === "open" && (
                   <DropdownItem onClick={() => handleSessionStatusChange(selectedSessionId!, "closed", close)}>
-                    명단 확정
-                  </DropdownItem>
-                )}
-                {selectedSession && selectedSession.status !== "archived" && (
-                  <DropdownItem onClick={() => handleSessionStatusChange(selectedSessionId!, "archived", close)}>
-                    명단 보관
+                    매치 완료
                   </DropdownItem>
                 )}
               </div>
@@ -375,18 +369,18 @@ function AdminAttendanceInner() {
                   <span className={`ml-1.5 rounded-sm px-1.5 py-0.5 text-[9px] font-semibold ${
                     editingClosedSession ? "bg-clay-400/10 text-clay-400" : "bg-line-200 text-line-500"
                   }`}>
-                    {editingClosedSession ? "수정 중" : "확정됨"}
+                    {editingClosedSession ? "수정 중" : "완료됨"}
                   </span>
                 )}
               </p>
-              {/* 명단 확정/수정 버튼 */}
+              {/* 매치 완료/수정 버튼 */}
               <div className="flex gap-1.5">
                 {selectedSession.status === "open" && (
                   <button type="button"
                     disabled={processingSessionId === selectedSessionId}
                     onClick={() => handleSessionStatusChange(selectedSessionId!, "closed")}
-                    className="rounded-sm border border-line-200/40 px-2.5 py-1 text-[11px] font-semibold text-line-600 disabled:opacity-40">
-                    명단 확정
+                    className="rounded-sm border border-clay-400/60 bg-clay-400/10 px-2.5 py-1 text-[11px] font-semibold text-clay-400 disabled:opacity-40">
+                    매치 완료
                   </button>
                 )}
                 {selectedSession.status === "closed" && !editingClosedSession && (
@@ -401,14 +395,7 @@ function AdminAttendanceInner() {
                     수정 완료
                   </button>
                 )}
-                {selectedSession.status !== "archived" && (
-                  <button type="button"
-                    disabled={processingSessionId === selectedSessionId}
-                    onClick={() => handleSessionStatusChange(selectedSessionId!, "archived")}
-                    className="rounded-sm border border-line-200/40 px-2.5 py-1 text-[11px] font-semibold text-line-500 disabled:opacity-40">
-                    보관
-                  </button>
-                )}
+
               </div>
             </div>
 
