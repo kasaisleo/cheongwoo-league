@@ -178,7 +178,7 @@ export default function AttendanceHistoryPage() {
 
   /** archived → closed로 되돌려, 운영진이 다시 출석을 보정할 수 있게 한다. */
   async function handleRestoreSession(sessionId: string) {
-    if (!window.confirm("이 세션의 보관을 해제하고 명단 수정이 가능한 상태로 되돌릴까요?")) return;
+    if (!window.confirm("이 매치를 복원하고 출석 수정이 가능한 상태로 되돌릴까요?")) return;
 
     setRestoringSessionId(sessionId);
     const res = await fetch("/api/attendance-sessions/archive", {
@@ -194,7 +194,7 @@ export default function AttendanceHistoryPage() {
       return;
     }
 
-    toast.success("보관이 해제되었습니다. 출석 화면에서 명단을 수정할 수 있어요.");
+    toast.success("매치가 복원되었습니다. 출석 화면에서 수정할 수 있어요.");
     setExpandedSessionId(null);
     loadSummaries();
   }
@@ -208,11 +208,11 @@ export default function AttendanceHistoryPage() {
           <div className="mb-1 inline-flex items-center gap-2">
             <span className="h-2 w-2 rounded-full bg-clay-400" />
             <p className="font-score text-xs font-semibold uppercase tracking-[0.2em] text-clay-400">
-              Attendance History
+              Match History
             </p>
           </div>
           <h1 className="font-display text-3xl font-bold uppercase tracking-tight text-line-900">
-            출석 히스토리
+            매치 히스토리
           </h1>
         </div>
         <Link href="/attendance" className="text-xs font-semibold text-clay-400">
@@ -271,7 +271,7 @@ export default function AttendanceHistoryPage() {
                       onClick={() => handleRestoreSession(session.id)}
                       className="mb-3 w-full rounded-sm border border-clay-400 py-2 text-xs font-semibold text-clay-400 disabled:opacity-40"
                     >
-                      {restoringSessionId === session.id ? "처리 중..." : "보관 해제 (출석 수정 가능 상태로 복원)"}
+                      {restoringSessionId === session.id ? "처리 중..." : "복원 (출석 수정 가능 상태로 복원)"}
                     </button>
                   )}
                   {loadingDetail ? (

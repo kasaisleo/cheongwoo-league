@@ -349,7 +349,7 @@ function AdminAttendanceInner() {
           <div className="mb-4">
             <div className="mb-2 flex items-center justify-between">
               <p className="font-display text-[10px] font-bold uppercase tracking-widest text-line-500">
-                현재 명단
+                출석 현황
                 {selectedSession.status === "closed" && (
                   <span className={`ml-1.5 rounded-sm px-1.5 py-0.5 text-[9px] font-semibold ${
                     editingClosedSession ? "bg-clay-400/10 text-clay-400" : "bg-line-200 text-line-500"
@@ -371,7 +371,7 @@ function AdminAttendanceInner() {
                 {selectedSession.status === "closed" && !editingClosedSession && (
                   <button type="button" onClick={() => setEditingClosedSession(true)}
                     className="rounded-sm border border-clay-400/60 px-2.5 py-1 text-[11px] font-semibold text-clay-400">
-                    명단 수정
+                    출석 수정
                   </button>
                 )}
                 {selectedSession.status === "closed" && editingClosedSession && (

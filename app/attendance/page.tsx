@@ -227,12 +227,12 @@ function AttendancePageInner() {
   //    - archived: 읽기 전용 — 이 함수를 호출하는 토글 자체가 비활성화되어 있어야 한다
   async function updateStatus(memberId: string, newStatus: AttendanceStatus) {
     if (!selectedSessionId || !selectedSession) {
-      toast.error("출석 세션을 선택해주세요.");
+      toast.error("매치를 선택해주세요.");
       return;
     }
 
     if (selectedSession.status === "archived") {
-      toast.error("보관된 세션은 읽기 전용이라 수정할 수 없습니다.");
+      toast.error("보관된 매치는 읽기 전용이라 수정할 수 없습니다.");
       return;
     }
 
@@ -255,7 +255,7 @@ function AttendancePageInner() {
         setRows((prev) =>
           prev.map((row) => (row.member.id === memberId ? { ...row, status: previousStatus } : row))
         );
-        toast.error("명단이 확정된 세션은 운영진만 수정할 수 있습니다.");
+        toast.error("완료된 매치는 운영진만 수정할 수 있습니다.");
         return;
       }
 
@@ -306,7 +306,7 @@ function AttendancePageInner() {
   async function handleCreateWeeklySessions(closeMenu?: () => void) {
     closeMenu?.();
     const confirmed = window.confirm(
-      "기존 열린 토/일 출석 세션을 보관하고 이번 주 토/일 세션을 새로 생성합니다. 진행할까요?"
+      "기존 열린 토/일 매치를 보관하고 이번 주 토/일 매치를 새로 생성합니다. 진행할까요?"
     );
     if (!confirmed) return;
 
@@ -314,7 +314,7 @@ function AttendancePageInner() {
     const body = await res.json().catch(() => null);
 
     if (!res.ok) {
-      toast.error(body?.error ?? "세션 생성에 실패했습니다.");
+      toast.error(body?.error ?? "매치 생성에 실패했습니다.");
       return;
     }
 
@@ -350,7 +350,7 @@ function AttendancePageInner() {
     setCreatingCustom(false);
 
     if (!res.ok) {
-      toast.error(body?.error ?? "세션 생성에 실패했습니다.");
+      toast.error(body?.error ?? "매치 생성에 실패했습니다.");
       return;
     }
 
@@ -428,14 +428,14 @@ function AttendancePageInner() {
           <p className="eyebrow-en text-clay-400">
             Attendance
           </p>
-          <h1 className="headline-kr text-4xl text-line-900">출석 체크</h1>
+          <h1 className="headline-kr text-4xl text-line-900">매치</h1>
         </div>
 
         <div className="flex items-center gap-1.5">
           <Link
             href="/attendance/history"
             className="flex h-10 w-10 items-center justify-center rounded-sm border border-line-200/40 bg-line-50 text-line-700 transition-colors hover:bg-line-200"
-            aria-label="출석 히스토리 보기"
+            aria-label="매치 히스토리 보기"
           >
             <span className="text-base">🕓</span>
           </Link>

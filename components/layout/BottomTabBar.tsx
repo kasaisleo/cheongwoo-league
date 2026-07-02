@@ -17,8 +17,8 @@ import { usePathname } from "next/navigation";
 
 const TABS = [
   { href: "/", label: "홈", icon: HomeIcon },
-  { href: "/attendance", label: "출석", icon: CalendarIcon },
-  { href: "/matches", label: "경기", icon: MatchIcon },
+  { href: "/attendance", label: "매치", icon: CalendarIcon },
+  { href: "/matches", label: "기록", icon: ListIcon },
   { href: "/members", label: "회원", icon: UsersIcon },
   { href: "/mypage", label: "마이", icon: PersonIcon },
 ];
@@ -89,12 +89,13 @@ function CalendarIcon({ className }: { className?: string }) {
   );
 }
 
-function MatchIcon({ className }: { className?: string }) {
+function ListIcon({ className }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <circle cx="10" cy="10" r="6" />
-      <path d="M14.5 14.5l5 5" strokeLinecap="round" />
-      <path d="M7 10h6M10 7v6" strokeLinecap="round" />
+      <path d="M9 5h11M9 12h11M9 19h11" strokeLinecap="round" />
+      <circle cx="4" cy="5" r="1.2" fill="currentColor" stroke="none" />
+      <circle cx="4" cy="12" r="1.2" fill="currentColor" stroke="none" />
+      <circle cx="4" cy="19" r="1.2" fill="currentColor" stroke="none" />
     </svg>
   );
 }
