@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { MATCH_SESSION_DAY_LABEL } from "@/lib/match-session-label";
+import { pct, fmtPct, buildRecordsDashboardSummary, buildManagementAlerts } from "@/lib/records/dashboardUtils";
 import type { MemberType } from "@/lib/supabase/database.types";
 
 function todayStr() {
@@ -41,11 +42,13 @@ export default async function AdminRecordsPage() {
     { data: allMatches },
     { data: members },
     { data: guests },
+    { data: allAttendance },
   ] = await Promise.all([
     supabase.from("attendance_sessions").select("*").neq("status", "archived").order("session_date", { ascending: false }),
     supabase.from("matches").select("*"),
     supabase.from("members").select("id, name, member_type").eq("is_active", true),
     supabase.from("guests").select("id, name").eq("is_active", true).is("converted_to_member_id", null),
+    supabase.from("attendance").select("session_id, member_id, status"),
   ]);
 
   const sessions   = allSessions ?? [];
@@ -106,6 +109,22 @@ export default async function AdminRecordsPage() {
 
   const maxGames = top10[0]?.games ?? 1;
 
+  // ── KPI 요약 + Management Alerts ────────────────────────────────
+  const kpi = buildRecordsDashboardSummary(
+    sessions,
+    matches,
+    allAttendance ?? [],
+    today_str,
+    (members ?? []).length,
+  );
+  const alerts = buildManagementAlerts(
+    sessions,
+    matches,
+    allAttendance ?? [],
+    (members ?? []).map((m) => ({ id: m.id, name: m.name })),
+    today_str,
+  );
+
   // ── 매치명 헬퍼 ────────────────────────────────────────────────
   function matchTitle(s: { session_day: string; title: string }) {
     const base = MATCH_SESSION_DAY_LABEL[s.session_day as keyof typeof MATCH_SESSION_DAY_LABEL] ?? s.title;
@@ -127,6 +146,91 @@ export default async function AdminRecordsPage() {
           ← 관리자
         </Link>
       </header>
+
+      {/* ── KPI 요약 카드 ──────────────────────────────────────────── */}
+      <section className="mb-5">
+        <p className="mb-2 font-display text-[10px] font-bold uppercase tracking-widest text-line-500">Summary</p>
+        <div className="grid grid-cols-2 gap-2">
+          {[
+            { label: "완료 매치",    value: String(kpi.completedCount),             sub: "기록 대상" },
+            { label: "전체 경기",    value: String(kpi.totalGames),                  sub: "세션 연결 경기" },
+            { label: "평균 참여율",  value: fmtPct(kpi.avgParticipationRate),         sub: "경기 참여율 평균" },
+            { label: "평균 출석율",  value: fmtPct(kpi.avgAttendRate),               sub: "출석 체크율 평균" },
+            { label: "확인 필요",    value: String(kpi.needsCheckCount),             sub: "검수 필요 매치", warn: kpi.needsCheckCount > 0 },
+            { label: "기록 부족",    value: String(kpi.missingRecordCount),          sub: "경기 기록 없음", warn: kpi.missingRecordCount > 0 },
+            { label: "출석 후 미참여", value: kpi.totalNoShow > 0 ? `${kpi.totalNoShow}건` : "없음", sub: "전체 누적", warn: kpi.totalNoShow > 0 },
+          ].map((card) => (
+            <div key={card.label} className="overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50 px-4 py-3">
+              <p className={`font-score text-3xl font-bold tabular-nums ${"warn" in card && card.warn ? "text-clay-400" : "text-line-900"}`}>{card.value}</p>
+              <p className="font-display text-[10px] font-bold uppercase tracking-widest text-line-500">{card.label}</p>
+              <p className="text-[9px] text-line-400">{card.sub}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ── Management Alerts ────────────────────────────────────── */}
+      {(alerts.sessionAlerts.length > 0 || alerts.playerAlerts.length > 0) && (
+        <section className="mb-5">
+          <p className="mb-2 font-display text-[10px] font-bold uppercase tracking-widest text-line-500">Management Alerts</p>
+
+          {/* 경기 alerts */}
+          {alerts.sessionAlerts.length > 0 && (
+            <div className="mb-3 overflow-hidden rounded-[14px] border border-clay-400/30 bg-clay-400/5">
+              <div className="flex items-center justify-between border-b border-clay-400/20 px-4 py-2">
+                <p className="font-display text-[9px] font-bold uppercase tracking-widest text-clay-400">
+                  경기 확인 필요 {alerts.sessionAlerts.length}건
+                </p>
+                <Link href="/admin/records/matches"
+                  className="text-[10px] font-semibold text-clay-400 hover:underline">
+                  경기 검수 →
+                </Link>
+              </div>
+              {alerts.sessionAlerts.map((a, idx) => {
+                const base = MATCH_SESSION_DAY_LABEL[a.session_day as keyof typeof MATCH_SESSION_DAY_LABEL] ?? a.title;
+                const name = (a.session_day === "holiday" || a.session_day === "custom") ? `${base} · ${a.title}` : base;
+                return (
+                  <Link key={a.id} href="/admin/records/matches">
+                    <div className={`flex items-center justify-between px-4 py-2.5 transition-colors hover:bg-clay-400/10 ${idx < alerts.sessionAlerts.length - 1 ? "border-b border-clay-400/10" : ""}`}>
+                      <div>
+                        <p className="text-[14px] font-semibold text-line-900">{name}</p>
+                        <p className="font-score text-[10px] tabular-nums text-line-400">{a.session_date}</p>
+                      </div>
+                      <span className="rounded-sm border border-clay-400/40 bg-clay-400/10 px-1.5 py-0.5 text-[9px] font-semibold text-clay-400">
+                        {a.reason}
+                      </span>
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          )}
+
+          {/* 선수 alerts */}
+          {alerts.playerAlerts.length > 0 && (
+            <div className="overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50">
+              <div className="flex items-center justify-between border-b border-line-200/30 px-4 py-2">
+                <p className="font-display text-[9px] font-bold uppercase tracking-widest text-line-500">
+                  미참여도 높은 선수
+                </p>
+                <Link href="/admin/records/players"
+                  className="text-[10px] font-semibold text-line-500 hover:text-clay-400">
+                  개인 기록 →
+                </Link>
+              </div>
+              {alerts.playerAlerts.map((p, idx) => (
+                <Link key={p.id} href={`/admin/records/players/member/${p.id}`}>
+                  <div className={`flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-line-100/40 ${idx < alerts.playerAlerts.length - 1 ? "border-b border-line-200/20" : ""}`}>
+                    <span className="text-[14px] font-semibold text-line-900">{p.name}</span>
+                    <span className="text-[10px] text-line-400">참여 {p.gameSessionCount}/{p.totalCompleted}매치</span>
+                    <span className="ml-auto font-score text-sm font-bold tabular-nums text-clay-400">미참여 {p.absenceRate}%</span>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
 
       {/* ── BIG SCOREBOARD ─────────────────────────────────────── */}
       <section className="mb-5">
