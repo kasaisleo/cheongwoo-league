@@ -65,7 +65,7 @@ export default async function AdminRecordsPage() {
   // ── 결과 미입력 매치 ─────────────────────────────────────────
   const unpendingSessions = completedSessions.filter(
     (s) => (matchCountBySession.get(s.id) ?? 0) === 0
-  ).slice(0, 5);
+  ).slice(0, 10);  // 최대 10개 표시 (카드 수치와 근접)
 
   // ── 최근 완료 매치 리스트 ────────────────────────────────────
   const recentCompleted = completedSessions.slice(0, 8);
@@ -128,7 +128,7 @@ export default async function AdminRecordsPage() {
           {[
             { label: "총 매치",     value: sessions.length,          sub: "archived 제외" },
             { label: "완료 매치",   value: completedSessions.length,  sub: "closed + 날짜 지난" },
-            { label: "총 경기",     value: matches.length,            sub: "전체 경기 기록" },
+            { label: "총 경기",     value: matches.filter(m => m.session_id).length, sub: "세션 연결 경기" },
             { label: "결과 미입력", value: unpendingCount,            sub: "완료됐지만 기록 없음" },
           ].map((card) => (
             <div key={card.label} className="overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50 px-4 py-3">
