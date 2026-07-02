@@ -261,8 +261,8 @@ export default function PlayerRecordsPage() {
       {/* ── Header */}
       <header className="mb-4 flex items-center justify-between">
         <div>
-          <p className="eyebrow-en text-clay-400">Admin · Player Records</p>
-          <h1 className="headline-kr text-4xl text-line-900">개인별 기록</h1>
+          <p className="eyebrow-en text-clay-400">Admin · Records</p>
+          <h1 className="headline-kr text-4xl text-line-900">선수 기록 분석</h1>
         </div>
         <Link href="/admin/records" className="rounded-sm border border-line-200/40 px-2.5 py-1.5 text-xs font-semibold text-line-500 hover:text-line-700">
           ← 대시보드

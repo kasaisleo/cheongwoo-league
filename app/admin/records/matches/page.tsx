@@ -210,7 +210,7 @@ export default function RecordsMatchesPage() {
         <div>
           <p className="eyebrow-en text-clay-400">Admin · Records</p>
           <h1 className="headline-kr text-4xl text-line-900">경기 검수</h1>
-          <p className="mt-1 text-sm text-line-500">매치별 경기 기록 현황과 누락을 확인합니다.</p>
+          <p className="mt-1 text-sm text-line-500">매치별 경기 기록 누락과 이상을 검수합니다.</p>
         </div>
         <Link href="/admin/records" className="rounded-sm border border-line-200/40 px-2.5 py-1.5 text-xs font-semibold text-line-500 hover:text-line-700">
           ← 대시보드

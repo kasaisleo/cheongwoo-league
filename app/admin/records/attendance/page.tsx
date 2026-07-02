@@ -217,7 +217,7 @@ export default function RecordsAttendancePage() {
         <div>
           <p className="eyebrow-en text-clay-400">Admin · Records</p>
           <h1 className="headline-kr text-4xl text-line-900">출석 체크 검수</h1>
-          <p className="mt-1 text-sm text-line-500">매치별 출석 응답 현황을 확인합니다.</p>
+          <p className="mt-1 text-sm text-line-500">매치별 출석 응답 현황을 검수합니다.</p>
         </div>
         <Link href="/admin/records"
           className="rounded-sm border border-line-200/40 px-2.5 py-1.5 text-xs font-semibold text-line-500 hover:text-line-700">

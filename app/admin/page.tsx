@@ -159,7 +159,7 @@ export default async function AdminPage() {
             { href: "/admin/attendance?action=create", label: "매치 생성",    sub: "New Match",    accent: "clay" },
             { href: "/admin/matches/new",              label: "경기 결과 입력", sub: "New Result",  accent: "clay" },
             { href: "/admin/attendance",               label: "출석 관리",    sub: "Attendance",   accent: "line" },
-            { href: "/admin/matches",                  label: "경기 기록",    sub: "Match Records", accent: "line" },
+            { href: "/admin/matches",                  label: "경기 목록",    sub: "Match Records", accent: "line" },
             { href: "/admin/members/new?type=member",  label: "회원 등록",    sub: "New Member",   accent: "line" },
             { href: "/admin/guests",                   label: "게스트 관리",  sub: "Guest List",   accent: "line" },
           ].map((item) => (
@@ -182,7 +182,7 @@ export default async function AdminPage() {
         <div className="overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50">
           {[
             { href: "/admin/records",    label: "기록 대시보드",  sub: "매치 · 참여 · 경기 통계" },
-            { href: "/admin/matches",    label: "경기 기록",    sub: "경기 결과 · 수정 · 삭제" },
+            { href: "/admin/matches",    label: "경기 관리",    sub: "결과 입력 · 수정 · 삭제" },
             { href: "/admin/attendance", label: "출석 관리",    sub: "매치 운영 · 출석 현황" },
             { href: "/members",          label: "회원 관리",    sub: "회원 목록 · 정보 수정 · 일괄 등록" },
             { href: "/admin/guests",     label: "게스트 관리",  sub: "게스트 목록 · 정회원 전환" },

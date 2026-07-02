@@ -315,11 +315,11 @@ export default function NewMatchPage() {
         <div>
           <p className="eyebrow-en text-clay-400">Match Result</p>
           <h1 className="headline-kr text-4xl text-line-900">경기 결과 입력</h1>
-          <p className="mt-1 text-sm text-line-500">매치를 선택하고 경기 결과를 입력합니다.</p>
+          <p className="mt-1 text-sm text-line-500">연속 입력 후 완료 시 우측 버튼을 눌러주세요.</p>
         </div>
         <button type="button" onClick={handleFinish} disabled={submitting || finishing}
-          className="rounded-sm border border-line-200/40 px-2.5 py-1.5 text-xs font-semibold text-line-500 hover:text-line-700 disabled:opacity-40">
-          {finishing ? "이동 중..." : "완료 →"}
+          className="rounded-sm border border-clay-400/60 bg-clay-400/10 px-3 py-1.5 text-xs font-semibold text-clay-400 hover:bg-clay-400/20 disabled:opacity-40">
+          {finishing ? "이동 중..." : "입력 완료 →"}
         </button>
       </header>
 
@@ -329,7 +329,7 @@ export default function NewMatchPage() {
           <p className="text-[11px] font-semibold text-line-500">매치 *</p>
           <button type="button" onClick={() => setShowNewSession((v) => !v)}
             className="rounded-sm border border-clay-400/60 bg-clay-400/10 px-2.5 py-1 text-[10px] font-semibold text-clay-400 hover:bg-clay-400/20">
-            {showNewSession ? "취소" : "+ 새 매치 추가"}
+            {showNewSession ? "취소" : "+ 매치 직접 추가"}
           </button>
         </div>
 

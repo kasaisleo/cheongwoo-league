@@ -410,11 +410,17 @@ function AdminAttendanceInner() {
               {/* 매치 완료/수정 버튼 */}
               <div className="flex gap-1.5">
                 {selectedSession.status === "open" && (
+                  <Link href={`/matches/new?sessionId=${selectedSessionId}`}
+                    className="rounded-sm border border-line-200/40 px-2.5 py-1 text-[11px] font-semibold text-line-500 hover:text-line-700">
+                    결과 입력
+                  </Link>
+                )}
+                {selectedSession.status === "open" && (
                   <button type="button"
                     disabled={processingSessionId === selectedSessionId}
                     onClick={() => handleSessionStatusChange(selectedSessionId!, "closed")}
                     className="rounded-sm border border-clay-400/60 bg-clay-400/10 px-2.5 py-1 text-[11px] font-semibold text-clay-400 disabled:opacity-40">
-                    매치 완료
+                    완료 처리
                   </button>
                 )}
                 {selectedSession.status === "closed" && !editingClosedSession && (
@@ -430,9 +436,15 @@ function AdminAttendanceInner() {
                   </button>
                 )}
                 {selectedSession.status === "closed" && (
-                  <Link href="/matches/history"
+                  <Link href={`/matches/new?sessionId=${selectedSessionId}`}
                     className="rounded-sm border border-line-200/40 px-2.5 py-1 text-[11px] font-semibold text-line-500 hover:text-line-700">
-                    히스토리
+                    결과 입력
+                  </Link>
+                )}
+                {selectedSession.status === "closed" && (
+                  <Link href="/admin/records/matches"
+                    className="rounded-sm border border-line-200/40 px-2.5 py-1 text-[11px] font-semibold text-line-500 hover:text-line-700">
+                    기록 검수
                   </Link>
                 )}
               </div>

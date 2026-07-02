@@ -230,7 +230,7 @@ export default async function AdminMatchesPage({ searchParams }: PageProps) {
       <header className="mb-5 flex items-center justify-between">
         <div>
           <p className="eyebrow-en text-clay-400">Admin · Matches</p>
-          <h1 className="headline-kr text-4xl text-line-900">경기 기록</h1>
+          <h1 className="headline-kr text-4xl text-line-900">경기 관리</h1>
         </div>
         <Link href="/admin"
           className="rounded-sm border border-line-200/40 px-2.5 py-1.5 text-xs font-semibold text-line-500 hover:text-line-700">
@@ -238,9 +238,7 @@ export default async function AdminMatchesPage({ searchParams }: PageProps) {
         </Link>
       </header>
 
-      <p className="mb-5 text-sm text-line-500">
-        등록된 경기 기록을 확인하고 필터·검색·수정·삭제합니다.
-      </p>
+      <p className="mb-4 text-sm text-line-500">경기 결과를 확인하고 수정·삭제합니다.</p>
 
 
       {/* 매치 타입 필터 */}

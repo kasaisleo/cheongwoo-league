@@ -154,8 +154,8 @@ export default async function AdminRecordsPage() {
           {[
             { label: "완료 매치",    value: String(kpi.completedCount),             sub: "기록 대상" },
             { label: "전체 경기",    value: String(kpi.totalGames),                  sub: "세션 연결 경기" },
-            { label: "평균 참여율",  value: fmtPct(kpi.avgParticipationRate),         sub: "경기 참여율 평균" },
-            { label: "평균 출석율",  value: fmtPct(kpi.avgAttendRate),               sub: "출석 체크율 평균" },
+            { label: "평균 경기 참여율", value: fmtPct(kpi.avgParticipationRate),      sub: "완료 매치 기준" },
+            { label: "평균 출석 체크율", value: fmtPct(kpi.avgAttendRate),            sub: "완료 매치 기준" },
             { label: "확인 필요",    value: String(kpi.needsCheckCount),             sub: "검수 필요 매치", warn: kpi.needsCheckCount > 0 },
             { label: "기록 부족",    value: String(kpi.missingRecordCount),          sub: "경기 기록 없음", warn: kpi.missingRecordCount > 0 },
             { label: "출석 후 미참여", value: kpi.totalNoShow > 0 ? `${kpi.totalNoShow}건` : "없음", sub: "전체 누적", warn: kpi.totalNoShow > 0 },
@@ -407,13 +407,12 @@ export default async function AdminRecordsPage() {
         <p className="mb-2 font-display text-[10px] font-bold uppercase tracking-widest text-line-500">Quick Links</p>
         <div className="flex flex-wrap gap-2">
           {[
-            { href: "/admin/records/players",    label: "개인 기록 검색" },
-            { href: "/admin/records/matches",     label: "경기 검수" },
-            { href: "/admin/records/attendance",  label: "출석 체크 검수" },
-            { href: "/admin/matches",     label: "경기 기록 관리" },
-            { href: "/admin/matches/new", label: "경기 결과 입력" },
-            { href: "/admin/attendance",  label: "출석 관리" },
-            { href: "/matches/history",   label: "매치 히스토리" },
+            { href: "/admin/records/players",   label: "선수 기록 분석" },
+            { href: "/admin/records/matches",    label: "경기 검수" },
+            { href: "/admin/records/attendance", label: "출석 체크 검수" },
+            { href: "/admin/matches/new",        label: "결과 입력" },
+            { href: "/admin/attendance",         label: "출석 관리" },
+            { href: "/matches/history",          label: "매치 히스토리" },
           ].map((l) => (
             <Link key={l.href} href={l.href}
               className="rounded-sm border border-line-200/40 px-3 py-1.5 text-xs font-semibold text-line-500 hover:border-clay-400/60 hover:text-clay-400">
