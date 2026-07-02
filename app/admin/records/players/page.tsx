@@ -286,14 +286,14 @@ export default function PlayerRecordsPage() {
             </div>
           </section>
 
-          {/* 개인 리스트 */}
+          {/* 개인 리스트 — 검색 중에는 숨김 (검색 결과가 위에 표시됨) */}
+          {!query.trim() && (
           <section className="mt-5">
             <p className="mb-2 font-display text-[10px] font-bold uppercase tracking-widest text-line-500">
               전체 목록 ({players.length}명)
             </p>
             <div className="overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50">
               {players
-                .filter((p) => !query.trim())
                 .sort((a, b) => b.games - a.games || b.winRate - a.winRate || a.name.localeCompare(b.name, "ko"))
                 .slice(0, 30)
                 .map((p, idx, arr) => (
@@ -312,11 +312,12 @@ export default function PlayerRecordsPage() {
                     </div>
                   </Link>
                 ))}
-              {players.filter((p) => !query.trim()).length > 30 && (
+              {players.length > 30 && (
                 <p className="px-4 py-2 text-center text-[10px] text-line-400">상위 30명 표시 · 검색으로 찾기</p>
               )}
             </div>
           </section>
+          )}
         </>
       )}
     </main>

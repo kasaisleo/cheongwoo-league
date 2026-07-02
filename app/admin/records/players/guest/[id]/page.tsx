@@ -6,10 +6,11 @@ export default async function GuestRecordPage({ params }: { params: { id: string
   const supabase = createClient();
   const guestId = params.id;
 
-  const [{ data: guest }, { data: allMatches }, { data: allSessions }] = await Promise.all([
+  const [{ data: guest }, { data: allMatches }, { data: allSessions }, { data: allMembers }] = await Promise.all([
     supabase.from("guests").select("id, name").eq("id", guestId).maybeSingle(),
     supabase.from("matches").select("*").order("played_at", { ascending: false }),
     supabase.from("attendance_sessions").select("id, title, session_day"),
+    supabase.from("members").select("id, name").eq("is_active", true),
   ]);
 
   if (!guest) {
@@ -37,7 +38,8 @@ export default async function GuestRecordPage({ params }: { params: { id: string
   const games = wins + losses;
   const winRate = games > 0 ? Math.round((wins / games) * 100) : 0;
 
-  const sessionMap = new Map((allSessions ?? []).map((s) => [s.id, s]));
+  const sessionMap    = new Map((allSessions ?? []).map((s) => [s.id, s]));
+  const memberNameMap = new Map((allMembers ?? []).map((m) => [m.id, m.name]));
 
   return (
     <main className="px-4 pt-6 pb-28">
@@ -88,6 +90,14 @@ export default async function GuestRecordPage({ params }: { params: { id: string
         </section>
       )}
 
+      {/* LP 안내 */}
+      <section className="mb-5">
+        <div className="rounded-[14px] border border-line-200/40 bg-line-50 px-4 py-3">
+          <p className="font-display text-[10px] font-bold uppercase tracking-widest text-line-500">LP</p>
+          <p className="mt-1 text-sm text-line-400">게스트는 LP 기록이 없습니다.</p>
+        </div>
+      </section>
+
       {/* 최근 경기 */}
       <section>
         <p className="mb-2 font-display text-[10px] font-bold uppercase tracking-widest text-line-500">경기 기록</p>
@@ -97,20 +107,33 @@ export default async function GuestRecordPage({ params }: { params: { id: string
           </div>
         ) : (
           <div className="overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50">
-            {myMatches.slice(0, 10).map(({ id: mid, winner_team, score_a, score_b, session_id, played_at, team_a_player1_guest, team_a_player2_guest }, idx, arr) => {
-              const isTeamA = [team_a_player1_guest, team_a_player2_guest].includes(guestId);
-              const isWin = (isTeamA && winner_team === "A") || (!isTeamA && winner_team === "B");
-              const session = session_id ? sessionMap.get(session_id) : null;
+            {myMatches.slice(0, 10).map((m, idx) => {
+              const isTeamA = [m.team_a_player1_guest, m.team_a_player2_guest].includes(guestId);
+              const isWin = (isTeamA && m.winner_team === "A") || (!isTeamA && m.winner_team === "B");
+              const session = m.session_id ? sessionMap.get(m.session_id) : null;
+              const partnerMemberId = isTeamA
+                ? [m.team_a_player1_member, m.team_a_player2_member].find(Boolean)
+                : [m.team_b_player1_member, m.team_b_player2_member].find(Boolean);
+              const opponentIds = isTeamA
+                ? [m.team_b_player1_member, m.team_b_player2_member].filter(Boolean)
+                : [m.team_a_player1_member, m.team_a_player2_member].filter(Boolean);
               return (
-                <div key={mid} className={`flex items-center gap-3 px-4 py-3 ${idx < Math.min(myMatches.length, 10) - 1 ? "border-b border-line-200/30" : ""}`}>
+                <div key={m.id} className={`flex items-center gap-3 px-4 py-3 ${idx < Math.min(myMatches.length, 10) - 1 ? "border-b border-line-200/30" : ""}`}>
                   <span className={`font-score rounded-sm px-2 py-0.5 text-[11px] font-bold ${isWin ? "bg-gold/10 text-gold" : "bg-line-200/40 text-line-500"}`}>{isWin ? "W" : "L"}</span>
                   <div className="min-w-0 flex-1">
                     <p className="text-[13px] font-semibold text-line-900">
-                      {session ? (MATCH_SESSION_DAY_LABEL[session.session_day as keyof typeof MATCH_SESSION_DAY_LABEL] ?? session.title) : played_at}
+                      {session ? (MATCH_SESSION_DAY_LABEL[session.session_day as keyof typeof MATCH_SESSION_DAY_LABEL] ?? session.title) : m.played_at}
                     </p>
                     <p className="font-score text-[10px] tabular-nums text-line-400">
-                      {isTeamA ? "청팀" : "우팀"} · {score_a}:{score_b}
+                      {isTeamA ? "청팀" : "우팀"} · {m.score_a}:{m.score_b}
                     </p>
+                    {(partnerMemberId || opponentIds.length > 0) && (
+                      <p className="text-[10px] text-line-400">
+                        {partnerMemberId && `파트너: ${memberNameMap.get(partnerMemberId) ?? "알수없음"}`}
+                        {partnerMemberId && opponentIds.length > 0 && " · "}
+                        {opponentIds.length > 0 && `상대: ${opponentIds.map((id) => memberNameMap.get(id!) ?? "알수없음").join(", ")}`}
+                      </p>
+                    )}
                   </div>
                 </div>
               );

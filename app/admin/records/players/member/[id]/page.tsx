@@ -187,7 +187,7 @@ export default async function MemberRecordPage({ params }: { params: { id: strin
           const minV = Math.min(...values);
           const maxV = Math.max(...values);
           const range = maxV - minV || 1;
-          const W = 320, H = 80, pad = 8;
+          const W = 320, H = 90, pad = 12;
           const xs = pts.map((_, i) => pad + (i / Math.max(pts.length - 1, 1)) * (W - pad * 2));
           const ys = values.map((v) => H - pad - ((v - minV) / range) * (H - pad * 2));
           const pathD = xs.map((x, i) => `${i === 0 ? "M" : "L"}${x.toFixed(1)},${ys[i].toFixed(1)}`).join(" ");
@@ -199,7 +199,7 @@ export default async function MemberRecordPage({ params }: { params: { id: strin
                   <span className="font-score">{minV} LP</span>
                   <span className="font-score font-bold text-gold">{maxV} LP</span>
                 </div>
-                <svg width="100%" viewBox={`0 0 ${W} ${H}`} className="mt-1 overflow-visible">
+                <svg width="100%" viewBox={`0 0 ${W} ${H}`} className="mt-1 block">
                   <path d={pathD} fill="none" stroke="#B9A64B" strokeWidth="1.5" strokeLinejoin="round" />
                   {pts.length > 1 && (
                     <circle cx={lastX} cy={lastY} r="3" fill="#B9A64B" />
