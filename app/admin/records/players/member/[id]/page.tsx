@@ -13,12 +13,14 @@ export default async function MemberRecordPage({ params }: { params: { id: strin
     { data: attendanceRows },
     { data: allSessions },
     { data: pointHistory },
+    { data: allMembers },
   ] = await Promise.all([
     supabase.from("members").select("id, name, member_type, league_point").eq("id", memberId).maybeSingle(),
     supabase.from("matches").select("*").order("played_at", { ascending: false }),
     supabase.from("attendance").select("session_id, status").eq("member_id", memberId),
     supabase.from("attendance_sessions").select("id, title, session_date, session_day, status").neq("status", "archived"),
-    supabase.from("point_history").select("*").eq("member_id", memberId).order("created_at", { ascending: false }).limit(30),
+    supabase.from("point_history").select("*").eq("member_id", memberId).order("created_at", { ascending: true }),
+    supabase.from("members").select("id, name").eq("is_active", true),
   ]);
 
   if (!member) {
@@ -77,9 +79,12 @@ export default async function MemberRecordPage({ params }: { params: { id: strin
     if (status === "attending" && !participantsPerSession.get(sid)?.has(memberId)) noShowCount++;
   }
   const noShowRate = attending > 0 ? Math.round((noShowCount / attending) * 100) : 0;
+  const completedCount = completedIds.size;
+  const attendRate = completedCount > 0 ? Math.round((attending / completedCount) * 100) : 0;
 
   // 최근 경기 (최대 10개)
   const sessionMap = new Map((allSessions ?? []).map((s) => [s.id, s]));
+  const memberNameMap = new Map((allMembers ?? []).map((m) => [m.id, m.name]));
   const recentMatchItems = myMatches.slice(0, 10).map((m) => {
     const isTeamA = [m.team_a_player1_member, m.team_a_player2_member].includes(memberId);
     const isWin = (isTeamA && m.winner_team === "A") || (!isTeamA && m.winner_team === "B");
@@ -87,7 +92,14 @@ export default async function MemberRecordPage({ params }: { params: { id: strin
     const partner = isTeamA
       ? [m.team_a_player1_member, m.team_a_player2_member].find((id) => id && id !== memberId)
       : [m.team_b_player1_member, m.team_b_player2_member].find((id) => id && id !== memberId);
-    return { m, isTeamA, isWin, session, partnerId: partner ?? null };
+    const opponents = isTeamA
+      ? [m.team_b_player1_member, m.team_b_player2_member].filter(Boolean)
+      : [m.team_a_player1_member, m.team_a_player2_member].filter(Boolean);
+    return {
+      m, isTeamA, isWin, session,
+      partnerName: partner ? (memberNameMap.get(partner) ?? "알수없음") : null,
+      opponentNames: opponents.map((id) => memberNameMap.get(id!) ?? "알수없음"),
+    };
   });
 
   const memberTypeLabel: Record<string, string> = { 정회원: "정회원", 준회원: "준회원", 게스트: "게스트" };
@@ -115,11 +127,11 @@ export default async function MemberRecordPage({ params }: { params: { id: strin
             <div className="px-5 py-4">
               <p className="font-score text-4xl font-bold tabular-nums text-line-900">{games}</p>
               <p className="mt-1 font-display text-[10px] font-bold uppercase tracking-widest text-line-500">총 경기</p>
+              <p className="text-[10px] text-line-400">{wins}승 {losses}패</p>
             </div>
             <div className="px-5 py-4">
               <p className="font-score text-4xl font-bold tabular-nums text-gold">{winRate}%</p>
               <p className="mt-1 font-display text-[10px] font-bold uppercase tracking-widest text-line-500">승률</p>
-              <p className="text-[10px] text-line-400">{wins}승 {losses}패</p>
             </div>
             <div className="px-5 py-4">
               <p className="font-score text-4xl font-bold tabular-nums text-line-900">{attending}</p>
@@ -130,6 +142,18 @@ export default async function MemberRecordPage({ params }: { params: { id: strin
               <p className="font-score text-4xl font-bold tabular-nums text-line-900">{member.league_point}</p>
               <p className="mt-1 font-display text-[10px] font-bold uppercase tracking-widest text-line-500">현재 LP</p>
             </div>
+            <div className="px-5 py-4">
+              <p className="font-score text-4xl font-bold tabular-nums text-line-900">{attendRate}%</p>
+              <p className="mt-1 font-display text-[10px] font-bold uppercase tracking-widest text-line-500">출석률</p>
+              <p className="text-[10px] text-line-400">완료 매치 {completedCount}개 기준</p>
+            </div>
+            {noShowCount > 0 && (
+              <div className="px-5 py-4">
+                <p className="font-score text-4xl font-bold tabular-nums text-clay-400">{noShowRate}%</p>
+                <p className="mt-1 font-display text-[10px] font-bold uppercase tracking-widest text-line-500">경기 미참여</p>
+                <p className="text-[10px] text-line-400">출석 {attending}회 중 {noShowCount}회</p>
+              </div>
+            )}
           </div>
         </div>
       </section>
@@ -150,28 +174,60 @@ export default async function MemberRecordPage({ params }: { params: { id: strin
       )}
 
       {/* LP 히스토리 */}
-      {(pointHistory ?? []).length > 0 && (
-        <section className="mb-5">
-          <p className="mb-2 font-display text-[10px] font-bold uppercase tracking-widest text-line-500">LP 히스토리</p>
-          <div className="overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50">
-            {(pointHistory ?? []).slice(0, 10).map((ph, idx) => (
-              <div key={ph.id}
-                className={`flex items-center justify-between px-4 py-2.5 ${idx < Math.min((pointHistory ?? []).length, 10) - 1 ? "border-b border-line-200/30" : ""}`}>
-                <div>
-                  <p className="text-xs font-semibold text-line-900">{ph.reason}</p>
-                  <p className="text-[10px] text-line-400">{ph.created_at.slice(0, 10)}</p>
-                </div>
-                <div className="text-right">
-                  <p className={`font-score text-sm font-bold tabular-nums ${ph.point_change >= 0 ? "text-gold" : "text-clay-400"}`}>
-                    {ph.point_change >= 0 ? "+" : ""}{ph.point_change}
-                  </p>
-                  <p className="font-score text-[10px] tabular-nums text-line-400">{ph.point_after} LP</p>
-                </div>
-              </div>
-            ))}
+      <section className="mb-5">
+        <p className="mb-2 font-display text-[10px] font-bold uppercase tracking-widest text-line-500">LP 히스토리</p>
+        {!(pointHistory ?? []).length ? (
+          <div className="rounded-[14px] border border-line-200/40 bg-line-50 p-4 text-center">
+            <p className="text-sm text-line-400">LP 히스토리 없음</p>
+            <p className="text-[10px] text-line-400">경기 결과 입력 후 LP가 집계되면 표시됩니다.</p>
           </div>
-        </section>
-      )}
+        ) : (() => {
+          const pts = (pointHistory ?? []);
+          const values = pts.map((p) => p.point_after);
+          const minV = Math.min(...values);
+          const maxV = Math.max(...values);
+          const range = maxV - minV || 1;
+          const W = 320, H = 80, pad = 8;
+          const xs = pts.map((_, i) => pad + (i / Math.max(pts.length - 1, 1)) * (W - pad * 2));
+          const ys = values.map((v) => H - pad - ((v - minV) / range) * (H - pad * 2));
+          const pathD = xs.map((x, i) => `${i === 0 ? "M" : "L"}${x.toFixed(1)},${ys[i].toFixed(1)}`).join(" ");
+          const lastX = xs[xs.length - 1], lastY = ys[ys.length - 1];
+          return (
+            <div className="overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50">
+              <div className="px-4 pt-3">
+                <div className="flex items-center justify-between text-[10px] text-line-400">
+                  <span className="font-score">{minV} LP</span>
+                  <span className="font-score font-bold text-gold">{maxV} LP</span>
+                </div>
+                <svg width="100%" viewBox={`0 0 ${W} ${H}`} className="mt-1 overflow-visible">
+                  <path d={pathD} fill="none" stroke="#B9A64B" strokeWidth="1.5" strokeLinejoin="round" />
+                  {pts.length > 1 && (
+                    <circle cx={lastX} cy={lastY} r="3" fill="#B9A64B" />
+                  )}
+                </svg>
+              </div>
+              <div className="border-t border-line-200/30 px-4 pb-3 pt-2">
+                <p className="text-[10px] text-line-400">{pts[0]?.created_at.slice(0, 10)} – {pts[pts.length - 1]?.created_at.slice(0, 10)}</p>
+              </div>
+              {/* 최근 변동 10개 리스트 */}
+              <div className="border-t border-line-200/30">
+                {[...pts].reverse().slice(0, 5).map((ph, idx, arr) => (
+                  <div key={ph.id}
+                    className={`flex items-center justify-between px-4 py-2 ${idx < arr.length - 1 ? "border-b border-line-200/20" : ""}`}>
+                    <div>
+                      <p className="text-xs text-line-700">{ph.reason}</p>
+                      <p className="text-[9px] text-line-400">{ph.created_at.slice(0, 10)}</p>
+                    </div>
+                    <p className={`font-score text-sm font-bold tabular-nums ${ph.point_change >= 0 ? "text-gold" : "text-clay-400"}`}>
+                      {ph.point_change >= 0 ? "+" : ""}{ph.point_change}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
+      </section>
 
       {/* 최근 경기 */}
       <section className="mb-5">
@@ -182,7 +238,7 @@ export default async function MemberRecordPage({ params }: { params: { id: strin
           </div>
         ) : (
           <div className="overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50">
-            {recentMatchItems.map(({ m, isTeamA, isWin, session }, idx) => (
+            {recentMatchItems.map(({ m, isTeamA, isWin, session, partnerName, opponentNames }, idx) => (
               <div key={m.id}
                 className={`flex items-center gap-3 px-4 py-3 ${idx < recentMatchItems.length - 1 ? "border-b border-line-200/30" : ""}`}>
                 <span className={`font-score rounded-sm px-2 py-0.5 text-[11px] font-bold ${isWin ? "bg-gold/10 text-gold" : "bg-line-200/40 text-line-500"}`}>
@@ -194,8 +250,14 @@ export default async function MemberRecordPage({ params }: { params: { id: strin
                   </p>
                   <p className="font-score text-[10px] tabular-nums text-line-400">
                     {isTeamA ? "청팀" : "우팀"} · {m.score_a}:{m.score_b}
-                    {m.played_at ? ` · ${m.played_at}` : ""}
                   </p>
+                  {(partnerName || opponentNames.length > 0) && (
+                    <p className="text-[10px] text-line-400">
+                      {partnerName && `파트너: ${partnerName}`}
+                      {partnerName && opponentNames.length > 0 && " · "}
+                      {opponentNames.length > 0 && `상대: ${opponentNames.join(", ")}`}
+                    </p>
+                  )}
                 </div>
               </div>
             ))}

@@ -261,7 +261,7 @@ export default function PlayerRecordsPage() {
           </section>
 
           {/* 출석 후 경기 미참여 */}
-          <section className="mb-5">
+          <section>
             <div className="overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50">
               <div className="border-b border-line-200/30 px-4 py-2.5">
                 <p className="font-display text-[10px] font-bold uppercase tracking-widest text-line-500">출석 후 경기 미참여</p>
@@ -283,6 +283,38 @@ export default function PlayerRecordsPage() {
                 </Link>
               ))}
               {top5NoShow.length === 0 && <p className="px-4 py-3 text-sm text-line-400">기록 없음</p>}
+            </div>
+          </section>
+
+          {/* 개인 리스트 */}
+          <section className="mt-5">
+            <p className="mb-2 font-display text-[10px] font-bold uppercase tracking-widest text-line-500">
+              전체 목록 ({players.length}명)
+            </p>
+            <div className="overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50">
+              {players
+                .filter((p) => !query.trim())
+                .sort((a, b) => b.games - a.games || b.winRate - a.winRate || a.name.localeCompare(b.name, "ko"))
+                .slice(0, 30)
+                .map((p, idx, arr) => (
+                  <Link key={(p.isGuest ? "G:" : "M:") + p.id} href={playerHref(p)}>
+                    <div className={`flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-line-100/40 ${idx < arr.length - 1 ? "border-b border-line-200/20" : ""}`}>
+                      <div className="flex min-w-0 flex-1 items-center gap-1.5">
+                        <span className="text-[15px] font-semibold leading-snug text-line-900">{p.name}</span>
+                        <MemberTypeBadge isGuest={p.isGuest} memberType={p.memberType} />
+                      </div>
+                      <div className="flex shrink-0 items-center gap-3 text-[11px] text-line-500">
+                        <span className="font-score tabular-nums">{p.games}경기</span>
+                        <span className="font-score tabular-nums text-gold">{p.winRate}%</span>
+                        {!p.isGuest && <span className="font-score tabular-nums">{p.attendRate}%출석</span>}
+                      </div>
+                      <span className="text-[10px] text-line-400">→</span>
+                    </div>
+                  </Link>
+                ))}
+              {players.filter((p) => !query.trim()).length > 30 && (
+                <p className="px-4 py-2 text-center text-[10px] text-line-400">상위 30명 표시 · 검색으로 찾기</p>
+              )}
             </div>
           </section>
         </>
