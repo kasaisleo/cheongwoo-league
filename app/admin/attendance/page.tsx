@@ -12,6 +12,7 @@ import { SessionGuestSection } from "@/components/attendance/SessionGuestSection
 import { getDisambiguatedName } from "@/lib/member-display";
 import { MATCH_SESSION_DAY_LABEL, fetchActiveSessions } from "@/lib/match-session-label";
 import type { AttendanceStatus, AttendanceSession, Member } from "@/lib/supabase/database.types";
+import TennisBallLoader from "@/components/common/TennisBallLoader";
 
 /**
  * /admin/attendance — 운영진 전용 출석 관리 페이지.
@@ -60,6 +61,7 @@ function AdminAttendanceInner() {
   const [updatingMemberId, setUpdatingMemberId] = useState<string | null>(null);
   const [pendingStatus, setPendingStatus] = useState<AttendanceStatus | null>(null);
   const [processingSessionId, setProcessingSessionId] = useState<string | null>(null);
+  const [processingOverlay, setProcessingOverlay] = useState<{ label: string; description: string } | null>(null);
   const [editingClosedSession, setEditingClosedSession] = useState(false);
   const [memberQuery, setMemberQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<AttendanceStatus | "all">("all");
@@ -237,20 +239,30 @@ function AdminAttendanceInner() {
       if (!window.confirm("이 매치를 보관 처리할까요?")) return;
     }
 
+    // confirm 확인 후 실제 API 호출 시작 — 이때 overlay ON
     setProcessingSessionId(sessionId);
-    const res = await fetch("/api/attendance-sessions/archive", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ sessionId, targetStatus }),
-    });
-    const body = await res.json().catch(() => null);
-    setProcessingSessionId(null);
-    if (!res.ok) {
-      toast.error(body?.error ?? (targetStatus === "closed" ? "매치 완료 처리 실패" : "보관 처리 실패"));
-      return;
+    setProcessingOverlay(
+      targetStatus === "closed"
+        ? { label: "완료 처리 중", description: "경기 기록과 출석 상태를 확인하고 있어요." }
+        : { label: "보관 처리 중", description: "매치를 보관하고 있어요." }
+    );
+    try {
+      const res = await fetch("/api/attendance-sessions/archive", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId, targetStatus }),
+      });
+      const body = await res.json().catch(() => null);
+      if (!res.ok) {
+        toast.error(body?.error ?? (targetStatus === "closed" ? "매치 완료 처리 실패" : "보관 처리 실패"));
+        return;
+      }
+      toast.success(targetStatus === "closed" ? "매치가 완료 처리되었습니다." : "매치가 보관되었습니다.");
+      window.location.reload();
+    } finally {
+      setProcessingSessionId(null);
+      setProcessingOverlay(null);  // 성공/실패 무관하게 반드시 해제
     }
-    toast.success(targetStatus === "closed" ? "매치가 완료 처리되었습니다." : "매치가 보관되었습니다.");
-    window.location.reload();
   }
 
   const attending = rows.filter((r) => r.status === "attending").length;
@@ -533,6 +545,16 @@ function AdminAttendanceInner() {
             </div>
           )}
         </>
+      )}
+
+      {/* ── 세션 완료/보관 처리 중 오버레이 (confirm 이후에만 표시) */}
+      {processingOverlay && (
+        <TennisBallLoader
+          variant="overlay"
+          mode="admin"
+          label={processingOverlay.label}
+          description={processingOverlay.description}
+        />
       )}
     </main>
   );

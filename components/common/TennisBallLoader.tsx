@@ -12,12 +12,14 @@
 
 type TennisBallLoaderProps = {
   label?: string;
+  description?: string;  // overlay 모드에서 label 아래 부제 텍스트
   mode?: "default" | "admin";
   variant?: "inline" | "overlay";
 };
 
 export default function TennisBallLoader({
   label,
+  description,
   mode = "default",
   variant = "inline",
 }: TennisBallLoaderProps) {
@@ -47,6 +49,9 @@ export default function TennisBallLoader({
       {/* 텍스트 */}
       <p className="cw-loader-eyebrow">{eyebrow}</p>
       <p className="cw-loader-message">{message}</p>
+      {description && (
+        <p className="cw-loader-description">{description}</p>
+      )}
     </div>
   );
 

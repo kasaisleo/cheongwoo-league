@@ -317,6 +317,16 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   text-align: center;
 }
 
+.cw-loader-description {
+  display: block;
+  width: 100%;
+  margin: 6px 0 0;
+  color: #4e6070;
+  font-family: "Helvetica Neue", Arial, sans-serif;
+  font-size: 11px;
+  text-align: center;
+}
+
 /* ── 선수명 / 회원명 전용 타이포그래피 ─────────────────────────────
  * headline-kr는 페이지 제목 전용.
  * 사람 이름에는 headline-kr 사용 금지. name-kr-* 클래스 사용.

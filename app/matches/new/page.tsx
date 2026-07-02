@@ -12,6 +12,7 @@ import { toast } from "@/components/ui/Toast";
 import { MATCH_SESSION_DAY_LABEL, fetchActiveSessions } from "@/lib/match-session-label";
 import type { SessionDay } from "@/lib/supabase/database.types";
 import type { Member, Guest, AttendanceSession } from "@/lib/supabase/database.types";
+import TennisBallLoader from "@/components/common/TennisBallLoader";
 
 type GuestModalTarget = "teamAPlayer1" | "teamAPlayer2" | "teamBPlayer1" | "teamBPlayer2";
 
@@ -231,40 +232,40 @@ export default function NewMatchPage() {
     if (!isReadyToSubmit) return;
     setSubmitting(true);
     setError(null);
-    const res = await fetch("/api/matches", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        sessionId: selectedSessionId,
-        playedAt: new Date().toISOString().slice(0, 10),
-        teamAPlayer1: { id: teamAPlayer1!.id, isGuest: teamAPlayer1!.isGuest },
-        teamAPlayer2: { id: teamAPlayer2!.id, isGuest: teamAPlayer2!.isGuest },
-        teamBPlayer1: { id: teamBPlayer1!.id, isGuest: teamBPlayer1!.isGuest },
-        teamBPlayer2: { id: teamBPlayer2!.id, isGuest: teamBPlayer2!.isGuest },
-        scoreA, scoreB,
-        scoreATiebreak: isTiebreakSet ? tiebreakA : null,
-        scoreBTiebreak: isTiebreakSet ? tiebreakB : null,
-        winnerTeam,
-      }),
-    });
-    setSubmitting(false);
-    if (!res.ok) {
-      const body = await res.json().catch(() => null);
-      setError(body?.error ?? "저장에 실패했습니다. 다시 시도해주세요.");
-      return;
+    try {
+      const res = await fetch("/api/matches", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sessionId: selectedSessionId,
+          playedAt: new Date().toISOString().slice(0, 10),
+          teamAPlayer1: { id: teamAPlayer1!.id, isGuest: teamAPlayer1!.isGuest },
+          teamAPlayer2: { id: teamAPlayer2!.id, isGuest: teamAPlayer2!.isGuest },
+          teamBPlayer1: { id: teamBPlayer1!.id, isGuest: teamBPlayer1!.isGuest },
+          teamBPlayer2: { id: teamBPlayer2!.id, isGuest: teamBPlayer2!.isGuest },
+          scoreA, scoreB,
+          scoreATiebreak: isTiebreakSet ? tiebreakA : null,
+          scoreBTiebreak: isTiebreakSet ? tiebreakB : null,
+          winnerTeam,
+        }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        setError(body?.error ?? "저장에 실패했습니다. 다시 시도해주세요.");
+        return;
+      }
+      toast.success("경기 결과가 저장되었습니다.");
+      // 선수 초기화 — 세션 유지, 다음 경기 연속 입력
+      setTeamAPlayer1(null); setTeamAPlayer2(null);
+      setTeamBPlayer1(null); setTeamBPlayer2(null);
+      setScoreA(0); setScoreB(0);
+      setTiebreakA(0); setTiebreakB(0);
+      setWinnerTeam(null);
+      // 세션 stats 갱신 (출석 후 미참여 경고 재계산)
+      if (selectedSessionId) await handleSessionSelect(selectedSessionId);
+    } finally {
+      setSubmitting(false);  // 성공/실패 무관하게 반드시 해제
     }
-
-    toast.success("경기 결과가 저장되었습니다.");
-
-    // 선수 초기화 (같은 매치에서 다음 경기 연속 입력 가능)
-    setTeamAPlayer1(null); setTeamAPlayer2(null);
-    setTeamBPlayer1(null); setTeamBPlayer2(null);
-    setScoreA(0); setScoreB(0);
-    setTiebreakA(0); setTiebreakB(0);
-    setWinnerTeam(null);
-
-    // 세션 stats 갱신 (출석 후 미참여 경고 재계산)
-    if (selectedSessionId) await handleSessionSelect(selectedSessionId);
   }
 
   // 완료하고 나가기
@@ -292,7 +293,11 @@ export default function NewMatchPage() {
     }
 
     setFinishing(true);
-    router.push("/admin/matches");
+    try {
+      router.push("/admin/matches");
+    } catch {
+      setFinishing(false);
+    }
   }
 
   if (loading) {
@@ -529,6 +534,24 @@ export default function NewMatchPage() {
 
       {guestModalTarget && (
         <QuickGuestModal onClose={() => setGuestModalTarget(null)} onCreated={handleGuestCreated} />
+      )}
+
+      {/* ── 저장/완료 처리 중 오버레이 */}
+      {submitting && (
+        <TennisBallLoader
+          variant="overlay"
+          mode="admin"
+          label="경기 기록 저장 중"
+          description="기록을 저장하고 있어요."
+        />
+      )}
+      {finishing && !submitting && (
+        <TennisBallLoader
+          variant="overlay"
+          mode="admin"
+          label="완료 처리 중"
+          description="기록 상태를 확인하고 있어요."
+        />
       )}
     </main>
   );
