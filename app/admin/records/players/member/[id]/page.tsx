@@ -35,7 +35,7 @@ export default async function MemberRecordPage({ params }: { params: { id: strin
     return (
       <main className="px-4 pt-6">
         <p className="text-sm text-line-400">회원을 찾을 수 없어요.</p>
-        <Link href="/admin/records/players" className="mt-2 block text-xs text-clay-400">← 개인별 기록</Link>
+        <Link href="/admin/records/players" className="mt-2 block text-xs text-clay-400">← 선수 기록 분석</Link>
       </main>
     );
   }
@@ -135,13 +135,13 @@ export default async function MemberRecordPage({ params }: { params: { id: strin
       {/* 헤더 */}
       <header className="mb-5 flex items-center justify-between">
         <div>
-          <p className="eyebrow-en text-clay-400">Admin · Player Records</p>
+          <p className="eyebrow-en text-clay-400">Admin · Records</p>
           <h1 className="headline-kr text-4xl text-line-900">{member.name}</h1>
           <p className="mt-1 text-xs text-line-500">{memberTypeLabel[member.member_type] ?? member.member_type}</p>
         </div>
         <Link href="/admin/records/players"
           className="rounded-sm border border-line-200/40 px-2.5 py-1.5 text-xs font-semibold text-line-500 hover:text-line-700">
-          ← 개인별 기록
+          ← 선수 기록 분석
         </Link>
       </header>
 

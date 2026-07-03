@@ -213,7 +213,7 @@ export default function RecordsMatchesPage() {
           <p className="mt-1 text-sm text-line-500">매치별 경기 기록 누락과 이상을 검수합니다.</p>
         </div>
         <Link href="/admin/records" className="rounded-sm border border-line-200/40 px-2.5 py-1.5 text-xs font-semibold text-line-500 hover:text-line-700">
-          ← 대시보드
+          ← 기록 대시보드
         </Link>
       </header>
 
