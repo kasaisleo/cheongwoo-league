@@ -24,7 +24,7 @@ export default async function RankingPage() {
   const [first, second, third, ...rest] = members;
 
   return (
-    <main className="px-4 pt-6 pb-10">
+    <main className="px-4 pt-6 pb-28">
 
       {/* ── 페이지 헤더 ──────────────────────────────────── */}
       <header className="mb-6">

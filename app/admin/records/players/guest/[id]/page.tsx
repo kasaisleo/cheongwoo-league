@@ -50,7 +50,7 @@ export default async function GuestRecordPage({ params }: { params: { id: string
           <span className="mt-1 inline-block rounded-sm border border-line-200/40 bg-line-100 px-1.5 py-0.5 text-[9px] font-semibold text-line-500">게스트</span>
         </div>
         <Link href="/admin/records/players"
-          className="rounded-sm border border-line-200/40 px-2.5 py-1.5 text-xs font-semibold text-line-500 hover:text-line-700">
+          className="flex-shrink-0 whitespace-nowrap rounded-sm border border-line-200/40 px-2.5 py-1.5 text-xs font-semibold text-line-500 hover:text-line-700">
           ← 선수 기록 분석
         </Link>
       </header>

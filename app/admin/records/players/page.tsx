@@ -264,7 +264,7 @@ export default function PlayerRecordsPage() {
           <p className="eyebrow-en text-clay-400">Admin · Records</p>
           <h1 className="headline-kr text-4xl text-line-900">선수 기록 분석</h1>
         </div>
-        <Link href="/admin/records" className="rounded-sm border border-line-200/40 px-2.5 py-1.5 text-xs font-semibold text-line-500 hover:text-line-700">
+        <Link href="/admin/records" className="flex-shrink-0 whitespace-nowrap rounded-sm border border-line-200/40 px-2.5 py-1.5 text-xs font-semibold text-line-500 hover:text-line-700">
           ← 기록 대시보드
         </Link>
       </header>

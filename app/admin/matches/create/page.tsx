@@ -54,16 +54,16 @@ export default function MatchesCreatePage() {
     <main className="px-4 pt-6 pb-20">
 
       {/* 헤더 */}
-      <header className="mb-5">
-        <div className="mb-3 flex items-center justify-between">
-          <Link href="/admin"
-            className="rounded-sm border border-line-200/40 px-2.5 py-1.5 text-xs font-semibold text-line-500 hover:text-line-700">
-            ← 관리자
-          </Link>
+      <header className="mb-5 flex items-center justify-between">
+        <div>
+          <p className="eyebrow-en text-clay-400">Admin · Matches</p>
+          <h1 className="headline-kr text-4xl text-line-900">매치 생성</h1>
+          <p className="mt-1 text-sm text-line-500">새 정기매치 또는 이벤트매치를 생성합니다.</p>
         </div>
-        <p className="eyebrow-en text-clay-400">Admin · Matches</p>
-        <h1 className="headline-kr text-4xl text-line-900">매치 생성</h1>
-        <p className="mt-1 text-sm text-line-500">새 정기매치 또는 이벤트매치를 생성합니다.</p>
+        <Link href="/admin"
+          className="flex-shrink-0 rounded-sm border border-line-200/40 px-2.5 py-1.5 text-xs font-semibold text-line-500 hover:text-line-700 whitespace-nowrap">
+          ← 관리자
+        </Link>
       </header>
 
       {/* 입력 폼 */}

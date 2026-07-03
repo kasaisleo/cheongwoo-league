@@ -253,7 +253,7 @@ function AdminAttendanceInner() {
 
 
   return (
-    <main className="px-4 pt-6 pb-10">
+    <main className="px-4 pt-6 pb-28">
       {/* ── 헤더 ─────────────────────────────────────── */}
       <header className="mb-5 flex items-center justify-between">
         <div>
@@ -261,7 +261,7 @@ function AdminAttendanceInner() {
           <h1 className="headline-kr text-4xl text-line-900">출석 관리</h1>
         </div>
         <div className="flex items-center gap-2">
-          <Link href="/admin" className="rounded-sm border border-line-200/40 px-2.5 py-1.5 text-xs font-semibold text-line-500 hover:text-line-700">
+          <Link href="/admin" className="flex-shrink-0 whitespace-nowrap rounded-sm border border-line-200/40 px-2.5 py-1.5 text-xs font-semibold text-line-500 hover:text-line-700">
             ← 관리자
           </Link>
         </div>

@@ -18,7 +18,7 @@ export default function AdminGuestsPage() {
           <h1 className="headline-kr text-4xl text-line-900">게스트 관리</h1>
         </div>
         <Link href="/admin"
-          className="rounded-sm border border-line-200/40 px-2.5 py-1.5 text-xs font-semibold text-line-500 hover:text-line-700">
+          className="flex-shrink-0 whitespace-nowrap rounded-sm border border-line-200/40 px-2.5 py-1.5 text-xs font-semibold text-line-500 hover:text-line-700">
           ← 관리자
         </Link>
       </header>

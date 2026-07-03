@@ -142,7 +142,7 @@ export default async function AdminRecordsPage() {
           <p className="mt-1 text-sm text-line-500">매치, 경기, 참여 현황을 확인합니다.</p>
         </div>
         <Link href="/admin"
-          className="rounded-sm border border-line-200/40 px-2.5 py-1.5 text-xs font-semibold text-line-500 hover:text-line-700">
+          className="flex-shrink-0 whitespace-nowrap rounded-sm border border-line-200/40 px-2.5 py-1.5 text-xs font-semibold text-line-500 hover:text-line-700">
           ← 관리자
         </Link>
       </header>

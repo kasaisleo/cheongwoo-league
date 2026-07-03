@@ -310,7 +310,7 @@ export default function NewMatchPage() {
   }
 
   return (
-    <main className="px-4 pt-6 pb-10">
+    <main className="px-4 pt-6 pb-28">
       {/* ── 헤더 */}
       <header className="mb-5">
         {/* 상단 row: 뒤로가기 / 완료 */}
@@ -319,11 +319,11 @@ export default function NewMatchPage() {
             href={selectedSessionId
               ? `/admin/attendance?session_id=${selectedSessionId}`
               : "/admin/matches"}
-            className="rounded-sm border border-line-200/40 px-2.5 py-1.5 text-xs font-semibold text-line-500 hover:text-line-700">
+            className="flex-shrink-0 whitespace-nowrap rounded-sm border border-line-200/40 px-2.5 py-1.5 text-xs font-semibold text-line-500 hover:text-line-700">
             ← 출석 관리
           </Link>
           <button type="button" onClick={handleFinish} disabled={submitting || finishing}
-            className="rounded-sm border border-clay-400/60 bg-clay-400/10 px-3 py-1.5 text-xs font-semibold text-clay-400 hover:bg-clay-400/20 disabled:opacity-40">
+            className="flex-shrink-0 whitespace-nowrap rounded-sm border border-clay-400/60 bg-clay-400/10 px-3 py-1.5 text-xs font-semibold text-clay-400 hover:bg-clay-400/20 disabled:opacity-40">
             {finishing ? "이동 중..." : "입력 완료 →"}
           </button>
         </div>

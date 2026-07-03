@@ -169,7 +169,7 @@ export default function MyPage() {
   const attendRateDisplay = calcAttendRate(attendingCount, completedCount);
 
   return (
-    <main className="px-4 pt-6 pb-10">
+    <main className="px-4 pt-6 pb-28">
       <header className="mb-5">
         <p className="eyebrow-en text-clay-400">My Page</p>
         <h1 className="headline-kr text-4xl text-line-900">마이페이지</h1>

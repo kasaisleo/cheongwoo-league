@@ -179,7 +179,7 @@ export default async function HomePage() {
       )}
 
       {/* 4. 최근 경기 — MatchCard 재사용 (Ranking table 행 밀도) */}
-      <section className="pb-10">
+      <section className="pb-28">
         <SectionHeader title="최근 경기" href="/matches" cta="전체보기" />
         {recentMatches.length === 0 ? (
           <EmptyState message="아직 등록된 경기가 없어요." />

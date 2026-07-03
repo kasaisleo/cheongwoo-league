@@ -109,7 +109,7 @@ export default async function MatchesPage({ searchParams }: MatchesPageProps) {
   })();
 
   return (
-    <main className="px-4 pt-6 pb-10">
+    <main className="px-4 pt-6 pb-28">
 
       {/* ── 헤더 ─────────────────────────────────────────── */}
       <header className="mb-3 flex items-center justify-between">

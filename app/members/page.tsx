@@ -18,7 +18,7 @@ export default async function MembersPage() {
   const isAdmin = getAdminRole() !== null;
 
   return (
-    <main className="px-4 pt-6 pb-10">
+    <main className="px-4 pt-6 pb-28">
       {/* ── 페이지 헤더 ─────────────────────────────────── */}
       <header className="mb-5">
         <p className="eyebrow-en text-clay-400">Club Roster</p>
