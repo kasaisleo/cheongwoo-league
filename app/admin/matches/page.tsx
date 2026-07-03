@@ -152,15 +152,13 @@ export default async function AdminMatchesPage({ searchParams }: PageProps) {
         <div>
           <p className="eyebrow-en text-clay-400">Admin · Matches</p>
           <h1 className="headline-kr text-4xl text-line-900">경기 관리</h1>
-          <p className="mt-1 text-sm text-line-500">
-            매치별 히스토리를 확인하고 경기 결과를 추가·수정·삭제합니다.
-          </p>
         </div>
         <Link href="/admin"
           className="flex-shrink-0 whitespace-nowrap rounded-sm border border-line-200/40 px-2.5 py-1.5 text-xs font-semibold text-line-500 hover:text-line-700">
           ← 관리자
         </Link>
       </header>
+      <p className="mb-4 max-w-[280px] break-keep text-xs leading-relaxed text-line-500">매치별 경기 히스토리와 결과를 관리합니다.</p>
 
       {/* ── 매치 생성 버튼 */}
       <div className="mb-5">

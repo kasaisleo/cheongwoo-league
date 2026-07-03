@@ -114,9 +114,7 @@ export default function AuthLinkPage() {
       </header>
 
       {/* ── 설명 ─────────────────────────────────────── */}
-      <p className="mb-5 text-sm text-line-500">
-        카카오 로그인은 했지만 아직 회원 정보와 연결되지 않은 사용자를 기존 회원과 연결합니다.
-      </p>
+      <p className="mb-5 max-w-[280px] break-keep text-xs leading-relaxed text-line-500">카카오 로그인 후 회원 연결이 필요한 사용자를 연결합니다.</p>
 
       {/* ── 검색창 ───────────────────────────────────── */}
       <div className="mb-4">

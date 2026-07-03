@@ -58,7 +58,7 @@ export default function MatchesCreatePage() {
         <div>
           <p className="eyebrow-en text-clay-400">Admin · Matches</p>
           <h1 className="headline-kr text-4xl text-line-900">매치 생성</h1>
-          <p className="mt-1 text-sm text-line-500">새 정기매치 또는 이벤트매치를 생성합니다.</p>
+          <p className="mt-1 max-w-[280px] break-keep text-xs leading-relaxed text-line-500">새 매치를 생성합니다.</p>
         </div>
         <Link href="/admin"
           className="flex-shrink-0 rounded-sm border border-line-200/40 px-2.5 py-1.5 text-xs font-semibold text-line-500 hover:text-line-700 whitespace-nowrap">

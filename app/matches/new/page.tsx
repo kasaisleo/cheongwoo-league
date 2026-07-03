@@ -330,7 +330,7 @@ export default function NewMatchPage() {
         {/* 타이틀 */}
         <p className="eyebrow-en text-clay-400">Match Result</p>
         <h1 className="headline-kr text-4xl text-line-900">경기 결과 입력</h1>
-        <p className="mt-1 text-sm text-line-500">연속 입력 후 완료 시 우측 버튼을 눌러주세요.</p>
+        <p className="mt-1 max-w-[240px] break-keep text-xs leading-relaxed text-line-500">연속 입력 후 완료 버튼을 눌러주세요.</p>
       </header>
 
       {/* ── 매치 선택 */}

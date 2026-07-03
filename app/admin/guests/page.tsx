@@ -23,9 +23,7 @@ export default function AdminGuestsPage() {
         </Link>
       </header>
 
-      <p className="mb-5 text-sm text-line-500">
-        방문 게스트 목록을 확인하고 정회원으로 전환합니다.
-      </p>
+      <p className="mb-5 max-w-[280px] break-keep text-xs leading-relaxed text-line-500">게스트 목록 확인 및 정회원 전환.</p>
 
       {/* 게스트 등록 버튼 */}
       <div className="mb-5">
