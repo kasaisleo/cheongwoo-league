@@ -44,7 +44,7 @@ export default function MatchesCreatePage() {
         return;
       }
       toast.success("매치가 생성되었습니다.");
-      router.push("/admin/matches");
+      router.push(`/admin/attendance?session_id=${body.sessionId}`);
     } finally {
       setCreating(false);
     }
@@ -55,10 +55,12 @@ export default function MatchesCreatePage() {
 
       {/* 헤더 */}
       <header className="mb-5">
-        <Link href="/admin/matches"
-          className="mb-3 inline-block rounded-sm border border-line-200/40 px-2.5 py-1.5 text-xs font-semibold text-line-500 hover:text-line-700">
-          ← 경기 관리
-        </Link>
+        <div className="mb-3 flex items-center justify-between">
+          <Link href="/admin"
+            className="rounded-sm border border-line-200/40 px-2.5 py-1.5 text-xs font-semibold text-line-500 hover:text-line-700">
+            ← 관리자
+          </Link>
+        </div>
         <p className="eyebrow-en text-clay-400">Admin · Matches</p>
         <h1 className="headline-kr text-4xl text-line-900">매치 생성</h1>
         <p className="mt-1 text-sm text-line-500">새 정기매치 또는 이벤트매치를 생성합니다.</p>
@@ -107,7 +109,7 @@ export default function MatchesCreatePage() {
 
         {/* 버튼 */}
         <div className="flex gap-2 pt-2">
-          <Link href="/admin/matches"
+          <Link href="/admin"
             className="flex h-11 flex-1 items-center justify-center rounded-sm border border-line-200/40 text-sm font-semibold text-line-500 hover:text-line-700">
             취소
           </Link>
