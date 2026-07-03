@@ -156,7 +156,7 @@ export default async function AdminPage() {
         <p className="mb-2 font-display text-[10px] font-bold uppercase tracking-widest text-line-500">Quick Actions</p>
         <div className="grid grid-cols-2 gap-2">
           {[
-            { href: "/admin/attendance?action=create", label: "매치 생성",    sub: "New Match",    accent: "clay" },
+            { href: "/admin/matches/create",          label: "매치 생성",    sub: "New Match",    accent: "clay" },
             { href: "/admin/matches/new",              label: "경기 결과 입력", sub: "New Result",  accent: "clay" },
             { href: "/admin/attendance",               label: "출석 관리",    sub: "Attendance",   accent: "line" },
             { href: "/admin/matches",                  label: "경기 목록",    sub: "Match Records", accent: "line" },

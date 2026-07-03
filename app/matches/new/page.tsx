@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { PlayerSelector, playerKey, type SelectedPlayer } from "@/components/match/PlayerSelector";
 import { ScoreStepper } from "@/components/match/ScoreStepper";
@@ -311,16 +312,25 @@ export default function NewMatchPage() {
   return (
     <main className="px-4 pt-6 pb-10">
       {/* ── 헤더 */}
-      <header className="mb-5 flex items-center justify-between">
-        <div>
-          <p className="eyebrow-en text-clay-400">Match Result</p>
-          <h1 className="headline-kr text-4xl text-line-900">경기 결과 입력</h1>
-          <p className="mt-1 text-sm text-line-500">연속 입력 후 완료 시 우측 버튼을 눌러주세요.</p>
+      <header className="mb-5">
+        {/* 상단 row: 뒤로가기 / 완료 */}
+        <div className="mb-3 flex items-center justify-between">
+          <Link
+            href={selectedSessionId
+              ? `/admin/attendance?session_id=${selectedSessionId}`
+              : "/admin/matches"}
+            className="rounded-sm border border-line-200/40 px-2.5 py-1.5 text-xs font-semibold text-line-500 hover:text-line-700">
+            ← 출석 관리
+          </Link>
+          <button type="button" onClick={handleFinish} disabled={submitting || finishing}
+            className="rounded-sm border border-clay-400/60 bg-clay-400/10 px-3 py-1.5 text-xs font-semibold text-clay-400 hover:bg-clay-400/20 disabled:opacity-40">
+            {finishing ? "이동 중..." : "입력 완료 →"}
+          </button>
         </div>
-        <button type="button" onClick={handleFinish} disabled={submitting || finishing}
-          className="rounded-sm border border-clay-400/60 bg-clay-400/10 px-3 py-1.5 text-xs font-semibold text-clay-400 hover:bg-clay-400/20 disabled:opacity-40">
-          {finishing ? "이동 중..." : "입력 완료 →"}
-        </button>
+        {/* 타이틀 */}
+        <p className="eyebrow-en text-clay-400">Match Result</p>
+        <h1 className="headline-kr text-4xl text-line-900">경기 결과 입력</h1>
+        <p className="mt-1 text-sm text-line-500">연속 입력 후 완료 시 우측 버튼을 눌러주세요.</p>
       </header>
 
       {/* ── 매치 선택 */}

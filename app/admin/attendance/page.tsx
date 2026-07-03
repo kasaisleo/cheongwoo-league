@@ -66,20 +66,7 @@ function AdminAttendanceInner() {
   const [memberQuery, setMemberQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<AttendanceStatus | "all">("all");
 
-  // 커스텀 매치 생성 폼
-  const [showCustomForm, setShowCustomForm] = useState(false);
-  const [customDate, setCustomDate] = useState(todayString());
-  const [customDay, setCustomDay] = useState<"saturday" | "sunday" | "holiday" | "custom">("saturday");
-  const [customTitle, setCustomTitle] = useState("");
-  const [creatingCustom, setCreatingCustom] = useState(false);
-
-  // action=create 처리: URL에서 자동으로 커스텀 매치 생성 폼 열기
-  useEffect(() => {
-    if (searchParams.get("action") === "create") {
-      setShowCustomForm(true);
-    }
-  }, [searchParams]);
-
+  
   // 매치(출석 세션) 목록 로드
   useEffect(() => {
     let isCurrent = true;
@@ -180,22 +167,6 @@ function AdminAttendanceInner() {
     const body = await res.json().catch(() => null);
     if (!res.ok) { toast.error(body?.error ?? "매치 생성에 실패했습니다."); return; }
     toast.success("이번 주 매치가 생성되었습니다.");
-    window.location.reload();
-  }
-
-  async function handleCreateCustomSession() {
-    if (!customDate) { toast.error("날짜를 선택해주세요."); return; }
-    if (!customTitle.trim()) { toast.error("제목을 입력해주세요."); return; }
-    setCreatingCustom(true);
-    const res = await fetch("/api/admin/sessions", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ sessionDate: customDate, sessionDay: customDay, title: customTitle.trim() }),
-    });
-    const body = await res.json().catch(() => null);
-    setCreatingCustom(false);
-    if (!res.ok) { toast.error(body?.error ?? "매치 생성에 실패했습니다."); return; }
-    toast.success("매치가 생성되었습니다.");
     window.location.reload();
   }
 
@@ -352,45 +323,7 @@ function AdminAttendanceInner() {
         </div>
       )}
 
-      {/* ── 매치 추가 아코디언 (보조 액션) ─────────── */}
-      <div className="mb-4 overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50">
-        <button
-          type="button"
-          onClick={() => setShowCustomForm((v) => !v)}
-          className="flex w-full items-center justify-between px-4 py-3 text-left"
-        >
-          <span className="text-[11px] font-semibold text-line-500">
-            {showCustomForm ? "매치 추가 취소" : "+ 매치 추가"}
-          </span>
-          <span className="text-[10px] text-line-400">{showCustomForm ? "▲" : "▼"}</span>
-        </button>
-        {showCustomForm && (
-          <div className="border-t border-line-200/30 px-4 pb-4 pt-3">
-            <p className="mb-3 font-display text-[10px] font-bold uppercase tracking-widest text-line-500">New Match</p>
-            <div className="space-y-2">
-              <input type="text" placeholder="매치명 (예: 7월 토요 정기매치)" value={customTitle} onChange={(e) => setCustomTitle(e.target.value)}
-                className="h-10 w-full rounded-sm border border-line-200/40 bg-line-100 px-3 text-sm text-line-900 placeholder:text-line-500" />
-              <input type="date" value={customDate} onChange={(e) => setCustomDate(e.target.value)}
-                className="h-10 w-full rounded-sm border border-line-200/40 bg-line-100 px-3 text-sm text-line-900" />
-              <select value={customDay} onChange={(e) => setCustomDay(e.target.value as any)}
-                className="h-10 w-full rounded-sm border border-line-200/40 bg-line-100 px-3 text-sm text-line-900">
-                <option value="saturday">토요 정기매치</option>
-                <option value="sunday">일요 정기매치</option>
-                <option value="holiday">휴일매치</option>
-                <option value="custom">이벤트매치</option>
-              </select>
-              <div className="flex gap-2">
-                <button type="button" onClick={() => setShowCustomForm(false)}
-                  className="flex-1 rounded-sm border border-line-200/40 py-2 text-sm font-semibold text-line-500">취소</button>
-                <button type="button" disabled={creatingCustom} onClick={handleCreateCustomSession}
-                  className="flex-1 rounded-sm bg-clay-400 py-2 text-sm font-bold text-line-25 disabled:opacity-40">
-                  {creatingCustom ? "생성 중..." : "매치 생성"}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
+
 
       {selectedSession && (
         <>
