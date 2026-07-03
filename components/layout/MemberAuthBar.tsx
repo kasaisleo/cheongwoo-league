@@ -103,19 +103,19 @@ export function MemberAuthBar() {
       <div className="mx-auto flex max-w-md items-center justify-between px-4 py-2">
 
         {/* ── 좌측: 관리자 영역 ─────────────────────── */}
-        <div>
+        <div className="flex items-center">
           {isAdminMode ? (
             <Link
               href="/admin"
-              className="inline-flex items-center gap-1 rounded-sm border border-gold/40 bg-gold/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-gold transition-colors hover:bg-gold/20"
+              className="inline-flex items-center justify-center gap-1 rounded-sm border border-gold/40 bg-gold/10 px-2 py-0 leading-none text-[10px] font-bold uppercase tracking-wider text-gold transition-colors hover:bg-gold/20 h-[22px] whitespace-nowrap"
             >
-              <span className="h-1.5 w-1.5 rounded-full bg-gold" />
+              <span className="inline-block h-1.5 w-1.5 flex-shrink-0 rounded-full bg-gold" />
               관리자 모드
             </Link>
           ) : (
             <Link
               href="/admin"
-              className="text-[10px] font-semibold text-line-500 transition-colors hover:text-line-700"
+              className="inline-flex items-center h-[22px] text-[10px] font-semibold text-line-500 transition-colors hover:text-line-700 whitespace-nowrap"
             >
               관리자
             </Link>
@@ -123,27 +123,27 @@ export function MemberAuthBar() {
         </div>
 
         {/* ── 우측: 카카오 회원 영역 ───────────────── */}
-        <div>
+        <div className="flex items-center">
           {authUser && member ? (
             <div className="flex items-center gap-3">
-              <span className="text-xs font-medium text-line-900">
+              <span className="text-xs font-medium text-line-900 whitespace-nowrap">
                 {member.nickname}
                 <span className="ml-1 font-normal text-line-400">({member.name})</span>
               </span>
-              <Link href="/mypage" className="text-xs font-semibold text-clay-400">
+              <Link href="/mypage" className="inline-flex items-center text-xs font-semibold text-clay-400 whitespace-nowrap">
                 마이페이지
               </Link>
               <button
                 type="button"
                 disabled={signingOut}
                 onClick={handleSignOut}
-                className="text-xs text-line-400 disabled:opacity-50"
+                className="inline-flex items-center text-xs text-line-400 disabled:opacity-50 whitespace-nowrap"
               >
                 {signingOut ? "로그아웃 중..." : "로그아웃"}
               </button>
             </div>
           ) : (
-            <Link href="/login" className="text-xs font-semibold text-clay-400">
+            <Link href="/login" className="inline-flex items-center text-xs font-semibold text-clay-400 whitespace-nowrap">
               카카오 로그인
             </Link>
           )}
