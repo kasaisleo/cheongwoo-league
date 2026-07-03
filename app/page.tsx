@@ -130,6 +130,14 @@ export default async function HomePage() {
         )}
       </section>
 
+      {/* ── 현재 순위 */}
+      {topRanked.length > 0 && (
+        <section className="mb-4">
+          <SectionHeader title="현재 순위" href="/ranking" cta="전체 랭킹" />
+          <RankingTeaserCard members={topRanked} />
+        </section>
+      )}
+
       {/* ── 최근 경기 */}
       <section className="mb-4">
         <SectionHeader title="최근 경기" href="/matches" cta="전체보기" />
@@ -143,14 +151,6 @@ export default async function HomePage() {
           </div>
         )}
       </section>
-
-      {/* ── 랭킹 티저 */}
-      {topRanked.length > 0 && (
-        <section className="mb-4">
-          <SectionHeader title="현재 순위" href="/ranking" cta="전체 랭킹" />
-          <RankingTeaserCard members={topRanked} />
-        </section>
-      )}
 
       {/* ── 이번 주 게스트 (운영진만) */}
       {isAdmin && guestsThisWeek.length > 0 && (

@@ -26,14 +26,19 @@ export default async function RankingPage() {
   return (
     <main className="px-4 pt-6 pb-28">
 
-      {/* ── 페이지 헤더 ──────────────────────────────────── */}
-      <header className="mb-6">
-        <p className="eyebrow-en mb-1.5 text-clay-400">
-          League Rankings
-        </p>
-        <h1 className="headline-kr text-4xl text-line-900">
-          챔피언십
-        </h1>
+      {/* ── 페이지 헤더 */}
+      <header className="mb-6 flex items-center justify-between">
+        <div>
+          <p className="eyebrow-en text-clay-400">Ranking</p>
+          <h1 className="headline-kr text-4xl text-line-900">랭킹</h1>
+          <p className="mt-1 max-w-[240px] break-keep text-xs leading-relaxed text-line-500">
+            청우회 리그 순위와 기록을 확인합니다.
+          </p>
+        </div>
+        <Link href="/"
+          className="flex-shrink-0 whitespace-nowrap rounded-sm border border-line-200/40 px-2.5 py-1.5 text-xs font-semibold text-line-500 hover:text-line-700">
+          ← 홈
+        </Link>
       </header>
 
       {members.length === 0 ? (
