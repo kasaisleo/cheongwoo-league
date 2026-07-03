@@ -223,7 +223,7 @@ export default async function AdminRecordsPage() {
                   <div className={`flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-line-100/40 ${idx < alerts.playerAlerts.length - 1 ? "border-b border-line-200/20" : ""}`}>
                     <span className="text-[14px] font-semibold text-line-900">{p.name}</span>
                     <span className="text-[10px] text-line-400">참여 {p.gameSessionCount}/{p.totalCompleted}매치</span>
-                    <span className="ml-auto font-score text-sm font-bold tabular-nums text-clay-400">미참여 {p.absenceRate}%</span>
+                    <span className="ml-auto text-sm font-bold text-clay-400"><span className="font-score tabular-nums">{p.absenceRate}%</span><span className="unit-kr ml-0.5">미참여</span></span>
                   </div>
                 </Link>
               ))}
@@ -337,7 +337,7 @@ export default async function AdminRecordsPage() {
                     <p className="font-score text-[10px] font-bold tabular-nums text-line-400">{s.session_date}</p>
                   </div>
                   {cnt > 0 ? (
-                    <span className="font-score text-sm font-bold tabular-nums text-line-600">{cnt}경기</span>
+                    <span className="text-sm font-bold text-line-600"><span className="font-score tabular-nums">{cnt}</span><span className="unit-kr">경기</span></span>
                   ) : (
                     <span className="rounded-sm border border-line-200/40 px-1.5 py-0.5 text-[9px] font-semibold text-line-400">
                       미입력

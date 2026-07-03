@@ -422,7 +422,7 @@ export default function NewMatchPage() {
             <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[11px]">
               <span className="text-gold">출석 {attendees.attending.length}명</span>
               <span className="text-line-500">미정 {attendees.undecided.length}명</span>
-              <span className="font-score tabular-nums text-line-600">{sessionStats.gameCount}경기 기록됨</span>
+              <span className="text-line-600"><span className="font-score tabular-nums">{sessionStats.gameCount}</span><span className="unit-kr">경기 기록됨</span></span>
               {noShowWarnings.length > 0 && (
                 <span className="text-clay-400">출석 후 미참여 {noShowWarnings.length}명</span>
               )}

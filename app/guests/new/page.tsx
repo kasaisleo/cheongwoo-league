@@ -83,7 +83,7 @@ export default function NewGuestPage() {
         <p className="font-score text-xs font-semibold uppercase tracking-[0.2em] text-clay-400">
           New Guest
         </p>
-        <h1 className="font-display text-3xl font-bold uppercase tracking-tight text-line-900">게스트 등록</h1>
+        <h1 className="headline-kr text-3xl font-bold text-line-900">게스트 등록</h1>
       </header>
 
       <form onSubmit={handleSubmit}>

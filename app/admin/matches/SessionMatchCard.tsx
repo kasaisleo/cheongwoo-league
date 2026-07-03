@@ -97,7 +97,7 @@ export function SessionMatchCard({ group }: { group: SessionGroup }) {
           <span className="text-line-500">미정 {undecidedCount}</span>
           <span className="text-line-400">불참 {absentCount}</span>
           {noResponseCount > 0 && <span className="text-line-300">미응답 {noResponseCount}</span>}
-          <span className="ml-auto font-score tabular-nums text-line-600">{matches.length}경기</span>
+          <span className="ml-auto text-line-600"><span className="font-score tabular-nums">{matches.length}</span><span className="unit-kr">경기</span></span>
         </div>
       </div>
 
@@ -123,8 +123,11 @@ export function SessionMatchCard({ group }: { group: SessionGroup }) {
           type="button"
           onClick={() => setOpen((v) => !v)}
           className="flex w-full items-center justify-between px-4 py-2.5 text-left hover:bg-line-100/40">
-          <span className="font-display text-[10px] font-bold uppercase tracking-widest text-line-500">
-            경기 히스토리 {matches.length > 0 ? `${matches.length}경기` : "없음"}
+          <span className="text-[10px] font-bold text-line-500">
+            <span className="status-kr">경기 히스토리</span>{" "}
+            {matches.length > 0
+              ? <><span className="font-score tabular-nums">{matches.length}</span><span className="unit-kr">경기</span></>
+              : <span className="status-kr">없음</span>}
           </span>
           <span className="text-[10px] text-line-400">{open ? "▲" : "▼"}</span>
         </button>

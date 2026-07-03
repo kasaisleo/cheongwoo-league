@@ -389,17 +389,17 @@ function AdminAttendanceInner() {
                 <button type="button" onClick={() => setStatusFilter(statusFilter === "attending" ? "all" : "attending")}
                   className={`rounded-none p-3 text-center transition-colors ${statusFilter === "attending" ? "border-gold bg-gold/10" : "border-line-200/40 bg-line-50"}`}>
                   <p className="font-score text-2xl font-bold text-gold">{attending}</p>
-                  <p className="font-display text-[9px] font-bold uppercase tracking-widest text-line-500">출석</p>
+                  <p className="text-[9px] font-bold tracking-wide text-line-500">출석</p>
                 </button>
                 <button type="button" onClick={() => setStatusFilter(statusFilter === "undecided" ? "all" : "undecided")}
                   className={`rounded-none p-3 text-center transition-colors ${statusFilter === "undecided" ? "border-clay-400 bg-clay-400/10" : "border-line-200/40 bg-line-50"}`}>
                   <p className="font-score text-2xl font-bold text-clay-400">{undecided}</p>
-                  <p className="font-display text-[9px] font-bold uppercase tracking-widest text-line-500">미정</p>
+                  <p className="text-[9px] font-bold tracking-wide text-line-500">미정</p>
                 </button>
                 <button type="button" onClick={() => setStatusFilter(statusFilter === "absent" ? "all" : "absent")}
                   className={`rounded-none p-3 text-center transition-colors ${statusFilter === "absent" ? "border-line-300 bg-line-200" : "border-line-200/40 bg-line-50"}`}>
                   <p className="font-score text-2xl font-bold text-line-500">{absent}</p>
-                  <p className="font-display text-[9px] font-bold uppercase tracking-widest text-line-500">불참</p>
+                  <p className="text-[9px] font-bold tracking-wide text-line-500">불참</p>
                 </button>
               </div>
               {shortage > 0 && (

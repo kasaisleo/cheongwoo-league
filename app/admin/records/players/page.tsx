@@ -359,7 +359,7 @@ export default function PlayerRecordsPage() {
                           <span className="text-[15px] font-semibold leading-snug text-line-900">{p.name}</span>
                           <MemberTypeBadge isGuest={p.isGuest} memberType={p.memberType} />
                         </div>
-                        <span className="font-score text-[11px] tabular-nums text-line-500">{p.games}경기 · <span className="text-gold">{p.winRate}%</span></span>
+                        <span className="text-[11px] text-line-500"><span className="font-score tabular-nums">{p.games}</span><span className="unit-kr">경기</span><span className="mx-0.5">·</span><span className="font-score tabular-nums text-gold">{p.winRate}%</span></span>
                         <span className="text-[10px] text-line-400">→</span>
                       </div>
                     </Link>
