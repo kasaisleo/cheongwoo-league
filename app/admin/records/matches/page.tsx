@@ -8,6 +8,8 @@ import { judgeMatchStatus, type MatchStatus } from "@/lib/records/matchStatus";
 import { pct, fmtPct } from "@/lib/records/dashboardUtils";
 import type { AttendanceStatus } from "@/lib/supabase/database.types";
 
+const CHEONGWOO_CLUB_ID = "465ae133-893e-425d-a093-161f7654bd0d";
+
 
 const STATUS_STYLE: Record<MatchStatus, string> = {
   "정상":    "border-gold/40 bg-gold/10 text-gold",
@@ -69,10 +71,10 @@ export default function RecordsMatchesPage() {
         { data: allAttendance },
         { data: members },
       ] = await Promise.all([
-        supabase.from("attendance_sessions").select("*").neq("status", "archived").order("session_date", { ascending: false }),
-        supabase.from("matches").select("id, session_id, winner_team, team_a_player1_member, team_a_player2_member, team_b_player1_member, team_b_player2_member"),
+        supabase.from("attendance_sessions").select("*").eq("club_id", CHEONGWOO_CLUB_ID).neq("status", "archived").order("session_date", { ascending: false }),
+        supabase.from("matches").select("id, session_id, winner_team, team_a_player1_member, team_a_player2_member, team_b_player1_member, team_b_player2_member").eq("club_id", CHEONGWOO_CLUB_ID),
         supabase.from("attendance").select("session_id, member_id, status"),
-        supabase.from("members").select("id, name").eq("is_active", true),
+        supabase.from("members").select("id, name").eq("is_active", true).eq("club_id", CHEONGWOO_CLUB_ID),
       ]);
 
       const nameMap = new Map((members ?? []).map((m) => [m.id, m.name]));
@@ -155,7 +157,7 @@ export default function RecordsMatchesPage() {
     const { data: attendRows } = await supabase
       .from("attendance").select("member_id, status").eq("session_id", sid);
     const { data: sessionMembers } = await supabase
-      .from("members").select("id, name").eq("is_active", true);
+      .from("members").select("id, name").eq("is_active", true).eq("club_id", CHEONGWOO_CLUB_ID);
 
     const respondedMap = new Map((attendRows ?? []).map((r) => [r.member_id, r.status as AttendanceStatus]));
     const allMembers = sessionMembers ?? [];

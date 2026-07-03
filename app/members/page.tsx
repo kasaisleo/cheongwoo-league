@@ -4,12 +4,15 @@ import { MemberList } from "@/components/member/MemberList";
 import { getAdminRole } from "@/lib/admin-auth";
 import type { MemberWithStats } from "@/lib/supabase/database.types";
 
+const CHEONGWOO_CLUB_ID = "465ae133-893e-425d-a093-161f7654bd0d";
+
 export default async function MembersPage() {
   const supabase = createClient();
   const { data } = await supabase
     .from("member_stats")
     .select("*")
     .eq("is_active", true)
+    .eq("club_id", CHEONGWOO_CLUB_ID)
     .order("league_point", { ascending: false })
     .order("nickname");
 

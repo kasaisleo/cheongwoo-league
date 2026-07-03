@@ -3,6 +3,8 @@ import { createServiceClient } from "@/lib/supabase/server";
 import { getAdminAccessServer } from "@/lib/admin-permissions";
 import type { MemberGrade, MemberType } from "@/lib/supabase/database.types";
 
+const CHEONGWOO_CLUB_ID = "465ae133-893e-425d-a093-161f7654bd0d";
+
 /**
  * POST /api/admin/members
  * 관리자 전용 회원/게스트 등록 API.
@@ -103,6 +105,7 @@ export async function POST(request: NextRequest) {
       .from("members")
       .select("id")
       .eq("phone", digitsPhone)
+      .eq("club_id", CHEONGWOO_CLUB_ID)
       .limit(1);
     if (existing && existing.length > 0) {
       return NextResponse.json({ error: "이미 등록된 휴대폰 번호입니다." }, { status: 409 });
@@ -114,6 +117,7 @@ export async function POST(request: NextRequest) {
     .insert({
       name: normalizedName,
       nickname: normalizedNickname,
+      club_id: CHEONGWOO_CLUB_ID,
       phone: digitsPhone,
       grade,
       role: null,

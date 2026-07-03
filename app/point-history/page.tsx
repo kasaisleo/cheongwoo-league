@@ -6,6 +6,8 @@ import { MATCH_SESSION_DAY_LABEL } from "@/lib/match-session-label";
 import { EmptyState } from "@/components/ui/SectionHeader";
 import type { Member } from "@/lib/supabase/database.types";
 
+const CHEONGWOO_CLUB_ID = "465ae133-893e-425d-a093-161f7654bd0d";
+
 interface PointHistoryPageProps {
   searchParams: { member?: string };
 }
@@ -44,6 +46,7 @@ export default async function PointHistoryPage({ searchParams }: PointHistoryPag
     .from("members")
     .select("*")
     .eq("is_active", true)
+    .eq("club_id", CHEONGWOO_CLUB_ID)
     .order("name");
 
   let historyQuery: any = supabase

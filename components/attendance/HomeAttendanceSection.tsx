@@ -7,6 +7,7 @@ import { toast } from "@/components/ui/Toast";
 import type { AttendanceSession, AttendanceStatus } from "@/lib/supabase/database.types";
 
 const HOME_SESSION_LIMIT = 2;
+const CHEONGWOO_CLUB_ID = "465ae133-893e-425d-a093-161f7654bd0d";
 
 interface SessionState {
   session: AttendanceSession;
@@ -14,19 +15,8 @@ interface SessionState {
   stats: { attending: number; undecided: number; absent: number };
 }
 
-/**
- * 홈 출석 신청 섹션.
- *
- * app/page.tsx가 서버 컴포넌트이므로 출석 신청 영역만 이 클라이언트 컴포넌트로 분리.
- * - Supabase Auth 세션으로 로그인 여부 확인
- * - 미로그인이면 null 반환(섹션 자체를 숨김)
- * - open 세션(최대 2개, session_date >= 오늘, 오름차순) 조회
- * - 각 세션의 내 출석 상태 + 통계 조회
- * - 버튼 클릭 → POST /api/member/attendance → 낙관적 업데이트
- */
 export function HomeAttendanceSection() {
   const [memberId, setMemberId] = useState<string | null | undefined>(undefined);
-  // undefined = 아직 로딩, null = 미로그인 또는 미연결
   const [sessions, setSessions] = useState<SessionState[]>([]);
   const [submittingId, setSubmittingId] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
@@ -38,6 +28,7 @@ export function HomeAttendanceSection() {
     const { data: openSessions } = await supabase
       .from("attendance_sessions")
       .select("*")
+      .eq("club_id", CHEONGWOO_CLUB_ID)
       .eq("status", "open")
       .gte("session_date", today)
       .order("session_date", { ascending: true })
@@ -86,7 +77,10 @@ export function HomeAttendanceSection() {
     const supabase = createClient();
 
     void (async () => {
-      const { data: { session } } = await supabase.auth.getSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
       if (!session) {
         setMemberId(null);
         setReady(true);
@@ -96,6 +90,7 @@ export function HomeAttendanceSection() {
       const { data: member } = await supabase
         .from("members")
         .select("id")
+        .eq("club_id", CHEONGWOO_CLUB_ID)
         .eq("auth_user_id", session.user.id)
         .maybeSingle();
 
@@ -105,6 +100,7 @@ export function HomeAttendanceSection() {
       if (mId) {
         await loadSessions(mId);
       }
+
       setReady(true);
     })();
   }, [loadSessions]);
@@ -112,7 +108,6 @@ export function HomeAttendanceSection() {
   async function handleStatusChange(sessionId: string, status: AttendanceStatus) {
     if (!memberId) return;
 
-    // 낙관적 업데이트
     setSessions((prev) =>
       prev.map((s) => (s.session.id === sessionId ? { ...s, myStatus: status } : s))
     );
@@ -129,7 +124,6 @@ export function HomeAttendanceSection() {
 
       if (!res.ok) {
         toast.error(data?.error ?? "출석 변경에 실패했습니다.");
-        // 롤백 후 재조회
         await loadSessions(memberId);
       } else {
         const LABEL: Record<AttendanceStatus, string> = {
@@ -138,7 +132,6 @@ export function HomeAttendanceSection() {
           absent: "불참",
         };
         toast.success(`${LABEL[status]}으로 변경되었습니다.`);
-        // 통계 갱신을 위해 재조회
         await loadSessions(memberId);
       }
     } catch {
@@ -149,9 +142,7 @@ export function HomeAttendanceSection() {
     }
   }
 
-  // 로딩 중 또는 미로그인 또는 회원 미연결이면 섹션 자체를 숨김
   if (!ready || !memberId) return null;
-  // open 세션 없으면 섹션 숨김
   if (sessions.length === 0) return null;
 
   return (

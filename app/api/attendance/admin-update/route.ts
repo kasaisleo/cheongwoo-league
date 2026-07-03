@@ -3,6 +3,8 @@ import { createServiceClient } from "@/lib/supabase/server";
 import { getAdminAccessServer } from "@/lib/admin-permissions";
 import type { AttendanceStatus } from "@/lib/supabase/database.types";
 
+const CHEONGWOO_CLUB_ID = "465ae133-893e-425d-a093-161f7654bd0d";
+
 interface AdminUpdateAttendanceBody {
   memberId: string;
   sessionId: string;
@@ -42,6 +44,7 @@ export async function POST(request: NextRequest) {
     .from("attendance_sessions")
     .select("id, status, session_date")
     .eq("id", sessionId)
+    .eq("club_id", CHEONGWOO_CLUB_ID)
     .single();
 
   if (sessionError || !session) {

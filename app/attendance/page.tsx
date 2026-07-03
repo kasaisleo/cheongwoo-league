@@ -17,6 +17,7 @@ import { useAdminRole } from "@/lib/hooks/useAdminRole";
 import type { AttendanceStatus, AttendanceSession, Member } from "@/lib/supabase/database.types";
 
 const MIN_REQUIRED_PLAYERS = 4;
+const CHEONGWOO_CLUB_ID = "465ae133-893e-425d-a093-161f7654bd0d";
 
 function todayString(): string {
   return new Date().toISOString().slice(0, 10);
@@ -89,9 +90,12 @@ function AttendancePageInner() {
     void (async () => {
       const { data: { session: authSession } } = await supabase.auth.getSession();
       if (!authSession) { setMyMemberId(null); return; }
-      const { data: member } = await supabase
-        .from("members").select("id")
-        .eq("auth_user_id", authSession.user.id).maybeSingle();
+    const { data: member } = await supabase
+  .from("members")
+  .select("id")
+  .eq("club_id", CHEONGWOO_CLUB_ID)
+  .eq("auth_user_id", authSession.user.id)
+  .maybeSingle();
       setMyMemberId(member?.id ?? null);
     })();
   }, [supabase]);
@@ -153,12 +157,13 @@ function AttendancePageInner() {
 
     async function loadRows() {
       const [{ data: members }, { data: attendance }] = await Promise.all([
-        supabase
-          .from("members")
-          .select("*")
-          .eq("is_active", true)
-          .eq("is_dormant", false)
-          .order("nickname"),
+       supabase
+  .from("members")
+  .select("*")
+  .eq("club_id", CHEONGWOO_CLUB_ID)
+  .eq("is_active", true)
+  .eq("is_dormant", false)
+  .order("nickname"),
         supabase.from("attendance").select("*").eq("session_id", selectedSessionId),
       ]);
 

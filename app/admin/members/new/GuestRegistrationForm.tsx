@@ -18,6 +18,8 @@ import { createClient } from "@/lib/supabase/client";
 import { toast } from "@/components/ui/Toast";
 import type { Member } from "@/lib/supabase/database.types";
 
+const CHEONGWOO_CLUB_ID = "465ae133-893e-425d-a093-161f7654bd0d";
+
 function todayString(): string {
   return new Date().toISOString().slice(0, 10);
 }
@@ -52,6 +54,7 @@ export function GuestRegistrationForm() {
       .select("id, name, nickname")
       .eq("is_active", true)
       .eq("is_dormant", false)
+      .eq("club_id", CHEONGWOO_CLUB_ID)
       .order("name")
       .then(({ data }) => setMembers((data as Member[]) ?? []));
   }, []);
@@ -85,6 +88,7 @@ export function GuestRegistrationForm() {
       .from("guests")
       .insert({
         name: normalizeName(name),
+        club_id: CHEONGWOO_CLUB_ID,
         visit_date: visitDate,
         phone: phone.trim() ? phone.replace(/\D/g, "") : null,
         age: age.trim() ? Number(age) : null,

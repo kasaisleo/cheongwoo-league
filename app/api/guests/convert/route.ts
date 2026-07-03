@@ -3,6 +3,8 @@ import { createServiceClient } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/admin-auth";
 import type { MemberGrade } from "@/lib/supabase/database.types";
 
+const CHEONGWOO_CLUB_ID = "465ae133-893e-425d-a093-161f7654bd0d";
+
 interface ConvertGuestBody {
   guestId: string;
   nickname: string;
@@ -28,6 +30,7 @@ export async function POST(request: NextRequest) {
     .from("guests")
     .select("*")
     .eq("id", guestId)
+    .eq("club_id", CHEONGWOO_CLUB_ID)
     .single();
 
   if (fetchError || !guest) {
@@ -47,6 +50,7 @@ export async function POST(request: NextRequest) {
     .insert({
       name: guest.name,
       nickname: nickname.trim(),
+      club_id: CHEONGWOO_CLUB_ID,
       grade,
       phone: phone?.trim() || null,
       role: null,
@@ -65,7 +69,8 @@ export async function POST(request: NextRequest) {
   await supabase
     .from("guests")
     .update({ converted_to_member_id: newMember.id })
-    .eq("id", guestId);
+    .eq("id", guestId)
+    .eq("club_id", CHEONGWOO_CLUB_ID);
 
   return NextResponse.json({ ok: true, memberId: newMember.id });
 }

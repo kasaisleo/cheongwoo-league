@@ -5,6 +5,8 @@ import { ConvertGuestButton } from "@/components/guest/ConvertGuestButton";
 import { GuestAdminActions } from "@/components/guest/GuestAdminActions";
 import type { GuestWithStats, Member } from "@/lib/supabase/database.types";
 
+const CHEONGWOO_CLUB_ID = "465ae133-893e-425d-a093-161f7654bd0d";
+
 type GuestWithReferrer = GuestWithStats & {
   referrer: Pick<Member, "nickname"> | null;
   converted_member: Pick<Member, "nickname"> | null;
@@ -25,13 +27,19 @@ export async function GuestList({ mode }: GuestListProps) {
     .select(
       "*, referrer:members!guests_referred_by_fkey(nickname), converted_member:members!guests_converted_to_member_id_fkey(nickname)"
     )
+    .eq("club_id", CHEONGWOO_CLUB_ID)
     .order("visit_date", { ascending: false });
 
+  // guest_stats 뷰에 is_active 컬럼이 추가되어(마지막 18번째 컬럼) 다시 필터링 가능해졌다.
   if (!isAdmin) {
-    query = (query as any).eq("is_active", true);
+    query = query.eq("is_active", true);
   }
 
-  const { data } = await query;
+  const { data, error } = await query;
+  if (error) {
+    // 임시 디버깅용 — 조회 실패가 빈 목록으로 위장되지 않도록 서버 콘솔에 남긴다.
+    console.error("[GuestList] guest_stats 조회 실패:", error);
+  }
   const guests = (data ?? []) as unknown as GuestWithReferrer[];
 
   // 관리자 권한 확인 (액션 버튼 표시용)

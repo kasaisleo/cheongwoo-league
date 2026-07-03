@@ -5,6 +5,8 @@ import { getAdminAccessServer } from "@/lib/admin-permissions";
 import { SessionMatchCard, type SessionGroup } from "./SessionMatchCard";
 import type { SessionDay } from "@/lib/supabase/database.types";
 
+const CHEONGWOO_CLUB_ID = "465ae133-893e-425d-a093-161f7654bd0d";
+
 /**
  * /admin/matches — 매치별 경기 히스토리 관리 허브.
  * 세션(매치) 단위로 먼저 보여주고, 각 매치 카드 안에서 경기 히스토리를 펼쳐 볼 수 있다.
@@ -38,6 +40,7 @@ export default async function AdminMatchesPage({ searchParams }: PageProps) {
   let sessionQuery = supabase
     .from("attendance_sessions")
     .select("id, title, session_date, session_day, status")
+    .eq("club_id", CHEONGWOO_CLUB_ID)
     .neq("status", "archived")
     .order("session_date", { ascending: false })
     .limit(40);
@@ -105,7 +108,8 @@ export default async function AdminMatchesPage({ searchParams }: PageProps) {
   const { count: totalMembers } = await supabase
     .from("members")
     .select("id", { count: "exact", head: true })
-    .eq("is_active", true);
+    .eq("is_active", true)
+    .eq("club_id", CHEONGWOO_CLUB_ID);
 
   const attendBySession = new Map<string, { attending: number; undecided: number; absent: number }>();
   for (const row of attendRows ?? []) {

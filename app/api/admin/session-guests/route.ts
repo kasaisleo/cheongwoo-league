@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { getAdminAccessServer } from "@/lib/admin-permissions";
 
+const CHEONGWOO_CLUB_ID = "465ae133-893e-425d-a093-161f7654bd0d";
+
 /**
  * GET /api/admin/session-guests?sessionId=...
  * 특정 매치의 참석 게스트 목록 조회.
@@ -54,6 +56,7 @@ export async function POST(request: NextRequest) {
     .from("guests")
     .select("id, name, is_active, converted_to_member_id")
     .eq("id", guestId)
+    .eq("club_id", CHEONGWOO_CLUB_ID)
     .maybeSingle();
 
   if (!guest) {

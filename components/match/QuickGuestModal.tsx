@@ -5,6 +5,8 @@ import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/Button";
 import type { Guest } from "@/lib/supabase/database.types";
 
+const CHEONGWOO_CLUB_ID = "465ae133-893e-425d-a093-161f7654bd0d";
+
 function todayString(): string {
   return new Date().toISOString().slice(0, 10);
 }
@@ -35,6 +37,7 @@ export function QuickGuestModal({ onClose, onCreated }: QuickGuestModalProps) {
       .from("guests")
       .insert({
         name: name.trim(),
+        club_id: CHEONGWOO_CLUB_ID,
         age: age ? Number(age) : null,
         years_playing: yearsPlaying ? Number(yearsPlaying) : null,
         phone: phone.trim() || null,

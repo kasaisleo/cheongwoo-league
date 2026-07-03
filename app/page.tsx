@@ -12,6 +12,7 @@ import { isAdminSession } from "@/lib/admin-auth";
 import type { AttendanceSession, MemberWithStats } from "@/lib/supabase/database.types";
 
 const MAIN_SESSION_LIMIT = 5;
+const CHEONGWOO_CLUB_ID = "465ae133-893e-425d-a093-161f7654bd0d";
 
 function thisWeekRange(): { start: string; end: string } {
   const now = new Date();
@@ -38,9 +39,28 @@ export default async function HomePage() {
     { data: weeklyGuests },
     { data: topRankRows },
   ] = await Promise.all([
-    supabase.from("attendance_sessions").select("*").in("status", ["open", "closed"]).gte("session_date", today),
-    supabase.from("matches").select(MATCH_SELECT_WITH_PLAYERS).order("created_at", { ascending: false }).limit(3),
-    supabase.from("guests").select("*").gte("visit_date", week.start).lte("visit_date", week.end).order("visit_date", { ascending: true }),
+    supabase
+      .from("attendance_sessions")
+      .select("*")
+      .eq("club_id", CHEONGWOO_CLUB_ID)
+      .in("status", ["open", "closed"])
+      .gte("session_date", today),
+
+    supabase
+      .from("matches")
+      .select(MATCH_SELECT_WITH_PLAYERS)
+      .eq("club_id", CHEONGWOO_CLUB_ID)
+      .order("created_at", { ascending: false })
+      .limit(3),
+
+    supabase
+      .from("guests")
+      .select("*")
+      .eq("club_id", CHEONGWOO_CLUB_ID)
+      .gte("visit_date", week.start)
+      .lte("visit_date", week.end)
+      .order("visit_date", { ascending: true }),
+
     applyRankingQuery(supabase, 3),
   ]);
 
@@ -75,8 +95,6 @@ export default async function HomePage() {
 
   return (
     <main className="px-4 pt-6 pb-28">
-
-      {/* ── 헤더 */}
       <header className="mb-6">
         <div className="mb-1.5 inline-flex items-center gap-2">
           <span className="h-1.5 w-1.5 rounded-full bg-clay-400" />
@@ -88,10 +106,8 @@ export default async function HomePage() {
         </p>
       </header>
 
-      {/* ── 출석 신청 CTA */}
       <HomeAttendanceSection />
 
-      {/* ── 다음 일정 */}
       <section className="mb-4">
         <SectionHeader
           title="다음 일정"
@@ -115,7 +131,9 @@ export default async function HomePage() {
                       <div className="flex items-start justify-between gap-2">
                         <div>
                           <p className="text-sm font-semibold text-line-900">{session.title}</p>
-                          <p className="mt-0.5 text-xs text-line-500">{typeLabel} · {dateLabel}</p>
+                          <p className="mt-0.5 text-xs text-line-500">
+                            {typeLabel} · {dateLabel}
+                          </p>
                         </div>
                       </div>
                       <p className="mt-1.5 text-[11px] text-line-500">
@@ -130,7 +148,6 @@ export default async function HomePage() {
         )}
       </section>
 
-      {/* ── 현재 순위 */}
       {topRanked.length > 0 && (
         <section className="mb-4">
           <SectionHeader title="현재 순위" href="/ranking" cta="전체 랭킹" />
@@ -138,7 +155,6 @@ export default async function HomePage() {
         </section>
       )}
 
-      {/* ── 최근 경기 */}
       <section className="mb-4">
         <SectionHeader title="최근 경기" href="/matches" cta="전체보기" />
         {recentMatches.length === 0 ? (
@@ -152,7 +168,6 @@ export default async function HomePage() {
         )}
       </section>
 
-      {/* ── 이번 주 게스트 (운영진만) */}
       {isAdmin && guestsThisWeek.length > 0 && (
         <section>
           <SectionHeader title="이번 주 게스트" href="/guests" cta="전체보기" />
@@ -174,7 +189,6 @@ export default async function HomePage() {
           </div>
         </section>
       )}
-
     </main>
   );
 }

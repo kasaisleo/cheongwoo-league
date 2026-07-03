@@ -12,6 +12,8 @@ import { Dropdown, DropdownItem } from "@/components/ui/Dropdown";
 import { MATCH_SESSION_DAY_LABEL, fetchActiveSessions } from "@/lib/match-session-label";
 import type { Member, Guest, AttendanceSession } from "@/lib/supabase/database.types";
 
+const CHEONGWOO_CLUB_ID = "465ae133-893e-425d-a093-161f7654bd0d";
+
 type GuestModalTarget = "teamAPlayer1" | "teamAPlayer2" | "teamBPlayer1" | "teamBPlayer2";
 
 interface EditMatchModalProps {
@@ -58,10 +60,11 @@ export function EditMatchModal({ match, onClose, onSaved }: EditMatchModalProps)
     async function loadData() {
       const supabase = createClient();
       const [{ data: memberData }, { data: guestData }, activeSessions] = await Promise.all([
-        supabase.from("members").select("*").eq("is_active", true).order("name"),
+        supabase.from("members").select("*").eq("is_active", true).eq("club_id", CHEONGWOO_CLUB_ID).order("name"),
         supabase
           .from("guests")
           .select("*")
+          .eq("club_id", CHEONGWOO_CLUB_ID)
           .is("converted_to_member_id", null)
           .order("created_at", { ascending: false }),
         fetchActiveSessions(supabase),
@@ -76,6 +79,7 @@ export function EditMatchModal({ match, onClose, onSaved }: EditMatchModalProps)
           .from("attendance_sessions")
           .select("*")
           .eq("id", match.session_id)
+          .eq("club_id", CHEONGWOO_CLUB_ID)
           .single();
         if (currentSession) {
           sessionList = [currentSession, ...sessionList];

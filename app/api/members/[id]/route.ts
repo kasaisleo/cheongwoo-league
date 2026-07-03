@@ -5,6 +5,8 @@ import { getAdminAccessServer } from "@/lib/admin-permissions";
 import { isValidPlayerBackground } from "@/lib/constants/member-timeline";
 import type { MemberGrade, MemberRole } from "@/lib/supabase/database.types";
 
+const CHEONGWOO_CLUB_ID = "465ae133-893e-425d-a093-161f7654bd0d";
+
 interface UpdateMemberBody {
   name?: string;
   nickname?: string | null;
@@ -93,6 +95,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     .from("members")
     .select("*")
     .eq("id", memberId)
+    .eq("club_id", CHEONGWOO_CLUB_ID)
     .single();
 
   if (fetchError || !existingMember) {
@@ -131,6 +134,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       .from("members")
       .select("id")
       .eq("phone", digitsOnlyPhone)
+      .eq("club_id", CHEONGWOO_CLUB_ID)
       .neq("id", memberId)
       .limit(1);
 
@@ -211,6 +215,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     .from("members")
     .update(updates)
     .eq("id", memberId)
+    .eq("club_id", CHEONGWOO_CLUB_ID)
     .select()
     .single();
 
@@ -240,6 +245,7 @@ export async function DELETE(_request: NextRequest, { params }: RouteParams) {
     .from("members")
     .select("id")
     .eq("id", memberId)
+    .eq("club_id", CHEONGWOO_CLUB_ID)
     .single();
 
   if (fetchError || !existingMember) {
@@ -249,7 +255,8 @@ export async function DELETE(_request: NextRequest, { params }: RouteParams) {
   const { error: updateError } = await supabase
     .from("members")
     .update({ is_active: false, deleted_at: new Date().toISOString() })
-    .eq("id", memberId);
+    .eq("id", memberId)
+    .eq("club_id", CHEONGWOO_CLUB_ID);
 
   if (updateError) {
     return NextResponse.json({ error: "회원 삭제에 실패했습니다." }, { status: 500 });

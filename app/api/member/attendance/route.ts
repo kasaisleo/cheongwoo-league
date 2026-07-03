@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import type { AttendanceStatus } from "@/lib/supabase/database.types";
 
+const CHEONGWOO_CLUB_ID = "465ae133-893e-425d-a093-161f7654bd0d";
+
 // TODO(보안): attendance 테이블의 RLS가 현재 anon insert/update를 허용하고 있어
 // 인증 없이 누구나 직접 DB에 출석을 기록할 수 있는 상태입니다.
 // 이 API Route는 서버에서 Supabase Auth 세션을 검증해 "본인만 수정"을 강제하지만,
@@ -85,6 +87,7 @@ export async function POST(request: NextRequest) {
     .from("attendance_sessions")
     .select("id, status, session_date")
     .eq("id", sessionId)
+    .eq("club_id", CHEONGWOO_CLUB_ID)
     .maybeSingle();
 
   if (sessionError || !session) {

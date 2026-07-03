@@ -3,6 +3,8 @@ import { pct, fmtPct } from "@/lib/records/dashboardUtils";
 import { createClient } from "@/lib/supabase/server";
 import { MATCH_SESSION_DAY_LABEL } from "@/lib/match-session-label";
 
+const CHEONGWOO_CLUB_ID = "465ae133-893e-425d-a093-161f7654bd0d";
+
 // ── 매치명 헬퍼 ─────────────────────────────────────────────────
 function matchTitle(s: { session_day: string; title: string }) {
   const base = MATCH_SESSION_DAY_LABEL[s.session_day as keyof typeof MATCH_SESSION_DAY_LABEL] ?? s.title;
@@ -23,12 +25,12 @@ export default async function MemberRecordPage({ params }: { params: { id: strin
     { data: pointHistory },
     { data: allMembers },
   ] = await Promise.all([
-    supabase.from("members").select("id, name, member_type, league_point").eq("id", memberId).maybeSingle(),
-    supabase.from("matches").select("*").order("played_at", { ascending: false }),
+    supabase.from("members").select("id, name, member_type, league_point").eq("id", memberId).eq("club_id", CHEONGWOO_CLUB_ID).maybeSingle(),
+    supabase.from("matches").select("*").eq("club_id", CHEONGWOO_CLUB_ID).order("played_at", { ascending: false }),
     supabase.from("attendance").select("session_id, status").eq("member_id", memberId),
-    supabase.from("attendance_sessions").select("id, title, session_date, session_day, status").neq("status", "archived"),
+    supabase.from("attendance_sessions").select("id, title, session_date, session_day, status").eq("club_id", CHEONGWOO_CLUB_ID).neq("status", "archived"),
     supabase.from("point_history").select("*").eq("member_id", memberId).order("created_at", { ascending: true }),
-    supabase.from("members").select("id, name").eq("is_active", true),
+    supabase.from("members").select("id, name").eq("is_active", true).eq("club_id", CHEONGWOO_CLUB_ID),
   ]);
 
   if (!member) {

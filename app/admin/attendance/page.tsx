@@ -14,6 +14,8 @@ import { MATCH_SESSION_DAY_LABEL, fetchActiveSessions } from "@/lib/match-sessio
 import type { AttendanceStatus, AttendanceSession, Member } from "@/lib/supabase/database.types";
 import TennisBallLoader from "@/components/common/TennisBallLoader";
 
+const CHEONGWOO_CLUB_ID = "465ae133-893e-425d-a093-161f7654bd0d";
+
 /**
  * /admin/attendance — 운영진 전용 출석 관리 페이지.
  *
@@ -99,7 +101,7 @@ function AdminAttendanceInner() {
 
     async function loadRows() {
       const [{ data: members }, { data: attendance }] = await Promise.all([
-        supabase.from("members").select("*").eq("is_active", true).eq("is_dormant", false).order("nickname"),
+        supabase.from("members").select("*").eq("is_active", true).eq("is_dormant", false).eq("club_id", CHEONGWOO_CLUB_ID).order("nickname"),
         supabase.from("attendance").select("*").eq("session_id", selectedSessionId),
       ]);
       if (!isCurrent) return;

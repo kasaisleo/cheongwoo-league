@@ -3,6 +3,8 @@ import { createServiceClient } from "@/lib/supabase/server";
 import { getAdminAccessServer } from "@/lib/admin-permissions";
 import type { Member } from "@/lib/supabase/database.types";
 
+const CHEONGWOO_CLUB_ID = "465ae133-893e-425d-a093-161f7654bd0d";
+
 /**
  * "이번 주 출석 세션 생성" 버튼이 호출하는 API.
  *
@@ -40,6 +42,7 @@ export async function POST() {
   const { data: existingOpen } = await supabase
     .from("attendance_sessions")
     .select("id, session_date, session_day")
+    .eq("club_id", CHEONGWOO_CLUB_ID)
     .in("session_day", ["saturday", "sunday"])
     .eq("status", "open");
 
@@ -60,6 +63,7 @@ export async function POST() {
   await supabase
     .from("attendance_sessions")
     .update({ status: "archived", closed_at: new Date().toISOString() })
+    .eq("club_id", CHEONGWOO_CLUB_ID)
     .in("session_day", ["saturday", "sunday"])
     .eq("status", "open");
 
@@ -67,8 +71,8 @@ export async function POST() {
   const { data: newSessions, error: insertError } = await supabase
     .from("attendance_sessions")
     .insert([
-      { session_date: saturdayDate, session_day: "saturday", title: `${saturdayDate} 토요 정기운동`, status: "open" },
-      { session_date: sundayDate, session_day: "sunday", title: `${sundayDate} 일요 정기운동`, status: "open" },
+      { session_date: saturdayDate, session_day: "saturday", title: `${saturdayDate} 토요 정기운동`, status: "open", club_id: CHEONGWOO_CLUB_ID },
+      { session_date: sundayDate, session_day: "sunday", title: `${sundayDate} 일요 정기운동`, status: "open", club_id: CHEONGWOO_CLUB_ID },
     ])
     .select();
 
@@ -80,7 +84,8 @@ export async function POST() {
   const { data: activeMembers } = await supabase
     .from("members")
     .select("id")
-    .eq("is_active", true);
+    .eq("is_active", true)
+    .eq("club_id", CHEONGWOO_CLUB_ID);
 
   const members = (activeMembers ?? []) as Pick<Member, "id">[];
 

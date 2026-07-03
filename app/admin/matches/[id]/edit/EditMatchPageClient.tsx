@@ -15,6 +15,8 @@ import { TEAM_LABEL, winnerLabel, scoreLabel } from "@/lib/match-team-labels";
 import type { DisplayMatch } from "@/lib/match-display";
 import type { Member, Guest, AttendanceSession } from "@/lib/supabase/database.types";
 
+const CHEONGWOO_CLUB_ID = "465ae133-893e-425d-a093-161f7654bd0d";
+
 type Slot = "teamAPlayer1" | "teamAPlayer2" | "teamBPlayer1" | "teamBPlayer2";
 
 function toSelected(p: DisplayMatch["teamAPlayer1"]): SelectedPlayer {
@@ -47,8 +49,8 @@ export function EditMatchPageClient({ match }: { match: DisplayMatch }) {
     async function load() {
       const supabase = createClient();
       const [{ data: mData }, { data: gData }, activeSessions] = await Promise.all([
-        supabase.from("members").select("*").eq("is_active", true).eq("is_dormant", false).order("nickname"),
-        supabase.from("guests").select("*").order("name"),
+        supabase.from("members").select("*").eq("is_active", true).eq("is_dormant", false).eq("club_id", CHEONGWOO_CLUB_ID).order("nickname"),
+        supabase.from("guests").select("*").eq("club_id", CHEONGWOO_CLUB_ID).order("name"),
         fetchActiveSessions(supabase),
       ]);
       setMembers(mData ?? []);

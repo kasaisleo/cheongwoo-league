@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import type { Member, MemberGrade } from "@/lib/supabase/database.types";
+
+const CHEONGWOO_CLUB_ID = "465ae133-893e-425d-a093-161f7654bd0d";
 
 const GRADES: MemberGrade[] = ["A", "B", "C", "D"];
 
@@ -14,7 +15,6 @@ function todayString(): string {
 }
 
 export default function NewGuestPage() {
-  const router = useRouter();
   const [members, setMembers] = useState<Member[]>([]);
 
   const [name, setName] = useState("");
@@ -39,6 +39,7 @@ export default function NewGuestPage() {
       .from("members")
       .select("*")
       .eq("is_active", true)
+      .eq("club_id", CHEONGWOO_CLUB_ID)
       .order("name")
       .then(({ data }) => setMembers(data ?? []));
   }, []);
@@ -55,6 +56,7 @@ export default function NewGuestPage() {
     const supabase = createClient();
     const { error: insertError } = await supabase.from("guests").insert({
       name: name.trim(),
+      club_id: CHEONGWOO_CLUB_ID,
       age: age ? Number(age) : null,
       years_playing: yearsPlaying ? Number(yearsPlaying) : null,
       phone: phone.trim() || null,
@@ -73,8 +75,10 @@ export default function NewGuestPage() {
       return;
     }
 
-    router.push("/guests");
-    router.refresh();
+    // router.push + router.refresh 조합은 클라이언트 라우터 캐시 때문에
+    // 방금 등록한 게스트가 목록에 바로 안 보이는 문제가 있어,
+    // 전체 페이지 로드(항상 최신 서버 렌더링 결과)를 보장하는 방식으로 이동한다.
+    window.location.assign("/guests");
   }
 
   return (

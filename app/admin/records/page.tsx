@@ -4,6 +4,8 @@ import { MATCH_SESSION_DAY_LABEL } from "@/lib/match-session-label";
 import { pct, fmtPct, buildRecordsDashboardSummary, buildManagementAlerts } from "@/lib/records/dashboardUtils";
 import type { MemberType } from "@/lib/supabase/database.types";
 
+const CHEONGWOO_CLUB_ID = "465ae133-893e-425d-a093-161f7654bd0d";
+
 function todayStr() {
   return new Date().toISOString().slice(0, 10);
 }
@@ -44,10 +46,10 @@ export default async function AdminRecordsPage() {
     { data: guests },
     { data: allAttendance },
   ] = await Promise.all([
-    supabase.from("attendance_sessions").select("*").neq("status", "archived").order("session_date", { ascending: false }),
-    supabase.from("matches").select("*"),
-    supabase.from("members").select("id, name, member_type").eq("is_active", true),
-    supabase.from("guests").select("id, name").eq("is_active", true).is("converted_to_member_id", null),
+    supabase.from("attendance_sessions").select("*").eq("club_id", CHEONGWOO_CLUB_ID).neq("status", "archived").order("session_date", { ascending: false }),
+    supabase.from("matches").select("*").eq("club_id", CHEONGWOO_CLUB_ID),
+    supabase.from("members").select("id, name, member_type").eq("is_active", true).eq("club_id", CHEONGWOO_CLUB_ID),
+    supabase.from("guests").select("id, name").eq("is_active", true).eq("club_id", CHEONGWOO_CLUB_ID).is("converted_to_member_id", null),
     supabase.from("attendance").select("session_id, member_id, status"),
   ]);
 

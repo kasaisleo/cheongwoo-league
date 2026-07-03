@@ -3,6 +3,8 @@ import { createServiceClient } from "@/lib/supabase/server";
 import { getAdminAccessServer } from "@/lib/admin-permissions";
 import type { Member, SessionDay } from "@/lib/supabase/database.types";
 
+const CHEONGWOO_CLUB_ID = "465ae133-893e-425d-a093-161f7654bd0d";
+
 interface CreateCustomSessionBody {
   sessionDate: string;
   sessionDay: SessionDay;
@@ -43,6 +45,7 @@ export async function POST(request: NextRequest) {
     .eq("session_date", sessionDate)
     .eq("session_day", sessionDay)
     .eq("status", "open")
+    .eq("club_id", CHEONGWOO_CLUB_ID)
     .limit(1);
 
   if (existingOpen && existingOpen.length > 0) {
@@ -59,6 +62,7 @@ export async function POST(request: NextRequest) {
       session_day: sessionDay,
       title: title.trim(),
       status: "open",
+      club_id: CHEONGWOO_CLUB_ID,
     })
     .select()
     .single();
@@ -70,7 +74,8 @@ export async function POST(request: NextRequest) {
   const { data: activeMembers } = await supabase
     .from("members")
     .select("id")
-    .eq("is_active", true);
+    .eq("is_active", true)
+    .eq("club_id", CHEONGWOO_CLUB_ID);
 
   const members = (activeMembers ?? []) as Pick<Member, "id">[];
 

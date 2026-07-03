@@ -4,6 +4,8 @@ import { createServiceClient } from "@/lib/supabase/server";
 import { requireRole } from "@/lib/admin-auth";
 import { normalizeStagingRow, normalizePhone } from "@/lib/member-import";
 
+const CHEONGWOO_CLUB_ID = "465ae133-893e-425d-a093-161f7654bd0d";
+
 /**
  * CSV/XLSX 파일을 업로드받아 파싱하고, staging_members에 저장한다.
  * members에는 직접 insert하지 않는다 — 반드시 staging_members → 검수 → members 순서.
@@ -100,7 +102,10 @@ export async function POST(request: NextRequest) {
   await supabase.from("staging_members").delete().not("id", "is", null);
 
   // 기존 members의 phone 전체를 미리 가져와서 중복 검사에 사용
-  const { data: existingMembers } = await supabase.from("members").select("id, phone");
+  const { data: existingMembers } = await supabase
+    .from("members")
+    .select("id, phone")
+    .eq("club_id", CHEONGWOO_CLUB_ID);
   const phoneToMemberId = new Map(
     (existingMembers ?? [])
       .filter((m) => m.phone)

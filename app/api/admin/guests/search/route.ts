@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getAdminAccessServer } from "@/lib/admin-permissions";
 
+const CHEONGWOO_CLUB_ID = "465ae133-893e-425d-a093-161f7654bd0d";
+
 /**
  * GET /api/admin/guests/search?q=...
  * 게스트 검색 — 활성, 미전환 게스트만.
@@ -21,6 +23,7 @@ export async function GET(request: NextRequest) {
     .from("guests")
     .select("id, name, phone")
     .eq("is_active", true)
+    .eq("club_id", CHEONGWOO_CLUB_ID)
     .is("converted_to_member_id", null)
     .ilike("name", `%${q}%`)
     .order("name")

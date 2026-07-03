@@ -2,15 +2,17 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { MATCH_SESSION_DAY_LABEL } from "@/lib/match-session-label";
 
+const CHEONGWOO_CLUB_ID = "465ae133-893e-425d-a093-161f7654bd0d";
+
 export default async function GuestRecordPage({ params }: { params: { id: string } }) {
   const supabase = createClient();
   const guestId = params.id;
 
   const [{ data: guest }, { data: allMatches }, { data: allSessions }, { data: allMembers }] = await Promise.all([
-    supabase.from("guests").select("id, name").eq("id", guestId).maybeSingle(),
-    supabase.from("matches").select("*").order("played_at", { ascending: false }),
-    supabase.from("attendance_sessions").select("id, title, session_day"),
-    supabase.from("members").select("id, name").eq("is_active", true),
+    supabase.from("guests").select("id, name").eq("id", guestId).eq("club_id", CHEONGWOO_CLUB_ID).maybeSingle(),
+    supabase.from("matches").select("*").eq("club_id", CHEONGWOO_CLUB_ID).order("played_at", { ascending: false }),
+    supabase.from("attendance_sessions").select("id, title, session_day").eq("club_id", CHEONGWOO_CLUB_ID),
+    supabase.from("members").select("id, name").eq("is_active", true).eq("club_id", CHEONGWOO_CLUB_ID),
   ]);
 
   if (!guest) {

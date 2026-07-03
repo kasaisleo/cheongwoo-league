@@ -3,6 +3,11 @@ import { isAdminSession } from "@/lib/admin-auth";
 import { Button } from "@/components/ui/Button";
 import { GuestList } from "@/components/guest/GuestList";
 
+// 게스트 등록 직후 목록이 최신 상태로 보이도록 이 페이지는 항상 동적 렌더링한다.
+// (등록 → /guests 이동 시 캐시된 결과가 먼저 보이는 문제 방지)
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export default async function GuestsPage() {
   const isAdmin = isAdminSession();
 

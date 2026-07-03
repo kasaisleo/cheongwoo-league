@@ -24,6 +24,8 @@ import {
 import { notFound } from "next/navigation";
 import type { MemberWithStats } from "@/lib/supabase/database.types";
 
+const CHEONGWOO_CLUB_ID = "465ae133-893e-425d-a093-161f7654bd0d";
+
 interface MemberDetailPageProps {
   params: { id: string };
 }
@@ -47,6 +49,7 @@ export default async function MemberDetailPage({ params }: MemberDetailPageProps
     .from("member_stats")
     .select("*")
     .eq("id", params.id)
+    .eq("club_id", CHEONGWOO_CLUB_ID)
     .single();
 
   if (!member) {

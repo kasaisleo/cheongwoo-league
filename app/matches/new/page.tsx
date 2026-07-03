@@ -15,6 +15,7 @@ import type { SessionDay } from "@/lib/supabase/database.types";
 import type { Member, Guest, AttendanceSession } from "@/lib/supabase/database.types";
 import TennisBallLoader from "@/components/common/TennisBallLoader";
 
+const CHEONGWOO_CLUB_ID = "465ae133-893e-425d-a093-161f7654bd0d";
 type GuestModalTarget = "teamAPlayer1" | "teamAPlayer2" | "teamBPlayer1" | "teamBPlayer2";
 
 interface SessionAttendees {
@@ -105,8 +106,20 @@ export default function NewMatchPage() {
   async function loadData() {
     const supabase = createClient();
     const [{ data: memberData }, { data: guestData }, sessionList] = await Promise.all([
-      supabase.from("members").select("*").eq("is_active", true).eq("is_dormant", false).order("name"),
-      supabase.from("guests").select("*").is("converted_to_member_id", null).eq("is_active", true).order("created_at", { ascending: false }),
+      supabase
+  .from("members")
+  .select("*")
+  .eq("club_id", CHEONGWOO_CLUB_ID)
+  .eq("is_active", true)
+  .eq("is_dormant", false)
+  .order("name"),
+      supabase
+  .from("guests")
+  .select("*")
+  .eq("club_id", CHEONGWOO_CLUB_ID)
+  .is("converted_to_member_id", null)
+  .eq("is_active", true)
+  .order("created_at", { ascending: false }),
       fetchActiveSessions(supabase),
     ]);
     setMembers(memberData ?? []);
@@ -125,7 +138,11 @@ export default function NewMatchPage() {
     const supabase = createClient();
     const [{ data: attendData }, { data: matchData }] = await Promise.all([
       supabase.from("attendance").select("member_id, status").eq("session_id", sessionId).in("status", ["attending", "undecided"]),
-      supabase.from("matches").select("id, team_a_player1_member, team_a_player2_member, team_b_player1_member, team_b_player2_member").eq("session_id", sessionId),
+      supabase
+  .from("matches")
+  .select("id, team_a_player1_member, team_a_player2_member, team_b_player1_member, team_b_player2_member")
+  .eq("club_id", CHEONGWOO_CLUB_ID)
+  .eq("session_id", sessionId),
     ]);
 
     const rows = attendData ?? [];

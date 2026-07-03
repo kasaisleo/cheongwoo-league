@@ -8,6 +8,8 @@ import { MATCH_SESSION_DAY_LABEL } from "@/lib/match-session-label";
 import { useIsAdmin } from "@/lib/hooks/useIsAdmin";
 import type { AttendanceSession, MemberType } from "@/lib/supabase/database.types";
 
+const CHEONGWOO_CLUB_ID = "465ae133-893e-425d-a093-161f7654bd0d";
+
 // ── 타입 ─────────────────────────────────────────────────────────
 interface SessionSummary {
   session: AttendanceSession;
@@ -61,6 +63,7 @@ export default function MatchesHistoryPage() {
     const { data: sessions } = await supabase
       .from("attendance_sessions")
       .select("*")
+      .eq("club_id", CHEONGWOO_CLUB_ID)
       .in("status", ["closed", "archived"])
       .order("session_date", { ascending: false });
 

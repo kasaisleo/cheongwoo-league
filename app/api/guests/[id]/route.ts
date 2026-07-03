@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { getAdminAccessServer } from "@/lib/admin-permissions";
 
+const CHEONGWOO_CLUB_ID = "465ae133-893e-425d-a093-161f7654bd0d";
+
 interface RouteParams { params: { id: string } }
 
 /**
@@ -41,7 +43,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
   if (body.visit_date !== undefined)    update.visit_date = body.visit_date;
 
   const supabase = createServiceClient();
-  const { error } = await supabase.from("guests").update(update).eq("id", params.id);
+  const { error } = await supabase.from("guests").update(update).eq("id", params.id).eq("club_id", CHEONGWOO_CLUB_ID);
 
   if (error) return NextResponse.json({ error: "수정에 실패했습니다." }, { status: 500 });
   return NextResponse.json({ ok: true });
@@ -61,7 +63,8 @@ export async function DELETE(_req: NextRequest, { params }: RouteParams) {
   const { error } = await supabase
     .from("guests")
     .update({ is_active: false })
-    .eq("id", params.id);
+    .eq("id", params.id)
+    .eq("club_id", CHEONGWOO_CLUB_ID);
 
   if (error) return NextResponse.json({ error: "비활성화에 실패했습니다." }, { status: 500 });
   return NextResponse.json({ ok: true });

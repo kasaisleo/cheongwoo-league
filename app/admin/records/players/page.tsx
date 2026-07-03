@@ -5,6 +5,8 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import type { MemberType } from "@/lib/supabase/database.types";
 
+const CHEONGWOO_CLUB_ID = "465ae133-893e-425d-a093-161f7654bd0d";
+
 // ── 타입 ────────────────────────────────────────────────────────
 interface PlayerRecord {
   id: string;
@@ -146,11 +148,11 @@ export default function PlayerRecordsPage() {
         { data: sessions }, { data: matches },
         { data: attendanceRows }, { data: members }, { data: guests },
       ] = await Promise.all([
-        supabase.from("attendance_sessions").select("id, session_date, status").neq("status", "archived"),
-        supabase.from("matches").select("*"),
+        supabase.from("attendance_sessions").select("id, session_date, status").eq("club_id", CHEONGWOO_CLUB_ID).neq("status", "archived"),
+        supabase.from("matches").select("*").eq("club_id", CHEONGWOO_CLUB_ID),
         supabase.from("attendance").select("session_id, member_id, status"),
-        supabase.from("members").select("id, name, member_type, league_point").eq("is_active", true),
-        supabase.from("guests").select("id, name").eq("is_active", true).is("converted_to_member_id", null),
+        supabase.from("members").select("id, name, member_type, league_point").eq("is_active", true).eq("club_id", CHEONGWOO_CLUB_ID),
+        supabase.from("guests").select("id, name").eq("is_active", true).eq("club_id", CHEONGWOO_CLUB_ID).is("converted_to_member_id", null),
       ]);
 
       const completedIds = new Set(

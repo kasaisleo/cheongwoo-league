@@ -4,6 +4,8 @@ import { getAdminAccessServer } from "@/lib/admin-permissions";
 import { applyMatch, rollbackMatch } from "@/lib/match-engine";
 import type { Match, Member, Guest } from "@/lib/supabase/database.types";
 
+const CHEONGWOO_CLUB_ID = "465ae133-893e-425d-a093-161f7654bd0d";
+
 interface PlayerInput {
   id: string;
   isGuest: boolean;
@@ -100,6 +102,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     .from("matches")
     .select("*")
     .eq("id", matchId)
+    .eq("club_id", CHEONGWOO_CLUB_ID)
     .single();
 
   if (fetchError || !existingMatch) {
@@ -112,13 +115,21 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
   let memberRows: Member[] = [];
   if (memberIds.length > 0) {
-    const { data } = await supabase.from("members").select("*").in("id", memberIds);
+    const { data } = await supabase
+      .from("members")
+      .select("*")
+      .in("id", memberIds)
+      .eq("club_id", CHEONGWOO_CLUB_ID);
     memberRows = data ?? [];
   }
 
   let guestRows: Guest[] = [];
   if (guestIds.length > 0) {
-    const { data } = await supabase.from("guests").select("*").in("id", guestIds);
+    const { data } = await supabase
+      .from("guests")
+      .select("*")
+      .in("id", guestIds)
+      .eq("club_id", CHEONGWOO_CLUB_ID);
     guestRows = data ?? [];
   }
 
@@ -135,6 +146,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       .from("attendance_sessions")
       .select("id, status")
       .eq("id", sessionId)
+      .eq("club_id", CHEONGWOO_CLUB_ID)
       .single();
 
     if (sessionError || !session) {
@@ -175,6 +187,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       winner_team: winnerTeam,
     })
     .eq("id", matchId)
+    .eq("club_id", CHEONGWOO_CLUB_ID)
     .select()
     .single();
 
@@ -211,6 +224,7 @@ export async function DELETE(_request: NextRequest, { params }: RouteParams) {
     .from("matches")
     .select("*")
     .eq("id", matchId)
+    .eq("club_id", CHEONGWOO_CLUB_ID)
     .single();
 
   if (fetchError || !existingMatch) {
@@ -222,7 +236,11 @@ export async function DELETE(_request: NextRequest, { params }: RouteParams) {
     return NextResponse.json({ error: rollbackResult.error }, { status: 500 });
   }
 
-  const { error: deleteError } = await supabase.from("matches").delete().eq("id", matchId);
+  const { error: deleteError } = await supabase
+    .from("matches")
+    .delete()
+    .eq("id", matchId)
+    .eq("club_id", CHEONGWOO_CLUB_ID);
 
   if (deleteError) {
     // 삭제 자체가 실패하면, 되돌렸던 효과를 다시 적용해 정합성을 복구한다.

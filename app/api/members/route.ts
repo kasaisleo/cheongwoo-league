@@ -3,6 +3,8 @@ import { createServiceClient } from "@/lib/supabase/server";
 import { requireAdmin, getAdminRole } from "@/lib/admin-auth";
 import type { MemberGrade, MemberRole, MemberType } from "@/lib/supabase/database.types";
 
+const CHEONGWOO_CLUB_ID = "465ae133-893e-425d-a093-161f7654bd0d";
+
 interface CreateMemberBody {
   name: string;
   nickname?: string | null;
@@ -113,6 +115,7 @@ export async function POST(request: NextRequest) {
     .from("members")
     .select("id")
     .eq("phone", digitsOnlyPhone)
+    .eq("club_id", CHEONGWOO_CLUB_ID)
     .limit(1);
 
   if (existing && existing.length > 0) {
@@ -130,6 +133,7 @@ export async function POST(request: NextRequest) {
     .insert({
       name: name.trim(),
       nickname: nickname?.trim() || name.trim(),
+      club_id: CHEONGWOO_CLUB_ID,
       phone: digitsOnlyPhone,
       grade,
       role,

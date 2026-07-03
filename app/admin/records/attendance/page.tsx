@@ -11,6 +11,8 @@ import {
   type AttendanceCheckStatus,
 } from "@/lib/records/attendanceStatus";
 
+const CHEONGWOO_CLUB_ID = "465ae133-893e-425d-a093-161f7654bd0d";
+
 // ── 선수별 출석 상태 ──────────────────────────────────────────────
 type PlayerAttendStatus = "출석" | "미정" | "불참" | "미응답" | "출석 후 미참여";
 
@@ -75,10 +77,10 @@ export default function RecordsAttendancePage() {
         { data: allMatches },
         { data: members },
       ] = await Promise.all([
-        supabase.from("attendance_sessions").select("*").neq("status", "archived").order("session_date", { ascending: false }),
+        supabase.from("attendance_sessions").select("*").eq("club_id", CHEONGWOO_CLUB_ID).neq("status", "archived").order("session_date", { ascending: false }),
         supabase.from("attendance").select("session_id, member_id, status"),
-        supabase.from("matches").select("id, session_id, team_a_player1_member, team_a_player2_member, team_b_player1_member, team_b_player2_member"),
-        supabase.from("members").select("id, name").eq("is_active", true).order("name"),
+        supabase.from("matches").select("id, session_id, team_a_player1_member, team_a_player2_member, team_b_player1_member, team_b_player2_member").eq("club_id", CHEONGWOO_CLUB_ID),
+        supabase.from("members").select("id, name").eq("is_active", true).eq("club_id", CHEONGWOO_CLUB_ID).order("name"),
       ]);
 
       const memberCount = (members ?? []).length;
