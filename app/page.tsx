@@ -13,17 +13,14 @@ import type { AttendanceSession, MemberWithStats } from "@/lib/supabase/database
 
 const MAIN_SESSION_LIMIT = 5;
 
-/** 오늘 기준 이번 주(월~일) 시작/끝 날짜 문자열 — 게스트 주간 조회용 */
 function thisWeekRange(): { start: string; end: string } {
   const now = new Date();
-  const day = now.getDay(); // 0(일)~6(토)
+  const day = now.getDay();
   const diffToMonday = day === 0 ? -6 : 1 - day;
-
   const monday = new Date(now);
   monday.setDate(now.getDate() + diffToMonday);
   const sunday = new Date(monday);
   sunday.setDate(monday.getDate() + 6);
-
   return {
     start: monday.toISOString().slice(0, 10),
     end: sunday.toISOString().slice(0, 10),
@@ -35,33 +32,22 @@ export default async function HomePage() {
   const week = thisWeekRange();
   const today = new Date().toISOString().slice(0, 10);
 
-  const [{ data: activeSessionRows }, { data: recentMatchRows }, { data: weeklyGuests }, { data: topRankRows }] =
-    await Promise.all([
-      supabase
-        .from("attendance_sessions")
-        .select("*")
-        .in("status", ["open", "closed"])
-        .gte("session_date", today),
-      supabase
-        .from("matches")
-        .select(MATCH_SELECT_WITH_PLAYERS)
-        .order("created_at", { ascending: false })
-        .limit(3),
-      supabase
-        .from("guests")
-        .select("*")
-        .gte("visit_date", week.start)
-        .lte("visit_date", week.end)
-        .order("visit_date", { ascending: true }),
-      // 랭킹 상위 3명 — RankingTeaserCard 전용 (applyRankingQuery로 Ranking 페이지와 동일 조건 보장)
-      applyRankingQuery(supabase, 3),
-    ]);
+  const [
+    { data: activeSessionRows },
+    { data: recentMatchRows },
+    { data: weeklyGuests },
+    { data: topRankRows },
+  ] = await Promise.all([
+    supabase.from("attendance_sessions").select("*").in("status", ["open", "closed"]).gte("session_date", today),
+    supabase.from("matches").select(MATCH_SELECT_WITH_PLAYERS).order("created_at", { ascending: false }).limit(3),
+    supabase.from("guests").select("*").gte("visit_date", week.start).lte("visit_date", week.end).order("visit_date", { ascending: true }),
+    applyRankingQuery(supabase, 3),
+  ]);
 
   const allSessions = selectHomeSessions((activeSessionRows ?? []) as AttendanceSession[]);
   const sessions = allSessions.slice(0, MAIN_SESSION_LIMIT);
   const hasMoreSessions = allSessions.length > MAIN_SESSION_LIMIT;
 
-  // 각 세션별 출석 현황을 한 번에 조회 (화면에 보일 세션 기준으로만)
   const sessionIds = sessions.map((s) => s.id);
   const { data: attendanceRows } =
     sessionIds.length > 0
@@ -85,34 +71,27 @@ export default async function HomePage() {
   const recentMatches = toDisplayMatches(recentMatchRows);
   const guestsThisWeek = weeklyGuests ?? [];
   const topRanked = (topRankRows ?? []) as MemberWithStats[];
-
-  // 운영진 여부 — 게스트 섹션 표시 제어용.
-  // lib/admin-auth.ts는 수정 금지이므로 isAdminSession()을 그대로 호출한다.
   const isAdmin = isAdminSession();
 
   return (
-    <main className="px-4 pt-6">
+    <main className="px-4 pt-6 pb-28">
+
+      {/* ── 헤더 */}
       <header className="mb-6">
         <div className="mb-1.5 inline-flex items-center gap-2">
           <span className="h-1.5 w-1.5 rounded-full bg-clay-400" />
-          <p className="eyebrow-en text-clay-400">
-            Mapo Cheongwoo Club
-          </p>
+          <p className="eyebrow-en text-clay-400">Mapo Cheongwoo Club</p>
         </div>
-        <h1 className="headline-kr text-4xl text-line-900">
-          마포 청우회 리그
-        </h1>
+        <h1 className="headline-kr text-4xl text-line-900">마포 청우회 리그</h1>
+        <p className="mt-1 max-w-[240px] break-keep text-xs leading-relaxed text-line-500">
+          복식 테니스 리그 · 정기 매치 · 기록 관리
+        </p>
       </header>
 
-      {/* 1. 출석 신청 CTA — 로그인 회원에게만 표시, 미로그인/세션 없으면 자동 숨김 */}
+      {/* ── 출석 신청 CTA */}
       <HomeAttendanceSection />
 
-      {/* 2. 랭킹 티저 — ATP 스타일 상위 3명, /ranking으로 자연스럽게 진입 */}
-      {topRanked.length > 0 && (
-        <RankingTeaserCard members={topRanked} />
-      )}
-
-      {/* 2. 다음 일정 — Ranking 문법: rounded-[14px], bg-line-50, accent bar */}
+      {/* ── 다음 일정 */}
       <section className="mb-4">
         <SectionHeader
           title="다음 일정"
@@ -128,19 +107,15 @@ export default async function HomePage() {
               const typeLabel = MATCH_SESSION_DAY_LABEL[session.session_day];
               const [, m, d] = session.session_date.split("-");
               const dateLabel = `${Number(m)}/${Number(d)}`;
-
               return (
                 <Link key={session.id} href={`/attendance?session_id=${session.id}`}>
                   <div className="relative overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50 transition-colors hover:border-clay-400/30">
-                    {/* clay accent bar — Ranking contender block 문법 */}
                     <div className="absolute left-0 top-0 h-full w-1 bg-clay-400/50" />
                     <div className="px-4 py-3 pl-6">
                       <div className="flex items-start justify-between gap-2">
                         <div>
                           <p className="text-sm font-semibold text-line-900">{session.title}</p>
-                          <p className="mt-0.5 text-xs text-line-500">
-                            {typeLabel} · {dateLabel}
-                          </p>
+                          <p className="mt-0.5 text-xs text-line-500">{typeLabel} · {dateLabel}</p>
                         </div>
                       </div>
                       <p className="mt-1.5 text-[11px] text-line-500">
@@ -155,9 +130,31 @@ export default async function HomePage() {
         )}
       </section>
 
-      {/* 3. 이번 주 게스트 — 운영진에게만 표시 */}
-      {isAdmin && guestsThisWeek.length > 0 && (
+      {/* ── 최근 경기 */}
+      <section className="mb-4">
+        <SectionHeader title="최근 경기" href="/matches" cta="전체보기" />
+        {recentMatches.length === 0 ? (
+          <EmptyState message="아직 등록된 경기가 없어요." />
+        ) : (
+          <div className="space-y-2">
+            {recentMatches.map((match) => (
+              <MatchCard key={match.id} match={match} />
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* ── 랭킹 티저 */}
+      {topRanked.length > 0 && (
         <section className="mb-4">
+          <SectionHeader title="현재 순위" href="/ranking" cta="전체 랭킹" />
+          <RankingTeaserCard members={topRanked} />
+        </section>
+      )}
+
+      {/* ── 이번 주 게스트 (운영진만) */}
+      {isAdmin && guestsThisWeek.length > 0 && (
+        <section>
           <SectionHeader title="이번 주 게스트" href="/guests" cta="전체보기" />
           <div className="overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50">
             {guestsThisWeek.map((guest, idx) => (
@@ -178,19 +175,6 @@ export default async function HomePage() {
         </section>
       )}
 
-      {/* 4. 최근 경기 — MatchCard 재사용 (Ranking table 행 밀도) */}
-      <section className="pb-28">
-        <SectionHeader title="최근 경기" href="/matches" cta="전체보기" />
-        {recentMatches.length === 0 ? (
-          <EmptyState message="아직 등록된 경기가 없어요." />
-        ) : (
-          <div className="space-y-2">
-            {recentMatches.map((match) => (
-              <MatchCard key={match.id} match={match} />
-            ))}
-          </div>
-        )}
-      </section>
     </main>
   );
 }
