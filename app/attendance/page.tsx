@@ -649,7 +649,7 @@ function AttendancePageInner() {
               {loadingRows ? (
                 <p className="text-center text-sm text-line-400">불러오는 중...</p>
               ) : displayedRows.length === 0 ? (
-                <div className="rounded-[14px] border border-line-200/40 bg-line-50 p-8 text-center"><p className="font-display text-xs font-bold uppercase tracking-widest text-line-500">{rows.length === 0 ? "명단이 비어 있어요." : "검색/필터 조건에 맞는 회원이 없어요."}</p></div>
+                <div className="rounded-[14px] border border-line-200/40 bg-line-50 p-8 text-center"><p className="text-xs font-bold text-line-500">{rows.length === 0 ? "명단이 비어 있어요." : "검색/필터 조건에 맞는 회원이 없어요."}</p></div>
               ) : (
                 <div className="space-y-2">
                   {displayedRows.map(({ member, status }) => (
@@ -699,7 +699,7 @@ function AttendancePageInner() {
               {loadingRows ? (
                 <p className="text-center text-sm text-line-400">불러오는 중...</p>
               ) : displayedRows.length === 0 ? (
-                <div className="rounded-[14px] border border-line-200/40 bg-line-50 p-8 text-center"><p className="font-display text-xs font-bold uppercase tracking-widest text-line-500">{rows.length === 0 ? "명단이 비어 있어요." : "검색/필터 조건에 맞는 회원이 없어요."}</p></div>
+                <div className="rounded-[14px] border border-line-200/40 bg-line-50 p-8 text-center"><p className="text-xs font-bold text-line-500">{rows.length === 0 ? "명단이 비어 있어요." : "검색/필터 조건에 맞는 회원이 없어요."}</p></div>
               ) : (
                 <div className="space-y-2">
                   {displayedRows.map(({ member, status }) => (
