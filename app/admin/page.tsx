@@ -156,12 +156,12 @@ export default async function AdminPage() {
         <p className="mb-2 font-display text-[10px] font-bold uppercase tracking-widest text-line-500">Quick Actions</p>
         <div className="grid grid-cols-2 gap-2">
           {[
-            { href: "/admin/matches/create",         label: "매치 생성",    sub: "New Match",    accent: "clay" },
-            { href: "/admin/matches",                label: "경기 관리",    sub: "Matches",      accent: "clay" },
-            { href: "/admin/attendance",             label: "출석 관리",    sub: "Attendance",   accent: "line" },
-            { href: "/admin/records",                label: "기록 대시보드", sub: "Records",     accent: "line" },
-            { href: "/admin/members/new?type=member", label: "회원 등록",   sub: "New Member",  accent: "line" },
-            { href: "/admin/guests",                 label: "게스트 관리",  sub: "Guest List",  accent: "line" },
+            { href: "/admin/matches/create",          label: "매치 생성",    sub: "New Match",    accent: "clay" },
+            { href: "/admin/matches",                 label: "경기 관리",    sub: "Matches",      accent: "clay" },
+            { href: "/admin/attendance",              label: "출석 관리",    sub: "Attendance",   accent: "line" },
+            { href: "/admin/records",                 label: "기록 대시보드", sub: "Records",     accent: "line" },
+            { href: "/admin/members/new?type=member", label: "회원 등록",    sub: "New Member",   accent: "line" },
+            { href: "/admin/guests",                  label: "게스트 관리",  sub: "Guest List",   accent: "line" },
           ].map((item) => (
             <Link key={item.href} href={item.href}>
               <div className="relative overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50 px-4 py-3 transition-colors hover:bg-line-100/40">
@@ -181,16 +181,10 @@ export default async function AdminPage() {
         <p className="mb-2 font-display text-[10px] font-bold uppercase tracking-widest text-line-500">Management</p>
         <div className="overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50">
           {[
-            { href: "/admin/records",              label: "기록 대시보드",   sub: "매치 · 참여 · 경기 통계" },
-            { href: "/admin/records/players",      label: "선수 기록 분석",  sub: "참여도 · 승률 · 출석 체크율" },
-            { href: "/admin/records/matches",      label: "경기 검수",       sub: "기록 누락 · 상태 확인" },
-            { href: "/admin/records/attendance",   label: "출석 체크 검수",  sub: "응답 현황 · 출석 후 미참여" },
-            { href: "/admin/matches",              label: "경기 관리",       sub: "히스토리 · 결과 추가 · 수정" },
-            { href: "/admin/attendance",           label: "출석 관리",       sub: "매치 운영 · 출석 현황" },
-            { href: "/members",                    label: "회원 관리",       sub: "회원 목록 · 정보 수정 · 일괄 등록" },
-            { href: "/admin/guests",               label: "게스트 관리",     sub: "게스트 목록 · 정회원 전환" },
-            { href: "/admin/auth-link",            label: "회원 연결",       sub: "카카오 로그인 연결 대기자" },
-            { href: "/admin/share",                label: "공유센터",        sub: "공유 링크 관리" },
+            { href: "/admin/records/players",    label: "선수 기록 분석",  sub: "참여도 · 승률 · 출석 체크율" },
+            { href: "/admin/records/matches",    label: "경기 검수",       sub: "기록 누락 · 상태 확인" },
+            { href: "/admin/records/attendance", label: "출석 체크 검수",  sub: "응답 현황 · 출석 후 미참여" },
+            { href: "/admin/auth-link",          label: "회원 연결",       sub: "카카오 로그인 연결 대기자" },
             ...(isOwnerOrMaster ? [{ href: "/admin/settings", label: "시스템 설정", sub: "권한 · 계정 관리" }] : []),
           ].map((item, idx, arr) => (
             <Link key={item.href} href={item.href}>
@@ -203,26 +197,6 @@ export default async function AdminPage() {
                 </div>
                 <span className="text-xs text-line-400">→</span>
               </div>
-            </Link>
-          ))}
-        </div>
-      </section>
-
-      {/* ── Public View ──────────────────────────────── */}
-      <section>
-        <p className="mb-2 font-display text-[10px] font-bold uppercase tracking-widest text-line-500">Public View</p>
-        <div className="flex flex-wrap gap-1.5">
-          {([
-            { href: "/",           label: "홈" },
-            { href: "/attendance", label: "매치" },
-            { href: "/matches",    label: "기록" },
-            { href: "/members",    label: "회원" },
-            { href: "/ranking",    label: "랭킹" },
-          ] as const).map((item) => (
-            <Link key={item.href} href={item.href}>
-              <span className="rounded-sm border border-line-200/40 bg-line-50 px-2.5 py-1 text-xs font-semibold text-line-500 transition-colors hover:border-line-300 hover:text-line-700">
-                {item.label}
-              </span>
             </Link>
           ))}
         </div>
