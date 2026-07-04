@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { toast } from "@/components/ui/Toast";
 import { createClient } from "@/lib/supabase/client";
+import { DEFAULT_CLUB_ID } from "@/lib/current-club";
 
 /**
  * /admin/auth-link — Owner/Master 전용 카카오 회원 연결 화면.
@@ -50,6 +51,7 @@ export default function AuthLinkPage() {
           .from("members")
           .select("id, nickname, name")
           .is("auth_user_id", null)
+          .eq("club_id", DEFAULT_CLUB_ID)
           .order("nickname"),
       ]);
 

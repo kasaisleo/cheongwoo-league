@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { getAdminAccessServer } from "@/lib/admin-permissions";
+import { getCurrentClubId } from "@/lib/current-club";
 
 interface LinkMemberBody {
   authUserId: string;
@@ -40,6 +41,7 @@ export async function POST(request: NextRequest) {
   }
 
   const supabase = createServiceClient();
+  const currentClubId = await getCurrentClubId();
 
   // 1) authUserId가 auth.users에 존재하는지 확인
   const { data: authUserData, error: authUserError } = await supabase.auth.admin.getUserById(authUserId);
@@ -52,6 +54,7 @@ export async function POST(request: NextRequest) {
     .from("members")
     .select("id, nickname, auth_user_id")
     .eq("id", memberId)
+    .eq("club_id", currentClubId)
     .maybeSingle();
 
   if (memberError || !member) {
@@ -71,6 +74,7 @@ export async function POST(request: NextRequest) {
     .from("members")
     .select("id, nickname")
     .eq("auth_user_id", authUserId)
+    .eq("club_id", currentClubId)
     .maybeSingle();
 
   if (alreadyLinked) {
@@ -84,7 +88,8 @@ export async function POST(request: NextRequest) {
   const { error: updateError } = await supabase
     .from("members")
     .update({ auth_user_id: authUserId })
-    .eq("id", memberId);
+    .eq("id", memberId)
+    .eq("club_id", currentClubId);
 
   if (updateError) {
     console.error("[link-member POST] update 실패:", updateError);

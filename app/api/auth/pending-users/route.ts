@@ -1,12 +1,14 @@
 import { NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { getAdminAccessServer } from "@/lib/admin-permissions";
+import { getCurrentClubId } from "@/lib/current-club";
 
 export async function GET(request: Request) {
   const access = await getAdminAccessServer();
   if (!access.isOwner) return Response.json({ error: "Owner 또는 master 권한이 필요합니다." }, { status: 403 });
 
   const supabase = createServiceClient();
+  const currentClubId = await getCurrentClubId();
 
   const { data: usersData, error: usersError } = await supabase.auth.admin.listUsers({
     perPage: 1000,
@@ -29,7 +31,8 @@ export async function GET(request: Request) {
   const { data: linkedMembers, error: membersError } = await supabase
     .from("members")
     .select("auth_user_id")
-    .not("auth_user_id", "is", null);
+    .not("auth_user_id", "is", null)
+    .eq("club_id", currentClubId);
 
   if (membersError) {
     console.error("[pending-users GET] members 조회 실패:", membersError);
