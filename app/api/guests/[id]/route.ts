@@ -11,7 +11,7 @@ interface RouteParams { params: { id: string } }
  */
 export async function PUT(request: NextRequest, { params }: RouteParams) {
   const access = await getAdminAccessServer();
-  if (!access.isAdmin) {
+  if (!access.kakaoIsAdmin) {
     return NextResponse.json({ error: "관리자 권한이 필요합니다." }, { status: 403 });
   }
 
@@ -55,7 +55,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
  */
 export async function DELETE(_req: NextRequest, { params }: RouteParams) {
   const access = await getAdminAccessServer();
-  if (!access.isOwner) {
+  if (!access.kakaoIsOwner) {
     return NextResponse.json({ error: "master/owner 권한이 필요합니다." }, { status: 403 });
   }
 
