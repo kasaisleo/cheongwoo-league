@@ -5,7 +5,7 @@ import { ConvertGuestButton } from "@/components/guest/ConvertGuestButton";
 import { GuestAdminActions } from "@/components/guest/GuestAdminActions";
 import type { GuestWithStats, Member } from "@/lib/supabase/database.types";
 
-import { DEFAULT_CLUB_ID } from "@/lib/current-club";
+import { DEFAULT_CLUB_ID } from "@/lib/club-constants";
 
 const CHEONGWOO_CLUB_ID = DEFAULT_CLUB_ID;
 

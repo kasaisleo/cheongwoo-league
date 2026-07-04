@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useAdminAccess } from "@/lib/hooks/useAdminAccess";
 import { toast } from "@/components/ui/Toast";
-import { DEFAULT_CLUB_ID } from "@/lib/current-club";
+import { DEFAULT_CLUB_ID } from "@/lib/club-constants";
 
 interface AdminMember {
   id: string;

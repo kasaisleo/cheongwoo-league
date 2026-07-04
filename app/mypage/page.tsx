@@ -9,7 +9,7 @@ import { MATCH_SELECT_WITH_PLAYERS, toDisplayMatches, type DisplayMatch } from "
 import type { User } from "@supabase/supabase-js";
 import type { MemberWithStats } from "@/lib/supabase/database.types";
 
-import { DEFAULT_CLUB_ID } from "@/lib/current-club";
+import { DEFAULT_CLUB_ID } from "@/lib/club-constants";
 
 const CHEONGWOO_CLUB_ID = DEFAULT_CLUB_ID;
 

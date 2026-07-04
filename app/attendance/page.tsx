@@ -17,7 +17,7 @@ import { useAdminRole } from "@/lib/hooks/useAdminRole";
 import type { AttendanceStatus, AttendanceSession, Member } from "@/lib/supabase/database.types";
 
 const MIN_REQUIRED_PLAYERS = 4;
-import { DEFAULT_CLUB_ID } from "@/lib/current-club";
+import { DEFAULT_CLUB_ID } from "@/lib/club-constants";
 
 const CHEONGWOO_CLUB_ID = DEFAULT_CLUB_ID;
 

@@ -12,7 +12,7 @@ import { Dropdown, DropdownItem } from "@/components/ui/Dropdown";
 import { MATCH_SESSION_DAY_LABEL, fetchActiveSessions } from "@/lib/match-session-label";
 import type { Member, Guest, AttendanceSession } from "@/lib/supabase/database.types";
 
-import { DEFAULT_CLUB_ID } from "@/lib/current-club";
+import { DEFAULT_CLUB_ID } from "@/lib/club-constants";
 
 const CHEONGWOO_CLUB_ID = DEFAULT_CLUB_ID;
 

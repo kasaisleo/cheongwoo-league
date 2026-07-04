@@ -5,7 +5,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import type { MemberType } from "@/lib/supabase/database.types";
 
-import { DEFAULT_CLUB_ID } from "@/lib/current-club";
+import { DEFAULT_CLUB_ID } from "@/lib/club-constants";
 
 const CHEONGWOO_CLUB_ID = DEFAULT_CLUB_ID;
 

@@ -9,7 +9,7 @@ import {
   type AdminAccess,
   type CookieRole,
 } from "@/lib/admin-permission-types";
-import { DEFAULT_CLUB_ID } from "@/lib/current-club";
+import { DEFAULT_CLUB_ID } from "@/lib/club-constants";
 
 /**
  * useAdminAccess() — 클라이언트 컴포넌트 전용 통합 관리자 권한 훅.

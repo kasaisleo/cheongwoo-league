@@ -7,7 +7,7 @@ import { toast } from "@/components/ui/Toast";
 import type { AttendanceSession, AttendanceStatus } from "@/lib/supabase/database.types";
 
 const HOME_SESSION_LIMIT = 2;
-import { DEFAULT_CLUB_ID } from "@/lib/current-club";
+import { DEFAULT_CLUB_ID } from "@/lib/club-constants";
 
 const CHEONGWOO_CLUB_ID = DEFAULT_CLUB_ID;
 

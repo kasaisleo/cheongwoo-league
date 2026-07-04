@@ -15,7 +15,7 @@ import { TEAM_LABEL, winnerLabel, scoreLabel } from "@/lib/match-team-labels";
 import type { DisplayMatch } from "@/lib/match-display";
 import type { Member, Guest, AttendanceSession } from "@/lib/supabase/database.types";
 
-import { DEFAULT_CLUB_ID } from "@/lib/current-club";
+import { DEFAULT_CLUB_ID } from "@/lib/club-constants";
 
 const CHEONGWOO_CLUB_ID = DEFAULT_CLUB_ID;
 

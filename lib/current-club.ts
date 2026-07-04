@@ -1,22 +1,74 @@
 /**
- * currentClubId 최소 구조 (Phase 2A, 1차 작업)
+ * currentClubId 서버 전용 로직 (Phase 3A-1, 재설계)
  *
- * 목적: 지금까지 46개 파일에 흩어져 있던 `CHEONGWOO_CLUB_ID` 하드코딩 값의
- * 단일 출처를 이 파일 하나로 모은다. 이번 단계에서는 동작을 전혀 바꾸지 않고,
- * 앞으로 값의 출처를 바꿀 수 있는 접점(seam)만 만든다.
+ * ⚠️ 이 파일은 서버 전용이다 (next/headers, lib/supabase/server 사용).
+ * "use client" 파일은 이 파일을 절대 import하면 안 된다 — DEFAULT_CLUB_ID만
+ * 필요하다면 "@/lib/club-constants"에서 가져온다. (이전 버전은 상수와 서버
+ * 로직이 한 파일에 있어서, 클라이언트 파일이 DEFAULT_CLUB_ID를 가져오려다
+ * 이 파일 전체를 import하게 되고, 그 결과 next/headers까지 클라이언트 번들
+ * 그래프에 걸리는 문제가 있었다. 이번에 상수(club-constants.ts)와 서버 로직
+ * (이 파일)을 물리적으로 분리해 해결했다.)
  *
- * - DEFAULT_CLUB_ID: 클라이언트 컴포넌트("use client")에서 참조할 상수.
- * - getCurrentClubId(): 서버 컴포넌트/API route에서 호출할 함수.
- *   지금은 DEFAULT_CLUB_ID를 그대로 반환하지만, 처음부터 async로 선언해
- *   나중에 쿠키 등 비동기 로직이 추가되어도 호출부(호출하는 쪽 코드)를
- *   다시 고치지 않아도 되게 한다.
- *
- * ⚠️ 이번 파일은 아직 어디에서도 import되지 않는다 — 기존 46개 파일,
- * auth_user_id 조회 로직, 권한 함수 4개는 이번 작업에서 건드리지 않았다.
+ * getCurrentClubId(): 서버 컴포넌트/API route에서만 호출.
+ *   1) selected_club_id 쿠키 없으면 DEFAULT_CLUB_ID 반환
+ *   2) 쿠키 있으면 아래를 전부 통과해야 그 값을 반환, 하나라도 실패하면 폴백:
+ *      - clubs 테이블에 해당 id 존재 + status = 'active'
+ *      - 현재 로그인한 auth user 존재
+ *      - members 테이블에 club_id + auth_user_id 조합으로 소속 확인
+ *   절대 throw하지 않는다 — 모든 에러는 catch에서 DEFAULT_CLUB_ID로 폴백한다
+ *   (수십 개 호출부가 이 함수에 의존하므로, 예외를 던지면 앱 전체 장애로
+ *   이어질 수 있다).
+ *   쿠키를 set/remove하지 않는다 — 읽기(get)만 한다.
  */
 
-export const DEFAULT_CLUB_ID = "465ae133-893e-425d-a093-161f7654bd0d";
+import { cookies } from "next/headers";
+import { createClient } from "@/lib/supabase/server";
+import { DEFAULT_CLUB_ID, SELECTED_CLUB_COOKIE } from "@/lib/club-constants";
 
 export async function getCurrentClubId(): Promise<string> {
-  return DEFAULT_CLUB_ID;
+  try {
+    const cookieStore = cookies();
+    const cookieClubId = cookieStore.get(SELECTED_CLUB_COOKIE)?.value;
+
+    if (!cookieClubId) {
+      return DEFAULT_CLUB_ID;
+    }
+
+    const supabase = createClient();
+
+    // 1) clubs 테이블에 해당 id가 존재하고 status가 active인지 확인
+    const { data: club } = await supabase
+      .from("clubs")
+      .select("id, status")
+      .eq("id", cookieClubId)
+      .maybeSingle();
+
+    if (!club || club.status !== "active") {
+      return DEFAULT_CLUB_ID;
+    }
+
+    // 2) 현재 로그인한 auth user 확인
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      return DEFAULT_CLUB_ID;
+    }
+
+    // 3) 그 club의 member인지 확인
+    const { data: member } = await supabase
+      .from("members")
+      .select("id")
+      .eq("club_id", cookieClubId)
+      .eq("auth_user_id", user.id)
+      .maybeSingle();
+
+    if (!member) {
+      return DEFAULT_CLUB_ID;
+    }
+
+    return cookieClubId;
+  } catch {
+    // 어떤 에러가 나도 예외를 밖으로 던지지 않고 안전하게 폴백한다.
+    return DEFAULT_CLUB_ID;
+  }
 }

@@ -11,7 +11,7 @@ import {
   type AttendanceCheckStatus,
 } from "@/lib/records/attendanceStatus";
 
-import { DEFAULT_CLUB_ID } from "@/lib/current-club";
+import { DEFAULT_CLUB_ID } from "@/lib/club-constants";
 
 const CHEONGWOO_CLUB_ID = DEFAULT_CLUB_ID;
 
