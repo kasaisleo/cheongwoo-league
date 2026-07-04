@@ -15,6 +15,7 @@
  *      - clubs 테이블에 해당 id 존재 + status = 'active'
  *      - 현재 로그인한 auth user 존재
  *      - members 테이블에 club_id + auth_user_id 조합으로 소속 확인
+ *        (is_active=true, is_dormant=false, deleted_at IS NULL인 active member만 인정)
  *   절대 throw하지 않는다 — 모든 에러는 catch에서 DEFAULT_CLUB_ID로 폴백한다
  *   (수십 개 호출부가 이 함수에 의존하므로, 예외를 던지면 앱 전체 장애로
  *   이어질 수 있다).
@@ -54,12 +55,15 @@ export async function getCurrentClubId(): Promise<string> {
       return DEFAULT_CLUB_ID;
     }
 
-    // 3) 그 club의 member인지 확인
+    // 3) 그 club의 active member인지 확인
     const { data: member } = await supabase
       .from("members")
       .select("id")
       .eq("club_id", cookieClubId)
       .eq("auth_user_id", user.id)
+      .eq("is_active", true)
+      .eq("is_dormant", false)
+      .is("deleted_at", null)
       .maybeSingle();
 
     if (!member) {

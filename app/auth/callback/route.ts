@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
-import { getCurrentClubId } from "@/lib/current-club";
+import { SELECTED_CLUB_COOKIE } from "@/lib/club-constants";
 
 /**
  * 카카오 OAuth 콜백.
@@ -13,9 +13,13 @@ import { getCurrentClubId } from "@/lib/current-club";
  *
  * 처리 순서:
  *   1. code → 세션 교환
- *   2. members.auth_user_id 연결 확인
- *   3. 연결됨   → returnUrl or "/"
- *   4. 미연결   → "/auth/pending"
+ *   2. authUser.id 기준으로 members 전체 후보 조회 (club_id로 미리 좁히지 않음)
+ *      — active member 기준: is_active=true, is_dormant=false, deleted_at IS NULL
+ *   3. 후보들의 club_id 목록으로 clubs를 조회해 status='active'인 것만 최종 소속으로 인정
+ *   4. active club 0개   → selected_club_id 쿠키 삭제, "/auth/pending"
+ *   5. active club 1개   → 그 club_id로 selected_club_id 쿠키 세팅, returnUrl or "/"
+ *   6. active club 2개+  → 쿠키를 새로 세팅하지 않음(기존 값 유지 또는 미설정 상태 유지),
+ *                          returnUrl or "/" (클럽 선택 UI는 아직 없음)
  */
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url);
@@ -42,20 +46,57 @@ export async function GET(request: NextRequest) {
 
   const authUser = exchangeData.session.user;
   const supabaseAdmin = createServiceClient();
-  const currentClubId = await getCurrentClubId();
 
-  const { data: existingLinkedMember } = await supabaseAdmin
+  // 2) club_id로 미리 좁히지 않고, 이 auth_user_id의 active member 후보를 전부 조회
+  const { data: memberCandidates } = await supabaseAdmin
     .from("members")
-    .select("id")
+    .select("club_id")
     .eq("auth_user_id", authUser.id)
-    .eq("club_id", currentClubId)
-    .maybeSingle();
+    .eq("is_active", true)
+    .eq("is_dormant", false)
+    .is("deleted_at", null);
 
-  if (existingLinkedMember) {
-    // 연결됨 → returnUrl 또는 홈
-    return NextResponse.redirect(new URL(returnUrl, requestUrl.origin));
+  const candidateClubIds = Array.from(
+    new Set(
+      (memberCandidates ?? [])
+        .map((m) => m.club_id)
+        .filter((id): id is string => Boolean(id))
+    )
+  );
+
+  // 3) 후보 club_id 중 clubs.status = 'active'인 것만 최종 소속으로 인정
+  let activeClubIds: string[] = [];
+  if (candidateClubIds.length > 0) {
+    const { data: activeClubs } = await supabaseAdmin
+      .from("clubs")
+      .select("id")
+      .in("id", candidateClubIds)
+      .eq("status", "active");
+    activeClubIds = (activeClubs ?? []).map((c) => c.id);
   }
 
-  // 미연결 → 대기 페이지 (returnUrl 무시 — 아직 회원이 아님)
-  return NextResponse.redirect(new URL("/auth/pending", requestUrl.origin));
+  // 4) active club 0개 → 미연결. 쿠키를 삭제하고 대기 페이지로.
+  if (activeClubIds.length === 0) {
+    const response = NextResponse.redirect(new URL("/auth/pending", requestUrl.origin));
+    response.cookies.delete(SELECTED_CLUB_COOKIE);
+    return response;
+  }
+
+  // 5) active club 1개 → 그 club_id로 쿠키 세팅 (선택의 모호함이 없음)
+  if (activeClubIds.length === 1) {
+    const response = NextResponse.redirect(new URL(returnUrl, requestUrl.origin));
+    response.cookies.set(SELECTED_CLUB_COOKIE, activeClubIds[0], {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+      path: "/",
+      maxAge: 60 * 60 * 24 * 30,
+    });
+    return response;
+  }
+
+  // 6) active club 2개 이상 → 클럽 선택 UI가 아직 없으므로 쿠키를 새로 세팅하지 않는다.
+  //    기존 쿠키가 activeClubIds 안에 있으면 그대로 유지되고(아무 것도 안 건드리므로),
+  //    없거나 목록 밖이어도 마찬가지로 아무 것도 하지 않는다 — 두 경우 모두 동작이 같다.
+  return NextResponse.redirect(new URL(returnUrl, requestUrl.origin));
 }
