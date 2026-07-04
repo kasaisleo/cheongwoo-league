@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getAdminRole } from "@/lib/admin-auth";
+import { getAdminAccessServer } from "@/lib/admin-permissions";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { getCurrentClubId } from "@/lib/current-club";
 
@@ -9,16 +9,17 @@ import { getCurrentClubId } from "@/lib/current-club";
  * 현재 카카오 로그인 사용자의 permission_role을 "master"로 승격.
  *
  * 실행 조건 (모두 충족해야 함):
- *   1. cw_admin_session role = "owner"
+ *   1. kakaoIsOwner = true (현재 club 기준 카카오 permission_role이 master)
+ *      — cw_admin_session(cookie)만으로는 더 이상 통과하지 않음 (Phase 3C-2C)
  *   2. 카카오 세션 존재
  *   3. 해당 auth.user.id와 연결된 members 레코드 존재
  *
- * 보호 파일(lib/admin-auth.ts, middleware.ts)은 수정하지 않음.
+ * 보호 파일(lib/admin-auth.ts, lib/admin-permissions.ts, middleware.ts)은 수정하지 않음.
  */
 export async function POST() {
-  // 1. cw_admin_session = owner 확인
-  const cookieRole = getAdminRole();
-  if (cookieRole !== "owner") {
+  // 1. kakaoIsOwner 확인 (cw_admin_session은 더 이상 owner 권한으로 인정하지 않음)
+  const access = await getAdminAccessServer();
+  if (!access.kakaoIsOwner) {
     return NextResponse.json(
       { error: "Owner 세션이 필요합니다." },
       { status: 403 }
