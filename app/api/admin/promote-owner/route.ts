@@ -66,7 +66,8 @@ export async function POST() {
   const { error: updateError } = await supabaseAdmin
     .from("members")
     .update({ permission_role: "master" })
-    .eq("id", member.id);
+    .eq("id", member.id)
+    .eq("club_id", currentClubId);
 
   if (updateError) {
     return NextResponse.json(
