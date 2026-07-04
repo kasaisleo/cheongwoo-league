@@ -46,7 +46,7 @@ interface RouteParams {
  */
 export async function PUT(request: NextRequest, { params }: RouteParams) {
   const access = await getAdminAccessServer();
-  if (!access.isAdmin) return Response.json({ error: "관리자 권한이 필요합니다." }, { status: 403 });
+  if (!access.kakaoIsAdmin) return Response.json({ error: "관리자 권한이 필요합니다." }, { status: 403 });
 
   const matchId = params.id;
   const body = (await request.json()) as UpdateMatchBody;
@@ -215,7 +215,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
  */
 export async function DELETE(_request: NextRequest, { params }: RouteParams) {
   const access = await getAdminAccessServer();
-  if (!access.isOwner) return Response.json({ error: "경기 삭제는 master/owner만 가능합니다." }, { status: 403 });
+  if (!access.kakaoIsOwner) return Response.json({ error: "경기 삭제는 master/owner만 가능합니다." }, { status: 403 });
 
   const matchId = params.id;
   const supabase = createServiceClient();
