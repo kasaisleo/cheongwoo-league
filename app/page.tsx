@@ -10,9 +10,9 @@ import { SectionHeader, EmptyState } from "@/components/ui/SectionHeader";
 import { applyRankingQuery } from "@/lib/ranking-query";
 import { isAdminSession } from "@/lib/admin-auth";
 import type { AttendanceSession, MemberWithStats } from "@/lib/supabase/database.types";
+import { getCurrentClubId } from "@/lib/current-club";
 
 const MAIN_SESSION_LIMIT = 5;
-const CHEONGWOO_CLUB_ID = "465ae133-893e-425d-a093-161f7654bd0d";
 
 function thisWeekRange(): { start: string; end: string } {
   const now = new Date();
@@ -30,6 +30,7 @@ function thisWeekRange(): { start: string; end: string } {
 
 export default async function HomePage() {
   const supabase = createClient();
+  const currentClubId = await getCurrentClubId();
   const week = thisWeekRange();
   const today = new Date().toISOString().slice(0, 10);
 
@@ -42,21 +43,21 @@ export default async function HomePage() {
     supabase
       .from("attendance_sessions")
       .select("*")
-      .eq("club_id", CHEONGWOO_CLUB_ID)
+      .eq("club_id", currentClubId)
       .in("status", ["open", "closed"])
       .gte("session_date", today),
 
     supabase
       .from("matches")
       .select(MATCH_SELECT_WITH_PLAYERS)
-      .eq("club_id", CHEONGWOO_CLUB_ID)
+      .eq("club_id", currentClubId)
       .order("created_at", { ascending: false })
       .limit(3),
 
     supabase
       .from("guests")
       .select("*")
-      .eq("club_id", CHEONGWOO_CLUB_ID)
+      .eq("club_id", currentClubId)
       .gte("visit_date", week.start)
       .lte("visit_date", week.end)
       .order("visit_date", { ascending: true }),

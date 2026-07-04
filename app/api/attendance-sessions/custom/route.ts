@@ -2,8 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { getAdminAccessServer } from "@/lib/admin-permissions";
 import type { Member, SessionDay } from "@/lib/supabase/database.types";
-
-const CHEONGWOO_CLUB_ID = "465ae133-893e-425d-a093-161f7654bd0d";
+import { getCurrentClubId } from "@/lib/current-club";
 
 interface CreateCustomSessionBody {
   sessionDate: string;
@@ -37,6 +36,7 @@ export async function POST(request: NextRequest) {
   }
 
   const supabase = createServiceClient();
+  const currentClubId = await getCurrentClubId();
 
   // 같은 날짜+구분으로 이미 open 세션이 있는지 확인 (중복 생성 방지)
   const { data: existingOpen } = await supabase
@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
     .eq("session_date", sessionDate)
     .eq("session_day", sessionDay)
     .eq("status", "open")
-    .eq("club_id", CHEONGWOO_CLUB_ID)
+    .eq("club_id", currentClubId)
     .limit(1);
 
   if (existingOpen && existingOpen.length > 0) {
@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
       session_day: sessionDay,
       title: title.trim(),
       status: "open",
-      club_id: CHEONGWOO_CLUB_ID,
+      club_id: currentClubId,
     })
     .select()
     .single();
@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
     .from("members")
     .select("id")
     .eq("is_active", true)
-    .eq("club_id", CHEONGWOO_CLUB_ID);
+    .eq("club_id", currentClubId);
 
   const members = (activeMembers ?? []) as Pick<Member, "id">[];
 

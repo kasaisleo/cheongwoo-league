@@ -2,8 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/admin-auth";
 import type { MemberGrade } from "@/lib/supabase/database.types";
-
-const CHEONGWOO_CLUB_ID = "465ae133-893e-425d-a093-161f7654bd0d";
+import { getCurrentClubId } from "@/lib/current-club";
 
 interface ConvertGuestBody {
   guestId: string;
@@ -24,13 +23,14 @@ export async function POST(request: NextRequest) {
   }
 
   const supabase = createServiceClient();
+  const currentClubId = await getCurrentClubId();
 
   // 1. 게스트 정보 조회
   const { data: guest, error: fetchError } = await supabase
     .from("guests")
     .select("*")
     .eq("id", guestId)
-    .eq("club_id", CHEONGWOO_CLUB_ID)
+    .eq("club_id", currentClubId)
     .single();
 
   if (fetchError || !guest) {
@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
     .insert({
       name: guest.name,
       nickname: nickname.trim(),
-      club_id: CHEONGWOO_CLUB_ID,
+      club_id: currentClubId,
       grade,
       phone: phone?.trim() || null,
       role: null,
@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
     .from("guests")
     .update({ converted_to_member_id: newMember.id })
     .eq("id", guestId)
-    .eq("club_id", CHEONGWOO_CLUB_ID);
+    .eq("club_id", currentClubId);
 
   return NextResponse.json({ ok: true, memberId: newMember.id });
 }

@@ -2,8 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { getAdminAccessServer } from "@/lib/admin-permissions";
 import type { SessionStatus } from "@/lib/supabase/database.types";
-
-const CHEONGWOO_CLUB_ID = "465ae133-893e-425d-a093-161f7654bd0d";
+import { getCurrentClubId } from "@/lib/current-club";
 
 interface ArchiveSessionBody {
   sessionId: string;
@@ -25,12 +24,13 @@ export async function POST(request: NextRequest) {
   const nextStatus: SessionStatus = targetStatus === "closed" ? "closed" : "archived";
 
   const supabase = createServiceClient();
+  const currentClubId = await getCurrentClubId();
 
   const { error: updateError } = await supabase
     .from("attendance_sessions")
     .update({ status: nextStatus, closed_at: new Date().toISOString() })
     .eq("id", sessionId)
-    .eq("club_id", CHEONGWOO_CLUB_ID);
+    .eq("club_id", currentClubId);
 
   if (updateError) {
     return NextResponse.json(

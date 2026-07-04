@@ -4,8 +4,7 @@ import { requireAdmin, requireRole, getAdminRole } from "@/lib/admin-auth";
 import { getAdminAccessServer } from "@/lib/admin-permissions";
 import { isValidPlayerBackground } from "@/lib/constants/member-timeline";
 import type { MemberGrade, MemberRole } from "@/lib/supabase/database.types";
-
-const CHEONGWOO_CLUB_ID = "465ae133-893e-425d-a093-161f7654bd0d";
+import { getCurrentClubId } from "@/lib/current-club";
 
 interface UpdateMemberBody {
   name?: string;
@@ -90,12 +89,13 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
   }
 
   const supabase = createServiceClient();
+  const currentClubId = await getCurrentClubId();
 
   const { data: existingMember, error: fetchError } = await supabase
     .from("members")
     .select("*")
     .eq("id", memberId)
-    .eq("club_id", CHEONGWOO_CLUB_ID)
+    .eq("club_id", currentClubId)
     .single();
 
   if (fetchError || !existingMember) {
@@ -134,7 +134,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       .from("members")
       .select("id")
       .eq("phone", digitsOnlyPhone)
-      .eq("club_id", CHEONGWOO_CLUB_ID)
+      .eq("club_id", currentClubId)
       .neq("id", memberId)
       .limit(1);
 
@@ -215,7 +215,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     .from("members")
     .update(updates)
     .eq("id", memberId)
-    .eq("club_id", CHEONGWOO_CLUB_ID)
+    .eq("club_id", currentClubId)
     .select()
     .single();
 
@@ -240,12 +240,13 @@ export async function DELETE(_request: NextRequest, { params }: RouteParams) {
 
   const memberId = params.id;
   const supabase = createServiceClient();
+  const currentClubId = await getCurrentClubId();
 
   const { data: existingMember, error: fetchError } = await supabase
     .from("members")
     .select("id")
     .eq("id", memberId)
-    .eq("club_id", CHEONGWOO_CLUB_ID)
+    .eq("club_id", currentClubId)
     .single();
 
   if (fetchError || !existingMember) {
@@ -256,7 +257,7 @@ export async function DELETE(_request: NextRequest, { params }: RouteParams) {
     .from("members")
     .update({ is_active: false, deleted_at: new Date().toISOString() })
     .eq("id", memberId)
-    .eq("club_id", CHEONGWOO_CLUB_ID);
+    .eq("club_id", currentClubId);
 
   if (updateError) {
     return NextResponse.json({ error: "회원 삭제에 실패했습니다." }, { status: 500 });

@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import type { AttendanceStatus } from "@/lib/supabase/database.types";
-
-const CHEONGWOO_CLUB_ID = "465ae133-893e-425d-a093-161f7654bd0d";
+import { getCurrentClubId } from "@/lib/current-club";
 
 // TODO(보안): attendance 테이블의 RLS가 현재 anon insert/update를 허용하고 있어
 // 인증 없이 누구나 직접 DB에 출석을 기록할 수 있는 상태입니다.
@@ -65,6 +64,7 @@ export async function POST(request: NextRequest) {
   // 이하 DB 조작은 service-role로 처리한다 — RLS로 anon에게 쓰기가 열려있지만,
   // 서버에서 본인 확인 후 직접 처리하는 방식이 더 명확하다.
   const admin = createServiceClient();
+  const currentClubId = await getCurrentClubId();
 
   // 3) auth_user_id로 연결된 회원 조회
   const { data: member, error: memberError } = await admin
@@ -87,7 +87,7 @@ export async function POST(request: NextRequest) {
     .from("attendance_sessions")
     .select("id, status, session_date")
     .eq("id", sessionId)
-    .eq("club_id", CHEONGWOO_CLUB_ID)
+    .eq("club_id", currentClubId)
     .maybeSingle();
 
   if (sessionError || !session) {

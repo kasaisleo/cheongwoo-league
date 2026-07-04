@@ -3,8 +3,7 @@ import { createServiceClient } from "@/lib/supabase/server";
 import { getAdminAccessServer } from "@/lib/admin-permissions";
 import { applyMatch } from "@/lib/match-engine";
 import type { Member, Guest } from "@/lib/supabase/database.types";
-
-const CHEONGWOO_CLUB_ID = "465ae133-893e-425d-a093-161f7654bd0d";
+import { getCurrentClubId } from "@/lib/current-club";
 
 interface PlayerInput {
   id: string;
@@ -88,6 +87,7 @@ export async function POST(request: NextRequest) {
   }
 
   const supabase = createServiceClient();
+  const currentClubId = await getCurrentClubId();
 
   // 1. 회원/게스트 선수 정보 조회
   const memberIds = players.filter((p) => !p.isGuest).map((p) => p.id);
@@ -99,7 +99,7 @@ export async function POST(request: NextRequest) {
       .from("members")
       .select("*")
       .in("id", memberIds)
-      .eq("club_id", CHEONGWOO_CLUB_ID);
+      .eq("club_id", currentClubId);
     memberRows = data ?? [];
   }
 
@@ -109,7 +109,7 @@ export async function POST(request: NextRequest) {
       .from("guests")
       .select("*")
       .in("id", guestIds)
-      .eq("club_id", CHEONGWOO_CLUB_ID);
+      .eq("club_id", currentClubId);
     guestRows = data ?? [];
   }
 
@@ -125,7 +125,7 @@ export async function POST(request: NextRequest) {
     .from("attendance_sessions")
     .select("id, status")
     .eq("id", sessionId)
-    .eq("club_id", CHEONGWOO_CLUB_ID)
+    .eq("club_id", currentClubId)
     .single();
 
   if (sessionError || !session) {
@@ -150,7 +150,7 @@ export async function POST(request: NextRequest) {
     .from("matches")
     .insert({
       session_id: sessionId,
-      club_id: CHEONGWOO_CLUB_ID,
+      club_id: currentClubId,
       played_at: playedAt,
       team_a_player1_member: teamAPlayer1.isGuest ? null : teamAPlayer1.id,
       team_a_player1_guest: teamAPlayer1.isGuest ? teamAPlayer1.id : null,

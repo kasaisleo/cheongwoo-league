@@ -2,8 +2,7 @@ import Link from "next/link";
 import { pct, fmtPct } from "@/lib/records/dashboardUtils";
 import { createClient } from "@/lib/supabase/server";
 import { MATCH_SESSION_DAY_LABEL } from "@/lib/match-session-label";
-
-const CHEONGWOO_CLUB_ID = "465ae133-893e-425d-a093-161f7654bd0d";
+import { getCurrentClubId } from "@/lib/current-club";
 
 // ── 매치명 헬퍼 ─────────────────────────────────────────────────
 function matchTitle(s: { session_day: string; title: string }) {
@@ -14,6 +13,7 @@ function matchTitle(s: { session_day: string; title: string }) {
 // ── 페이지 ──────────────────────────────────────────────────────
 export default async function MemberRecordPage({ params }: { params: { id: string } }) {
   const supabase = createClient();
+  const currentClubId = await getCurrentClubId();
   const memberId = params.id;
   const today = new Date().toISOString().slice(0, 10);
 
@@ -25,12 +25,12 @@ export default async function MemberRecordPage({ params }: { params: { id: strin
     { data: pointHistory },
     { data: allMembers },
   ] = await Promise.all([
-    supabase.from("members").select("id, name, member_type, league_point").eq("id", memberId).eq("club_id", CHEONGWOO_CLUB_ID).maybeSingle(),
-    supabase.from("matches").select("*").eq("club_id", CHEONGWOO_CLUB_ID).order("played_at", { ascending: false }),
+    supabase.from("members").select("id, name, member_type, league_point").eq("id", memberId).eq("club_id", currentClubId).maybeSingle(),
+    supabase.from("matches").select("*").eq("club_id", currentClubId).order("played_at", { ascending: false }),
     supabase.from("attendance").select("session_id, status").eq("member_id", memberId),
-    supabase.from("attendance_sessions").select("id, title, session_date, session_day, status").eq("club_id", CHEONGWOO_CLUB_ID).neq("status", "archived"),
+    supabase.from("attendance_sessions").select("id, title, session_date, session_day, status").eq("club_id", currentClubId).neq("status", "archived"),
     supabase.from("point_history").select("*").eq("member_id", memberId).order("created_at", { ascending: true }),
-    supabase.from("members").select("id, name").eq("is_active", true).eq("club_id", CHEONGWOO_CLUB_ID),
+    supabase.from("members").select("id, name").eq("is_active", true).eq("club_id", currentClubId),
   ]);
 
   if (!member) {

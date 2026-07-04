@@ -6,8 +6,7 @@ import { MATCH_SESSION_DAY_FILTERS, MATCH_SESSION_DAY_LABEL } from "@/lib/match-
 import { isAdminSession } from "@/lib/admin-auth";
 import { EmptyState } from "@/components/ui/SectionHeader";
 import type { Member, SessionDay } from "@/lib/supabase/database.types";
-
-const CHEONGWOO_CLUB_ID = "465ae133-893e-425d-a093-161f7654bd0d";
+import { getCurrentClubId } from "@/lib/current-club";
 
 /**
  * Matches Page v2 — Step 17-3 Filter Hierarchy Recovery.
@@ -37,6 +36,7 @@ function isValidSessionType(value: string | undefined): value is SessionDay {
 
 export default async function MatchesPage({ searchParams }: MatchesPageProps) {
   const supabase = createClient();
+  const currentClubId = await getCurrentClubId();
   const filterMemberId = searchParams.member;
   const filterSessionType = isValidSessionType(searchParams.sessionType)
     ? searchParams.sessionType
@@ -53,7 +53,7 @@ export default async function MatchesPage({ searchParams }: MatchesPageProps) {
       .from("attendance_sessions")
       .select("id")
       .eq("session_day", filterSessionType)
-      .eq("club_id", CHEONGWOO_CLUB_ID);
+      .eq("club_id", currentClubId);
     sessionIdsForType = (sessionRows ?? []).map((s) => s.id);
   }
 
@@ -61,13 +61,13 @@ export default async function MatchesPage({ searchParams }: MatchesPageProps) {
     .from("members")
     .select("id, name")
     .eq("is_active", true)
-    .eq("club_id", CHEONGWOO_CLUB_ID)
+    .eq("club_id", currentClubId)
     .order("name");
 
   let matchesQuery = supabase
     .from("matches")
     .select(MATCH_SELECT_WITH_PLAYERS)
-    .eq("club_id", CHEONGWOO_CLUB_ID)
+    .eq("club_id", currentClubId)
     .order("played_at", { ascending: false })
     .order("created_at", { ascending: false });
 

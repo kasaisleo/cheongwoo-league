@@ -2,8 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { requireRole } from "@/lib/admin-auth";
 import type { StagingMember } from "@/lib/supabase/database.types";
-
-const CHEONGWOO_CLUB_ID = "465ae133-893e-425d-a093-161f7654bd0d";
+import { getCurrentClubId } from "@/lib/current-club";
 
 interface CommitImportBody {
   stagingIds: string[];
@@ -29,6 +28,7 @@ export async function POST(request: NextRequest) {
   }
 
   const supabase = createServiceClient();
+  const currentClubId = await getCurrentClubId();
 
   const { data: rows, error: fetchError } = await supabase
     .from("staging_members")
@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
   const memberInserts = (rows as StagingMember[]).map((r) => ({
     name: r.normalized_name!,
     nickname: r.normalized_nickname || r.normalized_name!,
-    club_id: CHEONGWOO_CLUB_ID,
+    club_id: currentClubId,
     phone: r.normalized_phone,
     grade: "C" as const,
     role: null,

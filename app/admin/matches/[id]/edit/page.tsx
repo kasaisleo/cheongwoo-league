@@ -2,8 +2,7 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { MATCH_SELECT_WITH_PLAYERS, toDisplayMatches } from "@/lib/match-display";
 import { EditMatchPageClient } from "./EditMatchPageClient";
-
-const CHEONGWOO_CLUB_ID = "465ae133-893e-425d-a093-161f7654bd0d";
+import { getCurrentClubId } from "@/lib/current-club";
 
 /**
  * /admin/matches/[id]/edit — 경기 수정 페이지 (서버 컴포넌트).
@@ -17,12 +16,13 @@ interface PageProps {
 
 export default async function EditMatchPage({ params }: PageProps) {
   const supabase = createClient();
+  const currentClubId = await getCurrentClubId();
 
   const { data: raw } = await supabase
     .from("matches")
     .select(MATCH_SELECT_WITH_PLAYERS)
     .eq("id", params.id)
-    .eq("club_id", CHEONGWOO_CLUB_ID)
+    .eq("club_id", currentClubId)
     .maybeSingle();
 
   if (!raw) notFound();

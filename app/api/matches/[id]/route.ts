@@ -3,8 +3,7 @@ import { createServiceClient } from "@/lib/supabase/server";
 import { getAdminAccessServer } from "@/lib/admin-permissions";
 import { applyMatch, rollbackMatch } from "@/lib/match-engine";
 import type { Match, Member, Guest } from "@/lib/supabase/database.types";
-
-const CHEONGWOO_CLUB_ID = "465ae133-893e-425d-a093-161f7654bd0d";
+import { getCurrentClubId } from "@/lib/current-club";
 
 interface PlayerInput {
   id: string;
@@ -96,13 +95,14 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
   }
 
   const supabase = createServiceClient();
+  const currentClubId = await getCurrentClubId();
 
   // 0. 기존 경기 조회
   const { data: existingMatch, error: fetchError } = await supabase
     .from("matches")
     .select("*")
     .eq("id", matchId)
-    .eq("club_id", CHEONGWOO_CLUB_ID)
+    .eq("club_id", currentClubId)
     .single();
 
   if (fetchError || !existingMatch) {
@@ -119,7 +119,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       .from("members")
       .select("*")
       .in("id", memberIds)
-      .eq("club_id", CHEONGWOO_CLUB_ID);
+      .eq("club_id", currentClubId);
     memberRows = data ?? [];
   }
 
@@ -129,7 +129,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       .from("guests")
       .select("*")
       .in("id", guestIds)
-      .eq("club_id", CHEONGWOO_CLUB_ID);
+      .eq("club_id", currentClubId);
     guestRows = data ?? [];
   }
 
@@ -146,7 +146,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       .from("attendance_sessions")
       .select("id, status")
       .eq("id", sessionId)
-      .eq("club_id", CHEONGWOO_CLUB_ID)
+      .eq("club_id", currentClubId)
       .single();
 
     if (sessionError || !session) {
@@ -187,7 +187,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       winner_team: winnerTeam,
     })
     .eq("id", matchId)
-    .eq("club_id", CHEONGWOO_CLUB_ID)
+    .eq("club_id", currentClubId)
     .select()
     .single();
 
@@ -219,12 +219,13 @@ export async function DELETE(_request: NextRequest, { params }: RouteParams) {
 
   const matchId = params.id;
   const supabase = createServiceClient();
+  const currentClubId = await getCurrentClubId();
 
   const { data: existingMatch, error: fetchError } = await supabase
     .from("matches")
     .select("*")
     .eq("id", matchId)
-    .eq("club_id", CHEONGWOO_CLUB_ID)
+    .eq("club_id", currentClubId)
     .single();
 
   if (fetchError || !existingMatch) {
@@ -240,7 +241,7 @@ export async function DELETE(_request: NextRequest, { params }: RouteParams) {
     .from("matches")
     .delete()
     .eq("id", matchId)
-    .eq("club_id", CHEONGWOO_CLUB_ID);
+    .eq("club_id", currentClubId);
 
   if (deleteError) {
     // 삭제 자체가 실패하면, 되돌렸던 효과를 다시 적용해 정합성을 복구한다.

@@ -3,8 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getAdminAccessServer } from "@/lib/admin-permissions";
 import { AdminLoginForm } from "@/components/admin/AdminLoginForm";
 import { FullSignOutButton } from "@/components/admin/FullSignOutButton";
-
-const CHEONGWOO_CLUB_ID = "465ae133-893e-425d-a093-161f7654bd0d";
+import { getCurrentClubId } from "@/lib/current-club";
 
 /**
  * /admin page — 서버 컴포넌트.
@@ -20,6 +19,7 @@ const CHEONGWOO_CLUB_ID = "465ae133-893e-425d-a093-161f7654bd0d";
  */
 async function getAdminDashboardData() {
   const supabase = createClient();
+  const currentClubId = await getCurrentClubId();
   const today = new Date().toISOString().slice(0, 10);
 
   const [
@@ -28,10 +28,10 @@ async function getAdminDashboardData() {
     { data: recentMatches },
     { data: todaySessions },
   ] = await Promise.all([
-    supabase.from("members").select("*", { count: "exact", head: true }).eq("is_active", true).eq("is_dormant", false).eq("club_id", CHEONGWOO_CLUB_ID),
-    supabase.from("members").select("*", { count: "exact", head: true }).in("permission_role", ["manager", "admin", "master"]),
-    supabase.from("matches").select("played_at, winner_team, score_a, score_b").eq("club_id", CHEONGWOO_CLUB_ID).order("played_at", { ascending: false }).limit(3),
-    supabase.from("attendance_sessions").select("id, title, session_day").eq("club_id", CHEONGWOO_CLUB_ID).in("status", ["open", "closed"]).eq("session_date", today),
+    supabase.from("members").select("*", { count: "exact", head: true }).eq("is_active", true).eq("is_dormant", false).eq("club_id", currentClubId),
+    supabase.from("members").select("*", { count: "exact", head: true }).in("permission_role", ["manager", "admin", "master"]).eq("club_id", currentClubId),
+    supabase.from("matches").select("played_at, winner_team, score_a, score_b").eq("club_id", currentClubId).order("played_at", { ascending: false }).limit(3),
+    supabase.from("attendance_sessions").select("id, title, session_day").eq("club_id", currentClubId).in("status", ["open", "closed"]).eq("session_date", today),
   ]);
 
   let todayAttending = 0;

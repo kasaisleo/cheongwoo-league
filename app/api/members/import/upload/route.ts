@@ -3,8 +3,7 @@ import * as XLSX from "xlsx";
 import { createServiceClient } from "@/lib/supabase/server";
 import { requireRole } from "@/lib/admin-auth";
 import { normalizeStagingRow, normalizePhone } from "@/lib/member-import";
-
-const CHEONGWOO_CLUB_ID = "465ae133-893e-425d-a093-161f7654bd0d";
+import { getCurrentClubId } from "@/lib/current-club";
 
 /**
  * CSV/XLSX 파일을 업로드받아 파싱하고, staging_members에 저장한다.
@@ -94,6 +93,7 @@ export async function POST(request: NextRequest) {
   }
 
   const supabase = createServiceClient();
+  const currentClubId = await getCurrentClubId();
 
   // 새 파일 업로드 시작 — staging_members는 임시 작업 공간(working table)이다.
   // 이력 보존 용도로 쓰지 않으므로, 새 업로드 시작 시 기존 데이터를 전부 비운다.
@@ -105,7 +105,7 @@ export async function POST(request: NextRequest) {
   const { data: existingMembers } = await supabase
     .from("members")
     .select("id, phone")
-    .eq("club_id", CHEONGWOO_CLUB_ID);
+    .eq("club_id", currentClubId);
   const phoneToMemberId = new Map(
     (existingMembers ?? [])
       .filter((m) => m.phone)

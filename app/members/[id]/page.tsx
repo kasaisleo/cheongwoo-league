@@ -23,8 +23,7 @@ import {
 } from "@/lib/member-activity";
 import { notFound } from "next/navigation";
 import type { MemberWithStats } from "@/lib/supabase/database.types";
-
-const CHEONGWOO_CLUB_ID = "465ae133-893e-425d-a093-161f7654bd0d";
+import { getCurrentClubId } from "@/lib/current-club";
 
 interface MemberDetailPageProps {
   params: { id: string };
@@ -44,12 +43,13 @@ const SESSION_STATUS_LABEL: Record<string, string> = {
 
 export default async function MemberDetailPage({ params }: MemberDetailPageProps) {
   const supabase = createClient();
+  const currentClubId = await getCurrentClubId();
 
   const { data: member } = await supabase
     .from("member_stats")
     .select("*")
     .eq("id", params.id)
-    .eq("club_id", CHEONGWOO_CLUB_ID)
+    .eq("club_id", currentClubId)
     .single();
 
   if (!member) {

@@ -4,8 +4,7 @@ import { MATCH_SELECT_WITH_PLAYERS, toDisplayMatches } from "@/lib/match-display
 import { getAdminAccessServer } from "@/lib/admin-permissions";
 import { SessionMatchCard, type SessionGroup } from "./SessionMatchCard";
 import type { SessionDay } from "@/lib/supabase/database.types";
-
-const CHEONGWOO_CLUB_ID = "465ae133-893e-425d-a093-161f7654bd0d";
+import { getCurrentClubId } from "@/lib/current-club";
 
 /**
  * /admin/matches — 매치별 경기 히스토리 관리 허브.
@@ -29,6 +28,7 @@ interface PageProps {
 export default async function AdminMatchesPage({ searchParams }: PageProps) {
   const access = await getAdminAccessServer();
   const supabase = createClient();
+  const currentClubId = await getCurrentClubId();
   const today = new Date().toISOString().slice(0, 10);
 
   const rawType = searchParams.sessionType ?? "all";
@@ -40,7 +40,7 @@ export default async function AdminMatchesPage({ searchParams }: PageProps) {
   let sessionQuery = supabase
     .from("attendance_sessions")
     .select("id, title, session_date, session_day, status")
-    .eq("club_id", CHEONGWOO_CLUB_ID)
+    .eq("club_id", currentClubId)
     .neq("status", "archived")
     .order("session_date", { ascending: false })
     .limit(40);
@@ -109,7 +109,7 @@ export default async function AdminMatchesPage({ searchParams }: PageProps) {
     .from("members")
     .select("id", { count: "exact", head: true })
     .eq("is_active", true)
-    .eq("club_id", CHEONGWOO_CLUB_ID);
+    .eq("club_id", currentClubId);
 
   const attendBySession = new Map<string, { attending: number; undecided: number; absent: number }>();
   for (const row of attendRows ?? []) {

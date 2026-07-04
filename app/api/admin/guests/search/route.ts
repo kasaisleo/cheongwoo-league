@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getAdminAccessServer } from "@/lib/admin-permissions";
-
-const CHEONGWOO_CLUB_ID = "465ae133-893e-425d-a093-161f7654bd0d";
+import { getCurrentClubId } from "@/lib/current-club";
 
 /**
  * GET /api/admin/guests/search?q=...
@@ -19,11 +18,12 @@ export async function GET(request: NextRequest) {
   if (!q) return NextResponse.json({ guests: [] });
 
   const supabase = createClient();
+  const currentClubId = await getCurrentClubId();
   const { data } = await supabase
     .from("guests")
     .select("id, name, phone")
     .eq("is_active", true)
-    .eq("club_id", CHEONGWOO_CLUB_ID)
+    .eq("club_id", currentClubId)
     .is("converted_to_member_id", null)
     .ilike("name", `%${q}%`)
     .order("name")

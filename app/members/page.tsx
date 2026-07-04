@@ -3,16 +3,16 @@ import { createClient } from "@/lib/supabase/server";
 import { MemberList } from "@/components/member/MemberList";
 import { getAdminRole } from "@/lib/admin-auth";
 import type { MemberWithStats } from "@/lib/supabase/database.types";
-
-const CHEONGWOO_CLUB_ID = "465ae133-893e-425d-a093-161f7654bd0d";
+import { getCurrentClubId } from "@/lib/current-club";
 
 export default async function MembersPage() {
   const supabase = createClient();
+  const currentClubId = await getCurrentClubId();
   const { data } = await supabase
     .from("member_stats")
     .select("*")
     .eq("is_active", true)
-    .eq("club_id", CHEONGWOO_CLUB_ID)
+    .eq("club_id", currentClubId)
     .order("league_point", { ascending: false })
     .order("nickname");
 

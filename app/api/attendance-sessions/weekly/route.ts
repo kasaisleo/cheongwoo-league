@@ -2,8 +2,7 @@ import { NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { getAdminAccessServer } from "@/lib/admin-permissions";
 import type { Member } from "@/lib/supabase/database.types";
-
-const CHEONGWOO_CLUB_ID = "465ae133-893e-425d-a093-161f7654bd0d";
+import { getCurrentClubId } from "@/lib/current-club";
 
 /**
  * "이번 주 출석 세션 생성" 버튼이 호출하는 API.
@@ -34,6 +33,7 @@ export async function POST() {
   if (!access.isAdmin) return Response.json({ error: "관리자 권한이 필요합니다." }, { status: 403 });
 
   const supabase = createServiceClient();
+  const currentClubId = await getCurrentClubId();
   const today = new Date();
   const saturdayDate = toDateString(nextWeekday(today, 6));
   const sundayDate = toDateString(nextWeekday(today, 0));
@@ -42,7 +42,7 @@ export async function POST() {
   const { data: existingOpen } = await supabase
     .from("attendance_sessions")
     .select("id, session_date, session_day")
-    .eq("club_id", CHEONGWOO_CLUB_ID)
+    .eq("club_id", currentClubId)
     .in("session_day", ["saturday", "sunday"])
     .eq("status", "open");
 
@@ -63,7 +63,7 @@ export async function POST() {
   await supabase
     .from("attendance_sessions")
     .update({ status: "archived", closed_at: new Date().toISOString() })
-    .eq("club_id", CHEONGWOO_CLUB_ID)
+    .eq("club_id", currentClubId)
     .in("session_day", ["saturday", "sunday"])
     .eq("status", "open");
 
@@ -71,8 +71,8 @@ export async function POST() {
   const { data: newSessions, error: insertError } = await supabase
     .from("attendance_sessions")
     .insert([
-      { session_date: saturdayDate, session_day: "saturday", title: `${saturdayDate} 토요 정기운동`, status: "open", club_id: CHEONGWOO_CLUB_ID },
-      { session_date: sundayDate, session_day: "sunday", title: `${sundayDate} 일요 정기운동`, status: "open", club_id: CHEONGWOO_CLUB_ID },
+      { session_date: saturdayDate, session_day: "saturday", title: `${saturdayDate} 토요 정기운동`, status: "open", club_id: currentClubId },
+      { session_date: sundayDate, session_day: "sunday", title: `${sundayDate} 일요 정기운동`, status: "open", club_id: currentClubId },
     ])
     .select();
 
@@ -85,7 +85,7 @@ export async function POST() {
     .from("members")
     .select("id")
     .eq("is_active", true)
-    .eq("club_id", CHEONGWOO_CLUB_ID);
+    .eq("club_id", currentClubId);
 
   const members = (activeMembers ?? []) as Pick<Member, "id">[];
 
