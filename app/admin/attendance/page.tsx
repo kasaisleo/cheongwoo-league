@@ -14,7 +14,9 @@ import { MATCH_SESSION_DAY_LABEL, fetchActiveSessions } from "@/lib/match-sessio
 import type { AttendanceStatus, AttendanceSession, Member } from "@/lib/supabase/database.types";
 import TennisBallLoader from "@/components/common/TennisBallLoader";
 
-const CHEONGWOO_CLUB_ID = "465ae133-893e-425d-a093-161f7654bd0d";
+import { DEFAULT_CLUB_ID } from "@/lib/current-club";
+
+const CHEONGWOO_CLUB_ID = DEFAULT_CLUB_ID;
 
 /**
  * /admin/attendance — 운영진 전용 출석 관리 페이지.

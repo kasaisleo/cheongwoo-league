@@ -5,7 +5,9 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import type { MemberType } from "@/lib/supabase/database.types";
 
-const CHEONGWOO_CLUB_ID = "465ae133-893e-425d-a093-161f7654bd0d";
+import { DEFAULT_CLUB_ID } from "@/lib/current-club";
+
+const CHEONGWOO_CLUB_ID = DEFAULT_CLUB_ID;
 
 // ── 타입 ────────────────────────────────────────────────────────
 interface PlayerRecord {

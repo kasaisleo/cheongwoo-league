@@ -9,7 +9,9 @@ import { MATCH_SELECT_WITH_PLAYERS, toDisplayMatches, type DisplayMatch } from "
 import type { User } from "@supabase/supabase-js";
 import type { MemberWithStats } from "@/lib/supabase/database.types";
 
-const CHEONGWOO_CLUB_ID = "465ae133-893e-425d-a093-161f7654bd0d";
+import { DEFAULT_CLUB_ID } from "@/lib/current-club";
+
+const CHEONGWOO_CLUB_ID = DEFAULT_CLUB_ID;
 
 /**
  * 마이페이지 v5 — 개인 기록 기준 통일 (관리자 기록 영역 기준 맞춤).

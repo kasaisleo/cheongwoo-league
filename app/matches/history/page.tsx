@@ -8,7 +8,9 @@ import { MATCH_SESSION_DAY_LABEL } from "@/lib/match-session-label";
 import { useIsAdmin } from "@/lib/hooks/useIsAdmin";
 import type { AttendanceSession, MemberType } from "@/lib/supabase/database.types";
 
-const CHEONGWOO_CLUB_ID = "465ae133-893e-425d-a093-161f7654bd0d";
+import { DEFAULT_CLUB_ID } from "@/lib/current-club";
+
+const CHEONGWOO_CLUB_ID = DEFAULT_CLUB_ID;
 
 // ── 타입 ─────────────────────────────────────────────────────────
 interface SessionSummary {

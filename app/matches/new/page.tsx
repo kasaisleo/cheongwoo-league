@@ -15,7 +15,9 @@ import type { SessionDay } from "@/lib/supabase/database.types";
 import type { Member, Guest, AttendanceSession } from "@/lib/supabase/database.types";
 import TennisBallLoader from "@/components/common/TennisBallLoader";
 
-const CHEONGWOO_CLUB_ID = "465ae133-893e-425d-a093-161f7654bd0d";
+import { DEFAULT_CLUB_ID } from "@/lib/current-club";
+
+const CHEONGWOO_CLUB_ID = DEFAULT_CLUB_ID;
 type GuestModalTarget = "teamAPlayer1" | "teamAPlayer2" | "teamBPlayer1" | "teamBPlayer2";
 
 interface SessionAttendees {

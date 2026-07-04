@@ -8,7 +8,9 @@ import { judgeMatchStatus, type MatchStatus } from "@/lib/records/matchStatus";
 import { pct, fmtPct } from "@/lib/records/dashboardUtils";
 import type { AttendanceStatus } from "@/lib/supabase/database.types";
 
-const CHEONGWOO_CLUB_ID = "465ae133-893e-425d-a093-161f7654bd0d";
+import { DEFAULT_CLUB_ID } from "@/lib/current-club";
+
+const CHEONGWOO_CLUB_ID = DEFAULT_CLUB_ID;
 
 
 const STATUS_STYLE: Record<MatchStatus, string> = {

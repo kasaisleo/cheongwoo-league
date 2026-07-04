@@ -11,7 +11,9 @@ import {
   type AttendanceCheckStatus,
 } from "@/lib/records/attendanceStatus";
 
-const CHEONGWOO_CLUB_ID = "465ae133-893e-425d-a093-161f7654bd0d";
+import { DEFAULT_CLUB_ID } from "@/lib/current-club";
+
+const CHEONGWOO_CLUB_ID = DEFAULT_CLUB_ID;
 
 // ── 선수별 출석 상태 ──────────────────────────────────────────────
 type PlayerAttendStatus = "출석" | "미정" | "불참" | "미응답" | "출석 후 미참여";

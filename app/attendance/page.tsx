@@ -17,7 +17,9 @@ import { useAdminRole } from "@/lib/hooks/useAdminRole";
 import type { AttendanceStatus, AttendanceSession, Member } from "@/lib/supabase/database.types";
 
 const MIN_REQUIRED_PLAYERS = 4;
-const CHEONGWOO_CLUB_ID = "465ae133-893e-425d-a093-161f7654bd0d";
+import { DEFAULT_CLUB_ID } from "@/lib/current-club";
+
+const CHEONGWOO_CLUB_ID = DEFAULT_CLUB_ID;
 
 function todayString(): string {
   return new Date().toISOString().slice(0, 10);

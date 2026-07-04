@@ -5,7 +5,9 @@ import { ConvertGuestButton } from "@/components/guest/ConvertGuestButton";
 import { GuestAdminActions } from "@/components/guest/GuestAdminActions";
 import type { GuestWithStats, Member } from "@/lib/supabase/database.types";
 
-const CHEONGWOO_CLUB_ID = "465ae133-893e-425d-a093-161f7654bd0d";
+import { DEFAULT_CLUB_ID } from "@/lib/current-club";
+
+const CHEONGWOO_CLUB_ID = DEFAULT_CLUB_ID;
 
 type GuestWithReferrer = GuestWithStats & {
   referrer: Pick<Member, "nickname"> | null;

@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { DEFAULT_CLUB_ID } from "@/lib/current-club";
 
-const CHEONGWOO_CLUB_ID = "465ae133-893e-425d-a093-161f7654bd0d";
+const CHEONGWOO_CLUB_ID = DEFAULT_CLUB_ID;
 
 /**
  * ranking-query.ts 랭킹 조회 공통 함수.

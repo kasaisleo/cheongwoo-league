@@ -15,7 +15,9 @@ import { TEAM_LABEL, winnerLabel, scoreLabel } from "@/lib/match-team-labels";
 import type { DisplayMatch } from "@/lib/match-display";
 import type { Member, Guest, AttendanceSession } from "@/lib/supabase/database.types";
 
-const CHEONGWOO_CLUB_ID = "465ae133-893e-425d-a093-161f7654bd0d";
+import { DEFAULT_CLUB_ID } from "@/lib/current-club";
+
+const CHEONGWOO_CLUB_ID = DEFAULT_CLUB_ID;
 
 type Slot = "teamAPlayer1" | "teamAPlayer2" | "teamBPlayer1" | "teamBPlayer2";
 
