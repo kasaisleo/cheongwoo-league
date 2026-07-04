@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getAdminRole } from "@/lib/admin-auth";
+import { getCurrentClubId } from "@/lib/current-club";
 
 /**
  * GET /api/admin/debug-access
@@ -18,6 +19,7 @@ import { getAdminRole } from "@/lib/admin-auth";
  */
 export async function GET() {
   const supabase = createClient();
+  const currentClubId = await getCurrentClubId();
 
   // 1. cw_admin_session 쿠키 기반 role
   let cookieRole: string | null = null;
@@ -63,6 +65,7 @@ export async function GET() {
         .from("members")
         .select("id, permission_role, name, auth_user_id")
         .eq("auth_user_id", queryUserId)
+        .eq("club_id", currentClubId)
         .maybeSingle();
       memberId  = member?.id ?? null;
       kakaoRole = member?.permission_role ?? null;

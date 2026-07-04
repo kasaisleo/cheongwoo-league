@@ -81,6 +81,7 @@ export default function MyPage() {
           .from("member_stats")
           .select("*")
           .eq("auth_user_id", user.id)
+          .eq("club_id", DEFAULT_CLUB_ID)
           .maybeSingle();
 
         const typedMember = memberData as MemberWithStats | null;

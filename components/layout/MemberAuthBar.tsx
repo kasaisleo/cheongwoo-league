@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import type { User } from "@supabase/supabase-js";
 import type { AdminRole } from "@/lib/admin-auth";
 import type { PermissionRole } from "@/lib/supabase/database.types";
+import { DEFAULT_CLUB_ID } from "@/lib/current-club";
 
 interface MemberInfo {
   id: string;
@@ -77,6 +78,7 @@ export function MemberAuthBar() {
           .from("members")
           .select("id, nickname, name, permission_role")
           .eq("auth_user_id", authUser.id)
+          .eq("club_id", DEFAULT_CLUB_ID)
           .maybeSingle();
         setMember(data ?? null);
       } catch {

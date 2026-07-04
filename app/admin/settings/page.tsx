@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useAdminAccess } from "@/lib/hooks/useAdminAccess";
 import { toast } from "@/components/ui/Toast";
+import { DEFAULT_CLUB_ID } from "@/lib/current-club";
 
 interface AdminMember {
   id: string;
@@ -68,7 +69,7 @@ export default function SettingsPage() {
       let kakaoName: string | null = null;
       if (session) {
         const { data: member } = await supabase
-          .from("members").select("name").eq("auth_user_id", session.user.id).maybeSingle();
+          .from("members").select("name").eq("auth_user_id", session.user.id).eq("club_id", DEFAULT_CLUB_ID).maybeSingle();
         kakaoName = member?.name ?? null;
       }
       setAuth({

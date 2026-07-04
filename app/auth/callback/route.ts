@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
+import { getCurrentClubId } from "@/lib/current-club";
 
 /**
  * 카카오 OAuth 콜백.
@@ -41,11 +42,13 @@ export async function GET(request: NextRequest) {
 
   const authUser = exchangeData.session.user;
   const supabaseAdmin = createServiceClient();
+  const currentClubId = await getCurrentClubId();
 
   const { data: existingLinkedMember } = await supabaseAdmin
     .from("members")
     .select("id")
     .eq("auth_user_id", authUser.id)
+    .eq("club_id", currentClubId)
     .maybeSingle();
 
   if (existingLinkedMember) {

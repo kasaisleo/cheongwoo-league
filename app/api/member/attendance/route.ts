@@ -71,6 +71,7 @@ export async function POST(request: NextRequest) {
     .from("members")
     .select("id")
     .eq("auth_user_id", user.id)
+    .eq("club_id", currentClubId)
     .maybeSingle();
 
   if (memberError || !member) {
