@@ -9,8 +9,10 @@ export type AdminSource  = "owner-cookie" | "kakao" | "none";
 export type CookieRole   = "owner" | "manager" | null;
 
 export interface AdminAccess {
-  isAdmin:    boolean;
-  isOwner:    boolean;
+  isAdmin:       boolean;
+  isOwner:       boolean;
+  kakaoIsAdmin?: boolean;  // kakaoRole 단독 기준 admin 판정 (cw_admin_session 무관, Phase 3C-2C 발판)
+  kakaoIsOwner?: boolean;  // kakaoRole 단독 기준 owner 판정 (cw_admin_session 무관, Phase 3C-2C 발판)
   source:     AdminSource;
   cookieRole: CookieRole;
   kakaoRole:  string | null;   // PermissionRole 값 ("member"|"scorer"|"manager"|"admin"|"master")
@@ -23,6 +25,6 @@ export const KAKAO_ADMIN_ROLES   = ["manager", "admin", "master"]   as const;
 export const KAKAO_OWNER_ROLE    = "master"                         as const;
 
 export const EMPTY_ACCESS: AdminAccess = {
-  isAdmin: false, isOwner: false, source: "none",
+  isAdmin: false, isOwner: false, kakaoIsAdmin: false, kakaoIsOwner: false, source: "none",
   cookieRole: null, kakaoRole: null, userId: null, memberId: null,
 };

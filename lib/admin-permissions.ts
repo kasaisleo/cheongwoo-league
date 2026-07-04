@@ -72,7 +72,7 @@ export async function getAdminAccessServer(): Promise<AdminAccess> {
 
   const source = cookieIsAdmin ? "owner-cookie" : kakaoIsAdmin ? "kakao" : "none";
 
-  return { isAdmin, isOwner, source, cookieRole, kakaoRole, userId, memberId };
+  return { isAdmin, isOwner, kakaoIsAdmin, kakaoIsOwner, source, cookieRole, kakaoRole, userId, memberId };
 }
 
 /**
