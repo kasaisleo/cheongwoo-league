@@ -11,6 +11,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { getAdminRole } from "@/lib/admin-auth";
 import { redirect } from "next/navigation";
+import { getCurrentClubId } from "@/lib/current-club";
 import {
   COOKIE_ADMIN_ROLES,
   KAKAO_ADMIN_ROLES,
@@ -43,6 +44,7 @@ export async function getAdminAccessServer(): Promise<AdminAccess> {
 
   try {
     const supabase = createClient();
+    const currentClubId = await getCurrentClubId();
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
       userId = user.id;
@@ -50,6 +52,7 @@ export async function getAdminAccessServer(): Promise<AdminAccess> {
         .from("members")
         .select("id, permission_role")
         .eq("auth_user_id", user.id)
+        .eq("club_id", currentClubId)
         .maybeSingle();
       if (member) {
         kakaoRole = member.permission_role;

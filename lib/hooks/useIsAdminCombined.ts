@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { DEFAULT_CLUB_ID } from "@/lib/current-club";
 
 const KAKAO_ADMIN_ROLES = ["manager", "admin", "master"];
 
@@ -52,6 +53,7 @@ export function useIsAdminCombined(): boolean | null {
           .from("members")
           .select("permission_role")
           .eq("auth_user_id", session.user.id)
+          .eq("club_id", DEFAULT_CLUB_ID)
           .maybeSingle();
         const kakaoAdmin = KAKAO_ADMIN_ROLES.includes(member?.permission_role ?? "");
         if (!cancelled) setResult(kakaoAdmin);

@@ -9,6 +9,7 @@ import {
   type AdminAccess,
   type CookieRole,
 } from "@/lib/admin-permission-types";
+import { DEFAULT_CLUB_ID } from "@/lib/current-club";
 
 /**
  * useAdminAccess() — 클라이언트 컴포넌트 전용 통합 관리자 권한 훅.
@@ -59,6 +60,7 @@ export function useAdminAccess(): AdminAccess | null {
             .from("members")
             .select("id, permission_role")
             .eq("auth_user_id", session.user.id)
+            .eq("club_id", DEFAULT_CLUB_ID)
             .maybeSingle();
           if (member) {
             kakaoRole = member.permission_role as string;
