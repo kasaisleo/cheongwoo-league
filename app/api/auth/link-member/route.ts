@@ -22,7 +22,7 @@ interface LinkMemberBody {
  */
 export async function POST(request: NextRequest) {
   const access = await getAdminAccessServer();
-  if (!access.isOwner) return Response.json({ error: "Owner 또는 master 권한이 필요합니다." }, { status: 403 });
+  if (!access.kakaoIsOwner) return Response.json({ error: "Owner 또는 master 권한이 필요합니다." }, { status: 403 });
 
   let body: LinkMemberBody;
   try {
