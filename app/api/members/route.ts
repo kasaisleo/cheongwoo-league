@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
-import { requireAdmin, getAdminRole } from "@/lib/admin-auth";
+import { getAdminAccessServer } from "@/lib/admin-permissions";
 import type { MemberGrade, MemberRole, MemberType } from "@/lib/supabase/database.types";
 import { getCurrentClubId } from "@/lib/current-club";
 
@@ -37,8 +37,13 @@ const PHONE_REGEX = /^010\d{8}$/;
 export async function POST(request: NextRequest) {
   // members에는 휴대폰/주소/나이 등 개인정보가 포함되므로, RLS로 anon insert를
   // 열어두지 않고 항상 이 서버 라우트(운영진 인증 + service-role)를 통해서만 등록한다.
-  const authError = requireAdmin();
-  if (authError) return authError;
+  const access = await getAdminAccessServer();
+  if (!access.kakaoIsAdmin) {
+    return NextResponse.json(
+      { error: "운영진 권한이 필요합니다." },
+      { status: 403 }
+    );
+  }
 
   const body = (await request.json()) as CreateMemberBody;
   const { name, nickname, phone, grade, role, mapoScore, memberType, addressFull, district, age } =
@@ -52,7 +57,7 @@ export async function POST(request: NextRequest) {
   // 않는다 — 이건 API를 직접 호출하는 시도를 막는 안전망이다.
   // 다른 입력 검증이나 phone 중복 체크(DB 조회)보다 먼저 막아서, 권한이
   // 없는 요청이 부분적으로라도 처리되지 않게 한다.
-  if (role !== null && getAdminRole() !== "owner") {
+  if (role !== null && !access.kakaoIsOwner) {
     return NextResponse.json(
       { error: "직책 지정은 owner만 가능합니다." },
       { status: 403 }
