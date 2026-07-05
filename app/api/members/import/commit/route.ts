@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
-import { requireRole } from "@/lib/admin-auth";
+import { getAdminAccessServer } from "@/lib/admin-permissions";
 import type { StagingMember } from "@/lib/supabase/database.types";
 import { getCurrentClubId } from "@/lib/current-club";
 
@@ -17,8 +17,13 @@ interface CommitImportBody {
  * 권한(Step 8-3): owner 전용 — 일괄 임포트 플로우의 일부.
  */
 export async function POST(request: NextRequest) {
-  const authError = requireRole("owner");
-  if (authError) return authError;
+  const access = await getAdminAccessServer();
+  if (!access.kakaoIsOwner) {
+    return NextResponse.json(
+      { error: "이 작업은 owner만 가능합니다." },
+      { status: 403 }
+    );
+  }
 
   const body = (await request.json()) as CommitImportBody;
   const { stagingIds } = body;

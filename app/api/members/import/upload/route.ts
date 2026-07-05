@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import * as XLSX from "xlsx";
 import { createServiceClient } from "@/lib/supabase/server";
-import { requireRole } from "@/lib/admin-auth";
+import { getAdminAccessServer } from "@/lib/admin-permissions";
 import { normalizeStagingRow, normalizePhone } from "@/lib/member-import";
 import { getCurrentClubId } from "@/lib/current-club";
 
@@ -45,8 +45,13 @@ function normalizeHeader(header: string): string | null {
 }
 
 export async function POST(request: NextRequest) {
-  const authError = requireRole("owner");
-  if (authError) return authError;
+  const access = await getAdminAccessServer();
+  if (!access.kakaoIsOwner) {
+    return NextResponse.json(
+      { error: "이 작업은 owner만 가능합니다." },
+      { status: 403 }
+    );
+  }
 
   const formData = await request.formData();
   const file = formData.get("file");
