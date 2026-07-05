@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
-import { requireAdmin } from "@/lib/admin-auth";
+import { getAdminAccessServer } from "@/lib/admin-permissions";
 import type { MemberGrade } from "@/lib/supabase/database.types";
 import { getCurrentClubId } from "@/lib/current-club";
 
@@ -12,8 +12,13 @@ interface ConvertGuestBody {
 }
 
 export async function POST(request: NextRequest) {
-  const authError = requireAdmin();
-  if (authError) return authError;
+  const access = await getAdminAccessServer();
+  if (!access.kakaoIsAdmin) {
+    return NextResponse.json(
+      { error: "운영진 권한이 필요합니다." },
+      { status: 403 }
+    );
+  }
 
   const body = (await request.json()) as ConvertGuestBody;
   const { guestId, nickname, grade, phone } = body;
