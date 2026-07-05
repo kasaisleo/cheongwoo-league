@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
-import { requireAdmin } from "@/lib/admin-auth";
+import { getAdminAccessServer } from "@/lib/admin-permissions";
 import { validateTimelinePayload, buildEventDate, ensureSingleHighlight } from "@/lib/member-timeline-validation";
 
 interface UpdateTimelineBody {
@@ -30,8 +30,13 @@ interface RouteParams {
 
 /** Timeline 항목 수정. 운영진만 가능. */
 export async function PUT(request: NextRequest, { params }: RouteParams) {
-  const authError = requireAdmin();
-  if (authError) return authError;
+  const access = await getAdminAccessServer();
+  if (!access.kakaoIsAdmin) {
+    return NextResponse.json(
+      { error: "운영진 권한이 필요합니다." },
+      { status: 403 }
+    );
+  }
 
   const timelineId = params.timelineId;
   const body = (await request.json()) as UpdateTimelineBody;
@@ -131,8 +136,13 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
 /** Timeline 항목 삭제. 운영진만 가능. 실제 이력 데이터라 soft delete 없이 바로 삭제한다. */
 export async function DELETE(_request: NextRequest, { params }: RouteParams) {
-  const authError = requireAdmin();
-  if (authError) return authError;
+  const access = await getAdminAccessServer();
+  if (!access.kakaoIsAdmin) {
+    return NextResponse.json(
+      { error: "운영진 권한이 필요합니다." },
+      { status: 403 }
+    );
+  }
 
   const timelineId = params.timelineId;
   const supabase = createServiceClient();

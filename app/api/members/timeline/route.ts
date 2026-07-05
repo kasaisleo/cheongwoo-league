@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
-import { requireAdmin } from "@/lib/admin-auth";
+import { getAdminAccessServer } from "@/lib/admin-permissions";
 import { validateTimelinePayload, buildEventDate, ensureSingleHighlight } from "@/lib/member-timeline-validation";
 
 interface CreateTimelineBody {
@@ -51,8 +51,13 @@ export async function GET(request: NextRequest) {
 
 /** Timeline 항목 생성. 운영진만 가능. */
 export async function POST(request: NextRequest) {
-  const authError = requireAdmin();
-  if (authError) return authError;
+  const access = await getAdminAccessServer();
+  if (!access.kakaoIsAdmin) {
+    return NextResponse.json(
+      { error: "운영진 권한이 필요합니다." },
+      { status: 403 }
+    );
+  }
 
   const body = (await request.json()) as CreateTimelineBody;
   const {
