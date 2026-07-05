@@ -25,7 +25,7 @@ const VALID_STATUSES: AttendanceStatus[] = ["attending", "absent", "undecided"];
  */
 export async function POST(request: NextRequest) {
   const access = await getAdminAccessServer();
-  if (!access.isAdmin) return Response.json({ error: "관리자 권한이 필요합니다." }, { status: 403 });
+  if (!access.kakaoIsAdmin) return Response.json({ error: "관리자 권한이 필요합니다." }, { status: 403 });
 
   const body = (await request.json()) as AdminUpdateAttendanceBody;
   const { memberId, sessionId, status } = body;
