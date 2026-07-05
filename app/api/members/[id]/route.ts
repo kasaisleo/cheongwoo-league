@@ -58,7 +58,7 @@ interface RouteParams {
  */
 export async function PUT(request: NextRequest, { params }: RouteParams) {
   const putAccess = await getAdminAccessServer();
-  if (!putAccess.isAdmin) return Response.json({ error: "관리자 권한이 필요합니다." }, { status: 403 });
+  if (!putAccess.kakaoIsAdmin) return Response.json({ error: "관리자 권한이 필요합니다." }, { status: 403 });
 
   const memberId = params.id;
   const body = (await request.json()) as UpdateMemberBody;
@@ -81,7 +81,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
   // 해제하는 경우도 포함) owner 여부를 확인한다 — manager가 role: null을
   // 보내 직책을 지우는 것도 막아야 하므로 "값이 truthy인지"가 아니라
   // "필드가 존재하는지"로 판단한다.
-  if (role !== undefined && !putAccess.isOwner) {
+  if (role !== undefined && !putAccess.kakaoIsOwner) {
     return NextResponse.json(
       { error: "직책 변경은 최고관리자만 가능합니다." },
       { status: 403 }
@@ -236,7 +236,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
  */
 export async function DELETE(_request: NextRequest, { params }: RouteParams) {
   const access = await getAdminAccessServer();
-  if (!access.isOwner) return Response.json({ error: "회원 탈퇴 처리는 master/owner만 가능합니다." }, { status: 403 });
+  if (!access.kakaoIsOwner) return Response.json({ error: "회원 탈퇴 처리는 master/owner만 가능합니다." }, { status: 403 });
 
   const memberId = params.id;
   const supabase = createServiceClient();
