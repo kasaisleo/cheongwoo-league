@@ -13,7 +13,7 @@ interface CreateCustomSessionBody {
 export async function POST(request: NextRequest) {
   // manager 이상이 수행해야 하지만, 권한 시스템 도입 전 단계라 운영진 인증으로 대체.
   const access = await getAdminAccessServer();
-  if (!access.isAdmin) return Response.json({ error: "관리자 권한이 필요합니다." }, { status: 403 });
+  if (!access.kakaoIsAdmin) return Response.json({ error: "관리자 권한이 필요합니다." }, { status: 403 });
 
   const body = (await request.json()) as CreateCustomSessionBody;
   const { sessionDate, sessionDay, title } = body;

@@ -15,7 +15,7 @@ import { getCurrentClubId } from "@/lib/current-club";
  */
 export async function POST(request: NextRequest) {
   const access = await getAdminAccessServer();
-  if (!access.isAdmin) {
+  if (!access.kakaoIsAdmin) {
     return NextResponse.json({ error: "관리자 권한이 필요합니다." }, { status: 403 });
   }
 

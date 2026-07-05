@@ -30,7 +30,7 @@ function toDateString(d: Date): string {
 
 export async function POST() {
   const access = await getAdminAccessServer();
-  if (!access.isAdmin) return Response.json({ error: "관리자 권한이 필요합니다." }, { status: 403 });
+  if (!access.kakaoIsAdmin) return Response.json({ error: "관리자 권한이 필요합니다." }, { status: 403 });
 
   const supabase = createServiceClient();
   const currentClubId = await getCurrentClubId();
