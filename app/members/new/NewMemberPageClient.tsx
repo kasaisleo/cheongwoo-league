@@ -75,7 +75,7 @@ export default function NewMemberPageClient({ currentClubId }: { currentClubId: 
       return false;
     }
     if (mapoScore === null) {
-      alert("마포점수를 선택해주세요.");
+      alert("지역점수를 선택해주세요.");
       return false;
     }
     if (!memberType) {
@@ -218,7 +218,7 @@ export default function NewMemberPageClient({ currentClubId }: { currentClubId: 
 
           <div>
             <label className="mb-1 block text-xs font-semibold text-line-600">
-              마포구 대회 점수 (1~10)
+              지역점수 (1~10)
             </label>
             <div className="flex flex-wrap gap-1.5">
               {MAPO_SCORES.map((score) => (

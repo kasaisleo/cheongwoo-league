@@ -194,7 +194,7 @@ export function MemberForm({
       {/* ── 마포점수 ─────────────────────────────────────── */}
       <div>
         <label className={labelCls}>
-          마포구 대회 점수 (1~10)
+          지역점수 (1~10)
           {errors.mapoScore && (
             <span className="ml-2 font-normal text-fault-400">{errors.mapoScore}</span>
           )}

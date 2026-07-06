@@ -173,7 +173,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
   if (mapoScore !== undefined) {
     if (mapoScore !== null && (!Number.isInteger(mapoScore) || mapoScore < 1 || mapoScore > 10)) {
       return NextResponse.json(
-        { error: "마포구 대회 점수는 1~10 사이여야 합니다." },
+        { error: "지역점수는 1~10 사이여야 합니다." },
         { status: 400 }
       );
     }

@@ -82,11 +82,11 @@ export async function POST(request: NextRequest) {
   }
 
   if (mapoScore === undefined || mapoScore === null) {
-    return NextResponse.json({ error: "마포점수를 선택해주세요." }, { status: 400 });
+    return NextResponse.json({ error: "지역점수를 선택해주세요." }, { status: 400 });
   }
   if (!Number.isInteger(mapoScore) || mapoScore < 1 || mapoScore > 10) {
     return NextResponse.json(
-      { error: "마포구 대회 점수는 1~10 사이여야 합니다." },
+      { error: "지역점수는 1~10 사이여야 합니다." },
       { status: 400 }
     );
   }

@@ -90,7 +90,7 @@ export async function POST(request: NextRequest) {
   if (resolvedMapoScore !== null) {
     if (!Number.isInteger(resolvedMapoScore) || resolvedMapoScore < 1 || resolvedMapoScore > 10) {
       return NextResponse.json(
-        { error: "마포구 대회 점수는 1~10 사이여야 합니다." },
+        { error: "지역점수는 1~10 사이여야 합니다." },
         { status: 400 }
       );
     }
