@@ -166,7 +166,7 @@ export function normalizeStagingRow(raw: RawStagingInput): NormalizedStagingRow 
     status = "missing_required";
   }
   if (raw.raw_mapo_score && normalizedMapoScore === null) {
-    errors.push("마포구 점수는 1~10 사이여야 합니다.");
+    errors.push("지역점수는 1~10 사이여야 합니다.");
     if (status === "pending") status = "invalid_mapo_score";
   }
   if (correctedAge === null && (raw.raw_age || raw.raw_birth_year)) {

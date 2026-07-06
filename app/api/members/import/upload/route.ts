@@ -34,6 +34,8 @@ const HEADER_ALIASES: Record<string, string> = {
   birth_year: "birth_year",
   마포점수: "mapo_score",
   마포구점수: "mapo_score",
+  지역점수: "mapo_score",
+  지역구점수: "mapo_score",
   mapo_score: "mapo_score",
   회원구분: "member_type",
   member_type: "member_type",

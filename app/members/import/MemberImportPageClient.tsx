@@ -12,7 +12,7 @@ const STATUS_LABEL: Record<string, string> = {
   duplicate: "중복",
   missing_required: "필수값 누락",
   invalid_phone: "전화번호 오류",
-  invalid_mapo_score: "마포점수 오류",
+  invalid_mapo_score: "지역점수 오류",
   needs_review: "확인 필요",
   imported: "반영 완료",
   skipped: "제외됨",
@@ -130,7 +130,7 @@ export default function MemberImportPageClient() {
       <Card className="mb-4 space-y-3 p-4">
         <p className="text-sm font-bold text-clay-400">1. 파일 업로드</p>
         <p className="text-xs text-line-500">
-          CSV 또는 XLSX 파일. 헤더에 이름/닉네임/휴대폰/주소/나이/출생연도/마포점수/회원구분 중 필요한 컬럼이 있으면 됩니다.
+          CSV 또는 XLSX 파일. 헤더에 이름/닉네임/휴대폰/주소/나이/출생연도/지역점수/회원구분 중 필요한 컬럼이 있으면 됩니다.
         </p>
         <label className="block">
           <input
@@ -192,7 +192,7 @@ export default function MemberImportPageClient() {
                     주소: {row.normalized_address ?? "—"}
                     {row.normalized_district && ` (${row.normalized_district})`}
                   </div>
-                  <div>마포점수: {row.normalized_mapo_score ?? "—"}</div>
+                  <div>지역점수: {row.normalized_mapo_score ?? "—"}</div>
                   <div>
                     원본 나이:{" "}
                     {row.raw_age || row.raw_birth_year
