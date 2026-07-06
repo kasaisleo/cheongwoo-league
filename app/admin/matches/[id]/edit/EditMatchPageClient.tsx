@@ -253,6 +253,7 @@ export function EditMatchPageClient({
       {guestSlot && (
         <QuickGuestModal
           onClose={() => setGuestSlot(null)}
+          currentClubId={currentClubId}
           onCreated={(guest) => {
             const p: SelectedPlayer = { id: guest.id, name: guest.name, isGuest: true };
             if (guestSlot === "teamAPlayer1") setP1A(p);

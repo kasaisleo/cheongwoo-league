@@ -5,10 +5,6 @@ import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/Button";
 import type { Guest } from "@/lib/supabase/database.types";
 
-import { DEFAULT_CLUB_ID } from "@/lib/club-constants";
-
-const CHEONGWOO_CLUB_ID = DEFAULT_CLUB_ID;
-
 function todayString(): string {
   return new Date().toISOString().slice(0, 10);
 }
@@ -16,9 +12,10 @@ function todayString(): string {
 interface QuickGuestModalProps {
   onClose: () => void;
   onCreated: (guest: Guest) => void;
+  currentClubId: string;
 }
 
-export function QuickGuestModal({ onClose, onCreated }: QuickGuestModalProps) {
+export function QuickGuestModal({ onClose, onCreated, currentClubId }: QuickGuestModalProps) {
   const [name, setName] = useState("");
   const [age, setAge] = useState("");
   const [yearsPlaying, setYearsPlaying] = useState("");
@@ -39,7 +36,7 @@ export function QuickGuestModal({ onClose, onCreated }: QuickGuestModalProps) {
       .from("guests")
       .insert({
         name: name.trim(),
-        club_id: CHEONGWOO_CLUB_ID,
+        club_id: currentClubId,
         age: age ? Number(age) : null,
         years_playing: yearsPlaying ? Number(yearsPlaying) : null,
         phone: phone.trim() || null,

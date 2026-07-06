@@ -346,7 +346,7 @@ export function EditMatchModal({ match, onClose, onSaved }: EditMatchModalProps)
       </div>
 
       {guestModalTarget && (
-        <QuickGuestModal onClose={() => setGuestModalTarget(null)} onCreated={handleGuestCreated} />
+        <QuickGuestModal onClose={() => setGuestModalTarget(null)} onCreated={handleGuestCreated} currentClubId={CHEONGWOO_CLUB_ID} />
       )}
     </div>
   );

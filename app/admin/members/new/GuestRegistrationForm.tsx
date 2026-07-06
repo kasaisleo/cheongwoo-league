@@ -18,10 +18,6 @@ import { createClient } from "@/lib/supabase/client";
 import { toast } from "@/components/ui/Toast";
 import type { Member } from "@/lib/supabase/database.types";
 
-import { DEFAULT_CLUB_ID } from "@/lib/club-constants";
-
-const CHEONGWOO_CLUB_ID = DEFAULT_CLUB_ID;
-
 function todayString(): string {
   return new Date().toISOString().slice(0, 10);
 }
@@ -30,7 +26,7 @@ function normalizeName(raw: string): string {
   return raw.replace(/\s+/g, "").trim();
 }
 
-export function GuestRegistrationForm() {
+export function GuestRegistrationForm({ currentClubId }: { currentClubId: string }) {
   const router = useRouter();
   const [members, setMembers] = useState<Member[]>([]);
 
@@ -56,10 +52,10 @@ export function GuestRegistrationForm() {
       .select("id, name, nickname")
       .eq("is_active", true)
       .eq("is_dormant", false)
-      .eq("club_id", CHEONGWOO_CLUB_ID)
+      .eq("club_id", currentClubId)
       .order("name")
       .then(({ data }) => setMembers((data as Member[]) ?? []));
-  }, []);
+  }, [currentClubId]);
 
   function validate(): boolean {
     const e: Record<string, string> = {};
@@ -90,7 +86,7 @@ export function GuestRegistrationForm() {
       .from("guests")
       .insert({
         name: normalizeName(name),
-        club_id: CHEONGWOO_CLUB_ID,
+        club_id: currentClubId,
         visit_date: visitDate,
         phone: phone.trim() ? phone.replace(/\D/g, "") : null,
         age: age.trim() ? Number(age) : null,
