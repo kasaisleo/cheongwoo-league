@@ -112,7 +112,7 @@ export default async function HomePage() {
         </p>
       </header>
 
-      <HomeAttendanceSection />
+      <HomeAttendanceSection currentClubId={currentClubId} />
 
       <section className="mb-4">
         <SectionHeader

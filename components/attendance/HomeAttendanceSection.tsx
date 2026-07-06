@@ -7,9 +7,10 @@ import { toast } from "@/components/ui/Toast";
 import type { AttendanceSession, AttendanceStatus } from "@/lib/supabase/database.types";
 
 const HOME_SESSION_LIMIT = 2;
-import { DEFAULT_CLUB_ID } from "@/lib/club-constants";
 
-const CHEONGWOO_CLUB_ID = DEFAULT_CLUB_ID;
+interface HomeAttendanceSectionProps {
+  currentClubId: string;
+}
 
 interface SessionState {
   session: AttendanceSession;
@@ -17,7 +18,7 @@ interface SessionState {
   stats: { attending: number; undecided: number; absent: number };
 }
 
-export function HomeAttendanceSection() {
+export function HomeAttendanceSection({ currentClubId }: HomeAttendanceSectionProps) {
   const [memberId, setMemberId] = useState<string | null | undefined>(undefined);
   const [sessions, setSessions] = useState<SessionState[]>([]);
   const [submittingId, setSubmittingId] = useState<string | null>(null);
@@ -30,7 +31,7 @@ export function HomeAttendanceSection() {
     const { data: openSessions } = await supabase
       .from("attendance_sessions")
       .select("*")
-      .eq("club_id", CHEONGWOO_CLUB_ID)
+      .eq("club_id", currentClubId)
       .eq("status", "open")
       .gte("session_date", today)
       .order("session_date", { ascending: true })
@@ -73,7 +74,7 @@ export function HomeAttendanceSection() {
         };
       })
     );
-  }, []);
+  }, [currentClubId]);
 
   useEffect(() => {
     const supabase = createClient();
@@ -92,7 +93,7 @@ export function HomeAttendanceSection() {
       const { data: member } = await supabase
         .from("members")
         .select("id")
-        .eq("club_id", CHEONGWOO_CLUB_ID)
+        .eq("club_id", currentClubId)
         .eq("auth_user_id", session.user.id)
         .maybeSingle();
 

@@ -31,5 +31,5 @@ export default async function EditMatchPage({ params }: PageProps) {
   const match = matches[0];
   if (!match) notFound();
 
-  return <EditMatchPageClient match={match} />;
+  return <EditMatchPageClient match={match} currentClubId={currentClubId} />;
 }

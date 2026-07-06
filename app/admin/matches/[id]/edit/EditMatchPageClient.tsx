@@ -15,17 +15,19 @@ import { TEAM_LABEL, winnerLabel, scoreLabel } from "@/lib/match-team-labels";
 import type { DisplayMatch } from "@/lib/match-display";
 import type { Member, Guest, AttendanceSession } from "@/lib/supabase/database.types";
 
-import { DEFAULT_CLUB_ID } from "@/lib/club-constants";
-
-const CHEONGWOO_CLUB_ID = DEFAULT_CLUB_ID;
-
 type Slot = "teamAPlayer1" | "teamAPlayer2" | "teamBPlayer1" | "teamBPlayer2";
 
 function toSelected(p: DisplayMatch["teamAPlayer1"]): SelectedPlayer {
   return { id: p.id, name: p.name, isGuest: p.isGuest };
 }
 
-export function EditMatchPageClient({ match }: { match: DisplayMatch }) {
+export function EditMatchPageClient({
+  match,
+  currentClubId,
+}: {
+  match: DisplayMatch;
+  currentClubId: string;
+}) {
   const router = useRouter();
   const [members,  setMembers]  = useState<Member[]>([]);
   const [guests,   setGuests]   = useState<Guest[]>([]);
@@ -51,9 +53,9 @@ export function EditMatchPageClient({ match }: { match: DisplayMatch }) {
     async function load() {
       const supabase = createClient();
       const [{ data: mData }, { data: gData }, activeSessions] = await Promise.all([
-        supabase.from("members").select("*").eq("is_active", true).eq("is_dormant", false).eq("club_id", CHEONGWOO_CLUB_ID).order("nickname"),
-        supabase.from("guests").select("*").eq("club_id", CHEONGWOO_CLUB_ID).order("name"),
-        fetchActiveSessions(supabase),
+        supabase.from("members").select("*").eq("is_active", true).eq("is_dormant", false).eq("club_id", currentClubId).order("nickname"),
+        supabase.from("guests").select("*").eq("club_id", currentClubId).order("name"),
+        fetchActiveSessions(supabase, currentClubId),
       ]);
       setMembers(mData ?? []);
       setGuests(gData ?? []);
@@ -61,7 +63,7 @@ export function EditMatchPageClient({ match }: { match: DisplayMatch }) {
       setLoading(false);
     }
     load();
-  }, []);
+  }, [currentClubId]);
 
   const isTiebreak = (scoreA === 7 && scoreB === 6) || (scoreA === 6 && scoreB === 7);
   const all4 = [p1A, p2A, p1B, p2B];
