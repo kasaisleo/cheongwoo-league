@@ -5,9 +5,7 @@ import { ConvertGuestButton } from "@/components/guest/ConvertGuestButton";
 import { GuestAdminActions } from "@/components/guest/GuestAdminActions";
 import type { GuestWithStats, Member } from "@/lib/supabase/database.types";
 
-import { DEFAULT_CLUB_ID } from "@/lib/club-constants";
-
-const CHEONGWOO_CLUB_ID = DEFAULT_CLUB_ID;
+import { getCurrentClubId } from "@/lib/current-club";
 
 type GuestWithReferrer = GuestWithStats & {
   referrer: Pick<Member, "nickname"> | null;
@@ -20,6 +18,7 @@ interface GuestListProps {
 
 export async function GuestList({ mode }: GuestListProps) {
   const supabase = createClient();
+  const currentClubId = await getCurrentClubId();
   const isAdmin = mode === "admin";
 
   // 관리자 모드에서는 비활성 게스트도 표시 (상태 확인용)
@@ -29,7 +28,7 @@ export async function GuestList({ mode }: GuestListProps) {
     .select(
       "*, referrer:members!guests_referred_by_fkey(nickname), converted_member:members!guests_converted_to_member_id_fkey(nickname)"
     )
-    .eq("club_id", CHEONGWOO_CLUB_ID)
+    .eq("club_id", currentClubId)
     .order("visit_date", { ascending: false });
 
   // guest_stats 뷰에 is_active 컬럼이 추가되어(마지막 18번째 컬럼) 다시 필터링 가능해졌다.
