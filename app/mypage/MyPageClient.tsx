@@ -247,7 +247,7 @@ export default function MyPageClient({ currentClubId }: { currentClubId: string 
                   {member.mapo_score !== null ? member.mapo_score : "—"}
                   {member.mapo_score !== null && <span className="ml-0.5 text-sm font-semibold">점</span>}
                 </p>
-                <p className="font-display text-[9px] font-bold uppercase tracking-widest text-line-500">Mapo Score</p>
+                <p className="font-display text-[9px] font-bold uppercase tracking-widest text-line-500">지역점수</p>
               </div>
             </div>
           </div>

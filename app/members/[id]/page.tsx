@@ -133,7 +133,7 @@ export default async function MemberDetailPage({ params }: MemberDetailPageProps
             <p className="font-score text-xl font-bold text-clay-400">
               {typedMember.mapo_score !== null ? typedMember.mapo_score : "—"}
             </p>
-            <p className="text-xs text-line-500">마포구 점수</p>
+            <p className="text-xs text-line-500">지역점수</p>
           </div>
           <div>
             <p className="font-score text-xl font-bold text-line-900">{matchesPlayed}</p>
