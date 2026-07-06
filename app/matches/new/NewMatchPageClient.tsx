@@ -121,7 +121,7 @@ export default function NewMatchPageClient({ currentClubId }: { currentClubId: s
   .is("converted_to_member_id", null)
   .eq("is_active", true)
   .order("created_at", { ascending: false }),
-      fetchActiveSessions(supabase),
+      fetchActiveSessions(supabase, currentClubId),
     ]);
     setMembers(memberData ?? []);
     setGuests(guestData ?? []);
@@ -184,7 +184,7 @@ export default function NewMatchPageClient({ currentClubId }: { currentClubId: s
       if (!res.ok) { setNewSessionError(body?.error ?? "매치 추가에 실패했습니다."); return; }
       toast.success("매치가 추가되었습니다.");
       const supabase = createClient();
-      const updated = await fetchActiveSessions(supabase);
+      const updated = await fetchActiveSessions(supabase, currentClubId);
       setSessions(updated);
       if (body.sessionId) await handleSessionSelect(body.sessionId);
       setShowNewSession(false);
