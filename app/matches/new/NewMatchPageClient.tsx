@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
@@ -89,6 +89,7 @@ export default function NewMatchPageClient({ currentClubId }: { currentClubId: s
 
   const [guestModalTarget, setGuestModalTarget] = useState<GuestModalTarget | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const submittingRef = useRef(false);
   const [finishing, setFinishing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -247,6 +248,8 @@ export default function NewMatchPageClient({ currentClubId }: { currentClubId: s
 
   async function handleSubmit() {
     if (!isReadyToSubmit) return;
+    if (submittingRef.current) return;
+    submittingRef.current = true;
     setSubmitting(true);
     setError(null);
     try {
@@ -281,6 +284,7 @@ export default function NewMatchPageClient({ currentClubId }: { currentClubId: s
       // 세션 stats 갱신 (출석 후 미참여 경고 재계산)
       if (selectedSessionId) await handleSessionSelect(selectedSessionId);
     } finally {
+      submittingRef.current = false;
       setSubmitting(false);  // 성공/실패 무관하게 반드시 해제
     }
   }
