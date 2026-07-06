@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 // 운영진 인증이 필요한 경로 (경기 입력, 회원/게스트 등록, 명단 가져오기 등 쓰기 작업)
-const PROTECTED_PREFIXES = ["/members/new", "/members/import"];
+const PROTECTED_PREFIXES: string[] = [];
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -22,5 +22,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/members/new", "/members/import"],
+  matcher: [],
 };
