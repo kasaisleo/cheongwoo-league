@@ -38,14 +38,14 @@ function formatPhoneForDisplay(digits: string): string {
   return `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7)}`;
 }
 
-export default function NewMemberPageClient() {
+export default function NewMemberPageClient({ currentClubId }: { currentClubId: string }) {
   const router = useRouter();
   // 직책(role) 지정은 owner 전용 — 서버(POST /api/members)는 현재 이 필드를
   // owner 검증 없이 그대로 받는 상태라(별도 Step에서 보완 예정), 이번
   // Step에서는 UI만 막아 정상적인 사용 흐름에서 manager가 직책을 지정하지
   // 못하게 한다. role이 아직 로딩 중(null)이면 일단 비활성으로 둔다 —
   // EditMemberModal과 동일한 보수적 기본값.
-  const adminAccess = useAdminAccess();
+  const adminAccess = useAdminAccess(currentClubId);
   const isOwner = adminAccess?.isOwner ?? false;
   const [name, setName] = useState("");
   const [nickname, setNickname] = useState("");
