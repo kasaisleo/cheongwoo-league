@@ -168,7 +168,7 @@ export default async function HomePage() {
         ) : (
           <div className="space-y-2">
             {recentMatches.map((match) => (
-              <MatchCard key={match.id} match={match} />
+              <MatchCard key={match.id} match={match} currentClubId={currentClubId} />
             ))}
           </div>
         )}

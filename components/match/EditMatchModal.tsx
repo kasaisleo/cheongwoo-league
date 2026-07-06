@@ -12,23 +12,20 @@ import { Dropdown, DropdownItem } from "@/components/ui/Dropdown";
 import { MATCH_SESSION_DAY_LABEL, fetchActiveSessions } from "@/lib/match-session-label";
 import type { Member, Guest, AttendanceSession } from "@/lib/supabase/database.types";
 
-import { DEFAULT_CLUB_ID } from "@/lib/club-constants";
-
-const CHEONGWOO_CLUB_ID = DEFAULT_CLUB_ID;
-
 type GuestModalTarget = "teamAPlayer1" | "teamAPlayer2" | "teamBPlayer1" | "teamBPlayer2";
 
 interface EditMatchModalProps {
   match: DisplayMatch;
   onClose: () => void;
   onSaved: () => void;
+  currentClubId: string;
 }
 
 function toSelectedPlayer(p: DisplayMatch["teamAPlayer1"]): SelectedPlayer {
   return { id: p.id, name: p.name, isGuest: p.isGuest };
 }
 
-export function EditMatchModal({ match, onClose, onSaved }: EditMatchModalProps) {
+export function EditMatchModal({ match, onClose, onSaved, currentClubId }: EditMatchModalProps) {
   const [members, setMembers] = useState<Member[]>([]);
   const [guests, setGuests] = useState<Guest[]>([]);
   const [sessions, setSessions] = useState<AttendanceSession[]>([]);
@@ -62,14 +59,14 @@ export function EditMatchModal({ match, onClose, onSaved }: EditMatchModalProps)
     async function loadData() {
       const supabase = createClient();
       const [{ data: memberData }, { data: guestData }, activeSessions] = await Promise.all([
-        supabase.from("members").select("*").eq("is_active", true).eq("club_id", CHEONGWOO_CLUB_ID).order("name"),
+        supabase.from("members").select("*").eq("is_active", true).eq("club_id", currentClubId).order("name"),
         supabase
           .from("guests")
           .select("*")
-          .eq("club_id", CHEONGWOO_CLUB_ID)
+          .eq("club_id", currentClubId)
           .is("converted_to_member_id", null)
           .order("created_at", { ascending: false }),
-        fetchActiveSessions(supabase),
+        fetchActiveSessions(supabase, currentClubId),
       ]);
       setMembers(memberData ?? []);
       setGuests(guestData ?? []);
@@ -81,7 +78,7 @@ export function EditMatchModal({ match, onClose, onSaved }: EditMatchModalProps)
           .from("attendance_sessions")
           .select("*")
           .eq("id", match.session_id)
-          .eq("club_id", CHEONGWOO_CLUB_ID)
+          .eq("club_id", currentClubId)
           .single();
         if (currentSession) {
           sessionList = [currentSession, ...sessionList];
@@ -91,7 +88,7 @@ export function EditMatchModal({ match, onClose, onSaved }: EditMatchModalProps)
       setLoading(false);
     }
     loadData();
-  }, [match.session_id]);
+  }, [match.session_id, currentClubId]);
 
   const isTiebreakSet = (scoreA === 7 && scoreB === 6) || (scoreA === 6 && scoreB === 7);
 
@@ -346,7 +343,7 @@ export function EditMatchModal({ match, onClose, onSaved }: EditMatchModalProps)
       </div>
 
       {guestModalTarget && (
-        <QuickGuestModal onClose={() => setGuestModalTarget(null)} onCreated={handleGuestCreated} currentClubId={CHEONGWOO_CLUB_ID} />
+        <QuickGuestModal onClose={() => setGuestModalTarget(null)} onCreated={handleGuestCreated} currentClubId={currentClubId} />
       )}
     </div>
   );

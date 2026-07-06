@@ -268,7 +268,7 @@ export default async function MatchesPage({ searchParams }: MatchesPageProps) {
                     : MATCH_SESSION_DAY_LABEL[match.sessionDay]}
                 </p>
               )}
-              <MatchCard match={match} />
+              <MatchCard match={match} currentClubId={currentClubId} />
             </div>
           ))}
         </div>

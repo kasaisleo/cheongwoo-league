@@ -30,6 +30,7 @@ import type { DisplayMatch } from "@/lib/match-display";
 
 interface MatchCardProps {
   match: DisplayMatch;
+  currentClubId: string;
 }
 
 interface TeamRowData {
@@ -41,7 +42,7 @@ interface TeamRowData {
   opponentTiebreak: number | null;
 }
 
-export function MatchCard({ match }: MatchCardProps) {
+export function MatchCard({ match, currentClubId }: MatchCardProps) {
   const router = useRouter();
   const isAdmin = useIsAdmin();
   const [showEditModal, setShowEditModal] = useState(false);
@@ -143,6 +144,7 @@ export function MatchCard({ match }: MatchCardProps) {
       {showEditModal && (
         <EditMatchModal
           match={match}
+          currentClubId={currentClubId}
           onClose={() => setShowEditModal(false)}
           onSaved={() => {
             setShowEditModal(false);
