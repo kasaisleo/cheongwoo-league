@@ -90,6 +90,7 @@ export default function NewMatchPageClient({ currentClubId }: { currentClubId: s
   const [guestModalTarget, setGuestModalTarget] = useState<GuestModalTarget | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const submittingRef = useRef(false);
+  const creatingSessionRef = useRef(false);
   const [finishing, setFinishing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -170,22 +171,28 @@ export default function NewMatchPageClient({ currentClubId }: { currentClubId: s
   async function handleCreateSession() {
     if (!newSessionTitle.trim()) { setNewSessionError("매치명을 입력해주세요."); return; }
     if (!newSessionDate) { setNewSessionError("날짜를 선택해주세요."); return; }
+    if (creatingSessionRef.current) return;
+    creatingSessionRef.current = true;
     setCreatingSession(true); setNewSessionError(null);
-    const res = await fetch("/api/admin/sessions", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title: newSessionTitle.trim(), sessionDate: newSessionDate, sessionDay: newSessionDay }),
-    });
-    const body = await res.json().catch(() => null);
-    setCreatingSession(false);
-    if (!res.ok) { setNewSessionError(body?.error ?? "매치 추가에 실패했습니다."); return; }
-    toast.success("매치가 추가되었습니다.");
-    const supabase = createClient();
-    const updated = await fetchActiveSessions(supabase);
-    setSessions(updated);
-    if (body.sessionId) await handleSessionSelect(body.sessionId);
-    setShowNewSession(false);
-    setNewSessionTitle("");
+    try {
+      const res = await fetch("/api/admin/sessions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: newSessionTitle.trim(), sessionDate: newSessionDate, sessionDay: newSessionDay }),
+      });
+      const body = await res.json().catch(() => null);
+      if (!res.ok) { setNewSessionError(body?.error ?? "매치 추가에 실패했습니다."); return; }
+      toast.success("매치가 추가되었습니다.");
+      const supabase = createClient();
+      const updated = await fetchActiveSessions(supabase);
+      setSessions(updated);
+      if (body.sessionId) await handleSessionSelect(body.sessionId);
+      setShowNewSession(false);
+      setNewSessionTitle("");
+    } finally {
+      creatingSessionRef.current = false;
+      setCreatingSession(false);
+    }
   }
 
   const isTiebreakSet = (scoreA === 7 && scoreB === 6) || (scoreA === 6 && scoreB === 7);
