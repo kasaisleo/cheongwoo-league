@@ -26,11 +26,15 @@ import { DEFAULT_CLUB_ID } from "@/lib/club-constants";
  *   null       = 로딩 중
  *   AdminAccess = 판단 완료 (isAdmin, isOwner 등)
  */
-export function useAdminAccess(): AdminAccess | null {
+export function useAdminAccess(currentClubId?: string): AdminAccess | null {
   const [access, setAccess] = useState<AdminAccess | null>(null);
 
   useEffect(() => {
     let cancelled = false;
+    // currentClubId가 넘어오면 그 값을 쓰고, 없으면 기존처럼 DEFAULT_CLUB_ID로
+    // 폴백한다 — 아직 currentClubId를 넘기지 않는 다른 호출부의 기존 동작을
+    // 그대로 유지하기 위한 임시 조치다(Phase 3D-6-1B).
+    const resolvedClubId = currentClubId ?? DEFAULT_CLUB_ID;
 
     async function check() {
       // 1. cw_admin_session 확인 (httpOnly → /api/auth/status 경유)
@@ -60,7 +64,7 @@ export function useAdminAccess(): AdminAccess | null {
             .from("members")
             .select("id, permission_role")
             .eq("auth_user_id", session.user.id)
-            .eq("club_id", DEFAULT_CLUB_ID)
+            .eq("club_id", resolvedClubId)
             .maybeSingle();
           if (member) {
             kakaoRole = member.permission_role as string;
@@ -88,7 +92,7 @@ export function useAdminAccess(): AdminAccess | null {
 
     check();
     return () => { cancelled = true; };
-  }, []);
+  }, [currentClubId]);
 
   return access;
 }
