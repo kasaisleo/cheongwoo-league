@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { BottomTabBar } from "@/components/layout/BottomTabBar";
 import { MemberAuthBar } from "@/components/layout/MemberAuthBar";
 import { ToastViewport } from "@/components/ui/Toast";
+import { getCurrentClubId } from "@/lib/current-club";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -39,11 +40,13 @@ export const viewport: Viewport = {
   themeColor: "#0B1929",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const currentClubId = await getCurrentClubId();
+
   return (
     <html lang="ko">
       <body className="font-body">
-        <MemberAuthBar />
+        <MemberAuthBar currentClubId={currentClubId} />
         <div className="mx-auto min-h-screen max-w-md pb-20">{children}</div>
         <BottomTabBar />
         <ToastViewport />

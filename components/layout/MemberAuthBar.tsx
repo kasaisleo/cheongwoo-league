@@ -7,7 +7,10 @@ import { createClient } from "@/lib/supabase/client";
 import type { User } from "@supabase/supabase-js";
 import type { AdminRole } from "@/lib/admin-auth";
 import type { PermissionRole } from "@/lib/supabase/database.types";
-import { DEFAULT_CLUB_ID } from "@/lib/club-constants";
+
+interface MemberAuthBarProps {
+  currentClubId: string;
+}
 
 interface MemberInfo {
   id: string;
@@ -33,7 +36,7 @@ const KAKAO_ADMIN_ROLES: PermissionRole[] = ["manager", "admin", "master"];
  * 보호 파일(lib/admin-auth.ts, middleware.ts) 수정 없음.
  * cw_admin_session(httpOnly)은 /api/auth/status 폴링으로 읽음.
  */
-export function MemberAuthBar() {
+export function MemberAuthBar({ currentClubId }: MemberAuthBarProps) {
   const router = useRouter();
 
   // 우측: 카카오 회원 상태
@@ -78,14 +81,14 @@ export function MemberAuthBar() {
           .from("members")
           .select("id, nickname, name, permission_role")
           .eq("auth_user_id", authUser.id)
-          .eq("club_id", DEFAULT_CLUB_ID)
+          .eq("club_id", currentClubId)
           .maybeSingle();
         setMember(data ?? null);
       } catch {
         setMember(null);
       }
     })();
-  }, [authUser]);
+  }, [authUser, currentClubId]);
 
   async function handleSignOut() {
     setSigningOut(true);
