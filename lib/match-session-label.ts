@@ -1,7 +1,4 @@
 import type { AttendanceSession } from "@/lib/supabase/database.types";
-import { DEFAULT_CLUB_ID } from "@/lib/club-constants";
-
-const CHEONGWOO_CLUB_ID = DEFAULT_CLUB_ID;
 
 /**
  * 출석체크/경기입력/경기기록/경기수정/메인 화면이 공통으로 쓰는 세션 표시명.
@@ -36,7 +33,7 @@ export const MATCH_SESSION_DAY_FILTERS: { value: AttendanceSession["session_day"
  */
 export async function fetchActiveSessions(
   supabase: any,
-  clubId: string = CHEONGWOO_CLUB_ID
+  clubId: string
 ): Promise<AttendanceSession[]> {
   const { data } = await supabase
     .from("attendance_sessions")

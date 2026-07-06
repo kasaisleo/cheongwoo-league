@@ -1,7 +1,4 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { DEFAULT_CLUB_ID } from "@/lib/club-constants";
-
-const CHEONGWOO_CLUB_ID = DEFAULT_CLUB_ID;
 
 /**
  * ranking-query.ts 랭킹 조회 공통 함수.
@@ -25,7 +22,7 @@ export function applyRankingQuery(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   supabase: SupabaseClient<any>,
   limit?: number,
-  clubId: string = CHEONGWOO_CLUB_ID
+  clubId: string
 ) {
   let q = supabase
     .from("member_stats")
