@@ -8,6 +8,7 @@ import type { MemberWithStats } from "@/lib/supabase/database.types";
 
 interface MemberDetailActionsProps {
   member: MemberWithStats;
+  currentClubId: string;
 }
 
 /**
@@ -18,9 +19,9 @@ interface MemberDetailActionsProps {
  * 삭제 버튼은 이 화면(상세 바로가기)이 아니라 수정 모달 하단에 둔다 — 우발적
  * 클릭으로 회원이 바로 삭제되는 사고를 줄이기 위함(EditMemberModal 참고).
  */
-export function MemberDetailActions({ member }: MemberDetailActionsProps) {
+export function MemberDetailActions({ member, currentClubId }: MemberDetailActionsProps) {
   const router = useRouter();
-  const adminAccess = useAdminAccess();
+  const adminAccess = useAdminAccess(currentClubId);
   const [showEditModal, setShowEditModal] = useState(false);
 
   // 로딩 중(null)이거나 비관리자면 렌더링 안 함
@@ -41,6 +42,7 @@ export function MemberDetailActions({ member }: MemberDetailActionsProps) {
       {showEditModal && (
         <EditMemberModal
           member={member}
+          currentClubId={currentClubId}
           onClose={() => setShowEditModal(false)}
           onSaved={() => {
             setShowEditModal(false);

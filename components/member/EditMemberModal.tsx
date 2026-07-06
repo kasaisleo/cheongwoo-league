@@ -17,10 +17,11 @@ interface EditMemberModalProps {
   onClose: () => void;
   onSaved: () => void;
   onDeleted: () => void;
+  currentClubId: string;
 }
 
-export function EditMemberModal({ member, onClose, onSaved, onDeleted }: EditMemberModalProps) {
-  const adminAccess = useAdminAccess();
+export function EditMemberModal({ member, onClose, onSaved, onDeleted, currentClubId }: EditMemberModalProps) {
+  const adminAccess = useAdminAccess(currentClubId);
   const isAdmin = adminAccess?.isAdmin ?? false;
   const isOwner = adminAccess?.isOwner ?? false;
 

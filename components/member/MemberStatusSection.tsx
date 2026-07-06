@@ -28,6 +28,7 @@ interface MemberStatusSectionProps {
   deletedAt: string | null;
   permissionRole: string;
   authUserId: string | null;  // auth_user_id 기준 — /api/admin/unlink-member와 동일
+  currentClubId: string;
 }
 
 /**
@@ -48,9 +49,10 @@ export function MemberStatusSection({
   deletedAt,
   permissionRole,
   authUserId,
+  currentClubId,
 }: MemberStatusSectionProps) {
   const router = useRouter();
-  const adminAccess = useAdminAccess();
+  const adminAccess = useAdminAccess(currentClubId);
   // auth_user_id 기준 — /api/admin/unlink-member가 null 처리하는 컬럼과 동일
   const [isKakaoLinked, setIsKakaoLinked] = useState(Boolean(authUserId));
   const [unlinking, setUnlinking] = useState(false);

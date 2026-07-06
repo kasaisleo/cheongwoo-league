@@ -77,7 +77,7 @@ export default async function MemberDetailPage({ params }: MemberDetailPageProps
     <MemberCareerProvider memberId={typedMember.id} isAdmin={isAdmin}>
       <main className="px-4 pt-6">
         <BackButton />
-        <MemberDetailActions member={typedMember} />
+        <MemberDetailActions member={typedMember} currentClubId={currentClubId} />
         {isAdmin && (
           <MemberStatusSection
             memberId={typedMember.id}
@@ -86,6 +86,7 @@ export default async function MemberDetailPage({ params }: MemberDetailPageProps
             deletedAt={(typedMember as any).deleted_at ?? null}
             permissionRole={typedMember.permission_role}
             authUserId={(typedMember as any).auth_user_id ?? null}
+            currentClubId={currentClubId}
           />
         )}
 
