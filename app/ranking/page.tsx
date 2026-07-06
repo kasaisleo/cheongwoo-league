@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { RankMovement } from "@/components/ui/RankMovement";
 import { applyRankingQuery } from "@/lib/ranking-query";
 import type { MemberWithStats } from "@/lib/supabase/database.types";
+import { getCurrentClubId } from "@/lib/current-club";
 
 /**
  * Ranking Page v2 — ATP Tour 스타일 랭킹 화면 (Step 15-4).
@@ -14,10 +15,17 @@ import type { MemberWithStats } from "@/lib/supabase/database.types";
  *
  * win_rate: member_stats 뷰가 0~100 값으로 저장됨 (이미 % 값)
  */
+
+// selected_club_id 쿠키에 따라 결과가 달라지는 서버 페이지이므로,
+// Next.js의 static optimization/캐시에 걸리지 않도록 매 요청마다 새로 렌더링한다.
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export default async function RankingPage() {
   const supabase = createClient();
+  const currentClubId = await getCurrentClubId();
 
-  const { data: rankedMembers } = await applyRankingQuery(supabase);
+  const { data: rankedMembers } = await applyRankingQuery(supabase, undefined, currentClubId);
 
   const members = (rankedMembers ?? []) as MemberWithStats[];
 

@@ -14,6 +14,11 @@ import { getCurrentClubId } from "@/lib/current-club";
 
 const MAIN_SESSION_LIMIT = 5;
 
+// selected_club_id 쿠키에 따라 결과가 달라지는 서버 페이지이므로,
+// Next.js의 static optimization/캐시에 걸리지 않도록 매 요청마다 새로 렌더링한다.
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 function thisWeekRange(): { start: string; end: string } {
   const now = new Date();
   const day = now.getDay();
@@ -62,7 +67,7 @@ export default async function HomePage() {
       .lte("visit_date", week.end)
       .order("visit_date", { ascending: true }),
 
-    applyRankingQuery(supabase, 3),
+    applyRankingQuery(supabase, 3, currentClubId),
   ]);
 
   const allSessions = selectHomeSessions((activeSessionRows ?? []) as AttendanceSession[]);
