@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -29,6 +29,7 @@ export default function NewGuestPageClient({ currentClubId }: { currentClubId: s
   const [notes, setNotes] = useState("");
 
   const [submitting, setSubmitting] = useState(false);
+  const submittingRef = useRef(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -47,36 +48,41 @@ export default function NewGuestPageClient({ currentClubId }: { currentClubId: s
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!isReady) return;
+    if (submittingRef.current) return;
+    submittingRef.current = true;
 
     setSubmitting(true);
     setError(null);
 
-    const supabase = createClient();
-    const { error: insertError } = await supabase.from("guests").insert({
-      name: name.trim(),
-      club_id: currentClubId,
-      age: age ? Number(age) : null,
-      years_playing: yearsPlaying ? Number(yearsPlaying) : null,
-      phone: phone.trim() || null,
-      visit_date: visitDate,
-      referred_by: referredBy || null,
-      skill_grade: skillGrade || null,
-      manner_score: mannerScore,
-      reinvite,
-      notes: notes.trim() || null,
-    });
+    try {
+      const supabase = createClient();
+      const { error: insertError } = await supabase.from("guests").insert({
+        name: name.trim(),
+        club_id: currentClubId,
+        age: age ? Number(age) : null,
+        years_playing: yearsPlaying ? Number(yearsPlaying) : null,
+        phone: phone.trim() || null,
+        visit_date: visitDate,
+        referred_by: referredBy || null,
+        skill_grade: skillGrade || null,
+        manner_score: mannerScore,
+        reinvite,
+        notes: notes.trim() || null,
+      });
 
-    setSubmitting(false);
+      if (insertError) {
+        setError("게스트 등록에 실패했습니다. 다시 시도해주세요.");
+        return;
+      }
 
-    if (insertError) {
-      setError("게스트 등록에 실패했습니다. 다시 시도해주세요.");
-      return;
+      // router.push + router.refresh 조합은 클라이언트 라우터 캐시 때문에
+      // 방금 등록한 게스트가 목록에 바로 안 보이는 문제가 있어,
+      // 전체 페이지 로드(항상 최신 서버 렌더링 결과)를 보장하는 방식으로 이동한다.
+      window.location.assign("/guests");
+    } finally {
+      submittingRef.current = false;
+      setSubmitting(false);
     }
-
-    // router.push + router.refresh 조합은 클라이언트 라우터 캐시 때문에
-    // 방금 등록한 게스트가 목록에 바로 안 보이는 문제가 있어,
-    // 전체 페이지 로드(항상 최신 서버 렌더링 결과)를 보장하는 방식으로 이동한다.
-    window.location.assign("/guests");
   }
 
   return (

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/Button";
 import type { Guest } from "@/lib/supabase/database.types";
@@ -22,37 +22,43 @@ export function QuickGuestModal({ onClose, onCreated, currentClubId }: QuickGues
   const [phone, setPhone] = useState("");
   const [visitDate, setVisitDate] = useState(todayString());
   const [submitting, setSubmitting] = useState(false);
+  const submittingRef = useRef(false);
   const [error, setError] = useState<string | null>(null);
 
   const isReady = name.trim().length > 0 && visitDate.length > 0 && !submitting;
 
   async function handleSubmit() {
     if (!isReady) return;
+    if (submittingRef.current) return;
+    submittingRef.current = true;
     setSubmitting(true);
     setError(null);
 
-    const supabase = createClient();
-    const { data, error: insertError } = await supabase
-      .from("guests")
-      .insert({
-        name: name.trim(),
-        club_id: currentClubId,
-        age: age ? Number(age) : null,
-        years_playing: yearsPlaying ? Number(yearsPlaying) : null,
-        phone: phone.trim() || null,
-        visit_date: visitDate,
-      })
-      .select()
-      .single();
+    try {
+      const supabase = createClient();
+      const { data, error: insertError } = await supabase
+        .from("guests")
+        .insert({
+          name: name.trim(),
+          club_id: currentClubId,
+          age: age ? Number(age) : null,
+          years_playing: yearsPlaying ? Number(yearsPlaying) : null,
+          phone: phone.trim() || null,
+          visit_date: visitDate,
+        })
+        .select()
+        .single();
 
-    setSubmitting(false);
+      if (insertError || !data) {
+        setError("게스트 등록에 실패했습니다.");
+        return;
+      }
 
-    if (insertError || !data) {
-      setError("게스트 등록에 실패했습니다.");
-      return;
+      onCreated(data as Guest);
+    } finally {
+      submittingRef.current = false;
+      setSubmitting(false);
     }
-
-    onCreated(data as Guest);
   }
 
   return (

@@ -11,7 +11,7 @@
  * members 테이블과 무관 — guests 테이블에 직접 insert
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
@@ -42,6 +42,7 @@ export function GuestRegistrationForm({ currentClubId }: { currentClubId: string
   const [notes, setNotes]               = useState("");
 
   const [submitting, setSubmitting] = useState(false);
+  const submittingRef = useRef(false);
   const [errors, setErrors]         = useState<Record<string, string>>({});
 
   // 소개 회원 목록 로드
@@ -79,34 +80,39 @@ export function GuestRegistrationForm({ currentClubId }: { currentClubId: string
 
   async function handleSubmit() {
     if (!validate()) return;
+    if (submittingRef.current) return;
+    submittingRef.current = true;
     setSubmitting(true);
 
-    const supabase = createClient();
-    const { data: guest, error: insertError } = await supabase
-      .from("guests")
-      .insert({
-        name: normalizeName(name),
-        club_id: currentClubId,
-        visit_date: visitDate,
-        phone: phone.trim() ? phone.replace(/\D/g, "") : null,
-        age: age.trim() ? Number(age) : null,
-        years_playing: yearsPlaying.trim() ? Number(yearsPlaying) : null,
-        referred_by: referredBy || null,
-        notes: notes.trim() || null,
-      })
-      .select()
-      .single();
+    try {
+      const supabase = createClient();
+      const { data: guest, error: insertError } = await supabase
+        .from("guests")
+        .insert({
+          name: normalizeName(name),
+          club_id: currentClubId,
+          visit_date: visitDate,
+          phone: phone.trim() ? phone.replace(/\D/g, "") : null,
+          age: age.trim() ? Number(age) : null,
+          years_playing: yearsPlaying.trim() ? Number(yearsPlaying) : null,
+          referred_by: referredBy || null,
+          notes: notes.trim() || null,
+        })
+        .select()
+        .single();
 
-    setSubmitting(false);
+      if (insertError || !guest) {
+        toast.error("게스트 등록에 실패했습니다.");
+        return;
+      }
 
-    if (insertError || !guest) {
-      toast.error("게스트 등록에 실패했습니다.");
-      return;
+      toast.success(`게스트 "${normalizeName(name)}"이(가) 등록되었습니다.`);
+      router.push("/guests");
+      router.refresh();
+    } finally {
+      submittingRef.current = false;
+      setSubmitting(false);
     }
-
-    toast.success(`게스트 "${normalizeName(name)}"이(가) 등록되었습니다.`);
-    router.push("/guests");
-    router.refresh();
   }
 
   const inputCls = (err?: string) =>
