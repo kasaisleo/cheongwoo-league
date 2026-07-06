@@ -82,7 +82,7 @@ export type MemberSortOption = "league_point" | "name" | "mapo_score" | "win_rat
 export const MEMBER_SORT_OPTIONS: { value: MemberSortOption; label: string }[] = [
   { value: "league_point", label: "LP순" },
   { value: "name", label: "이름순" },
-  { value: "mapo_score", label: "마포구 점수순" },
+  { value: "mapo_score", label: "지역점수순" },
   { value: "win_rate", label: "승률순" },
   { value: "matches_played", label: "경기수순" },
 ];

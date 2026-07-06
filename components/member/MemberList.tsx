@@ -224,7 +224,7 @@ export function MemberList({ members }: MemberListProps) {
                       <span className="mx-0.5 text-line-400">·</span>
                       <span className="text-line-500">{member.losses}L</span>
                       {member.mapo_score !== null && (
-                        <span className="ml-1.5 text-line-500">마포 {member.mapo_score}점</span>
+                        <span className="ml-1.5 text-line-500">지역 {member.mapo_score}점</span>
                       )}
                     </p>
                   </div>
