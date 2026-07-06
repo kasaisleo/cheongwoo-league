@@ -11,7 +11,7 @@ import { getCurrentClubId } from "@/lib/current-club";
  *
  * 컬럼 매칭은 헤더 이름 기준으로 한다(대소문자/공백 무시). 지원하는 헤더 이름:
  * 이름/name, 닉네임/nickname, 휴대폰/phone, 주소/address, 나이/age,
- * 출생연도/birth_year, 마포점수/mapo_score, 회원구분/member_type
+ * 출생연도/birth_year, 지역점수/mapo_score, 회원구분/member_type
  *
  * 권한(Step 8-3): owner 전용. 일괄 임포트는 회원 데이터를 대량으로 한 번에
  * 생성하는 작업이라 실수 시 영향 범위가 단건 등록보다 훨씬 크다.

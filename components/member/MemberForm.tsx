@@ -8,7 +8,7 @@
  *
  * 필드 체계는 EditMemberModal 기준으로 통일:
  *   이름 / 닉네임 / 휴대폰 / 나이 / 동네 / 주소 /
- *   마포점수 / 직책(edit+isOwner) / 회원상태(edit만) /
+ *   지역점수 / 직책(edit+isOwner) / 회원상태(edit만) /
  *   선수출신(player_background) / 메모
  *
  * grade 필드 없음 — 더 이상 사용하지 않음.
@@ -191,7 +191,7 @@ export function MemberForm({
         />
       </div>
 
-      {/* ── 마포점수 ─────────────────────────────────────── */}
+      {/* ── 지역점수 ─────────────────────────────────────── */}
       <div>
         <label className={labelCls}>
           지역점수 (1~10)

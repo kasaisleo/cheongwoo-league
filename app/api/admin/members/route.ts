@@ -85,7 +85,7 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  // 마포점수 (선택)
+  // 지역점수 (선택)
   const resolvedMapoScore = mapoScore ?? null;
   if (resolvedMapoScore !== null) {
     if (!Number.isInteger(resolvedMapoScore) || resolvedMapoScore < 1 || resolvedMapoScore > 10) {

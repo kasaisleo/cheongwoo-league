@@ -118,7 +118,7 @@ export function MemberList({ members }: MemberListProps) {
             </select>
           </div>
 
-          {/* 마포점수 필터 */}
+          {/* 지역점수 필터 */}
           <div className="flex flex-wrap gap-1.5">
             {MAPO_SCORE_FILTER_OPTIONS.map((option) => (
               <button

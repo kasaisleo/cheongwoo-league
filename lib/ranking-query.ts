@@ -14,7 +14,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
  * 5. age DESC NULLS LAST
  *
  * 필터 기준:
- * - club_id: 기본값으로 청우회 club_id만 조회
+ * - club_id: 호출부에서 전달한 clubId 기준으로 조회
  * - is_active: true
  * - is_dormant: false
  */

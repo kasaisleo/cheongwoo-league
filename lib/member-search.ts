@@ -31,7 +31,7 @@ export const MEMBER_DORMANT_FILTER_OPTIONS: { value: MemberDormantFilter; label:
 
 /**
  * 검색어 하나로 회원의 핵심 식별 정보를 매칭한다.
- * 대상: 이름/닉네임/전화번호 (주소/district/LP/마포점수는 검색 대상에서 제외).
+ * 대상: 이름/닉네임/전화번호 (주소/district/LP/지역점수는 검색 대상에서 제외).
  *
  * 향후 확장 예정(이번 작업 범위 아님): 선수 출신 정보, 대회 이력(연도/협회·대회구분/
  * 부서/결과/대회명/메모) 등을 검색하려면, 그 데이터를 별도로 조회해서 이 함수에
@@ -48,7 +48,7 @@ export function matchesMemberSearch(member: MemberWithStats, query: string): boo
   return searchableFields.some((field) => field?.toLowerCase().includes(normalized));
 }
 
-/** 마포구 점수 필터 조건에 맞는지 확인 */
+/** 지역점수 필터 조건에 맞는지 확인 */
 export function matchesMapoScoreFilter(member: MemberWithStats, filter: MapoScoreFilter): boolean {
   if (filter === "all") return true;
   if (filter === "none") return member.mapo_score === null;
@@ -89,7 +89,7 @@ export const MEMBER_SORT_OPTIONS: { value: MemberSortOption; label: string }[] =
 
 /**
  * 회원 목록 정렬. 기본은 LP 내림차순.
- * 마포구 점수가 없는(null) 회원은 항상 점수 있는 회원보다 뒤로 보낸다.
+ * 지역점수가 없는(null) 회원은 항상 점수 있는 회원보다 뒤로 보낸다.
  * 향후 대회 운영 화면에서도 이 정렬 함수를 그대로 재사용할 수 있다.
  */
 export function sortMembers(members: MemberWithStats[], sortBy: MemberSortOption): MemberWithStats[] {

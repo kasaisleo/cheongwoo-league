@@ -27,7 +27,7 @@ export const MATCH_SESSION_DAY_FILTERS: { value: AttendanceSession["session_day"
  * - 기준 테이블: attendance_sessions
  * - 노출 조건: status IN ('open', 'closed')  — archived는 기본 목록에서 제외
  * - 정렬: session_date ASC
- * - club_id: 기본값으로 청우회 club_id만 조회
+ * - club_id: 호출부에서 전달한 clubId 기준으로 조회
  *
  * 두 화면이 각자 다른 조건으로 따로 조회하던 것을 이 함수로 통일한다.
  */

@@ -63,7 +63,7 @@ export function normalizeMemberType(raw: string | null | undefined): MemberType 
   return null;
 }
 
-/** 마포구 대회 점수: 1~10 정수만 허용. 범위를 벗어나면 null. */
+/** 지역점수: 1~10 정수만 허용. 범위를 벗어나면 null. */
 export function normalizeMapoScore(raw: string | null | undefined): number | null {
   if (!raw) return null;
   const n = Number(raw.trim());

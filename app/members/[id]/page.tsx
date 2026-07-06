@@ -127,7 +127,7 @@ export default async function MemberDetailPage({ params }: MemberDetailPageProps
           <p className="mt-1 text-[11px] font-semibold uppercase tracking-widest text-line-500">LP</p>
         </div>
 
-        {/* 우선 노출 지표: 마포구 점수 / 경기수 / 승률 (LP는 위에서 이미 크게 표시됨) */}
+        {/* 우선 노출 지표: 지역점수 / 경기수 / 승률 (LP는 위에서 이미 크게 표시됨) */}
         <div className="grid grid-cols-3 gap-2 px-5 py-4 text-center">
           <div>
             <p className="font-score text-xl font-bold text-clay-400">
