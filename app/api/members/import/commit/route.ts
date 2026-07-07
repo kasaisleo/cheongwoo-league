@@ -38,6 +38,7 @@ export async function POST(request: NextRequest) {
   const { data: rows, error: fetchError } = await supabase
     .from("staging_members")
     .select("*")
+    .eq("club_id", currentClubId)
     .in("id", stagingIds);
 
   if (fetchError || !rows) {

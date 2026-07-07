@@ -106,7 +106,7 @@ export async function POST(request: NextRequest) {
   // 이력 보존 용도로 쓰지 않으므로, 새 업로드 시작 시 기존 데이터를 전부 비운다.
   // (이미 members로 반영된 회원 정보는 members 테이블에 남아있으므로 staging에는
   // 보존할 필요가 없다.)
-  await supabase.from("staging_members").delete().not("id", "is", null);
+  await supabase.from("staging_members").delete().eq("club_id", currentClubId);
 
   // 기존 members의 phone 전체를 미리 가져와서 중복 검사에 사용
   const { data: existingMembers } = await supabase
@@ -159,6 +159,7 @@ export async function POST(request: NextRequest) {
       return {
         ...raw,
         ...normalized,
+        club_id: currentClubId,
         existing_member_id: existingMemberId,
       };
     });
