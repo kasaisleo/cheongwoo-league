@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { MemberList } from "@/components/member/MemberList";
 import { getAdminRole } from "@/lib/admin-auth";
@@ -7,6 +8,9 @@ import { getCurrentClubId } from "@/lib/current-club";
 
 export default async function MembersPage() {
   const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect("/login?returnUrl=/members");
+
   const currentClubId = await getCurrentClubId();
   const { data } = await supabase
     .from("member_stats")

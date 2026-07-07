@@ -21,7 +21,7 @@ import {
   pointHistoryReasonLabel,
   groupPointHistoryByMatch,
 } from "@/lib/member-activity";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import type { MemberWithStats } from "@/lib/supabase/database.types";
 import { getCurrentClubId } from "@/lib/current-club";
 
@@ -43,6 +43,9 @@ const SESSION_STATUS_LABEL: Record<string, string> = {
 
 export default async function MemberDetailPage({ params }: MemberDetailPageProps) {
   const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect(`/login?returnUrl=/members/${params.id}`);
+
   const currentClubId = await getCurrentClubId();
 
   const { data: member } = await supabase
