@@ -220,6 +220,7 @@ export default async function AdminPage({
             { href: "/admin/records/attendance", label: "출석 체크 검수",  sub: "응답 현황 · 출석 후 미참여" },
             { href: "/admin/auth-link",          label: "회원 연결",       sub: "카카오 로그인 연결 대기자" },
             ...(isOwnerOrMaster ? [{ href: "/admin/settings", label: "시스템 설정", sub: "권한 · 계정 관리" }] : []),
+            ...(isOwnerOrMaster ? [{ href: "/members/import", label: "회원 명단 가져오기", sub: "CSV/XLSX 일괄 등록" }] : []),
           ].map((item, idx, arr) => (
             <Link key={item.href} href={item.href}>
               <div className={`flex items-center justify-between px-4 py-3 transition-colors hover:bg-line-100/40 ${
