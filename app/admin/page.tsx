@@ -219,6 +219,7 @@ export default async function AdminPage({
             { href: "/admin/records/matches",    label: "경기 검수",       sub: "기록 누락 · 상태 확인" },
             { href: "/admin/records/attendance", label: "출석 체크 검수",  sub: "응답 현황 · 출석 후 미참여" },
             { href: "/admin/auth-link",          label: "회원 연결",       sub: "카카오 로그인 연결 대기자" },
+            { href: "/admin/share",              label: "공유센터",        sub: "회원/운영진 안내 링크 복사" },
             ...(isOwnerOrMaster ? [{ href: "/admin/settings", label: "시스템 설정", sub: "권한 · 계정 관리" }] : []),
             ...(isOwnerOrMaster ? [{ href: "/members/import", label: "회원 명단 가져오기", sub: "CSV/XLSX 일괄 등록" }] : []),
           ].map((item, idx, arr) => (
