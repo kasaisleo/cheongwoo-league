@@ -104,6 +104,31 @@ export function MemberAuthBar({ currentClubId }: MemberAuthBarProps) {
   const isKakaoAdmin = member !== null && (KAKAO_ADMIN_ROLES as string[]).includes(member.permission_role);
   const isAdminMode = cookieRole !== null || isKakaoAdmin;
 
+  // 상단 표시명 계산(QA-P1-B):
+  // 1. member.nickname이 있고 member.name과 다르면 nickname을 그대로 사용
+  // 2. 그렇지 않으면(닉네임을 따로 안 정했거나 비어있으면) 카카오 계정의
+  //    실시간 표시명(user_metadata)을 보조 후보로 사용
+  // 3. 그마저 없으면 member.name으로 최종 대체
+  // members 테이블 값/조회 쿼리 자체는 전혀 건드리지 않는다 — 화면 표시
+  // 우선순위만 계산한다.
+  const memberNickname = member?.nickname?.trim() || "";
+  const memberName = member?.name?.trim() || "";
+  const rawUserMetadata = authUser?.user_metadata as Record<string, unknown> | undefined;
+  const asTrimmedString = (value: unknown): string =>
+    typeof value === "string" ? value.trim() : "";
+  const kakaoDisplayName =
+    asTrimmedString(rawUserMetadata?.name) ||
+    asTrimmedString(rawUserMetadata?.full_name) ||
+    asTrimmedString(rawUserMetadata?.preferred_username) ||
+    asTrimmedString(rawUserMetadata?.user_name);
+
+  const primaryDisplayName =
+    memberNickname && memberNickname !== memberName
+      ? memberNickname
+      : kakaoDisplayName || memberName;
+
+  const shouldShowRealName = memberName !== "" && primaryDisplayName !== memberName;
+
   return (
     <div className="border-b border-line-200/40 bg-line-25">
       <div className="mx-auto flex max-w-md items-center justify-between px-4 py-2">
@@ -133,9 +158,9 @@ export function MemberAuthBar({ currentClubId }: MemberAuthBarProps) {
           {authUser && member ? (
             <div className="flex items-center gap-3">
               <span className="text-xs font-medium text-line-900 whitespace-nowrap">
-                {member.nickname}
-                {member.nickname?.trim() !== member.name?.trim() && (
-                  <span className="ml-1 font-normal text-line-400">({member.name})</span>
+                {primaryDisplayName}
+                {shouldShowRealName && (
+                  <span className="ml-1 font-normal text-line-400">({memberName})</span>
                 )}
               </span>
               <Link href="/mypage" className="inline-flex items-center text-xs font-semibold text-clay-400 whitespace-nowrap">
