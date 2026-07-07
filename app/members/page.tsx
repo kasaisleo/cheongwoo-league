@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { MemberList } from "@/components/member/MemberList";
-import { getAdminRole } from "@/lib/admin-auth";
+import { getAdminAccessServer } from "@/lib/admin-permissions";
 import type { MemberWithStats } from "@/lib/supabase/database.types";
 import { getCurrentClubId } from "@/lib/current-club";
 
@@ -21,8 +21,9 @@ export default async function MembersPage() {
     .order("nickname");
 
   const members = (data ?? []) as MemberWithStats[];
-  const isOwner = getAdminRole() === "owner";
-  const isAdmin = getAdminRole() !== null;
+  const access = await getAdminAccessServer();
+  const isOwner = access.isOwner;
+  const isAdmin = access.isAdmin;
 
   return (
     <main className="px-4 pt-6 pb-28">
