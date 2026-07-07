@@ -80,7 +80,7 @@ export async function getAdminAccessServer(): Promise<AdminAccess> {
  */
 export async function requireAdminAccess(): Promise<AdminAccess> {
   const access = await getAdminAccessServer();
-  if (!access.isAdmin) redirect("/admin");
+  if (!access.isAdmin) redirect("/admin?reason=admin_required");
   return access;
 }
 
@@ -89,6 +89,6 @@ export async function requireAdminAccess(): Promise<AdminAccess> {
  */
 export async function requireOwnerAccess(): Promise<AdminAccess> {
   const access = await getAdminAccessServer();
-  if (!access.isOwner) redirect("/admin");
+  if (!access.isOwner) redirect("/admin?reason=owner_required");
   return access;
 }

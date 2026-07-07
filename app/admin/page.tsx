@@ -52,11 +52,23 @@ async function getAdminDashboardData() {
   };
 }
 
-export default async function AdminPage() {
+export default async function AdminPage({
+  searchParams,
+}: {
+  searchParams: { reason?: string };
+}) {
   // 통합 권한 헬퍼 — 단일 진실 공급원
   const access = await getAdminAccessServer();
   const { isAdmin, isOwner, cookieRole } = access;
   const isOwnerOrMaster = isOwner; // 하위 호환 별칭
+
+  // 권한 부족으로 이 페이지에 리다이렉트되어 온 경우의 사유(QA-P1-C-1).
+  // 권한 판단 자체에는 영향을 주지 않고, 안내 문구 표시 여부만 결정한다.
+  const reason = searchParams?.reason;
+  // 아예 로그인하지 않은 사용자에게 "로그인은 확인됐습니다"라고 보이면
+  // 안 되므로, 카카오 세션이 실제로 있는 경우(access.userId)에만 안내한다.
+  const isLoggedInButLacksAdmin = !isAdmin && access.userId !== null && reason === "admin_required";
+  const isLoggedInButLacksOwner = isAdmin && !isOwner && reason === "owner_required";
 
   // ── 미인증: 로그인 화면 ────────────────────────────
   if (!isAdmin) {
@@ -66,6 +78,16 @@ export default async function AdminPage() {
           <p className="eyebrow-en text-clay-400">Admin Access</p>
           <h1 className="headline-kr mt-1 text-4xl text-line-900">관리자</h1>
         </header>
+
+        {isLoggedInButLacksAdmin && (
+          <section className="mb-5">
+            <div className="rounded-[14px] border border-gold/30 bg-gold/10 p-4">
+              <p className="text-xs leading-relaxed text-line-700">
+                카카오 로그인은 확인됐지만, 이 계정에는 아직 운영진 권한이 없습니다. 클럽 운영진에게 권한 부여를 요청해주세요.
+              </p>
+            </div>
+          </section>
+        )}
 
         {/* 카카오 운영진 로그인 안내 */}
         <section className="mb-5">
@@ -123,6 +145,16 @@ export default async function AdminPage() {
           <FullSignOutButton />
         </div>
       </header>
+
+      {isLoggedInButLacksOwner && (
+        <section className="mb-6">
+          <div className="rounded-[14px] border border-gold/30 bg-gold/10 p-4">
+            <p className="text-xs leading-relaxed text-line-700">
+              이 메뉴는 Owner 권한이 필요합니다. 필요한 경우 클럽 Owner에게 권한 변경을 요청해주세요.
+            </p>
+          </div>
+        </section>
+      )}
 
       {/* ── 운영 현황 ────────────────────────────────── */}
       <section className="mb-6">
