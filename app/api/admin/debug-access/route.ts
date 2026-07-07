@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getAdminRole } from "@/lib/admin-auth";
+import { getAdminAccessServer } from "@/lib/admin-permissions";
 import { getCurrentClubId } from "@/lib/current-club";
 
 /**
@@ -9,7 +10,8 @@ import { getCurrentClubId } from "@/lib/current-club";
  * 서버 기준 권한 상태 진단용 임시 API.
  * 카카오 master 로그인 상태에서 서버가 어떤 값을 읽는지 확인한다.
  *
- * 배포 안정화 후 제거 또는 owner 전용으로 제한할 것.
+ * 권한: owner 전용(DebugAccess-P1-A) — 진단 정보(세션/권한 판정 세부값)가
+ * 비인증 사용자에게 노출되지 않도록 제한한다.
  *
  * 확인 항목:
  *   1. getSession() vs getUser() 결과 차이
@@ -18,6 +20,14 @@ import { getCurrentClubId } from "@/lib/current-club";
  *   4. getAdminRole() (cw_admin_session 쿠키) 결과
  */
 export async function GET() {
+  const access = await getAdminAccessServer();
+  if (!access.kakaoIsOwner) {
+    return NextResponse.json(
+      { error: "Owner 권한이 필요합니다." },
+      { status: 403 }
+    );
+  }
+
   const supabase = createClient();
   const currentClubId = await getCurrentClubId();
 
