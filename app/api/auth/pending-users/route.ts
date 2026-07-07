@@ -3,7 +3,7 @@ import { createServiceClient } from "@/lib/supabase/server";
 import { getAdminAccessServer } from "@/lib/admin-permissions";
 import { getCurrentClubId } from "@/lib/current-club";
 
-export async function GET(request: Request) {
+export async function GET() {
   const access = await getAdminAccessServer();
   if (!access.isOwner) return Response.json({ error: "Owner 또는 master 권한이 필요합니다." }, { status: 403 });
 
@@ -60,32 +60,6 @@ export async function GET(request: Request) {
         createdAt: u.created_at,
       };
     });
-
-  // debug=1: 전체 진단 정보 반환 (확인 후 제거 예정)
-  const url = new URL(request.url);
-  if (url.searchParams.get("debug") === "1") {
-    const firstUser = usersData.users[0] ?? null;
-    return NextResponse.json({
-      totalUsers: usersData.users.length,
-      kakaoUsersCount: kakaoUsers.length,
-      connectedAuthUserIds: [...linkedIds],
-      pendingUsersCount: pendingUsers.length,
-      pendingUsers,
-      firstUser: firstUser
-        ? {
-            id: firstUser.id,
-            email: firstUser.email,
-            app_metadata: firstUser.app_metadata,
-            user_metadata: firstUser.user_metadata,
-            identities: firstUser.identities,
-            // 필터 각 조건을 개별로 출력해 어디서 막히는지 확인
-            filter_identities: firstUser.identities?.some((i: { provider: string }) => i.provider === "kakao") ?? false,
-            filter_app_metadata_provider: firstUser.app_metadata?.provider === "kakao",
-            filter_app_metadata_providers: (firstUser.app_metadata?.providers as string[] | undefined)?.includes("kakao") ?? false,
-          }
-        : null,
-    });
-  }
 
   return NextResponse.json({ ok: true, pendingUsers });
 }
