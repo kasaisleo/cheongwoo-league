@@ -21,8 +21,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 export function applyRankingQuery(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   supabase: SupabaseClient<any>,
-  limit?: number,
-  clubId: string
+  clubId: string,
+  limit?: number
 ) {
   let q = supabase
     .from("member_stats")

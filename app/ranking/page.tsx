@@ -25,7 +25,7 @@ export default async function RankingPage() {
   const supabase = createClient();
   const currentClubId = await getCurrentClubId();
 
-  const { data: rankedMembers } = await applyRankingQuery(supabase, undefined, currentClubId);
+  const { data: rankedMembers } = await applyRankingQuery(supabase, currentClubId, undefined);
 
   const members = (rankedMembers ?? []) as MemberWithStats[];
 

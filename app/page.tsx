@@ -67,7 +67,7 @@ export default async function HomePage() {
       .lte("visit_date", week.end)
       .order("visit_date", { ascending: true }),
 
-    applyRankingQuery(supabase, 3, currentClubId),
+    applyRankingQuery(supabase, currentClubId, 3),
   ]);
 
   const allSessions = selectHomeSessions((activeSessionRows ?? []) as AttendanceSession[]);
