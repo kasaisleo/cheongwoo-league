@@ -94,6 +94,7 @@ export function MemberAuthBar({ currentClubId }: MemberAuthBarProps) {
     setSigningOut(true);
     const supabase = createClient();
     await supabase.auth.signOut();
+    setCookieRole(null);
     router.push("/");
     router.refresh();
   }
