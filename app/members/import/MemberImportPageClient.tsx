@@ -18,8 +18,8 @@ const STATUS_LABEL: Record<string, string> = {
   skipped: "제외됨",
 };
 
-function statusTone(status: string): "court" | "fault" | "amber" | "neutral" {
-  if (status === "valid") return "court";
+function statusTone(status: string): "win" | "fault" | "amber" | "neutral" {
+  if (status === "valid") return "win";
   if (status === "imported") return "neutral";
   if (status === "duplicate" || status === "missing_required" || status === "invalid_phone" || status === "invalid_mapo_score") {
     return "fault";
@@ -119,10 +119,10 @@ export default function MemberImportPageClient() {
   return (
     <main className="px-4 pt-6">
       <header className="mb-5">
-        <p className="font-score text-xs font-semibold uppercase tracking-[0.2em] text-clay-400">
+        <p className="eyebrow-en text-clay-400">
           Member Import
         </p>
-        <h1 className="font-display text-3xl font-bold uppercase tracking-tight text-line-900">
+        <h1 className="headline-kr text-3xl text-line-900">
           회원 명단 가져오기
         </h1>
       </header>
