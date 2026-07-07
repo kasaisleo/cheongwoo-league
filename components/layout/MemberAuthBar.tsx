@@ -134,7 +134,9 @@ export function MemberAuthBar({ currentClubId }: MemberAuthBarProps) {
             <div className="flex items-center gap-3">
               <span className="text-xs font-medium text-line-900 whitespace-nowrap">
                 {member.nickname}
-                <span className="ml-1 font-normal text-line-400">({member.name})</span>
+                {member.nickname?.trim() !== member.name?.trim() && (
+                  <span className="ml-1 font-normal text-line-400">({member.name})</span>
+                )}
               </span>
               <Link href="/mypage" className="inline-flex items-center text-xs font-semibold text-clay-400 whitespace-nowrap">
                 마이페이지
