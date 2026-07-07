@@ -9,9 +9,10 @@ import { getCurrentClubId } from "@/lib/current-club";
  * CSV/XLSX 파일을 업로드받아 파싱하고, staging_members에 저장한다.
  * members에는 직접 insert하지 않는다 — 반드시 staging_members → 검수 → members 순서.
  *
- * 컬럼 매칭은 헤더 이름 기준으로 한다(대소문자/공백 무시). 지원하는 헤더 이름:
- * 이름/name, 닉네임/nickname, 휴대폰/phone, 주소/address, 나이/age,
- * 출생연도/birth_year, 지역점수/mapo_score, 회원구분/member_type
+ * 컬럼 매칭은 헤더 이름 기준으로 한다(대소문자/공백/BOM 무시). 지원하는 헤더 이름:
+ * 이름/성명/회원명/name, 닉네임/별명/nickname, 휴대폰/휴대폰번호/전화번호/연락처/phone,
+ * 주소/전체주소/address/address_full, 나이/age, 출생연도/birth_year,
+ * 지역점수/지역구점수/마포점수/마포구점수/mapo_score, 회원구분/회원타입/구분/member_type
  *
  * 권한(Step 8-3): owner 전용. 일괄 임포트는 회원 데이터를 대량으로 한 번에
  * 생성하는 작업이라 실수 시 영향 범위가 단건 등록보다 훨씬 크다.
@@ -19,14 +20,21 @@ import { getCurrentClubId } from "@/lib/current-club";
 
 const HEADER_ALIASES: Record<string, string> = {
   이름: "name",
+  성명: "name",
+  회원명: "name",
   name: "name",
   닉네임: "nickname",
+  별명: "nickname",
   nickname: "nickname",
   휴대폰: "phone",
   휴대폰번호: "phone",
+  전화번호: "phone",
+  연락처: "phone",
   phone: "phone",
   주소: "address",
+  전체주소: "address",
   address: "address",
+  address_full: "address",
   나이: "age",
   age: "age",
   출생연도: "birth_year",
@@ -38,12 +46,19 @@ const HEADER_ALIASES: Record<string, string> = {
   지역구점수: "mapo_score",
   mapo_score: "mapo_score",
   회원구분: "member_type",
+  회원타입: "member_type",
+  구분: "member_type",
   member_type: "member_type",
 };
 
+// CSV 파일 앞에 붙는 UTF-8 BOM(\uFEFF)은 trim()으로 제거되지 않아, 파일의
+// 첫 번째 헤더(대개 "이름")만 매칭에 실패하는 원인이 된다. trim/소문자 변환
+// 이전에 반드시 먼저 제거한다.
 function normalizeHeader(header: string): string | null {
-  const key = header.trim().toLowerCase();
-  return HEADER_ALIASES[key] ?? HEADER_ALIASES[header.trim()] ?? null;
+  const withoutBom = header.replace(/^\uFEFF/, "");
+  const trimmed = withoutBom.trim();
+  const key = trimmed.toLowerCase();
+  return HEADER_ALIASES[key] ?? HEADER_ALIASES[trimmed] ?? null;
 }
 
 export async function POST(request: NextRequest) {
