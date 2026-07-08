@@ -1,6 +1,5 @@
-import { NextRequest, NextResponse } from "next/server";
+﻿import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
-import { requireAdmin, requireRole, getAdminRole } from "@/lib/admin-auth";
 import { getAdminAccessServer } from "@/lib/admin-permissions";
 import { isValidPlayerBackground } from "@/lib/constants/member-timeline";
 import type { MemberGrade, MemberRole } from "@/lib/supabase/database.types";
@@ -15,9 +14,9 @@ interface UpdateMemberBody {
   district?: string | null;
   grade?: MemberGrade;
   mapoScore?: number | null;
-  /** 운영 직책. null이면 직책 없음으로 변경. */
+  /** ?댁쁺 吏곸콉. null?대㈃ 吏곸콉 ?놁쓬?쇰줈 蹂寃? */
   role?: MemberRole | null;
-  /** 휴면회원 여부. is_active(삭제/숨김)와 별개 — false는 활동, true는 휴면. */
+  /** ?대㈃?뚯썝 ?щ?. is_active(??젣/?④?)? 蹂꾧컻 ??false???쒕룞, true???대㈃. */
   isDormant?: boolean;
   memo?: string | null;
   playerBackground?: string;
@@ -25,17 +24,17 @@ interface UpdateMemberBody {
 
 const VALID_GRADES: MemberGrade[] = ["A", "B", "C", "D"];
 const VALID_ROLES: MemberRole[] = [
-  "회장",
-  "부회장",
-  "총무",
-  "경기이사",
-  "홍보이사",
-  "운영이사",
-  "섭외이사",
-  "고문",
+  "?뚯옣",
+  "遺?뚯옣",
+  "珥앸Т",
+  "寃쎄린?댁궗",
+  "?띾낫?댁궗",
+  "?댁쁺?댁궗",
+  "??쇅?댁궗",
+  "怨좊Ц",
 ];
 
-/** 010으로 시작하는 숫자만 11자리 */
+/** 010?쇰줈 ?쒖옉?섎뒗 ?レ옄留?11?먮━ */
 const PHONE_REGEX = /^010\d{8}$/;
 
 interface RouteParams {
@@ -43,22 +42,20 @@ interface RouteParams {
 }
 
 /**
- * 회원 정보 수정. manager 이상 가능.
- * 추후 카카오 로그인 도입 시: 본인은 자신의 정보를 수정할 수 있게 허용 예정.
+ * ?뚯썝 ?뺣낫 ?섏젙. manager ?댁긽 媛??
+ * 異뷀썑 移댁뭅??濡쒓렇???꾩엯 ?? 蹂몄씤? ?먯떊???뺣낫瑜??섏젙?????덇쾶 ?덉슜 ?덉젙.
  *
- * 수정 가능 항목: 이름, 닉네임, 전화번호, 나이, 주소, district, grade, 지역점수,
- * 직책(role), 휴면 여부(isDormant), 메모, 선수출신. 그 외 항목(회원구분/LP/승패 등)은
- * 이 API의 대상이 아니다.
+ * ?섏젙 媛????ぉ: ?대쫫, ?됰꽕?? ?꾪솕踰덊샇, ?섏씠, 二쇱냼, district, grade, 吏??젏??
+ * 吏곸콉(role), ?대㈃ ?щ?(isDormant), 硫붾え, ?좎닔異쒖떊. 洹?????ぉ(?뚯썝援щ텇/LP/?뱁뙣 ???
+ * ??API????곸씠 ?꾨땲??
  *
- * 권한 세분화(Step 8-3): 직책(role)만 owner 전용이다. body에 role 필드가
- * 포함되어 있는데 owner가 아니면, 그 필드만 조용히 무시하지 않고 요청
- * 전체를 403으로 거부한다 — 권한 없는 필드 변경 시도를 명확하게 실패시켜야
- * "저장은 됐는데 직책만 안 바뀌었다"는 혼란을 막을 수 있고, 디버깅/QA도
- * 쉬워진다. 이 체크는 DB 조회보다 먼저 수행해 부분 처리가 생기지 않게 한다.
+ * 沅뚰븳 ?몃텇??Step 8-3): 吏곸콉(role)留?owner ?꾩슜?대떎. body??role ?꾨뱶媛
+ * ?ы븿?섏뼱 ?덈뒗??owner媛 ?꾨땲硫? 洹??꾨뱶留?議곗슜??臾댁떆?섏? ?딄퀬 ?붿껌
+ * ?꾩껜瑜?403?쇰줈 嫄곕??쒕떎 ??沅뚰븳 ?녿뒗 ?꾨뱶 蹂寃??쒕룄瑜?紐낇솗?섍쾶 ?ㅽ뙣?쒖폒?? * "??μ? ?먮뒗??吏곸콉留???諛붾뚯뿀?????쇰???留됱쓣 ???덇퀬, ?붾쾭源?QA?? * ?ъ썙吏꾨떎. ??泥댄겕??DB 議고쉶蹂대떎 癒쇱? ?섑뻾??遺遺?泥섎━媛 ?앷린吏 ?딄쾶 ?쒕떎.
  */
 export async function PUT(request: NextRequest, { params }: RouteParams) {
   const putAccess = await getAdminAccessServer();
-  if (!putAccess.kakaoIsAdmin) return Response.json({ error: "관리자 권한이 필요합니다." }, { status: 403 });
+  if (!putAccess.kakaoIsAdmin) return Response.json({ error: "愿由ъ옄 沅뚰븳???꾩슂?⑸땲??" }, { status: 403 });
 
   const memberId = params.id;
   const body = (await request.json()) as UpdateMemberBody;
@@ -77,13 +74,10 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     playerBackground,
   } = body;
 
-  // role(직책) 변경은 owner 전용. body에 role 키 자체가 있으면(null로 직책을
-  // 해제하는 경우도 포함) owner 여부를 확인한다 — manager가 role: null을
-  // 보내 직책을 지우는 것도 막아야 하므로 "값이 truthy인지"가 아니라
-  // "필드가 존재하는지"로 판단한다.
+  // role(吏곸콉) 蹂寃쎌? owner ?꾩슜. body??role ???먯껜媛 ?덉쑝硫?null濡?吏곸콉??  // ?댁젣?섎뒗 寃쎌슦???ы븿) owner ?щ?瑜??뺤씤?쒕떎 ??manager媛 role: null??  // 蹂대궡 吏곸콉??吏?곕뒗 寃껊룄 留됱븘???섎?濡?"媛믪씠 truthy?몄?"媛 ?꾨땲??  // "?꾨뱶媛 議댁옱?섎뒗吏"濡??먮떒?쒕떎.
   if (role !== undefined && !putAccess.kakaoIsOwner) {
     return NextResponse.json(
-      { error: "직책 변경은 최고관리자만 가능합니다." },
+      { error: "吏곸콉 蹂寃쎌? 理쒓퀬愿由ъ옄留?媛?ν빀?덈떎." },
       { status: 403 }
     );
   }
@@ -99,7 +93,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     .single();
 
   if (fetchError || !existingMember) {
-    return NextResponse.json({ error: "회원을 찾을 수 없습니다." }, { status: 404 });
+    return NextResponse.json({ error: "?뚯썝??李얠쓣 ???놁뒿?덈떎." }, { status: 404 });
   }
 
   const updates: Record<string, unknown> = {};
@@ -107,7 +101,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
   if (name !== undefined) {
     if (!name.trim()) {
-      return NextResponse.json({ error: "이름을 입력해주세요." }, { status: 400 });
+      return NextResponse.json({ error: "?대쫫???낅젰?댁＜?몄슂." }, { status: 400 });
     }
     trimmedName = name.trim();
     updates.name = trimmedName;
@@ -119,17 +113,17 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
   if (phone !== undefined) {
     if (!phone.trim()) {
-      return NextResponse.json({ error: "휴대폰 번호를 입력해주세요." }, { status: 400 });
+      return NextResponse.json({ error: "?대???踰덊샇瑜??낅젰?댁＜?몄슂." }, { status: 400 });
     }
     const digitsOnlyPhone = phone.replace(/\D/g, "");
     if (!PHONE_REGEX.test(digitsOnlyPhone)) {
       return NextResponse.json(
-        { error: "휴대폰 번호는 010으로 시작하는 11자리여야 합니다." },
+        { error: "?대???踰덊샇??010?쇰줈 ?쒖옉?섎뒗 11?먮━?ъ빞 ?⑸땲??" },
         { status: 400 }
       );
     }
 
-    // phone 중복 체크 — 본인은 제외
+    // phone 以묐났 泥댄겕 ??蹂몄씤? ?쒖쇅
     const { data: duplicateCheck } = await supabase
       .from("members")
       .select("id")
@@ -140,7 +134,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
     if (duplicateCheck && duplicateCheck.length > 0) {
       return NextResponse.json(
-        { error: "이미 등록된 휴대폰 번호입니다." },
+        { error: "?대? ?깅줉???대???踰덊샇?낅땲??" },
         { status: 409 }
       );
     }
@@ -150,7 +144,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
   if (age !== undefined) {
     if (age !== null && (!Number.isInteger(age) || age < 0 || age > 120)) {
-      return NextResponse.json({ error: "나이는 숫자만 입력해주세요." }, { status: 400 });
+      return NextResponse.json({ error: "?섏씠???レ옄留??낅젰?댁＜?몄슂." }, { status: 400 });
     }
     updates.age = age;
   }
@@ -165,7 +159,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
   if (grade !== undefined) {
     if (!VALID_GRADES.includes(grade)) {
-      return NextResponse.json({ error: "실력 등급이 올바르지 않습니다." }, { status: 400 });
+      return NextResponse.json({ error: "?ㅻ젰 ?깃툒???щ컮瑜댁? ?딆뒿?덈떎." }, { status: 400 });
     }
     updates.grade = grade;
   }
@@ -173,7 +167,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
   if (mapoScore !== undefined) {
     if (mapoScore !== null && (!Number.isInteger(mapoScore) || mapoScore < 1 || mapoScore > 10)) {
       return NextResponse.json(
-        { error: "지역점수는 1~10 사이여야 합니다." },
+        { error: "吏??젏?섎뒗 1~10 ?ъ씠?ъ빞 ?⑸땲??" },
         { status: 400 }
       );
     }
@@ -181,17 +175,17 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
   }
 
   if (role !== undefined) {
-    // role은 직책이 없으면 null — 그 자체로 유효하다(QA 케이스: 직책 있음 → 없음).
-    // 값이 있을 때만 VALID_ROLES로 검증한다.
+    // role? 吏곸콉???놁쑝硫?null ??洹??먯껜濡??좏슚?섎떎(QA 耳?댁뒪: 吏곸콉 ?덉쓬 ???놁쓬).
+    // 媛믪씠 ?덉쓣 ?뚮쭔 VALID_ROLES濡?寃利앺븳??
     if (role !== null && !VALID_ROLES.includes(role)) {
-      return NextResponse.json({ error: "직책이 올바르지 않습니다." }, { status: 400 });
+      return NextResponse.json({ error: "吏곸콉???щ컮瑜댁? ?딆뒿?덈떎." }, { status: 400 });
     }
     updates.role = role;
   }
 
   if (isDormant !== undefined) {
     if (typeof isDormant !== "boolean") {
-      return NextResponse.json({ error: "휴면 여부가 올바르지 않습니다." }, { status: 400 });
+      return NextResponse.json({ error: "?대㈃ ?щ?媛 ?щ컮瑜댁? ?딆뒿?덈떎." }, { status: 400 });
     }
     updates.is_dormant = isDormant;
   }
@@ -202,13 +196,13 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
   if (playerBackground !== undefined) {
     if (!isValidPlayerBackground(playerBackground)) {
-      return NextResponse.json({ error: "선수출신 정보가 올바르지 않습니다." }, { status: 400 });
+      return NextResponse.json({ error: "?좎닔異쒖떊 ?뺣낫媛 ?щ컮瑜댁? ?딆뒿?덈떎." }, { status: 400 });
     }
     updates.player_background = playerBackground;
   }
 
   if (Object.keys(updates).length === 0) {
-    return NextResponse.json({ error: "수정할 내용이 없습니다." }, { status: 400 });
+    return NextResponse.json({ error: "?섏젙???댁슜???놁뒿?덈떎." }, { status: 400 });
   }
 
   const { data: updatedMember, error: updateError } = await supabase
@@ -220,23 +214,23 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     .single();
 
   if (updateError || !updatedMember) {
-    return NextResponse.json({ error: "회원 정보 수정에 실패했습니다." }, { status: 500 });
+    return NextResponse.json({ error: "?뚯썝 ?뺣낫 ?섏젙???ㅽ뙣?덉뒿?덈떎." }, { status: 500 });
   }
 
   return NextResponse.json({ ok: true, member: updatedMember });
 }
 
 /**
- * 회원 soft delete. 실제로 행을 지우지 않고 is_active=false로만 표시한다.
- * 경기/출석/LP 이력은 member_id로 연결되어 있어 그대로 보존된다.
+ * ?뚯썝 soft delete. ?ㅼ젣濡??됱쓣 吏?곗? ?딄퀬 is_active=false濡쒕쭔 ?쒖떆?쒕떎.
+ * 寃쎄린/異쒖꽍/LP ?대젰? member_id濡??곌껐?섏뼱 ?덉뼱 洹몃?濡?蹂댁〈?쒕떎.
  *
- * 권한(Step 8-3): owner 전용. soft delete라도 회원이 모든 화면에서 즉시
- * 사라지는 가장 파급력 큰 동작이고, 복구 API/UI가 없어 신중함이 필요하다.
- * 추후 카카오 로그인 도입 시에도 본인 삭제는 허용하지 않는다 — 항상 owner만 가능.
+ * 沅뚰븳(Step 8-3): owner ?꾩슜. soft delete?쇰룄 ?뚯썝??紐⑤뱺 ?붾㈃?먯꽌 利됱떆
+ * ?щ씪吏??媛???뚭툒?????숈옉?닿퀬, 蹂듦뎄 API/UI媛 ?놁뼱 ?좎쨷?⑥씠 ?꾩슂?섎떎.
+ * 異뷀썑 移댁뭅??濡쒓렇???꾩엯 ?쒖뿉??蹂몄씤 ??젣???덉슜?섏? ?딅뒗??????긽 owner留?媛??
  */
 export async function DELETE(_request: NextRequest, { params }: RouteParams) {
   const access = await getAdminAccessServer();
-  if (!access.kakaoIsOwner) return Response.json({ error: "회원 탈퇴 처리는 master/owner만 가능합니다." }, { status: 403 });
+  if (!access.kakaoIsOwner) return Response.json({ error: "?뚯썝 ?덊눜 泥섎━??master/owner留?媛?ν빀?덈떎." }, { status: 403 });
 
   const memberId = params.id;
   const supabase = createServiceClient();
@@ -250,7 +244,7 @@ export async function DELETE(_request: NextRequest, { params }: RouteParams) {
     .single();
 
   if (fetchError || !existingMember) {
-    return NextResponse.json({ error: "회원을 찾을 수 없습니다." }, { status: 404 });
+    return NextResponse.json({ error: "?뚯썝??李얠쓣 ???놁뒿?덈떎." }, { status: 404 });
   }
 
   const { error: updateError } = await supabase
@@ -260,7 +254,7 @@ export async function DELETE(_request: NextRequest, { params }: RouteParams) {
     .eq("club_id", currentClubId);
 
   if (updateError) {
-    return NextResponse.json({ error: "회원 삭제에 실패했습니다." }, { status: 500 });
+    return NextResponse.json({ error: "?뚯썝 ??젣???ㅽ뙣?덉뒿?덈떎." }, { status: 500 });
   }
 
   return NextResponse.json({ ok: true });
