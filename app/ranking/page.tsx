@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { RankMovement } from "@/components/ui/RankMovement";
 import { applyRankingQuery } from "@/lib/ranking-query";
 import type { MemberWithStats } from "@/lib/supabase/database.types";
-import { getCurrentClubId } from "@/lib/current-club";
+import { getCurrentClub } from "@/lib/current-club";
 
 /**
  * Ranking Page v2 — ATP Tour 스타일 랭킹 화면 (Step 15-4).
@@ -23,7 +23,8 @@ export const revalidate = 0;
 
 export default async function RankingPage() {
   const supabase = createClient();
-  const currentClubId = await getCurrentClubId();
+  const currentClub = await getCurrentClub();
+  const currentClubId = currentClub.id;
 
   const { data: rankedMembers } = await applyRankingQuery(supabase, currentClubId, undefined);
 
@@ -40,7 +41,7 @@ export default async function RankingPage() {
           <p className="eyebrow-en text-clay-400">Ranking</p>
           <h1 className="headline-kr text-4xl text-line-900">랭킹</h1>
           <p className="mt-1 max-w-[240px] break-keep text-xs leading-relaxed text-line-500">
-            청우회 리그 순위와 기록을 확인합니다.
+            {currentClub.name} 리그 순위와 기록을 확인합니다.
           </p>
         </div>
         <Link href="/"

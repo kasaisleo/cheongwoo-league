@@ -76,3 +76,98 @@ export async function getCurrentClubId(): Promise<string> {
     return DEFAULT_CLUB_ID;
   }
 }
+
+/**
+ * CurrentClub — getCurrentClub()의 반환 타입. clubs 테이블 컬럼과 1:1 대응.
+ */
+export type CurrentClub = {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  status: string;
+};
+
+/**
+ * getCurrentClub(): 서버 컴포넌트/API route에서만 호출.
+ *
+ * getCurrentClubId()와 검증 흐름은 동일하되(쿠키 → clubs 존재+active 확인 →
+ * user 확인 → member 소속 확인), clubs 조회 시 name/slug/description까지
+ * 함께 가져와 club 객체 전체를 반환한다. 화면에 클럽명이 필요한 소수의
+ * 페이지에서만 선택적으로 쓰는 상위 호환 함수다 — 기존 getCurrentClubId()
+ * 호출부(수십 곳)는 그대로 두고 건드리지 않는다.
+ *
+ * 폴백 우선순위:
+ *   1) DEFAULT_CLUB_ID로 clubs를 다시 조회해 실제 DB의 기본 클럽 정보를
+ *      반환한다(청우회라는 문자열을 코드에 직접 적지 않는다).
+ *   2) 그 재조회마저 실패하면(DB 완전 응답 불가 등), 화면이 깨지지 않도록
+ *      club-neutral한 최소 fallback 객체를 반환한다 — name은 특정 클럽명이
+ *      아니라 "우리 클럽" 같은 중립 문구를 쓴다.
+ *
+ * 절대 throw하지 않는다. 쿠키를 set/remove하지 않는다.
+ */
+export async function getCurrentClub(): Promise<CurrentClub> {
+  const supabase = createClient();
+
+  async function fetchClubById(clubId: string): Promise<CurrentClub | null> {
+    const { data } = await supabase
+      .from("clubs")
+      .select("id, name, slug, description, status")
+      .eq("id", clubId)
+      .maybeSingle();
+    return data ?? null;
+  }
+
+  try {
+    const cookieStore = cookies();
+    const cookieClubId = cookieStore.get(SELECTED_CLUB_COOKIE)?.value;
+
+    if (cookieClubId) {
+      const club = await fetchClubById(cookieClubId);
+
+      if (club && club.status === "active") {
+        const { data: { user } } = await supabase.auth.getUser();
+
+        if (user) {
+          const { data: member } = await supabase
+            .from("members")
+            .select("id")
+            .eq("club_id", cookieClubId)
+            .eq("auth_user_id", user.id)
+            .eq("is_active", true)
+            .eq("is_dormant", false)
+            .is("deleted_at", null)
+            .maybeSingle();
+
+          if (member) {
+            return club;
+          }
+        }
+      }
+    }
+
+    // 폴백 1: DEFAULT_CLUB_ID로 clubs를 다시 조회해 실제 DB 값을 반환한다.
+    const fallbackClub = await fetchClubById(DEFAULT_CLUB_ID);
+    if (fallbackClub) {
+      return fallbackClub;
+    }
+
+    // 폴백 2: 그마저 실패하면 club-neutral한 최소 fallback을 반환한다.
+    return {
+      id: DEFAULT_CLUB_ID,
+      name: "우리 클럽",
+      slug: "",
+      description: null,
+      status: "active",
+    };
+  } catch {
+    // 어떤 에러가 나도 예외를 밖으로 던지지 않고 안전하게 폴백한다.
+    return {
+      id: DEFAULT_CLUB_ID,
+      name: "우리 클럽",
+      slug: "",
+      description: null,
+      status: "active",
+    };
+  }
+}

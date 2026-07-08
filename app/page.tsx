@@ -10,7 +10,7 @@ import { SectionHeader, EmptyState } from "@/components/ui/SectionHeader";
 import { applyRankingQuery } from "@/lib/ranking-query";
 import { isAdminSession } from "@/lib/admin-auth";
 import type { AttendanceSession, MemberWithStats } from "@/lib/supabase/database.types";
-import { getCurrentClubId } from "@/lib/current-club";
+import { getCurrentClub } from "@/lib/current-club";
 
 const MAIN_SESSION_LIMIT = 5;
 
@@ -35,7 +35,8 @@ function thisWeekRange(): { start: string; end: string } {
 
 export default async function HomePage() {
   const supabase = createClient();
-  const currentClubId = await getCurrentClubId();
+  const currentClub = await getCurrentClub();
+  const currentClubId = currentClub.id;
   const week = thisWeekRange();
   const today = new Date().toISOString().slice(0, 10);
 
@@ -106,7 +107,7 @@ export default async function HomePage() {
           <span className="h-1.5 w-1.5 rounded-full bg-clay-400" />
           <p className="eyebrow-en text-clay-400">Mapo Cheongwoo Club</p>
         </div>
-        <h1 className="headline-kr text-4xl text-line-900">마포 청우회 리그</h1>
+        <h1 className="headline-kr text-4xl text-line-900">{currentClub.name} 리그</h1>
         <p className="mt-1 max-w-[240px] break-keep text-xs leading-relaxed text-line-500">
           복식 테니스 리그 · 정기 매치 · 기록 관리
         </p>
