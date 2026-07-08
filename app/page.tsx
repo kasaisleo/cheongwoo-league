@@ -14,6 +14,16 @@ import { getCurrentClub } from "@/lib/current-club";
 
 const MAIN_SESSION_LIMIT = 5;
 
+// clubs.slug를 홈 eyebrow 표시용 영문 라벨로 변환한다(예: "mapo-cheongwoo" →
+// "MAPO CHEONGWOO CLUB"). DB에 별도 영문명 필드가 없어 slug를 임시로
+// 활용하는 A1 범위의 최소 변환이다 — 공용 util화나 display_name_en 같은
+// 전용 필드 추가는 후속 Phase(Brand-Club-A2)로 미룬다.
+function slugToEyebrow(slug: string): string {
+  const normalized = slug.trim().replace(/[-_]+/g, " ").trim();
+  if (!normalized) return "OUR CLUB";
+  return `${normalized.toUpperCase()} CLUB`;
+}
+
 // selected_club_id 쿠키에 따라 결과가 달라지는 서버 페이지이므로,
 // Next.js의 static optimization/캐시에 걸리지 않도록 매 요청마다 새로 렌더링한다.
 export const dynamic = "force-dynamic";
@@ -105,7 +115,7 @@ export default async function HomePage() {
       <header className="mb-6">
         <div className="mb-1.5 inline-flex items-center gap-2">
           <span className="h-1.5 w-1.5 rounded-full bg-clay-400" />
-          <p className="eyebrow-en text-clay-400">Mapo Cheongwoo Club</p>
+          <p className="eyebrow-en text-clay-400">{slugToEyebrow(currentClub.slug)}</p>
         </div>
         <h1 className="headline-kr text-4xl text-line-900">{currentClub.name} 리그</h1>
         <p className="mt-1 max-w-[240px] break-keep text-xs leading-relaxed text-line-500">
