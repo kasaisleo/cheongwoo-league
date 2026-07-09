@@ -3,7 +3,6 @@ import { createClient } from "@/lib/supabase/server";
 import { getAdminAccessServer } from "@/lib/admin-permissions";
 import { AdminLoginForm } from "@/components/admin/AdminLoginForm";
 import { FullSignOutButton } from "@/components/admin/FullSignOutButton";
-import { getCurrentClubId } from "@/lib/current-club";
 
 /**
  * /admin page — 서버 컴포넌트.
@@ -17,9 +16,8 @@ import { getCurrentClubId } from "@/lib/current-club";
  * 서버 컴포넌트 렌더링 실패 시 빈 화면이 됐음.
  * 수정: 미인증 시 전용 로그인 페이지를 직접 렌더링.
  */
-async function getAdminDashboardData() {
+async function getAdminDashboardData(currentClubId: string) {
   const supabase = createClient();
-  const currentClubId = await getCurrentClubId();
   const today = new Date().toISOString().slice(0, 10);
 
   const [
@@ -128,7 +126,7 @@ export default async function AdminPage({
   }
 
   // ── 인증됨: 대시보드 ───────────────────────────────
-  const data = await getAdminDashboardData();
+  const data = await getAdminDashboardData(access.clubId ?? "");
 
   return (
     <main className="px-4 pt-6 pb-10">

@@ -24,11 +24,13 @@ import type { MemberWithStats } from "@/lib/supabase/database.types";
 interface RankingTeaserCardProps {
   members: MemberWithStats[];   // 상위 3명 (이미 정렬된 상태로 전달)
   isWimbledonSeason?: boolean;  // 윔블던 시즌 오버레이 활성화 여부
+  rankingHref?: string;         // 랭킹 상세 페이지 href (기본: "/ranking")
 }
 
 export function RankingTeaserCard({
   members,
   isWimbledonSeason = false,
+  rankingHref = "/ranking",
 }: RankingTeaserCardProps) {
   if (members.length === 0) return null;
 
@@ -59,7 +61,7 @@ export function RankingTeaserCard({
 
         {/* ── #1 Champion Row — gold 강조, 대형 ─────────────── */}
         {first && (
-          <Link href="/ranking" className="block">
+          <Link href={rankingHref} className="block">
             <div className="relative border-b border-line-200/30 px-4 py-4 transition-colors hover:bg-line-100/40">
 
               {/* eyebrow: #1 순위 표시 */}
@@ -108,7 +110,7 @@ export function RankingTeaserCard({
           if (!member) return null;
           const rank = idx + 2;
           return (
-            <Link key={member.id} href="/ranking" className="block">
+            <Link key={member.id} href={rankingHref} className="block">
               <div
                 className={`flex items-center gap-3 px-4 py-3 transition-colors hover:bg-line-100/40 ${
                   idx === 0 ? "border-b border-line-200/30" : ""
@@ -148,7 +150,7 @@ export function RankingTeaserCard({
 
         {/* ── CTA: VIEW FULL RANKINGS → ──────────────────────── */}
         <Link
-          href="/ranking"
+          href={rankingHref}
           className="flex items-center justify-between border-t border-line-200/30 px-4 py-2.5 text-xs font-bold uppercase tracking-widest text-clay-400 transition-colors hover:bg-line-100/40"
         >
           <span>View Full Rankings</span>

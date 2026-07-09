@@ -41,22 +41,25 @@ export async function getAdminAccessServer(): Promise<AdminAccess> {
   let kakaoRole: string | null = null;
   let userId: string | null = null;
   let memberId: string | null = null;
+  let clubId: string | null = null;
 
   try {
     const supabase = createClient();
     const currentClubId = await getCurrentClubId();
+    clubId = currentClubId; // cookie-only admin 기본값
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
       userId = user.id;
       const { data: member } = await supabase
         .from("members")
-        .select("id, permission_role")
+        .select("id, permission_role, club_id")
         .eq("auth_user_id", user.id)
         .eq("club_id", currentClubId)
         .maybeSingle();
       if (member) {
         kakaoRole = member.permission_role;
         memberId  = member.id;
+        clubId    = member.club_id; // kakao 경로: member record의 실제 club_id
       }
     }
   } catch { /* 세션 없음 */ }
@@ -72,7 +75,7 @@ export async function getAdminAccessServer(): Promise<AdminAccess> {
 
   const source = cookieIsAdmin ? "owner-cookie" : kakaoIsAdmin ? "kakao" : "none";
 
-  return { isAdmin, isOwner, kakaoIsAdmin, kakaoIsOwner, source, cookieRole, kakaoRole, userId, memberId };
+  return { isAdmin, isOwner, kakaoIsAdmin, kakaoIsOwner, source, cookieRole, kakaoRole, userId, memberId, clubId };
 }
 
 /**

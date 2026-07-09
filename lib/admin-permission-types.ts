@@ -18,6 +18,7 @@ export interface AdminAccess {
   kakaoRole:  string | null;   // PermissionRole 값 ("member"|"scorer"|"manager"|"admin"|"master")
   userId:     string | null;
   memberId:   string | null;
+  clubId:     string | null;   // 관리 대상 클럽 ID (kakao path: member.club_id, cookie-only: getCurrentClubId 결과)
 }
 
 export const COOKIE_ADMIN_ROLES  = ["owner", "manager"]             as const;
@@ -26,5 +27,5 @@ export const KAKAO_OWNER_ROLE    = "master"                         as const;
 
 export const EMPTY_ACCESS: AdminAccess = {
   isAdmin: false, isOwner: false, kakaoIsAdmin: false, kakaoIsOwner: false, source: "none",
-  cookieRole: null, kakaoRole: null, userId: null, memberId: null,
+  cookieRole: null, kakaoRole: null, userId: null, memberId: null, clubId: null,
 };

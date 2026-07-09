@@ -81,7 +81,7 @@ export function useAdminAccess(currentClubId: string): AdminAccess | null {
       const source   = cookieIsAdmin ? "owner-cookie" : kakaoIsAdmin ? "kakao" : "none";
 
       if (!cancelled) {
-        setAccess({ isAdmin, isOwner, source, cookieRole, kakaoRole, userId, memberId });
+        setAccess({ isAdmin, isOwner, source, cookieRole, kakaoRole, userId, memberId, clubId: null });
       }
     }
 

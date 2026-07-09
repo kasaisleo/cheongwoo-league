@@ -10,12 +10,16 @@
  * eyebrow에서 clubs.name/slug 기반으로 이미 별도로 표시되고 있고, 플랫폼명과
  * 클럽명을 섞지 않는다는 브랜딩 원칙에 따른 것이다.
  */
+import Link from "next/link";
+
 export function BrandHeader() {
   return (
     <header className="mx-auto max-w-md px-5 pt-4 pb-2">
-      <p className="eyebrow-en text-center text-clay-400 tracking-[0.32em]">
-        SUPER MATCH
-      </p>
+      <Link href="/">
+        <p className="eyebrow-en text-center text-clay-400 tracking-[0.32em] transition-opacity hover:opacity-70">
+          SUPER MATCH
+        </p>
+      </Link>
     </header>
   );
 }

@@ -162,7 +162,7 @@ export default async function ClubHomePage({
       {topRanked.length > 0 && (
         <section className="mb-4">
           <SectionHeader title="현재 순위" href={`/c/${slug}/ranking`} cta="전체 랭킹" />
-          <RankingTeaserCard members={topRanked} />
+          <RankingTeaserCard members={topRanked} rankingHref={`/c/${slug}/ranking`} />
         </section>
       )}
 
