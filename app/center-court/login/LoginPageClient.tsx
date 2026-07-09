@@ -28,9 +28,9 @@ export default function LoginPageClient() {
     } else {
       const data = await res.json().catch(() => ({}));
       if (data?.error === "invalid_credentials") {
-        setError("아이디 또는 비밀번호가 올바르지 않습니다.");
+        setError("Invalid username or password.");
       } else {
-        setError("로그인 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
+        setError("An error occurred. Please try again.");
       }
     }
   }
@@ -38,130 +38,143 @@ export default function LoginPageClient() {
   const busy = isPending;
 
   return (
-    <form onSubmit={handleSubmit} noValidate>
-      {/* 아이디 */}
-      <div style={{ marginBottom: 14 }}>
-        <label
-          htmlFor="cc-username"
-          style={{
-            display: "block",
-            marginBottom: 6,
-            color: "rgba(245,240,232,0.45)",
-            fontSize: 9,
-            fontWeight: 700,
-            letterSpacing: "0.16em",
-            textTransform: "uppercase",
-          }}
-        >
-          아이디
-        </label>
-        <input
-          id="cc-username"
-          type="text"
-          autoComplete="username"
-          autoCapitalize="none"
-          autoCorrect="off"
-          spellCheck={false}
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-          disabled={busy}
-          placeholder="아이디 입력"
-          style={{
-            width: "100%",
-            height: 44,
-            borderRadius: 10,
-            border: "1px solid rgba(245,240,232,0.15)",
-            background: "rgba(245,240,232,0.05)",
-            color: "#f5f0e8",
-            fontSize: 14,
-            padding: "0 14px",
-            outline: "none",
-            boxSizing: "border-box",
-            opacity: busy ? 0.5 : 1,
-          }}
-        />
-      </div>
+    <>
+      <style>{`
+        .cc-input {
+          width: 100%;
+          height: 44px;
+          border-radius: 10px;
+          border: 1px solid rgba(245,240,232,0.15);
+          background: rgba(2,6,4,0.70);
+          color: #f5f0e8;
+          font-size: 14px;
+          padding: 0 14px;
+          outline: none;
+          box-sizing: border-box;
+          transition: border-color 0.15s, box-shadow 0.15s;
+        }
+        .cc-input:focus {
+          border-color: rgba(139,92,246,0.6);
+          box-shadow: 0 0 0 3px rgba(109,40,217,0.12);
+        }
+        .cc-input:disabled { opacity: 0.45; }
+        .cc-sign-in-btn {
+          width: 100%;
+          height: 44px;
+          border-radius: 10px;
+          border: none;
+          color: #f5f0e8;
+          font-size: 11px;
+          font-weight: 700;
+          letter-spacing: 0.16em;
+          text-transform: uppercase;
+          transition: background 0.2s, box-shadow 0.2s;
+          cursor: pointer;
+        }
+        .cc-sign-in-btn:not(:disabled) {
+          background: rgba(109,40,217,0.75);
+        }
+        .cc-sign-in-btn:not(:disabled):hover {
+          background: rgba(109,40,217,0.88);
+          box-shadow: 0 0 16px rgba(109,40,217,0.3);
+        }
+        .cc-sign-in-btn:disabled {
+          background: rgba(109,40,217,0.22);
+          cursor: not-allowed;
+        }
+      `}</style>
+      <form onSubmit={handleSubmit} noValidate>
 
-      {/* 비밀번호 */}
-      <div style={{ marginBottom: 18 }}>
-        <label
-          htmlFor="cc-password"
-          style={{
-            display: "block",
-            marginBottom: 6,
-            color: "rgba(245,240,232,0.45)",
-            fontSize: 9,
-            fontWeight: 700,
-            letterSpacing: "0.16em",
-            textTransform: "uppercase",
-          }}
-        >
-          비밀번호
-        </label>
-        <input
-          id="cc-password"
-          type="password"
-          autoComplete="current-password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          disabled={busy}
-          placeholder="비밀번호 입력"
-          style={{
-            width: "100%",
-            height: 44,
-            borderRadius: 10,
-            border: "1px solid rgba(245,240,232,0.15)",
-            background: "rgba(245,240,232,0.05)",
-            color: "#f5f0e8",
-            fontSize: 14,
-            padding: "0 14px",
-            outline: "none",
-            boxSizing: "border-box",
-            opacity: busy ? 0.5 : 1,
-          }}
-        />
-      </div>
-
-      {/* 에러 */}
-      {error && (
-        <div
-          style={{
-            marginBottom: 16,
-            borderRadius: 10,
-            border: "1px solid rgba(248,113,113,0.25)",
-            background: "rgba(248,113,113,0.08)",
-            padding: "10px 14px",
-            color: "#fca5a5",
-            fontSize: 12,
-          }}
-        >
-          {error}
+        {/* USERNAME */}
+        <div style={{ marginBottom: 14 }}>
+          <label
+            htmlFor="cc-username"
+            style={{
+              display: "block",
+              marginBottom: 6,
+              color: "rgba(245,240,232,0.4)",
+              fontSize: 9,
+              fontWeight: 700,
+              letterSpacing: "0.20em",
+              textTransform: "uppercase",
+              fontFamily: "Georgia, serif",
+            }}
+          >
+            USERNAME
+          </label>
+          <input
+            id="cc-username"
+            className="cc-input"
+            type="text"
+            autoComplete="username"
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            disabled={busy}
+            placeholder="Enter username"
+            style={{ opacity: busy ? 0.45 : 1 }}
+          />
         </div>
-      )}
 
-      {/* 로그인 버튼 */}
-      <button
-        type="submit"
-        disabled={busy || !username || !password}
-        style={{
-          width: "100%",
-          height: 44,
-          borderRadius: 10,
-          border: "none",
-          background:
-            busy || !username || !password
-              ? "rgba(139,92,246,0.25)"
-              : "rgba(139,92,246,0.75)",
-          color: "#f5f0e8",
-          fontSize: 13,
-          fontWeight: 700,
-          letterSpacing: "0.06em",
-          cursor: busy || !username || !password ? "not-allowed" : "pointer",
-          transition: "background 0.2s",
-        }}
-      >
-        {busy ? "로그인 중…" : "로그인"}
-      </button>
-    </form>
+        {/* PASSWORD */}
+        <div style={{ marginBottom: 20 }}>
+          <label
+            htmlFor="cc-password"
+            style={{
+              display: "block",
+              marginBottom: 6,
+              color: "rgba(245,240,232,0.4)",
+              fontSize: 9,
+              fontWeight: 700,
+              letterSpacing: "0.20em",
+              textTransform: "uppercase",
+              fontFamily: "Georgia, serif",
+            }}
+          >
+            PASSWORD
+          </label>
+          <input
+            id="cc-password"
+            className="cc-input"
+            type="password"
+            autoComplete="current-password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            disabled={busy}
+            placeholder="Enter password"
+            style={{ opacity: busy ? 0.45 : 1 }}
+          />
+        </div>
+
+        {/* Error */}
+        {error && (
+          <div
+            style={{
+              marginBottom: 16,
+              borderRadius: 8,
+              border: "1px solid rgba(248,113,113,0.28)",
+              background: "rgba(60,10,10,0.6)",
+              padding: "10px 14px",
+              color: "#fca5a5",
+              fontSize: 12,
+              letterSpacing: "0.01em",
+            }}
+          >
+            {error}
+          </div>
+        )}
+
+        {/* SIGN IN */}
+        <button
+          type="submit"
+          disabled={busy || !username || !password}
+          className="cc-sign-in-btn"
+        >
+          {busy ? "Signing in…" : "SIGN IN"}
+        </button>
+      </form>
+    </>
   );
 }
