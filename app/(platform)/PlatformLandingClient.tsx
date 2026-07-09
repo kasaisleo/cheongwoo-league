@@ -183,6 +183,33 @@ export function PlatformLandingClient({ clubs }: Props) {
                   Choose your club and continue.
                 </p>
 
+                {/* TRY DEMO — 히어로 직결 버튼 (모바일 첫 화면 노출) */}
+                <Link
+                  href="/demo"
+                  className="sm-demo-hero-btn"
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 8,
+                    marginBottom: 20,
+                    padding: "9px 18px",
+                    borderRadius: 9,
+                    border: "1px solid rgba(196,181,253,0.40)",
+                    background: "rgba(109,40,217,0.22)",
+                    color: "#c4b5fd",
+                    fontSize: 11,
+                    fontWeight: 700,
+                    letterSpacing: "0.12em",
+                    textTransform: "uppercase",
+                    textDecoration: "none",
+                    transition: "background 0.15s, border-color 0.15s",
+                  }}
+                >
+                  <span>🎾</span>
+                  <span>Try Demo</span>
+                  <span style={{ opacity: 0.7 }}>→</span>
+                </Link>
+
                 {/* 테니스볼 데코 (히어로 하단) */}
                 <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
                   {[1, 2, 3].map((i) => (
@@ -204,6 +231,76 @@ export function PlatformLandingClient({ clubs }: Props) {
 
               {/* ── 메인 패널 ── */}
               <div className="sm-panel-col">
+                {/* ── TRY DEMO CTA (패널 상단 — 스코어보드 위) ── */}
+                <Link
+                  href="/demo"
+                  className="sm-demo-cta"
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: 12,
+                    flexWrap: "wrap",
+                    marginBottom: 12,
+                    borderRadius: 13,
+                    border: "1px solid rgba(196,181,253,0.22)",
+                    background:
+                      "linear-gradient(135deg, rgba(109,40,217,0.12) 0%, rgba(2,6,4,0.82) 100%)",
+                    backdropFilter: "blur(8px)",
+                    WebkitBackdropFilter: "blur(8px)",
+                    padding: "14px 18px",
+                    textDecoration: "none",
+                    transition: "border-color 0.15s, background 0.15s",
+                  }}
+                >
+                  <div>
+                    <p
+                      style={{
+                        color: "rgba(196,181,253,0.80)",
+                        fontSize: 8.5,
+                        fontWeight: 700,
+                        letterSpacing: "0.22em",
+                        textTransform: "uppercase",
+                        fontFamily: "Georgia, serif",
+                        marginBottom: 4,
+                      }}
+                    >
+                      Try Demo
+                    </p>
+                    <p
+                      style={{
+                        color: "rgba(245,240,232,0.55)",
+                        fontSize: 11,
+                        lineHeight: 1.5,
+                        marginBottom: 5,
+                      }}
+                    >
+                      Experience SUPER MATCH before creating a club.
+                    </p>
+                    <p style={{ color: "rgba(245,240,232,0.28)", fontSize: 10, lineHeight: 1.5 }}>
+                      체험 모드에서는 실제 클럽 데이터가 변경되지 않습니다.
+                      <br />
+                      생성한 데모 데이터는 최대 1시간 동안만 유지됩니다.
+                    </p>
+                  </div>
+                  <span
+                    style={{
+                      padding: "7px 16px",
+                      borderRadius: 8,
+                      border: "1px solid rgba(196,181,253,0.40)",
+                      background: "rgba(109,40,217,0.25)",
+                      color: "#c4b5fd",
+                      fontSize: 10,
+                      fontWeight: 700,
+                      letterSpacing: "0.14em",
+                      textTransform: "uppercase",
+                      flexShrink: 0,
+                    }}
+                  >
+                    Enter →
+                  </span>
+                </Link>
+
                 {/* scoreboard panel */}
                 <div
                   style={{
@@ -382,75 +479,6 @@ export function PlatformLandingClient({ clubs }: Props) {
                   </span>
                 </div>
 
-                {/* ── TRY DEMO CTA ── */}
-                <Link
-                  href="/demo"
-                  className="sm-demo-cta"
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    gap: 12,
-                    flexWrap: "wrap",
-                    marginTop: 10,
-                    borderRadius: 13,
-                    border: "1px solid rgba(196,181,253,0.18)",
-                    background:
-                      "linear-gradient(135deg, rgba(109,40,217,0.10) 0%, rgba(2,6,4,0.82) 100%)",
-                    backdropFilter: "blur(8px)",
-                    WebkitBackdropFilter: "blur(8px)",
-                    padding: "14px 18px",
-                    textDecoration: "none",
-                    transition: "border-color 0.15s, background 0.15s",
-                  }}
-                >
-                  <div>
-                    <p
-                      style={{
-                        color: "rgba(196,181,253,0.75)",
-                        fontSize: 8.5,
-                        fontWeight: 700,
-                        letterSpacing: "0.20em",
-                        textTransform: "uppercase",
-                        fontFamily: "Georgia, serif",
-                        marginBottom: 4,
-                      }}
-                    >
-                      Try Demo
-                    </p>
-                    <p
-                      style={{
-                        color: "rgba(245,240,232,0.55)",
-                        fontSize: 11,
-                        lineHeight: 1.5,
-                        marginBottom: 5,
-                      }}
-                    >
-                      Experience SUPER MATCH before creating a club.
-                    </p>
-                    <p style={{ color: "rgba(245,240,232,0.25)", fontSize: 10, lineHeight: 1.5 }}>
-                      체험 모드에서는 실제 클럽 데이터가 변경되지 않습니다.
-                      <br />
-                      생성한 데모 데이터는 최대 1시간 동안만 유지됩니다.
-                    </p>
-                  </div>
-                  <span
-                    style={{
-                      padding: "6px 14px",
-                      borderRadius: 7,
-                      border: "1px solid rgba(196,181,253,0.35)",
-                      background: "rgba(109,40,217,0.20)",
-                      color: "#c4b5fd",
-                      fontSize: 9,
-                      fontWeight: 700,
-                      letterSpacing: "0.14em",
-                      textTransform: "uppercase",
-                      flexShrink: 0,
-                    }}
-                  >
-                    Enter →
-                  </span>
-                </Link>
               </div>
             </div>
           </div>
@@ -680,10 +708,16 @@ function SmStyles() {
         border-color: rgba(139,92,246,0.6);
       }
 
-      /* TRY DEMO CTA hover */
+      /* TRY DEMO — hero 버튼 hover */
+      .sm-demo-hero-btn:hover {
+        background: rgba(109,40,217,0.35) !important;
+        border-color: rgba(196,181,253,0.60) !important;
+      }
+
+      /* TRY DEMO CTA (패널 상단) hover */
       .sm-demo-cta:hover {
-        border-color: rgba(196,181,253,0.38) !important;
-        background: linear-gradient(135deg, rgba(109,40,217,0.18) 0%, rgba(2,6,4,0.88) 100%) !important;
+        border-color: rgba(196,181,253,0.40) !important;
+        background: linear-gradient(135deg, rgba(109,40,217,0.20) 0%, rgba(2,6,4,0.88) 100%) !important;
       }
 
       /* Operator link hover */
