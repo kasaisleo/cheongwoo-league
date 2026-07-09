@@ -92,6 +92,11 @@ export function MemberAuthBar({ currentClubId }: MemberAuthBarProps) {
 
   async function handleSignOut() {
     setSigningOut(true);
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+    } catch (e) {
+      console.error("admin session logout failed", e);
+    }
     const supabase = createClient();
     await supabase.auth.signOut();
     setCookieRole(null);
