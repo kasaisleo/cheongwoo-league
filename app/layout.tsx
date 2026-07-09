@@ -6,13 +6,13 @@ import { getCurrentClubId } from "@/lib/current-club";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://cheongwoo-league.vercel.app"),
+  metadataBase: new URL("https://supermatch-tennis.vercel.app"),
   title: "슈퍼매치 | 테니스 클럽 매치 관리",
   description: "테니스 경기 · 랭킹 · 출석관리",
   openGraph: {
     title: "슈퍼매치 | 테니스 클럽 매치 관리",
     description: "테니스 경기 · 랭킹 · 출석관리",
-    url: "https://cheongwoo-league.vercel.app",
+    url: "https://supermatch-tennis.vercel.app",
     siteName: "슈퍼매치",
     images: [
       {
