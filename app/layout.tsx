@@ -16,7 +16,7 @@ export const metadata: Metadata = {
     siteName: "테니스 클럽 매치 관리",
     images: [
       {
-        url: "/og/chungwoo-og.png",
+        url: "/og/club-match-og.png",
         width: 1200,
         height: 630,
         alt: "테니스 클럽 매치 관리",
@@ -29,7 +29,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "테니스 클럽 매치 관리",
     description: "테니스 경기 · 랭킹 · 출석관리",
-    images: ["/og/chungwoo-og.png"],
+    images: ["/og/club-match-og.png"],
   },
 };
 
