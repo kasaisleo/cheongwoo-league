@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
-import { requireAdmin, requireRole, getAdminRole } from "@/lib/admin-auth";
 import { getAdminAccessServer } from "@/lib/admin-permissions";
 import { isValidPlayerBackground } from "@/lib/constants/member-timeline";
 import type { MemberGrade, MemberRole } from "@/lib/supabase/database.types";
