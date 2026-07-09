@@ -54,8 +54,6 @@ export default function SettingsPageClient({ currentClubId }: SettingsPageClient
     cookieRole: null, kakaoPermission: null,
     kakaoName: null, memberId: null, loading: true,
   });
-  const [promoting, setPromoting] = useState(false);
-  const [promoteResult, setPromoteResult] = useState<{ success?: string; error?: string } | null>(null);
   const [adminMembers, setAdminMembers] = useState<AdminMember[]>([]);
   const [loadingAdmins, setLoadingAdmins] = useState(false);
   const [actionId, setActionId] = useState<string | null>(null);
@@ -98,17 +96,6 @@ export default function SettingsPageClient({ currentClubId }: SettingsPageClient
 
   useEffect(() => { if (!auth.loading) loadAdminMembers(); }, [auth.loading, loadAdminMembers]);
 
-  async function handlePromoteOwner() {
-    setPromoting(true); setPromoteResult(null);
-    const res = await fetch("/api/admin/promote-owner", { method: "POST" });
-    const body = await res.json();
-    setPromoting(false);
-    if (!res.ok) { setPromoteResult({ error: body.error }); return; }
-    setPromoteResult({ success: body.message });
-    toast.success(body.message);
-    setAuth((prev) => ({ ...prev, kakaoPermission: "master" }));
-  }
-
   async function handleUnlink(memberId: string, name: string) {
     if (!confirm(`${name}의 카카오 연결을 해제하시겠습니까?`)) return;
     setActionId(memberId);
@@ -144,7 +131,6 @@ export default function SettingsPageClient({ currentClubId }: SettingsPageClient
 
   const isCookieOwner = auth.cookieRole === "owner";
   const isKakaoMaster = auth.kakaoPermission === "master";
-  const canPromote = isCookieOwner && auth.kakaoName !== null && !isKakaoMaster;
 
   return (
     <main className="px-4 pt-6 pb-10">
@@ -190,37 +176,6 @@ export default function SettingsPageClient({ currentClubId }: SettingsPageClient
           </div>
         </div>
       </section>
-
-      {/* Owner 카카오 연결 */}
-      {isCookieOwner && (
-        <section className="mb-5">
-          <p className="mb-2 font-display text-[10px] font-bold uppercase tracking-widest text-line-500">Owner Account</p>
-          <div className="overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50 px-4 py-4">
-            <p className="text-sm font-semibold text-line-900">Owner 카카오 계정 연결</p>
-            <p className="mt-0.5 text-xs text-line-500">현재 로그인한 카카오 계정을 Owner(master) 권한으로 연결합니다.</p>
-            {!auth.kakaoName && (
-              <div className="mt-3 rounded-sm border border-line-200/40 bg-line-100 px-3 py-2">
-                <p className="text-xs text-line-500">카카오 로그인 정보가 없습니다.
-                  <Link href="/login?returnUrl=/admin/settings" className="ml-1 text-clay-400">카카오 로그인 →</Link>
-                </p>
-              </div>
-            )}
-            {auth.kakaoName && isKakaoMaster && (
-              <div className="mt-3 rounded-sm border border-gold/30 bg-gold/5 px-3 py-2">
-                <p className="text-xs font-semibold text-gold">✓ {auth.kakaoName} 계정이 이미 Owner 권한으로 연결되어 있습니다.</p>
-              </div>
-            )}
-            {canPromote && (
-              <button type="button" disabled={promoting} onClick={handlePromoteOwner}
-                className="mt-3 w-full rounded-sm bg-clay-400 py-2.5 text-sm font-bold text-line-25 disabled:opacity-40">
-                {promoting ? "처리 중..." : `${auth.kakaoName} → Owner 권한 연결하기`}
-              </button>
-            )}
-            {promoteResult?.success && <p className="mt-2 text-xs font-semibold text-gold">{promoteResult.success}</p>}
-            {promoteResult?.error && <p className="mt-2 text-xs text-fault-400">{promoteResult.error}</p>}
-          </div>
-        </section>
-      )}
 
       {/* 관리자 목록 */}
       <section className="mb-5">
@@ -310,7 +265,7 @@ export default function SettingsPageClient({ currentClubId }: SettingsPageClient
           <p className="mt-0.5 mb-3 text-xs text-line-500">
             카카오 계정 연결 후 권한을 부여하면 카카오 로그인으로 관리 기능을 사용할 수 있습니다.
           </p>
-          <MemberRoleAssigner onSuccess={loadAdminMembers} />
+          <MemberRoleAssigner currentClubId={currentClubId} onSuccess={loadAdminMembers} />
         </div>
       </section>
 
@@ -338,7 +293,7 @@ export default function SettingsPageClient({ currentClubId }: SettingsPageClient
 }
 
 /** 일반 회원 검색 후 운영진 지정 서브 컴포넌트 */
-function MemberRoleAssigner({ onSuccess }: { onSuccess: () => void }) {
+function MemberRoleAssigner({ currentClubId, onSuccess }: { currentClubId: string; onSuccess: () => void }) {
   const supabase = createClient();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchMember[]>([]);
@@ -353,6 +308,7 @@ function MemberRoleAssigner({ onSuccess }: { onSuccess: () => void }) {
     const { data } = await supabase
       .from("members").select("id, name, nickname, permission_role")
       .or(`name.ilike.%${query}%,nickname.ilike.%${query}%`)
+      .eq("club_id", currentClubId)
       .eq("is_active", true).limit(10);
     setResults(data ?? []);
     setSearching(false);
