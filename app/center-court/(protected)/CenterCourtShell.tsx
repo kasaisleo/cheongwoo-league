@@ -47,10 +47,10 @@ export function CenterCourtShell({ session, children }: Props) {
         .cc-card:hover {
           transform: translateY(-2px);
           box-shadow:
-            0 0 0 1px rgba(139,92,246,0.4),
-            0 8px 28px rgba(0,0,0,0.5),
-            0 0 20px rgba(139,92,246,0.08);
-          border-color: rgba(139,92,246,0.35) !important;
+            0 0 0 1px rgba(139,92,246,0.5),
+            0 10px 32px rgba(0,0,0,0.7),
+            0 0 24px rgba(109,40,217,0.14);
+          border-color: rgba(139,92,246,0.45) !important;
         }
         /* ── 네비 링크 ──────────────────────────────────────── */
         .cc-nav {

@@ -173,11 +173,11 @@ export default async function CenterCourtLoginPage() {
               style={{
                 borderRadius: 16,
                 border: "1px solid rgba(245,240,232,0.10)",
-                background: "rgba(12,32,20,0.78)",
-                backdropFilter: "blur(10px)",
-                WebkitBackdropFilter: "blur(10px)",
+                background: "rgba(2,6,4,0.92)",
+                backdropFilter: "blur(12px)",
+                WebkitBackdropFilter: "blur(12px)",
                 padding: "22px 20px",
-                boxShadow: "0 8px 32px rgba(0,0,0,0.45)",
+                boxShadow: "0 8px 36px rgba(0,0,0,0.65)",
               }}
             >
               <LoginPageClient />

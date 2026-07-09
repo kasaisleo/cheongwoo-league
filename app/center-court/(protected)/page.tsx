@@ -88,14 +88,17 @@ export default async function CenterCourtPage() {
               className="cc-card"
               style={{
                 borderRadius: 13,
-                border: "1px solid rgba(109,40,217,0.35)",
-                background:
-                  "linear-gradient(135deg, rgba(109,40,217,0.14) 0%, rgba(76,29,149,0.07) 100%)",
+                border: "1px solid rgba(109,40,217,0.45)",
+                background: "rgba(2,4,3,0.92)",
+                backdropFilter: "blur(8px)",
+                WebkitBackdropFilter: "blur(8px)",
                 padding: "14px 18px",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "space-between",
                 gap: 12,
+                boxShadow:
+                  "0 0 0 0 transparent, 0 4px 22px rgba(0,0,0,0.6), inset 3px 0 0 rgba(109,40,217,0.55)",
               }}
             >
               <div>
@@ -242,10 +245,11 @@ function OrderOfPlay() {
         style={{
           borderRadius: "11px 11px 0 0",
           background:
-            "linear-gradient(135deg, rgba(109,40,217,0.28) 0%, rgba(76,29,149,0.14) 100%)",
-          border: "1px solid rgba(139,92,246,0.3)",
-          borderBottom: "none",
+            "linear-gradient(135deg, rgba(70,20,150,0.55) 0%, rgba(30,8,60,0.70) 100%)",
+          border: "1px solid rgba(139,92,246,0.45)",
+          borderBottom: "1px solid rgba(139,92,246,0.2)",
           padding: "10px 16px 9px",
+          boxShadow: "inset 0 1px 0 rgba(196,181,253,0.12)",
         }}
       >
         <p
@@ -274,9 +278,11 @@ function OrderOfPlay() {
       {/* 항목 목록 */}
       <div
         style={{
-          border: "1px solid rgba(139,92,246,0.2)",
+          border: "1px solid rgba(139,92,246,0.3)",
+          borderTop: "none",
           borderRadius: "0 0 11px 11px",
           overflow: "hidden",
+          boxShadow: "0 6px 20px rgba(0,0,0,0.55)",
         }}
       >
         {items.map((item, idx) => (
@@ -286,12 +292,12 @@ function OrderOfPlay() {
               padding: "10px 16px",
               borderBottom:
                 idx < items.length - 1
-                  ? "1px solid rgba(245,240,232,0.05)"
+                  ? "1px solid rgba(245,240,232,0.055)"
                   : "none",
               background:
                 idx % 2 === 0
-                  ? "rgba(245,240,232,0.025)"
-                  : "rgba(245,240,232,0.015)",
+                  ? "rgba(2,6,4,0.92)"
+                  : "rgba(4,10,7,0.88)",
               display: "flex",
               gap: 12,
               alignItems: "flex-start",
@@ -358,9 +364,12 @@ function OrderOfPlay() {
         style={{
           marginTop: 14,
           borderRadius: 11,
-          border: "1px solid rgba(245,240,232,0.08)",
-          background: "rgba(245,240,232,0.02)",
+          border: "1px solid rgba(245,240,232,0.10)",
+          background: "rgba(2,6,4,0.88)",
+          backdropFilter: "blur(8px)",
+          WebkitBackdropFilter: "blur(8px)",
           padding: "12px 16px",
+          boxShadow: "0 4px 18px rgba(0,0,0,0.5)",
         }}
       >
         <p
@@ -453,13 +462,17 @@ function StatPanel({
   accent?: boolean;
   dim?: boolean;
 }) {
-  const valueColor = accent ? "#a78bfa" : dim ? "rgba(245,240,232,0.35)" : "#f0ebe0";
+  const valueColor = accent
+    ? "#b197fc"
+    : dim
+      ? "rgba(245,240,232,0.4)"
+      : "#f5f0e8";
   const borderColor = accent
-    ? "rgba(139,92,246,0.25)"
+    ? "rgba(139,92,246,0.40)"
     : "rgba(245,240,232,0.10)";
-  const bgColor = accent
-    ? "rgba(109,40,217,0.1)"
-    : "rgba(245,240,232,0.04)";
+  const glowShadow = accent
+    ? "0 0 18px rgba(109,40,217,0.2)"
+    : "0 4px 20px rgba(0,0,0,0.55)";
 
   return (
     <div
@@ -467,14 +480,17 @@ function StatPanel({
       style={{
         borderRadius: 12,
         border: `1px solid ${borderColor}`,
-        background: bgColor,
+        background: "rgba(2,6,4,0.88)",
+        backdropFilter: "blur(8px)",
+        WebkitBackdropFilter: "blur(8px)",
         padding: "13px 14px",
+        boxShadow: glowShadow,
       }}
     >
       <p
         style={{
           color: valueColor,
-          fontSize: 32,
+          fontSize: 34,
           fontWeight: 700,
           lineHeight: 1,
           marginBottom: 5,
@@ -486,7 +502,7 @@ function StatPanel({
       </p>
       <p
         style={{
-          color: "rgba(245,240,232,0.35)",
+          color: "rgba(245,240,232,0.38)",
           fontSize: 8.5,
           fontWeight: 700,
           letterSpacing: "0.18em",
@@ -504,10 +520,12 @@ function CourtPanel({ children }: { children: React.ReactNode }) {
     <div
       style={{
         borderRadius: 13,
-        border: "1px solid rgba(245,240,232,0.10)",
-        background: "rgba(12,32,20,0.75)",
+        border: "1px solid rgba(245,240,232,0.12)",
+        background: "rgba(2,6,4,0.90)",
         overflow: "hidden",
-        backdropFilter: "blur(4px)",
+        backdropFilter: "blur(8px)",
+        WebkitBackdropFilter: "blur(8px)",
+        boxShadow: "0 4px 24px rgba(0,0,0,0.55)",
       }}
     >
       {children}

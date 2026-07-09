@@ -152,7 +152,7 @@ export default function PlatformAdminsPageClient({
 
       {/* 신규 생성 폼 */}
       {createOpen && (
-        <div style={courtCardStyle("rgba(139,92,246,0.08)", "rgba(139,92,246,0.2)")} className="mb-5">
+        <div style={courtCardStyle("purple")} className="mb-5">
           <p style={{ ...labelStyle, marginBottom: 14 }}>새 관리자 생성</p>
           <form onSubmit={handleCreate} noValidate>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
@@ -536,15 +536,22 @@ const successBoxStyle: React.CSSProperties = {
 };
 
 function courtCardStyle(
-  bg = "rgba(245,240,232,0.04)",
-  border = "rgba(245,240,232,0.10)"
+  variant: "default" | "purple" = "default"
 ): React.CSSProperties {
+  const isPurple = variant === "purple";
   return {
     borderRadius: 14,
-    border: `1px solid ${border}`,
-    background: bg,
+    border: isPurple
+      ? "1px solid rgba(109,40,217,0.45)"
+      : "1px solid rgba(245,240,232,0.11)",
+    background: isPurple ? "rgba(2,4,3,0.94)" : "rgba(2,6,4,0.90)",
+    backdropFilter: "blur(8px)",
+    WebkitBackdropFilter: "blur(8px)",
     overflow: "hidden",
     marginBottom: 20,
+    boxShadow: isPurple
+      ? "0 0 0 0 transparent, 0 4px 22px rgba(0,0,0,0.6), inset 3px 0 0 rgba(109,40,217,0.5)"
+      : "0 4px 20px rgba(0,0,0,0.55)",
   };
 }
 
