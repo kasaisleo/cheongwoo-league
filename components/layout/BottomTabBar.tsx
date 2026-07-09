@@ -1,17 +1,26 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 /**
- * BottomTabBar v3 — slug-aware.
+ * BottomTabBar v4 — slug-aware + last_club_slug tracking.
  *
- * /c/[slug] 또는 /c/[slug]/... 경로에 있을 때 탭 링크를 해당 slug 기반으로 전환.
- * 이렇게 하면 청우회/나마스테 등 어떤 클럽이든 클럽 내부에서는
- * 항상 해당 클럽 경로로 이동한다.
+ * HOME href 정책:
+ *   1. /c/[slug]/* : /c/[slug]
+ *   2. /admin/*    : /admin
+ *   3. legacy 전역 페이지 (/matches, /attendance, /mypage …):
+ *      localStorage에 저장된 last_club_slug → /c/{slug}
+ *      저장된 값 없으면 /c/cheongwoo (spec-defined fallback)
+ *   4. / 플랫폼 랜딩: PlatformLandingClient 오버레이가 BottomTabBar를 가리므로
+ *      HOME="/"를 제거해도 실제 문제 없음.
  *
- * 클럽 context 없는 전역 페이지(/matches, /ranking 등)에서는 기존 글로벌 탭 유지.
+ * SUPER MATCH 브랜드 링크(BrandHeader)는 여전히 href="/" 유지.
  */
+
+const LAST_CLUB_SLUG_KEY = "last_club_slug";
+const FALLBACK_SLUG = "cheongwoo"; // spec 정의 fallback — localStorage 값 없을 때
 
 function extractSlugFromPath(pathname: string): string | null {
   const match = pathname.match(/^\/c\/([^/]+)/);
@@ -19,11 +28,12 @@ function extractSlugFromPath(pathname: string): string | null {
 }
 
 const GLOBAL_TABS = [
-  { href: "/", label: "홈", icon: HomeIcon },
+  // HOME은 사용처마다 다르게 계산하므로 placeholder로 "" 사용
+  { href: "__HOME__", label: "홈",  icon: HomeIcon },
   { href: "/attendance", label: "매치", icon: CalendarIcon },
-  { href: "/matches", label: "기록", icon: ListIcon },
-  { href: "/members", label: "회원", icon: UsersIcon },
-  { href: "/mypage", label: "마이", icon: PersonIcon },
+  { href: "/matches",    label: "기록", icon: ListIcon },
+  { href: "/members",    label: "회원", icon: UsersIcon },
+  { href: "/mypage",     label: "마이", icon: PersonIcon },
 ];
 
 export function BottomTabBar() {
@@ -31,18 +41,37 @@ export function BottomTabBar() {
   const slug = extractSlugFromPath(pathname);
   const isAdminPage = pathname.startsWith("/admin");
 
-  // /admin/* 에서는 HOME → /admin, 나머지 글로벌 탭 유지
+  // last_club_slug 추적 — /c/[slug] 방문 시 저장, legacy 페이지에서 복원
+  const [lastClubSlug, setLastClubSlug] = useState<string>(FALLBACK_SLUG);
+
+  useEffect(() => {
+    if (slug) {
+      try { localStorage.setItem(LAST_CLUB_SLUG_KEY, slug); } catch { /* 무시 */ }
+      setLastClubSlug(slug);
+    } else {
+      try {
+        const saved = localStorage.getItem(LAST_CLUB_SLUG_KEY);
+        if (saved) setLastClubSlug(saved);
+      } catch { /* 무시 */ }
+    }
+  }, [slug]);
+
+  // HOME href 결정
+  const homeHref = slug
+    ? `/c/${slug}`
+    : isAdminPage
+    ? "/admin"
+    : `/c/${lastClubSlug}`;
+
   const tabs = slug
     ? [
-        { href: `/c/${slug}`,             label: "홈",  icon: HomeIcon },
-        { href: `/c/${slug}/attendance`,  label: "매치", icon: CalendarIcon },
-        { href: `/c/${slug}/matches`,     label: "기록", icon: ListIcon },
-        { href: `/c/${slug}/members`,     label: "회원", icon: UsersIcon },
-        { href: "/mypage",                label: "마이", icon: PersonIcon },
+        { href: `/c/${slug}`,            label: "홈",  icon: HomeIcon },
+        { href: `/c/${slug}/attendance`, label: "매치", icon: CalendarIcon },
+        { href: `/c/${slug}/matches`,    label: "기록", icon: ListIcon },
+        { href: `/c/${slug}/members`,    label: "회원", icon: UsersIcon },
+        { href: "/mypage",               label: "마이", icon: PersonIcon },
       ]
-    : isAdminPage
-    ? GLOBAL_TABS.map((t) => (t.href === "/" ? { ...t, href: "/admin" } : t))
-    : GLOBAL_TABS;
+    : GLOBAL_TABS.map((t) => (t.href === "__HOME__" ? { ...t, href: homeHref } : t));
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-40 bg-line-25 pb-[env(safe-area-inset-bottom)]">
@@ -59,8 +88,9 @@ export function BottomTabBar() {
                   ? true
                   : tab.href === "/mypage" && pathname.startsWith("/mypage");
           } else {
-            isActive =
-              tab.href === "/" ? pathname === "/" : pathname.startsWith(tab.href);
+            // non-slug 페이지: pathname이 tab.href로 시작하면 active
+            // homeHref가 /c/... 형태이므로 legacy 페이지에서는 HOME이 active되지 않음
+            isActive = tab.href !== "" && pathname.startsWith(tab.href);
           }
           const Icon = tab.icon;
 
