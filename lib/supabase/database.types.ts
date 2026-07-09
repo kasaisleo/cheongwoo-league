@@ -214,6 +214,15 @@ export interface Guest {
   created_at: string;
 }
 
+export interface PlatformAdmin {
+  id: string;
+  auth_user_id: string;
+  /** 'owner' | 'admin' | 'analyst' */
+  role: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface SessionGuest {
   id: string;
   session_id: string;
@@ -303,6 +312,12 @@ export interface Database {
         Row: Guest;
         Insert: Partial<Guest> & { name: string; visit_date: string };
         Update: Partial<Guest>;
+        Relationships: [];
+      };
+      platform_admins: {
+        Row: PlatformAdmin;
+        Insert: Partial<PlatformAdmin> & { auth_user_id: string };
+        Update: Partial<PlatformAdmin>;
         Relationships: [];
       };
     };
