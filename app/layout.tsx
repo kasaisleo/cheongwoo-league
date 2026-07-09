@@ -7,19 +7,19 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://cheongwoo-league.vercel.app"),
-  title: "테니스 클럽 매치 관리",
+  title: "슈퍼매치 | 테니스 클럽 매치 관리",
   description: "테니스 경기 · 랭킹 · 출석관리",
   openGraph: {
-    title: "테니스 클럽 매치 관리",
+    title: "슈퍼매치 | 테니스 클럽 매치 관리",
     description: "테니스 경기 · 랭킹 · 출석관리",
     url: "https://cheongwoo-league.vercel.app",
-    siteName: "테니스 클럽 매치 관리",
+    siteName: "슈퍼매치",
     images: [
       {
         url: "/og/club-match-og.png",
         width: 1200,
         height: 630,
-        alt: "테니스 클럽 매치 관리",
+        alt: "슈퍼매치 테니스 클럽 매치 관리",
       },
     ],
     locale: "ko_KR",
@@ -27,7 +27,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "테니스 클럽 매치 관리",
+    title: "슈퍼매치 | 테니스 클럽 매치 관리",
     description: "테니스 경기 · 랭킹 · 출석관리",
     images: ["/og/club-match-og.png"],
   },
