@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { BottomTabBar } from "@/components/layout/BottomTabBar";
+import { BrandHeader } from "@/components/layout/BrandHeader";
 import { MemberAuthBar } from "@/components/layout/MemberAuthBar";
 import { ToastViewport } from "@/components/ui/Toast";
 import { getCurrentClubId } from "@/lib/current-club";
@@ -46,6 +47,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html lang="ko">
       <body className="font-body">
+        <BrandHeader />
         <MemberAuthBar currentClubId={currentClubId} />
         <div className="mx-auto min-h-screen max-w-md pb-20">{children}</div>
         <BottomTabBar />
