@@ -227,6 +227,16 @@ export default async function AdminPage({
         <div>
           <p className="eyebrow-en text-clay-400">Admin Dashboard</p>
           <h1 className="headline-kr text-4xl text-line-900">관리자</h1>
+          {/* 현재 admin context 클럽 — 클릭하면 클럽 공개 홈으로 이동 */}
+          {access.clubSlug && (
+            <Link
+              href={`/c/${access.clubSlug}`}
+              className="mt-0.5 inline-flex items-center gap-1 text-[10px] text-line-400 transition-colors hover:text-line-600"
+            >
+              <span>{access.clubSlug}</span>
+              <span>↗</span>
+            </Link>
+          )}
         </div>
         <div className="mt-1 flex flex-col items-end gap-1">
           <span className="rounded-sm border border-line-200/40 bg-line-100 px-2 py-0.5 text-[10px] font-semibold text-line-500">

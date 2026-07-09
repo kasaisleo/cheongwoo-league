@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { getAdminRole, ADMIN_CLUB_SLUG_COOKIE } from "@/lib/admin-auth";
 import { getAdminAccessServer } from "@/lib/admin-permissions";
 
@@ -42,8 +42,10 @@ export async function GET(request: NextRequest) {
   if (hasUser) {
     try {
       const { data: { user } } = await supabase.auth.getUser();
+      // RLS가 club_id 없는 전체 조회를 차단할 수 있으므로 service client 사용
+      const supabaseAdmin = createServiceClient();
       if (user) {
-        const { data: adminMembers } = await supabase
+        const { data: adminMembers } = await supabaseAdmin
           .from("members")
           .select("permission_role, club_id")
           .eq("auth_user_id", user.id)
@@ -133,7 +135,8 @@ export async function GET(request: NextRequest) {
   let overallReason = "unknown";
   if (!hasUser) overallReason = "no_supabase_user";
   else if (adminClubs.length === 0) overallReason = "no_admin_members";
-  else if (adminClubs.length > 1 && !adminClubSlugCookie) overallReason = "multiple_admin_clubs_require_selection";
+  else if (!adminClubSlugCookie && adminClubs.length === 1) overallReason = "single_admin_club_needs_enter";
+  else if (!adminClubSlugCookie && adminClubs.length > 1) overallReason = "multiple_admin_clubs_require_selection";
   else if (access.isAdmin) overallReason = "should_be_admin";
   else overallReason = "check_admin_club_slug_cookie";
 

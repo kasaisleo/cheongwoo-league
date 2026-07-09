@@ -29,7 +29,9 @@ const GLOBAL_TABS = [
 export function BottomTabBar() {
   const pathname = usePathname();
   const slug = extractSlugFromPath(pathname);
+  const isAdminPage = pathname.startsWith("/admin");
 
+  // /admin/* 에서는 HOME → /admin, 나머지 글로벌 탭 유지
   const tabs = slug
     ? [
         { href: `/c/${slug}`,             label: "홈",  icon: HomeIcon },
@@ -38,6 +40,8 @@ export function BottomTabBar() {
         { href: `/c/${slug}/members`,     label: "회원", icon: UsersIcon },
         { href: "/mypage",                label: "마이", icon: PersonIcon },
       ]
+    : isAdminPage
+    ? GLOBAL_TABS.map((t) => (t.href === "/" ? { ...t, href: "/admin" } : t))
     : GLOBAL_TABS;
 
   return (

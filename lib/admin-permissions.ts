@@ -20,7 +20,7 @@
  */
 
 import { cookies } from "next/headers";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { getAdminRole } from "@/lib/admin-auth";
 import { ADMIN_CLUB_SLUG_COOKIE } from "@/lib/admin-auth";
 import { redirect } from "next/navigation";
@@ -100,8 +100,11 @@ export async function getAdminAccessServer(): Promise<AdminAccess> {
           // 권한 없으면 kakaoRole null → isAdmin false (다른 클럽으로 fallback 금지)
         }
       } else {
-        // admin_club_slug 없음 → 이 user가 운영진인 모든 클럽 조회
-        const { data: adminMembers } = await supabase
+        // admin_club_slug 없음 → 이 user가 운영진인 모든 클럽 조회.
+        // members RLS는 club_id 없이 전체 조회를 차단할 수 있으므로
+        // auth.getUser()로 신원 확인 후 service client로 조회한다.
+        const supabaseAdmin = createServiceClient();
+        const { data: adminMembers } = await supabaseAdmin
           .from("members")
           .select("id, permission_role, club_id")
           .eq("auth_user_id", user.id)
