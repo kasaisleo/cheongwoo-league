@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { getAdminAccessServer } from "@/lib/admin-permissions";
 import type { StagingMember } from "@/lib/supabase/database.types";
-import { getCurrentClubId } from "@/lib/current-club";
 
 interface CommitImportBody {
   stagingIds: string[];
@@ -32,8 +31,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "반영할 행을 선택해주세요." }, { status: 400 });
   }
 
+  // admin_club_slug 기준 club context — selected_club_id 사용 금지
+  const currentClubId = access.clubId;
+  if (!currentClubId) {
+    return NextResponse.json({ error: "관리 클럽 context가 없습니다. /admin에서 클럽을 선택해주세요." }, { status: 400 });
+  }
+
   const supabase = createServiceClient();
-  const currentClubId = await getCurrentClubId();
 
   const { data: rows, error: fetchError } = await supabase
     .from("staging_members")

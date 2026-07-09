@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { getAdminAccessServer } from "@/lib/admin-permissions";
-import { getCurrentClubId } from "@/lib/current-club";
 
 /**
  * staging_members 전체를 조회한다. imported 상태도 포함해서 보여준다(이미 반영된 것 구분용).
@@ -16,8 +15,12 @@ export async function GET() {
     );
   }
 
+  const currentClubId = access.clubId;
+  if (!currentClubId) {
+    return NextResponse.json({ error: "관리 클럽 context가 없습니다. /admin에서 클럽을 선택해주세요." }, { status: 400 });
+  }
+
   const supabase = createServiceClient();
-  const currentClubId = await getCurrentClubId();
 
   const { data, error } = await supabase
     .from("staging_members")

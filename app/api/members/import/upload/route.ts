@@ -3,7 +3,6 @@ import * as XLSX from "xlsx";
 import { createServiceClient } from "@/lib/supabase/server";
 import { getAdminAccessServer } from "@/lib/admin-permissions";
 import { normalizeStagingRow, normalizePhone } from "@/lib/member-import";
-import { getCurrentClubId } from "@/lib/current-club";
 
 /**
  * CSV/XLSX 파일을 업로드받아 파싱하고, staging_members에 저장한다.
@@ -114,8 +113,13 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // admin_club_slug 기준 club context — selected_club_id 사용 금지
+  const currentClubId = access.clubId;
+  if (!currentClubId) {
+    return NextResponse.json({ error: "관리 클럽 context가 없습니다. /admin에서 클럽을 선택해주세요." }, { status: 400 });
+  }
+
   const supabase = createServiceClient();
-  const currentClubId = await getCurrentClubId();
 
   // 새 파일 업로드 시작 — staging_members는 임시 작업 공간(working table)이다.
   // 이력 보존 용도로 쓰지 않으므로, 새 업로드 시작 시 기존 데이터를 전부 비운다.

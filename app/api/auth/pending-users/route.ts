@@ -1,14 +1,18 @@
 import { NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { getAdminAccessServer } from "@/lib/admin-permissions";
-import { getCurrentClubId } from "@/lib/current-club";
 
 export async function GET() {
   const access = await getAdminAccessServer();
   if (!access.isOwner) return Response.json({ error: "Owner 또는 master 권한이 필요합니다." }, { status: 403 });
 
+  // admin_club_slug 기준 club context — selected_club_id 사용 금지
+  const currentClubId = access.clubId;
+  if (!currentClubId) {
+    return NextResponse.json({ error: "관리 클럽 context가 없습니다. /admin에서 클럽을 선택해주세요." }, { status: 400 });
+  }
+
   const supabase = createServiceClient();
-  const currentClubId = await getCurrentClubId();
 
   const { data: usersData, error: usersError } = await supabase.auth.admin.listUsers({
     perPage: 1000,

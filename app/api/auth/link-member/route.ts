@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { getAdminAccessServer } from "@/lib/admin-permissions";
-import { getCurrentClubId } from "@/lib/current-club";
 
 interface LinkMemberBody {
   authUserId: string;
@@ -14,15 +13,23 @@ interface LinkMemberBody {
  *
  * 검증 순서:
  *   1. authUserId가 auth.users에 실제로 존재하는지
- *   2. memberId가 members에 실제로 존재하는지
+ *   2. memberId가 members에 실제로 존재하는지 (admin_club_slug 기준 club 내)
  *   3. 해당 member가 이미 다른 auth 계정과 연결되어 있으면 거부
- *   4. authUserId가 이미 다른 member에 연결되어 있으면 거부 (DB unique로도 막히지만 친절한 에러를 위해 사전 체크)
+ *   4. authUserId가 이 club 안에서 이미 다른 member에 연결되어 있으면 거부
+ *      (멀티클럽 정책: 같은 auth_user_id가 다른 클럽 members에 있는 것은 허용)
  *
- * 권한: manager 이상(requireAdmin).
+ * 권한: kakaoIsOwner (master) 전용.
+ * club context: admin_club_slug 쿠키 기준 access.clubId — selected_club_id 사용 금지.
  */
 export async function POST(request: NextRequest) {
   const access = await getAdminAccessServer();
   if (!access.kakaoIsOwner) return Response.json({ error: "Owner 또는 master 권한이 필요합니다." }, { status: 403 });
+
+  // admin_club_slug 기준 club context — selected_club_id 사용 금지
+  const currentClubId = access.clubId;
+  if (!currentClubId) {
+    return NextResponse.json({ error: "관리 클럽 context가 없습니다. /admin에서 클럽을 선택해주세요." }, { status: 400 });
+  }
 
   let body: LinkMemberBody;
   try {
@@ -41,7 +48,6 @@ export async function POST(request: NextRequest) {
   }
 
   const supabase = createServiceClient();
-  const currentClubId = await getCurrentClubId();
 
   // 1) authUserId가 auth.users에 존재하는지 확인
   const { data: authUserData, error: authUserError } = await supabase.auth.admin.getUserById(authUserId);
