@@ -358,7 +358,7 @@ export function PlatformLandingClient({ clubs }: Props) {
                       Want to open your own SUPER MATCH club?
                       <br />
                       <span style={{ color: "rgba(245,240,232,0.22)", fontSize: 10 }}>
-                        Contact the operator to create a new club.
+                        클럽 개설을 원하시면 운영자에게 문의해 주세요.
                       </span>
                     </p>
                   </div>
@@ -465,22 +465,11 @@ function ClubRow({ club, isLast }: { club: Club; isLast: boolean }) {
               overflow: "hidden",
               textOverflow: "ellipsis",
               whiteSpace: "nowrap",
-              marginBottom: 1,
             }}
           >
             {club.description}
           </p>
         )}
-        <p
-          style={{
-            color: "rgba(245,240,232,0.18)",
-            fontSize: 9,
-            fontFamily: "ui-monospace, monospace",
-            letterSpacing: "0.03em",
-          }}
-        >
-          /c/{club.slug}
-        </p>
       </div>
 
       {/* ENTER CLUB */}

@@ -45,16 +45,18 @@ export default function PlatformLoading() {
         }
       `}</style>
 
-      {/* root layout 차단 — fixed inset-0 z-[9999] */}
+      {/* root layout 차단 — fixed inset-0 z-[9999], backgroundColor로 solid base 보장 */}
       <div
         className="sm-load-wrap"
         style={{
           position: "fixed",
           inset: 0,
           zIndex: 9999,
+          isolation: "isolate",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
+          backgroundColor: "#061d14",
           background: [
             "repeating-linear-gradient(90deg, rgba(255,255,255,0.038) 0px, rgba(255,255,255,0.038) 10px, transparent 10px, transparent 90px)",
             "linear-gradient(170deg, #082d21 0%, #0a3328 45%, #061d14 100%)",
