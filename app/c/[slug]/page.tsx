@@ -37,11 +37,13 @@ export default async function ClubHomePage({
   const club = await getClubBySlug(params.slug);
   if (!club) notFound();
 
+  const base = `/c/${club.slug}`;
   const navItems = [
-    { href: "/matches",    label: "경기 기록",  sub: "Match results" },
-    { href: "/ranking",    label: "랭킹",       sub: "Rankings" },
-    { href: "/members",    label: "회원",        sub: "Members" },
-    { href: "/attendance", label: "출석",        sub: "Attendance" },
+    { href: `${base}/matches`,       label: "경기 기록",  sub: "Match results" },
+    { href: `${base}/ranking`,       label: "랭킹",       sub: "Rankings" },
+    { href: `${base}/members`,       label: "회원",        sub: "Members" },
+    { href: `${base}/attendance`,    label: "출석",        sub: "Attendance" },
+    { href: `${base}/point-history`, label: "포인트",      sub: "Point History" },
   ];
 
   return (
