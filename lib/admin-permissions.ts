@@ -21,10 +21,8 @@
 
 import { cookies } from "next/headers";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
-import { getAdminRole } from "@/lib/admin-auth";
-import { ADMIN_CLUB_SLUG_COOKIE } from "@/lib/admin-auth";
+import { getAdminRole, ADMIN_CLUB_SLUG_COOKIE } from "@/lib/admin-auth";
 import { redirect } from "next/navigation";
-import { getCurrentClubId } from "@/lib/current-club";
 import {
   COOKIE_ADMIN_ROLES,
   KAKAO_ADMIN_ROLES,
@@ -138,22 +136,8 @@ export async function getAdminAccessServer(): Promise<AdminAccess> {
       }
     }
 
-    // cookie admin 전용: clubId 미결정 시 admin_club_slug 또는 legacy fallback
-    if (cookieRole !== null && clubId === null) {
-      if (adminSlug) {
-        // club이 비활성이거나 없는 경우 → clubId null 유지 (이미 위에서 처리)
-      } else {
-        // legacy: selected_club_id 쿠키 기반 fallback (cookie admin만 허용)
-        const legacyClubId = await getCurrentClubId();
-        clubId = legacyClubId;
-        const { data: club } = await supabase
-          .from("clubs")
-          .select("slug")
-          .eq("id", legacyClubId)
-          .maybeSingle();
-        clubSlug = club?.slug ?? null;
-      }
-    }
+    // cookie admin이더라도 admin_club_slug 없이는 clubId를 결정하지 않는다.
+    // 대시보드 렌더는 admin/page.tsx에서 access.clubId 유무로 게이팅한다.
   } catch { /* 세션 없음 */ }
 
   // 3. 권한 계산

@@ -217,6 +217,37 @@ export default async function AdminPage({
     );
   }
 
+  // ── 대시보드 게이트: admin_club_slug 쿠키로 확인된 club context 없이 렌더 금지 ──
+  // isAdmin=true이지만 clubId=null인 경우:
+  //   - cookie admin이 /c/[slug] 링크를 거치지 않고 /admin 직접 접근한 경우
+  //   - 카카오 자동로그인 후 admin_club_slug 없이 /admin으로 돌아온 경우
+  // 어느 쪽이든 selected_club_id/getCurrentClubId로 대시보드를 채우지 않는다.
+  if (isAdmin && !access.clubId) {
+    return (
+      <main className="px-4 pt-10 pb-10">
+        <header className="mb-8 text-center">
+          <p className="eyebrow-en text-clay-400">Admin Access</p>
+          <h1 className="headline-kr mt-1 text-4xl text-line-900">클럽 선택 필요</h1>
+        </header>
+        <section className="mb-5">
+          <div className="rounded-[14px] border border-line-200/40 bg-line-50 p-4">
+            <p className="text-sm font-semibold text-line-900 mb-1">
+              관리할 클럽을 먼저 선택해주세요.
+            </p>
+            <p className="text-xs text-line-500">
+              클럽 공개 페이지 상단의 관리자 링크를 통해 진입해야 합니다.
+            </p>
+          </div>
+        </section>
+        <section>
+          <div className="rounded-[14px] border border-line-200/40 bg-line-50 p-4">
+            <FullSignOutButton returnSlug={undefined} />
+          </div>
+        </section>
+      </main>
+    );
+  }
+
   // ── 인증됨: 대시보드 ───────────────────────────────
   const data = await getAdminDashboardData(access.clubId ?? "");
 
