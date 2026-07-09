@@ -17,6 +17,82 @@ interface Props {
   currentAdminId: string;
 }
 
+/* ─────────────────────────────────────────────────────────────
+   Shared CSS — rendered once at component root
+───────────────────────────────────────────────────────────── */
+function CcAdminStyles() {
+  return (
+    <style>{`
+      /* input focus ring */
+      .cc-admin-input {
+        transition: border-color 0.15s, box-shadow 0.15s;
+      }
+      .cc-admin-input:focus {
+        outline: none;
+        border-color: rgba(139,92,246,0.6) !important;
+        box-shadow: 0 0 0 3px rgba(109,40,217,0.12);
+      }
+      .cc-admin-input:disabled { opacity: 0.45; cursor: not-allowed; }
+      .cc-admin-select:focus {
+        outline: none;
+        border-color: rgba(139,92,246,0.6) !important;
+        box-shadow: 0 0 0 3px rgba(109,40,217,0.12);
+      }
+
+      /* create-form responsive grid */
+      .cc-form-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 16px;
+      }
+      @media (min-width: 560px) {
+        .cc-form-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 20px 24px;
+        }
+      }
+
+      /* button row */
+      .cc-btn-row {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+      @media (min-width: 480px) {
+        .cc-btn-row { flex-direction: row; gap: 10px; }
+      }
+      .cc-btn-primary-create { width: 100%; }
+      .cc-btn-cancel { width: 100%; }
+      @media (min-width: 480px) {
+        .cc-btn-primary-create { width: auto; }
+        .cc-btn-cancel { width: auto; }
+      }
+
+      /* form card inner padding */
+      .cc-create-form-body {
+        padding: 20px 20px 24px;
+      }
+      @media (min-width: 560px) {
+        .cc-create-form-body {
+          padding: 28px 28px 32px;
+        }
+      }
+
+      /* admin roster row hover */
+      .cc-roster-row:hover { background: rgba(245,240,232,0.025); }
+
+      /* badge row wraps on mobile */
+      .cc-badge-row {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        flex-wrap: wrap;
+        margin-bottom: 3px;
+      }
+    `}</style>
+  );
+}
+
 export default function PlatformAdminsPageClient({
   initialAdmins,
   currentAdminId,
@@ -102,11 +178,13 @@ export default function PlatformAdminsPageClient({
 
   return (
     <div>
+      <CcAdminStyles />
+
       {/* 페이지 타이틀 */}
       <div
         style={{
           display: "flex",
-          alignItems: "flex-end",
+          alignItems: "flex-start",
           justifyContent: "space-between",
           marginBottom: 24,
           gap: 12,
@@ -123,33 +201,47 @@ export default function PlatformAdminsPageClient({
               fontFamily: "Georgia, 'Times New Roman', serif",
               letterSpacing: "0.05em",
               textTransform: "uppercase",
+              lineHeight: 1.2,
             }}
           >
             Admin Roster
           </h1>
-          <p style={{ color: "rgba(245,240,232,0.32)", fontSize: 12, marginTop: 4 }}>
+          <p style={{ color: "rgba(245,240,232,0.32)", fontSize: 12, marginTop: 5 }}>
             Manage operator accounts and access roles.
           </p>
         </div>
+
+        {/* 상단 Create / Close 토글 버튼 */}
         <button
           onClick={() => {
-            setCreateOpen(true);
-            setCreateError(null);
-            setCreateSuccess(null);
+            if (createOpen) {
+              setCreateOpen(false);
+            } else {
+              setCreateOpen(true);
+              setCreateError(null);
+              setCreateSuccess(null);
+            }
           }}
           style={{
-            padding: "8px 16px",
-            borderRadius: 8,
-            background: "rgba(139,92,246,0.75)",
-            border: "none",
-            color: "#f5f0e8",
-            fontSize: 12,
+            padding: "9px 18px",
+            borderRadius: 9,
+            background: createOpen
+              ? "transparent"
+              : "rgba(109,40,217,0.7)",
+            border: createOpen
+              ? "1px solid rgba(245,240,232,0.2)"
+              : "none",
+            color: createOpen ? "rgba(245,240,232,0.55)" : "#f5f0e8",
+            fontSize: 11,
             fontWeight: 700,
-            letterSpacing: "0.06em",
+            letterSpacing: "0.10em",
+            textTransform: "uppercase",
             cursor: "pointer",
+            flexShrink: 0,
+            transition: "background 0.15s",
           }}
         >
-          + Create Admin
+          {createOpen ? "✕ Close" : "+ Create Admin"}
         </button>
       </div>
 
@@ -162,109 +254,161 @@ export default function PlatformAdminsPageClient({
         <div style={errorBoxStyle}>{patchError}</div>
       )}
 
-      {/* 신규 생성 폼 */}
+      {/* ── CREATE ADMIN 폼 카드 ─────────────────────────────── */}
       {createOpen && (
-        <div style={courtCardStyle("purple")} className="mb-5">
-          <p style={{ ...labelStyle, marginBottom: 14 }}>Create Admin</p>
-          <form onSubmit={handleCreate} noValidate>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
-              <div>
-                <FieldLabel>Username *</FieldLabel>
-                <CcInput
-                  value={form.username}
-                  onChange={(v) => setForm((f) => ({ ...f, username: v }))}
-                  placeholder="username"
-                  disabled={createBusy}
-                  autoComplete="off"
-                />
+        <div style={purpleCardStyle} className="mb-5">
+          <div className="cc-create-form-body">
+            {/* CREATE ADMIN 섹션 라벨 */}
+            <p
+              style={{
+                color: "rgba(196,181,253,0.5)",
+                fontSize: 9,
+                fontWeight: 700,
+                letterSpacing: "0.22em",
+                textTransform: "uppercase",
+                fontFamily: "Georgia, serif",
+                marginBottom: 20,
+              }}
+            >
+              Create Admin
+            </p>
+
+            <form onSubmit={handleCreate} noValidate>
+              {/* Row 1: Username / Display Name */}
+              <div className="cc-form-grid" style={{ marginBottom: 0 }}>
+                <div>
+                  <FieldLabel>Username *</FieldLabel>
+                  <CcInput
+                    value={form.username}
+                    onChange={(v) => setForm((f) => ({ ...f, username: v }))}
+                    placeholder="username"
+                    disabled={createBusy}
+                    autoComplete="off"
+                  />
+                </div>
+                <div>
+                  <FieldLabel>Display Name</FieldLabel>
+                  <CcInput
+                    value={form.display_name}
+                    onChange={(v) => setForm((f) => ({ ...f, display_name: v }))}
+                    placeholder="Display name"
+                    disabled={createBusy}
+                    autoComplete="off"
+                  />
+                </div>
+
+                {/* Row 2: Password / Role */}
+                <div>
+                  <FieldLabel>Password * (min. 8 chars)</FieldLabel>
+                  <CcInput
+                    type="password"
+                    value={form.password}
+                    onChange={(v) => setForm((f) => ({ ...f, password: v }))}
+                    placeholder="••••••••"
+                    disabled={createBusy}
+                    autoComplete="new-password"
+                  />
+                </div>
+                <div>
+                  <FieldLabel>Role</FieldLabel>
+                  <CcSelect
+                    value={form.role}
+                    onChange={(v) => setForm((f) => ({ ...f, role: v as "owner" | "admin" }))}
+                    disabled={createBusy}
+                    options={[
+                      { value: "admin", label: "ADMIN" },
+                      { value: "owner", label: "OWNER" },
+                    ]}
+                  />
+                </div>
               </div>
-              <div>
-                <FieldLabel>Display Name</FieldLabel>
-                <CcInput
-                  value={form.display_name}
-                  onChange={(v) => setForm((f) => ({ ...f, display_name: v }))}
-                  placeholder="Display name"
+
+              {/* 에러 */}
+              {createError && (
+                <div style={{ ...errorBoxStyle, marginTop: 16, marginBottom: 0 }}>
+                  {createError}
+                </div>
+              )}
+
+              {/* 버튼 row */}
+              <div className="cc-btn-row" style={{ marginTop: 24 }}>
+                <button
+                  type="submit"
                   disabled={createBusy}
-                  autoComplete="off"
-                />
-              </div>
-            </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
-              <div>
-                <FieldLabel>Password * (min. 8 chars)</FieldLabel>
-                <CcInput
-                  type="password"
-                  value={form.password}
-                  onChange={(v) => setForm((f) => ({ ...f, password: v }))}
-                  placeholder="••••••••"
-                  disabled={createBusy}
-                  autoComplete="new-password"
-                />
-              </div>
-              <div>
-                <FieldLabel>Role</FieldLabel>
-                <select
-                  value={form.role}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, role: e.target.value as "owner" | "admin" }))
-                  }
-                  disabled={createBusy}
+                  className="cc-btn-primary-create"
                   style={{
-                    ...inputStyle,
-                    appearance: "none",
-                    backgroundImage: "none",
+                    padding: "11px 20px",
+                    borderRadius: 9,
+                    background: createBusy
+                      ? "rgba(109,40,217,0.3)"
+                      : "rgba(109,40,217,0.75)",
+                    border: "none",
+                    color: "#f5f0e8",
+                    fontSize: 11,
+                    fontWeight: 700,
+                    letterSpacing: "0.12em",
+                    textTransform: "uppercase",
+                    cursor: createBusy ? "not-allowed" : "pointer",
+                    transition: "background 0.15s",
                   }}
                 >
-                  <option value="admin">admin</option>
-                  <option value="owner">owner</option>
-                </select>
+                  {createBusy ? "Creating…" : "Create Account"}
+                </button>
+                <button
+                  type="button"
+                  className="cc-btn-cancel"
+                  onClick={() => setCreateOpen(false)}
+                  style={{
+                    padding: "11px 20px",
+                    borderRadius: 9,
+                    background: "transparent",
+                    border: "1px solid rgba(245,240,232,0.15)",
+                    color: "rgba(245,240,232,0.45)",
+                    fontSize: 11,
+                    fontWeight: 700,
+                    letterSpacing: "0.12em",
+                    textTransform: "uppercase",
+                    cursor: "pointer",
+                  }}
+                >
+                  Cancel
+                </button>
               </div>
-            </div>
-
-            {createError && <div style={{ ...errorBoxStyle, marginBottom: 12 }}>{createError}</div>}
-
-            <div style={{ display: "flex", gap: 8 }}>
-              <button
-                type="submit"
-                disabled={createBusy}
-                style={{
-                  padding: "8px 16px",
-                  borderRadius: 8,
-                  background: createBusy ? "rgba(139,92,246,0.3)" : "rgba(139,92,246,0.75)",
-                  border: "none",
-                  color: "#f5f0e8",
-                  fontSize: 12,
-                  fontWeight: 700,
-                  cursor: createBusy ? "not-allowed" : "pointer",
-                }}
-              >
-                {createBusy ? "Creating…" : "Create Account"}
-              </button>
-              <button
-                type="button"
-                onClick={() => setCreateOpen(false)}
-                style={{
-                  padding: "8px 16px",
-                  borderRadius: 8,
-                  background: "transparent",
-                  border: "1px solid rgba(245,240,232,0.15)",
-                  color: "rgba(245,240,232,0.5)",
-                  fontSize: 12,
-                  fontWeight: 600,
-                  cursor: "pointer",
-                }}
-              >
-                Cancel
-              </button>
-            </div>
-          </form>
+            </form>
+          </div>
         </div>
       )}
 
-      {/* 관리자 목록 */}
-      <div style={courtCardStyle()}>
+      {/* ── ADMIN ROSTER 카드 ─────────────────────────────────── */}
+      <div style={defaultCardStyle}>
+        <div
+          style={{
+            padding: "10px 16px 9px",
+            borderBottom: "1px solid rgba(245,240,232,0.06)",
+          }}
+        >
+          <p
+            style={{
+              color: "rgba(245,240,232,0.22)",
+              fontSize: 9,
+              fontWeight: 700,
+              letterSpacing: "0.18em",
+              textTransform: "uppercase",
+            }}
+          >
+            Admin Roster
+          </p>
+        </div>
+
         {admins.length === 0 ? (
-          <p style={{ color: "rgba(245,240,232,0.35)", fontSize: 13, textAlign: "center", padding: "24px 16px" }}>
+          <p
+            style={{
+              color: "rgba(245,240,232,0.35)",
+              fontSize: 13,
+              textAlign: "center",
+              padding: "28px 16px",
+            }}
+          >
             No admin accounts found.
           </p>
         ) : (
@@ -284,8 +428,9 @@ export default function PlatformAdminsPageClient({
   );
 }
 
-// ── AdminRow ──────────────────────────────────────────────────────────────
-
+/* ─────────────────────────────────────────────────────────────
+   AdminRow
+───────────────────────────────────────────────────────────── */
 function AdminRow({
   admin,
   isSelf,
@@ -321,35 +466,65 @@ function AdminRow({
     >
       {/* 메인 행 */}
       <div
+        className="cc-roster-row"
         style={{
-          padding: "12px 16px",
+          padding: "13px 16px",
           display: "flex",
           alignItems: "center",
-          gap: 12,
+          gap: 10,
           cursor: "pointer",
         }}
         onClick={() => setExpanded((v) => !v)}
       >
-        {/* 텍스트 */}
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
-            <span style={{ color: "#f5f0e8", fontSize: 13, fontWeight: 600 }}>
+          {/* username + badges — flex-wrap on mobile */}
+          <div className="cc-badge-row">
+            <span
+              style={{
+                color: "#f5f0e8",
+                fontSize: 13,
+                fontWeight: 600,
+                wordBreak: "break-all",
+              }}
+            >
               {admin.username}
             </span>
             {isSelf && (
-              <span style={{ ...badgeStyle("rgba(134,239,172,0.1)", "rgba(134,239,172,0.25)", "#86efac") }}>
+              <span
+                style={badgeStyle(
+                  "rgba(134,239,172,0.1)",
+                  "rgba(134,239,172,0.25)",
+                  "#86efac"
+                )}
+              >
                 ME
               </span>
             )}
             <RoleBadgeInline role={admin.role} />
             <StatusBadgeInline status={admin.status} />
           </div>
+
           {admin.display_name && (
-            <p style={{ color: "rgba(245,240,232,0.35)", fontSize: 11 }}>
+            <p
+              style={{
+                color: "rgba(245,240,232,0.35)",
+                fontSize: 11,
+                marginTop: 1,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
+            >
               {admin.display_name}
             </p>
           )}
-          <p style={{ color: "rgba(245,240,232,0.2)", fontSize: 10, marginTop: 2 }}>
+          <p
+            style={{
+              color: "rgba(245,240,232,0.2)",
+              fontSize: 10,
+              marginTop: 3,
+            }}
+          >
             Last login:{" "}
             {admin.last_login_at
               ? new Date(admin.last_login_at).toLocaleString("en-GB", {
@@ -361,6 +536,8 @@ function AdminRow({
               : "Never"}
           </p>
         </div>
+
+        {/* chevron — flex-shrink 0으로 밀리지 않게 */}
         <svg
           width="14"
           height="14"
@@ -386,77 +563,80 @@ function AdminRow({
       {expanded && (
         <div
           style={{
-            padding: "0 16px 14px",
+            padding: "16px 16px 18px",
             borderTop: "1px solid rgba(245,240,232,0.06)",
+            background: "rgba(0,0,0,0.15)",
           }}
           onClick={(e) => e.stopPropagation()}
         >
-          <div style={{ paddingTop: 12, display: "flex", flexDirection: "column", gap: 12 }}>
-            {/* 표시 이름 변경 */}
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <div style={{ flex: 1 }}>
-                <FieldLabel>Display Name</FieldLabel>
-                <CcInput
-                  value={displayName}
-                  onChange={setDisplayName}
-                  placeholder="Display name"
+          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            {/* Display Name */}
+            <div>
+              <FieldLabel>Display Name</FieldLabel>
+              <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <CcInput
+                    value={displayName}
+                    onChange={setDisplayName}
+                    placeholder="Display name"
+                    disabled={patchBusy}
+                    autoComplete="off"
+                  />
+                </div>
+                <button
+                  onClick={() => onPatch({ display_name: displayName })}
                   disabled={patchBusy}
-                  autoComplete="off"
-                />
-              </div>
-              <button
-                onClick={() => onPatch({ display_name: displayName })}
-                disabled={patchBusy}
-                style={smallBtnStyle}
-              >
-                Save
-              </button>
-            </div>
-
-            {/* 역할 변경 */}
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <div style={{ flex: 1 }}>
-                <FieldLabel>Role</FieldLabel>
-                <select
-                  defaultValue={admin.role}
-                  disabled={patchBusy}
-                  onChange={(e) => onPatch({ role: e.target.value })}
-                  style={{ ...inputStyle, appearance: "none" }}
+                  style={smallBtnStyle}
                 >
-                  <option value="admin">admin</option>
-                  <option value="owner">owner</option>
-                </select>
+                  Save
+                </button>
               </div>
             </div>
 
-            {/* 비밀번호 재설정 */}
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <div style={{ flex: 1 }}>
-                <FieldLabel>New Password (min. 8 chars)</FieldLabel>
-                <CcInput
-                  type="password"
-                  value={newPassword}
-                  onChange={setNewPassword}
-                  placeholder="New password"
-                  disabled={patchBusy}
-                  autoComplete="new-password"
-                />
-              </div>
-              <button
-                onClick={() => {
-                  if (newPassword.length >= 8) {
-                    onPatch({ password: newPassword });
-                    setNewPassword("");
-                  }
-                }}
-                disabled={patchBusy || newPassword.length < 8}
-                style={smallBtnStyle}
-              >
-                Reset
-              </button>
+            {/* Role */}
+            <div>
+              <FieldLabel>Role</FieldLabel>
+              <CcSelect
+                value={admin.role}
+                onChange={(v) => onPatch({ role: v })}
+                disabled={patchBusy}
+                options={[
+                  { value: "admin", label: "ADMIN" },
+                  { value: "owner", label: "OWNER" },
+                ]}
+              />
             </div>
 
-            {/* 상태 토글 */}
+            {/* New Password */}
+            <div>
+              <FieldLabel>New Password (min. 8 chars)</FieldLabel>
+              <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <CcInput
+                    type="password"
+                    value={newPassword}
+                    onChange={setNewPassword}
+                    placeholder="New password"
+                    disabled={patchBusy}
+                    autoComplete="new-password"
+                  />
+                </div>
+                <button
+                  onClick={() => {
+                    if (newPassword.length >= 8) {
+                      onPatch({ password: newPassword });
+                      setNewPassword("");
+                    }
+                  }}
+                  disabled={patchBusy || newPassword.length < 8}
+                  style={smallBtnStyle}
+                >
+                  Reset
+                </button>
+              </div>
+            </div>
+
+            {/* Activate / Deactivate */}
             {!isSelf && (
               <button
                 onClick={() =>
@@ -465,7 +645,7 @@ function AdminRow({
                 disabled={patchBusy}
                 style={{
                   alignSelf: "flex-start",
-                  padding: "6px 14px",
+                  padding: "7px 16px",
                   borderRadius: 7,
                   border: isActive
                     ? "1px solid rgba(248,113,113,0.3)"
@@ -475,7 +655,9 @@ function AdminRow({
                     : "rgba(134,239,172,0.08)",
                   color: isActive ? "#fca5a5" : "#86efac",
                   fontSize: 11,
-                  fontWeight: 600,
+                  fontWeight: 700,
+                  letterSpacing: "0.08em",
+                  textTransform: "uppercase",
                   cursor: patchBusy ? "not-allowed" : "pointer",
                   opacity: patchBusy ? 0.5 : 1,
                 }}
@@ -490,41 +672,46 @@ function AdminRow({
   );
 }
 
-// ── 공통 스타일/컴포넌트 ────────────────────────────────────────────────────
-
+/* ─────────────────────────────────────────────────────────────
+   스타일 상수
+───────────────────────────────────────────────────────────── */
 const labelStyle: React.CSSProperties = {
-  color: "rgba(245,240,232,0.3)",
-  fontSize: 9,
+  color: "rgba(196,181,253,0.45)",
+  fontSize: 8.5,
   fontWeight: 700,
-  letterSpacing: "0.18em",
+  letterSpacing: "0.22em",
   textTransform: "uppercase",
   marginBottom: 8,
+  fontFamily: "Georgia, serif",
 };
 
 const inputStyle: React.CSSProperties = {
   width: "100%",
-  height: 38,
+  height: 40,
   borderRadius: 8,
-  border: "1px solid rgba(245,240,232,0.12)",
+  border: "1px solid rgba(245,240,232,0.14)",
   background: "rgba(245,240,232,0.04)",
   color: "#f5f0e8",
   fontSize: 13,
   padding: "0 12px",
   outline: "none",
   boxSizing: "border-box",
+  transition: "border-color 0.15s, box-shadow 0.15s",
 };
 
 const smallBtnStyle: React.CSSProperties = {
-  padding: "6px 12px",
-  marginTop: 18,
+  padding: "0 14px",
+  height: 40,
+  flexShrink: 0,
   borderRadius: 7,
-  background: "rgba(139,92,246,0.6)",
-  border: "none",
+  background: "rgba(109,40,217,0.55)",
+  border: "1px solid rgba(139,92,246,0.3)",
   color: "#f5f0e8",
   fontSize: 11,
   fontWeight: 700,
+  letterSpacing: "0.06em",
   cursor: "pointer",
-  flexShrink: 0,
+  whiteSpace: "nowrap",
 };
 
 const errorBoxStyle: React.CSSProperties = {
@@ -547,44 +734,62 @@ const successBoxStyle: React.CSSProperties = {
   marginBottom: 16,
 };
 
-function courtCardStyle(
-  variant: "default" | "purple" = "default"
-): React.CSSProperties {
-  const isPurple = variant === "purple";
-  return {
-    borderRadius: 14,
-    border: isPurple
-      ? "1px solid rgba(109,40,217,0.45)"
-      : "1px solid rgba(245,240,232,0.11)",
-    background: isPurple ? "rgba(2,4,3,0.94)" : "rgba(2,6,4,0.90)",
-    backdropFilter: "blur(8px)",
-    WebkitBackdropFilter: "blur(8px)",
-    overflow: "hidden",
-    marginBottom: 20,
-    boxShadow: isPurple
-      ? "0 0 0 0 transparent, 0 4px 22px rgba(0,0,0,0.6), inset 3px 0 0 rgba(109,40,217,0.5)"
-      : "0 4px 20px rgba(0,0,0,0.55)",
-  };
-}
+/* 카드 스타일 — purple (create form) */
+const purpleCardStyle: React.CSSProperties = {
+  borderRadius: 14,
+  border: "1px solid rgba(109,40,217,0.45)",
+  background: "rgba(2,4,3,0.94)",
+  backdropFilter: "blur(8px)",
+  WebkitBackdropFilter: "blur(8px)",
+  marginBottom: 20,
+  boxShadow:
+    "0 4px 22px rgba(0,0,0,0.6), inset 3px 0 0 rgba(109,40,217,0.5)",
+};
 
-function badgeStyle(bg: string, border: string, color: string): React.CSSProperties {
+/* 카드 스타일 — default (roster) */
+const defaultCardStyle: React.CSSProperties = {
+  borderRadius: 14,
+  border: "1px solid rgba(245,240,232,0.11)",
+  background: "rgba(2,6,4,0.90)",
+  backdropFilter: "blur(8px)",
+  WebkitBackdropFilter: "blur(8px)",
+  overflow: "hidden",
+  marginBottom: 20,
+  boxShadow: "0 4px 20px rgba(0,0,0,0.55)",
+};
+
+function badgeStyle(
+  bg: string,
+  border: string,
+  color: string
+): React.CSSProperties {
   return {
     fontSize: 9,
     fontWeight: 700,
     letterSpacing: "0.08em",
     textTransform: "uppercase" as const,
-    padding: "1px 6px",
+    padding: "2px 6px",
     borderRadius: 3,
     background: bg,
     border: `1px solid ${border}`,
     color,
     flexShrink: 0 as const,
+    whiteSpace: "nowrap" as const,
   };
 }
 
+/* ─────────────────────────────────────────────────────────────
+   서브 컴포넌트
+───────────────────────────────────────────────────────────── */
 function RoleBadgeInline({ role }: { role: string }) {
   return (
-    <span style={badgeStyle("rgba(139,92,246,0.15)", "rgba(139,92,246,0.35)", "#c4b5fd")}>
+    <span
+      style={badgeStyle(
+        "rgba(139,92,246,0.15)",
+        "rgba(139,92,246,0.35)",
+        "#c4b5fd"
+      )}
+    >
       {role}
     </span>
   );
@@ -609,12 +814,12 @@ function FieldLabel({ children }: { children: React.ReactNode }) {
   return (
     <p
       style={{
-        color: "rgba(245,240,232,0.35)",
+        color: "rgba(245,240,232,0.38)",
         fontSize: 9,
         fontWeight: 700,
-        letterSpacing: "0.14em",
+        letterSpacing: "0.16em",
         textTransform: "uppercase",
-        marginBottom: 5,
+        marginBottom: 6,
       }}
     >
       {children}
@@ -638,21 +843,74 @@ function CcInput({
   autoComplete?: string;
 }) {
   return (
-    <>
-      <style>{`
-        .cc-admin-input { transition: border-color 0.15s, box-shadow 0.15s; }
-        .cc-admin-input:focus { outline: none; border-color: rgba(139,92,246,0.6) !important; box-shadow: 0 0 0 3px rgba(109,40,217,0.12); }
-      `}</style>
-      <input
-        type={type}
+    <input
+      type={type}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder={placeholder}
+      disabled={disabled}
+      autoComplete={autoComplete}
+      className="cc-admin-input"
+      style={{ ...inputStyle, opacity: disabled ? 0.45 : 1 }}
+    />
+  );
+}
+
+function CcSelect({
+  value,
+  onChange,
+  disabled,
+  options,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  disabled?: boolean;
+  options: { value: string; label: string }[];
+}) {
+  return (
+    <div style={{ position: "relative" }}>
+      <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
         disabled={disabled}
-        autoComplete={autoComplete}
-        className="cc-admin-input"
-        style={{ ...inputStyle, opacity: disabled ? 0.5 : 1 }}
-      />
-    </>
+        className="cc-admin-select"
+        style={{
+          ...inputStyle,
+          appearance: "none",
+          paddingRight: 32,
+          cursor: disabled ? "not-allowed" : "pointer",
+          opacity: disabled ? 0.45 : 1,
+        }}
+      >
+        {options.map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.label}
+          </option>
+        ))}
+      </select>
+      {/* chevron */}
+      <svg
+        width="12"
+        height="12"
+        viewBox="0 0 12 12"
+        fill="none"
+        style={{
+          position: "absolute",
+          right: 10,
+          top: "50%",
+          transform: "translateY(-50%)",
+          pointerEvents: "none",
+          opacity: 0.45,
+        }}
+      >
+        <path
+          d="M2 4l4 4 4-4"
+          stroke="#f5f0e8"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    </div>
   );
 }
