@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { getPlatformAdminAccessServer } from "@/lib/platform-auth";
+import LogoutButton from "./LogoutButton";
 
 export const dynamic = "force-dynamic";
 
@@ -53,6 +54,7 @@ export default async function CenterCourtPage() {
           {access.username && (
             <span className="text-[10px] text-line-400">{access.username}</span>
           )}
+          <LogoutButton />
         </div>
       </header>
 
