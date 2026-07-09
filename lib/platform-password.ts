@@ -9,6 +9,19 @@ import { promisify } from "util";
 
 const scrypt = promisify(crypto.scrypt);
 
+const SCRYPT_KEYLEN = 64;
+
+/**
+ * createPlatformPasswordHash — 새 비밀번호 → "<salt_hex>:<hash_hex>" 문자열 생성.
+ * salt: 16바이트 CSPRNG. keyLen: 64바이트 scrypt.
+ * DB의 platform_admins.password_hash 에 저장하는 값.
+ */
+export async function createPlatformPasswordHash(password: string): Promise<string> {
+  const salt = crypto.randomBytes(16);
+  const hash = (await scrypt(password, salt, SCRYPT_KEYLEN)) as Buffer;
+  return `${salt.toString("hex")}:${hash.toString("hex")}`;
+}
+
 /**
  * verifyPlatformPassword — scrypt 비밀번호 검증.
  *
@@ -25,7 +38,7 @@ export async function verifyPlatformPassword(
     const [saltHex, hashHex] = parts;
     const salt = Buffer.from(saltHex, "hex");
     const expected = Buffer.from(hashHex, "hex");
-    const keyLen = expected.length; // 마이그레이션 노트 기준 64바이트
+    const keyLen = expected.length === SCRYPT_KEYLEN ? SCRYPT_KEYLEN : expected.length;
     const derived = (await scrypt(password, salt, keyLen)) as Buffer;
     return crypto.timingSafeEqual(derived, expected);
   } catch {
