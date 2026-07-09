@@ -1,202 +1,136 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { Badge } from "@/components/ui/Badge";
-import { MatchCard } from "@/components/match/MatchCard";
-import { MATCH_SELECT_WITH_PLAYERS, toDisplayMatches } from "@/lib/match-display";
-import { MATCH_SESSION_DAY_LABEL, selectHomeSessions } from "@/lib/match-session-label";
-import { HomeAttendanceSection } from "@/components/attendance/HomeAttendanceSection";
-import { RankingTeaserCard } from "@/components/ranking/RankingTeaserCard";
-import { SectionHeader, EmptyState } from "@/components/ui/SectionHeader";
-import { applyRankingQuery } from "@/lib/ranking-query";
-import { isAdminSession } from "@/lib/admin-auth";
-import type { AttendanceSession, MemberWithStats } from "@/lib/supabase/database.types";
-import { getCurrentClub } from "@/lib/current-club";
-import { formatClubEyebrow } from "@/lib/club-display";
 
-const MAIN_SESSION_LIMIT = 5;
-
-// selected_club_id 쿠키에 따라 결과가 달라지는 서버 페이지이므로,
-// Next.js의 static optimization/캐시에 걸리지 않도록 매 요청마다 새로 렌더링한다.
+/**
+ * SUPER MATCH — 플랫폼 메인 랜딩
+ *
+ * - clubs 테이블에서 status='active' 클럽만 공개 조회
+ * - getCurrentClubId / getCurrentClub / selected_club_id / DEFAULT_CLUB_ID 미사용
+ * - 공개 페이지 — 인증 없이 접근 가능
+ */
 export const dynamic = "force-dynamic";
-export const revalidate = 0;
 
-function thisWeekRange(): { start: string; end: string } {
-  const now = new Date();
-  const day = now.getDay();
-  const diffToMonday = day === 0 ? -6 : 1 - day;
-  const monday = new Date(now);
-  monday.setDate(now.getDate() + diffToMonday);
-  const sunday = new Date(monday);
-  sunday.setDate(monday.getDate() + 6);
-  return {
-    start: monday.toISOString().slice(0, 10),
-    end: sunday.toISOString().slice(0, 10),
-  };
+interface Club {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  status: string;
 }
 
-export default async function HomePage() {
+async function getActiveClubs(): Promise<Club[]> {
   const supabase = createClient();
-  const currentClub = await getCurrentClub();
-  const currentClubId = currentClub.id;
-  const week = thisWeekRange();
-  const today = new Date().toISOString().slice(0, 10);
+  const { data } = await supabase
+    .from("clubs")
+    .select("id, name, slug, description, status")
+    .eq("status", "active")
+    .order("created_at", { ascending: true });
+  return data ?? [];
+}
 
-  const [
-    { data: activeSessionRows },
-    { data: recentMatchRows },
-    { data: weeklyGuests },
-    { data: topRankRows },
-  ] = await Promise.all([
-    supabase
-      .from("attendance_sessions")
-      .select("*")
-      .eq("club_id", currentClubId)
-      .in("status", ["open", "closed"])
-      .gte("session_date", today),
-
-    supabase
-      .from("matches")
-      .select(MATCH_SELECT_WITH_PLAYERS)
-      .eq("club_id", currentClubId)
-      .order("created_at", { ascending: false })
-      .limit(3),
-
-    supabase
-      .from("guests")
-      .select("*")
-      .eq("club_id", currentClubId)
-      .gte("visit_date", week.start)
-      .lte("visit_date", week.end)
-      .order("visit_date", { ascending: true }),
-
-    applyRankingQuery(supabase, currentClubId, 3),
-  ]);
-
-  const allSessions = selectHomeSessions((activeSessionRows ?? []) as AttendanceSession[]);
-  const sessions = allSessions.slice(0, MAIN_SESSION_LIMIT);
-  const hasMoreSessions = allSessions.length > MAIN_SESSION_LIMIT;
-
-  const sessionIds = sessions.map((s) => s.id);
-  const { data: attendanceRows } =
-    sessionIds.length > 0
-      ? await supabase.from("attendance").select("session_id, status").in("session_id", sessionIds)
-      : { data: [] };
-
-  const summaryBySession = new Map<string, { attending: number; undecided: number; absent: number }>(
-    sessions.map((session) => {
-      const rows = (attendanceRows ?? []).filter((a) => a.session_id === session.id);
-      return [
-        session.id,
-        {
-          attending: rows.filter((r) => r.status === "attending").length,
-          undecided: rows.filter((r) => r.status === "undecided").length,
-          absent: rows.filter((r) => r.status === "absent").length,
-        },
-      ];
-    })
-  );
-
-  const recentMatches = toDisplayMatches(recentMatchRows);
-  const guestsThisWeek = weeklyGuests ?? [];
-  const topRanked = (topRankRows ?? []) as MemberWithStats[];
-  const isAdmin = isAdminSession();
+export default async function PlatformLandingPage() {
+  const clubs = await getActiveClubs();
 
   return (
-    <main className="px-4 pt-6 pb-28">
-      <header className="mb-6">
-        <div className="mb-1.5 inline-flex items-center gap-2">
-          <span className="h-1.5 w-1.5 rounded-full bg-clay-400" />
-          <p className="eyebrow-en text-clay-400">{formatClubEyebrow(currentClub.slug)}</p>
-        </div>
-        <h1 className="headline-kr text-4xl text-line-900">{currentClub.name} 리그</h1>
-        <p className="mt-1 max-w-[240px] break-keep text-xs leading-relaxed text-line-500">
-          복식 테니스 리그 · 정기 매치 · 기록 관리
+    <main className="px-4 pt-8 pb-28">
+      {/* ── 히어로 ─────────────────────────────────── */}
+      <header className="mb-8">
+        <p className="eyebrow-en text-clay-400 mb-2">Super Match</p>
+        <h1 className="headline-kr text-[28px] text-line-900 mb-2 leading-tight">
+          Find your club.
+          <br />
+          Enter the court.
+        </h1>
+        <p className="text-sm text-line-500 leading-relaxed">
+          테니스 클럽을 선택해 입장하세요.
         </p>
       </header>
 
-      <HomeAttendanceSection currentClubId={currentClubId} />
+      {/* ── 클럽 목록 ───────────────────────────────── */}
+      <section className="mb-10">
+        <p className="eyebrow-en text-line-400 mb-3 text-[10px]">
+          Choose Your Club
+        </p>
 
-      <section className="mb-4">
-        <SectionHeader
-          title="다음 일정"
-          href={hasMoreSessions ? "/attendance" : undefined}
-          cta={hasMoreSessions ? "더보기" : undefined}
-        />
-        {sessions.length === 0 ? (
-          <EmptyState message="현재 진행 중인 출석 세션이 없어요." />
-        ) : (
-          <div className="space-y-2">
-            {sessions.map((session) => {
-              const summary = summaryBySession.get(session.id)!;
-              const typeLabel = MATCH_SESSION_DAY_LABEL[session.session_day];
-              const [, m, d] = session.session_date.split("-");
-              const dateLabel = `${Number(m)}/${Number(d)}`;
-              return (
-                <Link key={session.id} href={`/attendance?session_id=${session.id}`}>
-                  <div className="relative overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50 transition-colors hover:border-clay-400/30">
-                    <div className="absolute left-0 top-0 h-full w-1 bg-clay-400/50" />
-                    <div className="px-4 py-3 pl-6">
-                      <div className="flex items-start justify-between gap-2">
-                        <div>
-                          <p className="text-sm font-semibold text-line-900">{session.title}</p>
-                          <p className="mt-0.5 text-xs text-line-500">
-                            {typeLabel} · {dateLabel}
-                          </p>
-                        </div>
-                      </div>
-                      <p className="mt-1.5 text-[11px] text-line-500">
-                        출석 {summary.attending} · 미정 {summary.undecided} · 불참 {summary.absent}
-                      </p>
-                    </div>
-                  </div>
-                </Link>
-              );
-            })}
+        {clubs.length === 0 ? (
+          <div className="rounded-[14px] border border-line-200/40 bg-line-50 px-5 py-8 text-center">
+            <p className="text-sm text-line-400">
+              현재 운영 중인 클럽이 없습니다.
+            </p>
           </div>
-        )}
-      </section>
-
-      {topRanked.length > 0 && (
-        <section className="mb-4">
-          <SectionHeader title="현재 순위" href="/ranking" cta="전체 랭킹" />
-          <RankingTeaserCard members={topRanked} />
-        </section>
-      )}
-
-      <section className="mb-4">
-        <SectionHeader title="최근 경기" href="/matches" cta="전체보기" />
-        {recentMatches.length === 0 ? (
-          <EmptyState message="아직 등록된 경기가 없어요." />
         ) : (
-          <div className="space-y-2">
-            {recentMatches.map((match) => (
-              <MatchCard key={match.id} match={match} currentClubId={currentClubId} />
+          <div className="space-y-3">
+            {clubs.map((club) => (
+              <ClubCard key={club.id} club={club} />
             ))}
           </div>
         )}
       </section>
 
-      {isAdmin && guestsThisWeek.length > 0 && (
-        <section>
-          <SectionHeader title="이번 주 게스트" href="/guests" cta="전체보기" />
-          <div className="overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50">
-            {guestsThisWeek.map((guest, idx) => (
-              <div
-                key={guest.id}
-                className={`flex items-center justify-between px-4 py-3 ${
-                  idx < guestsThisWeek.length - 1 ? "border-b border-line-200/30" : ""
-                }`}
-              >
-                <div className="flex items-center gap-1.5">
-                  <span className="text-sm font-semibold text-line-900">{guest.name}</span>
-                  {guest.skill_grade && <Badge tone="amber">{guest.skill_grade}급</Badge>}
-                </div>
-                <span className="text-xs text-line-500">{guest.visit_date}</span>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
+      {/* ── CREATE A CLUB CTA ────────────────────────── */}
+      <section>
+        <div className="rounded-[14px] border border-line-200/40 bg-line-50 px-5 py-5">
+          <p className="eyebrow-en text-clay-400 mb-2 text-[10px]">
+            Create a Club
+          </p>
+          <p className="text-sm font-semibold text-line-900 mb-1">
+            나만의 클럽을 열고 싶으신가요?
+          </p>
+          <p className="text-xs text-line-500 leading-relaxed mb-4">
+            클럽 개설을 원하시면 운영자에게 문의하세요.
+          </p>
+          <span
+            className="inline-block rounded-lg border border-line-200/60 bg-line-100 px-4 py-2 text-[11px] font-semibold uppercase tracking-widest text-line-400 cursor-not-allowed"
+            aria-disabled="true"
+          >
+            Coming Soon
+          </span>
+        </div>
+      </section>
+
+      {/* ── Operator footer ─────────────────────────── */}
+      <div className="mt-10 text-center">
+        <Link
+          href="/center-court"
+          className="text-[10px] text-line-300 hover:text-line-400 transition-colors"
+        >
+          Operator ↗
+        </Link>
+      </div>
     </main>
+  );
+}
+
+/* ── Club Card ────────────────────────────────────── */
+function ClubCard({ club }: { club: Club }) {
+  return (
+    <Link
+      href={`/c/${club.slug}`}
+      className="block rounded-[14px] border border-line-200/40 bg-line-50 transition-colors hover:border-clay-400/30 hover:bg-white"
+    >
+      <div className="relative overflow-hidden rounded-[14px] px-5 py-4">
+        {/* 왼쪽 accent bar */}
+        <div className="absolute left-0 top-0 h-full w-[3px] rounded-l-[14px] bg-clay-400/50" />
+
+        <div className="pl-3">
+          <p className="text-[13px] font-bold text-line-900 mb-0.5">
+            {club.name}
+          </p>
+          {club.description && (
+            <p className="text-xs text-line-500 leading-relaxed mb-2 line-clamp-2">
+              {club.description}
+            </p>
+          )}
+          <div className="flex items-center justify-between gap-2 mt-2">
+            <span className="text-[10px] text-line-300 font-mono">
+              /c/{club.slug}
+            </span>
+            <span className="eyebrow-en text-[9px] text-clay-400 border border-clay-400/40 rounded px-2 py-0.5">
+              Enter Club →
+            </span>
+          </div>
+        </div>
+      </div>
+    </Link>
   );
 }
