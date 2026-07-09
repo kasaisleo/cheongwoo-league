@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getAdminAccessServer } from "@/lib/admin-permissions";
 import { AdminLoginForm } from "@/components/admin/AdminLoginForm";
@@ -53,24 +54,83 @@ async function getAdminDashboardData(currentClubId: string) {
 export default async function AdminPage({
   searchParams,
 }: {
-  searchParams: { reason?: string };
+  searchParams: { reason?: string; no_access_club?: string };
 }) {
-  // 통합 권한 헬퍼 — 단일 진실 공급원
   const access = await getAdminAccessServer();
   const { isAdmin, isOwner, cookieRole } = access;
-  const isOwnerOrMaster = isOwner; // 하위 호환 별칭
+  const isOwnerOrMaster = isOwner;
 
-  // 권한 부족으로 이 페이지에 리다이렉트되어 온 경우의 사유(QA-P1-C-1).
-  // 권한 판단 자체에는 영향을 주지 않고, 안내 문구 표시 여부만 결정한다.
   const reason = searchParams?.reason;
-  // 아예 로그인하지 않은 사용자에게 "로그인은 확인됐습니다"라고 보이면
-  // 안 되므로, 카카오 세션이 실제로 있는 경우(access.userId)에만 안내한다.
-  // reason 파라미터 없이 직접 접근해도 로그인 됐는데 권한 없으면 안내 표시 (redirect loop 방지)
+  // no_access_club: /api/admin/enter 에서 권한 실패 시 전달하는 slug
+  const noAccessClub = searchParams?.no_access_club ?? null;
+
   const isLoggedInButLacksAdmin = !isAdmin && access.userId !== null;
   const isLoggedInButLacksOwner = isAdmin && !isOwner && reason === "owner_required";
 
+  // ── 단일 admin 클럽 (no_access_club 없음): enter route로 자동 redirect ──
+  // 자동 선택을 getAdminAccessServer() 에서 하지 않으므로 페이지에서 처리.
+  // no_access_club이 있으면 redirect하지 않고 권한 없음 화면을 표시한다.
+  if (!isAdmin && !noAccessClub && access.userId !== null && access.adminClubs.length === 1) {
+    redirect(`/api/admin/enter?club=${access.adminClubs[0].slug}`);
+  }
+
+  // ── 특정 클럽 권한 없음 화면 ────────────────────────
+  // /api/admin/enter?club={slug} 에서 권한 실패 후 여기에 도달.
+  // 기존 admin_club_slug 쿠키는 이미 삭제된 상태.
+  // 절대 다른 클럽 데이터를 표시하거나 자동 선택하지 않는다.
+  if (noAccessClub) {
+    return (
+      <main className="px-4 pt-10 pb-10">
+        <header className="mb-8 text-center">
+          <p className="eyebrow-en text-clay-400">Admin Access</p>
+          <h1 className="headline-kr mt-1 text-4xl text-line-900">권한 없음</h1>
+        </header>
+        <section className="mb-5">
+          <div className="rounded-[14px] border border-line-200/40 bg-line-50 p-4">
+            <p className="text-sm font-semibold text-line-900 mb-1">
+              <span className="font-bold text-clay-400">{noAccessClub}</span> 클럽에 대한 운영진 권한이 없습니다.
+            </p>
+            <p className="text-xs text-line-500">
+              클럽 운영진에게 권한 부여를 요청하거나, 다른 클럽을 선택해주세요.
+            </p>
+          </div>
+        </section>
+        {access.adminClubs.length > 0 && (
+          <section>
+            <p className="mb-2 font-display text-[10px] font-bold uppercase tracking-widest text-line-500">
+              관리 가능한 클럽
+            </p>
+            <div className="overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50">
+              {access.adminClubs.map((club, idx) => (
+                <Link key={club.id} href={`/api/admin/enter?club=${club.slug}`}>
+                  <div className={`flex items-center justify-between px-4 py-4 transition-colors hover:bg-line-100/40 ${
+                    idx < access.adminClubs.length - 1 ? "border-b border-line-200/30" : ""
+                  }`}>
+                    <div>
+                      <p className="text-sm font-semibold text-line-900">{club.name}</p>
+                      <p className="font-display text-[10px] font-bold uppercase tracking-wider text-line-500">{club.role}</p>
+                    </div>
+                    <span className="text-xs text-line-400">→</span>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
+        {access.adminClubs.length === 0 && (
+          <section>
+            <Link href="/login">
+              <div className="rounded-[14px] border border-line-200/40 bg-line-50 p-4 text-center">
+                <p className="text-sm text-line-500">다른 계정으로 로그인하기 →</p>
+              </div>
+            </Link>
+          </section>
+        )}
+      </main>
+    );
+  }
+
   // ── 멀티클럽: 클럽 선택 화면 ──────────────────────
-  // 로그인 됐고 admin 클럽이 여러 개인데 admin_club_slug 쿠키가 없는 상태
   if (!isAdmin && access.userId !== null && access.adminClubs.length > 1) {
     return (
       <main className="px-4 pt-10 pb-10">

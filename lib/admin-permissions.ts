@@ -126,16 +126,11 @@ export async function getAdminAccessServer(): Promise<AdminAccess> {
               return { id: m.club_id, slug: c.slug, name: c.name, role: m.permission_role };
             });
 
-          if (adminClubs.length === 1) {
-            // 단일 운영진 클럽 → 자동 선택
-            const m = adminMembers.find((m) => clubMap.has(m.club_id))!;
-            const c = clubMap.get(m.club_id)!;
-            kakaoRole = m.permission_role;
-            memberId  = m.id;
-            clubId    = m.club_id;
-            clubSlug  = c.slug;
-          }
-          // 2개 이상: kakaoRole null, isAdmin false, adminClubs에 목록 → 페이지에서 클럽 선택 UI
+          // 단일/복수 모두: 자동 선택하지 않는다.
+          // 페이지가 adminClubs를 보고 단일이면 /api/admin/enter?club= 으로 redirect,
+          // 복수이면 클럽 선택 UI를 표시한다.
+          // 자동 선택을 하면 기존 admin_club_slug 쿠키 삭제 후에도 단일 클럽이
+          // 자동으로 재선택돼 다른 클럽 권한 실패 후 청우회 데이터가 보이는 보안 문제 발생.
         }
       }
     }

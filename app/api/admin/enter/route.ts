@@ -12,9 +12,11 @@ const COOKIE_MAX_AGE = 60 * 60 * 8; // 8시간
  * 요청한 club에서 admin 권한을 검증한 뒤 admin_club_slug 쿠키를 설정하고
  * /admin 으로 redirect한다.
  *
- * - 권한 없으면: 쿠키 설정 없이 /admin 으로 redirect (로그인/권한없음 화면)
- * - club query 없으면: 쿠키 설정 없이 /admin 으로 redirect
- * - club이 존재하지 않으면: /admin 으로 redirect
+ * 권한 실패 시:
+ *   - 기존 admin_club_slug 쿠키를 삭제한다 (다른 클럽 context로 fallback 방지).
+ *   - 카카오 세션이 있는 유저가 특정 클럽 권한이 없으면 /admin?no_access_club={slug}
+ *     로 redirect하여 해당 클럽 권한 없음 화면을 표시한다.
+ *   - 비로그인이거나 club이 없으면 /admin 으로 redirect (로그인 화면).
  *
  * 이 경로를 거쳐야만 admin_club_slug 쿠키가 갱신된다.
  * 공개 페이지의 selected_club_id 와 완전히 분리되어 있다.
@@ -23,10 +25,31 @@ export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
   const clubSlugParam = searchParams.get("club");
 
-  const adminTarget = new URL("/admin", origin);
+  const adminHome = new URL("/admin", origin);
 
+  // club query 없음 → 쿠키 건드리지 않고 /admin
   if (!clubSlugParam) {
-    return NextResponse.redirect(adminTarget);
+    return NextResponse.redirect(adminHome);
+  }
+
+  /** 기존 admin_club_slug 쿠키를 삭제한 채로 target URL로 redirect */
+  function redirectClearingCookie(target: URL): NextResponse {
+    const response = NextResponse.redirect(target);
+    response.cookies.set(ADMIN_CLUB_SLUG_COOKIE, "", { path: "/", maxAge: 0 });
+    return response;
+  }
+
+  /** 성공: admin_club_slug 쿠키를 설정한 채로 /admin redirect */
+  function redirectWithCookie(slug: string): NextResponse {
+    const response = NextResponse.redirect(adminHome);
+    response.cookies.set(ADMIN_CLUB_SLUG_COOKIE, slug, {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+      path: "/",
+      maxAge: COOKIE_MAX_AGE,
+    });
+    return response;
   }
 
   try {
@@ -41,7 +64,8 @@ export async function GET(request: NextRequest) {
       .maybeSingle();
 
     if (!club) {
-      return NextResponse.redirect(adminTarget);
+      // club 자체가 없음 → 쿠키 삭제 후 /admin (로그인 화면)
+      return redirectClearingCookie(adminHome);
     }
 
     // 2) 카카오 admin 권한 확인
@@ -57,37 +81,25 @@ export async function GET(request: NextRequest) {
         .maybeSingle();
 
       if (member && (KAKAO_ADMIN_ROLES as readonly string[]).includes(member.permission_role)) {
-        const response = NextResponse.redirect(adminTarget);
-        response.cookies.set(ADMIN_CLUB_SLUG_COOKIE, club.slug, {
-          httpOnly: true,
-          sameSite: "lax",
-          secure: process.env.NODE_ENV === "production",
-          path: "/",
-          maxAge: COOKIE_MAX_AGE,
-        });
-        return response;
+        // 성공: 해당 club의 admin 권한 있음
+        return redirectWithCookie(club.slug);
       }
+
+      // 로그인 됐으나 이 club에 admin 권한 없음:
+      // 기존 쿠키를 삭제하고 권한 없음 화면으로 redirect
+      const noAccessTarget = new URL(`/admin?no_access_club=${encodeURIComponent(club.slug)}`, origin);
+      return redirectClearingCookie(noAccessTarget);
     }
 
     // 3) cookie admin (cw_admin_session) 은 club 단위 검증 없이 허용
-    //    (owner/manager 비밀번호 로그인은 전통적으로 청우회 전용이었으나
-    //     admin_club_slug 쿠키를 통해 명시적으로 선택한 club으로 context 설정)
     const cookieRole = getAdminRole();
     if (cookieRole === "owner" || cookieRole === "manager") {
-      const response = NextResponse.redirect(adminTarget);
-      response.cookies.set(ADMIN_CLUB_SLUG_COOKIE, club.slug, {
-        httpOnly: true,
-        sameSite: "lax",
-        secure: process.env.NODE_ENV === "production",
-        path: "/",
-        maxAge: COOKIE_MAX_AGE,
-      });
-      return response;
+      return redirectWithCookie(club.slug);
     }
 
-    // 권한 없음 → 쿠키 설정 없이 /admin (로그인/권한없음 화면)
-    return NextResponse.redirect(adminTarget);
+    // 비로그인 상태 → 쿠키 삭제 후 /admin (로그인 화면)
+    return redirectClearingCookie(adminHome);
   } catch {
-    return NextResponse.redirect(adminTarget);
+    return redirectClearingCookie(adminHome);
   }
 }
