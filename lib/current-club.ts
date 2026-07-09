@@ -11,11 +11,14 @@
  *
  * getCurrentClubId(): 서버 컴포넌트/API route에서만 호출.
  *   1) selected_club_id 쿠키 없으면 DEFAULT_CLUB_ID 반환
- *   2) 쿠키 있으면 아래를 전부 통과해야 그 값을 반환, 하나라도 실패하면 폴백:
- *      - clubs 테이블에 해당 id 존재 + status = 'active'
- *      - 현재 로그인한 auth user 존재
- *      - members 테이블에 club_id + auth_user_id 조합으로 소속 확인
- *        (is_active=true, is_dormant=false, deleted_at IS NULL인 active member만 인정)
+ *   2) 쿠키 있으면:
+ *      - clubs 테이블에 해당 id 존재 + status = 'active' 확인, 실패 시 폴백
+ *      - 비로그인(auth user 없음): active 확인만으로 그 club_id를 반환한다
+ *        (Brand-Club-A3-Fix — 비로그인 방문자도 선택된 클럽 정보를 볼 수
+ *        있어야 하므로, 로그인 여부와 무관하게 active club은 신뢰한다)
+ *      - 로그인 상태: members 테이블에서 club_id + auth_user_id 조합으로
+ *        소속을 확인해야 반환한다(is_active=true, is_dormant=false,
+ *        deleted_at IS NULL인 active member만 인정) — 소속 아니면 폴백
  *   절대 throw하지 않는다 — 모든 에러는 catch에서 DEFAULT_CLUB_ID로 폴백한다
  *   (수십 개 호출부가 이 함수에 의존하므로, 예외를 던지면 앱 전체 장애로
  *   이어질 수 있다).
@@ -52,7 +55,8 @@ export async function getCurrentClubId(): Promise<string> {
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
-      return DEFAULT_CLUB_ID;
+      // 비로그인: active club이면 소속 검증 없이 그대로 신뢰한다.
+      return cookieClubId;
     }
 
     // 3) 그 club의 active member인지 확인
@@ -91,11 +95,11 @@ export type CurrentClub = {
 /**
  * getCurrentClub(): 서버 컴포넌트/API route에서만 호출.
  *
- * getCurrentClubId()와 검증 흐름은 동일하되(쿠키 → clubs 존재+active 확인 →
- * user 확인 → member 소속 확인), clubs 조회 시 name/slug/description까지
- * 함께 가져와 club 객체 전체를 반환한다. 화면에 클럽명이 필요한 소수의
- * 페이지에서만 선택적으로 쓰는 상위 호환 함수다 — 기존 getCurrentClubId()
- * 호출부(수십 곳)는 그대로 두고 건드리지 않는다.
+ * getCurrentClub()과 검증 흐름은 동일하되(쿠키 → clubs 존재+active 확인 →
+ * 비로그인이면 그대로 신뢰, 로그인이면 member 소속 확인), clubs 조회 시
+ * name/slug/description까지 함께 가져와 club 객체 전체를 반환한다. 화면에
+ * 클럽명이 필요한 소수의 페이지에서만 선택적으로 쓰는 상위 호환 함수다 —
+ * 기존 getCurrentClubId() 호출부(수십 곳)는 그대로 두고 건드리지 않는다.
  *
  * 폴백 우선순위:
  *   1) DEFAULT_CLUB_ID로 clubs를 다시 조회해 실제 DB의 기본 클럽 정보를
@@ -128,20 +132,23 @@ export async function getCurrentClub(): Promise<CurrentClub> {
       if (club && club.status === "active") {
         const { data: { user } } = await supabase.auth.getUser();
 
-        if (user) {
-          const { data: member } = await supabase
-            .from("members")
-            .select("id")
-            .eq("club_id", cookieClubId)
-            .eq("auth_user_id", user.id)
-            .eq("is_active", true)
-            .eq("is_dormant", false)
-            .is("deleted_at", null)
-            .maybeSingle();
+        if (!user) {
+          // 비로그인: active club이면 소속 검증 없이 그대로 신뢰한다.
+          return club;
+        }
 
-          if (member) {
-            return club;
-          }
+        const { data: member } = await supabase
+          .from("members")
+          .select("id")
+          .eq("club_id", cookieClubId)
+          .eq("auth_user_id", user.id)
+          .eq("is_active", true)
+          .eq("is_dormant", false)
+          .is("deleted_at", null)
+          .maybeSingle();
+
+        if (member) {
+          return club;
         }
       }
     }
