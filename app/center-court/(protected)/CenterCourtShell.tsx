@@ -16,167 +16,179 @@ export function CenterCourtShell({ session, children }: Props) {
   return (
     <>
       <style>{`
-        @keyframes cc-fade-in {
+        /* ── 애니메이션 ─────────────────────────────────────── */
+        @keyframes cc-content-in {
           from { opacity: 0; transform: translateY(10px); }
           to   { opacity: 1; transform: translateY(0); }
         }
+        @keyframes cc-court-in {
+          from { opacity: 0; }
+          to   { opacity: 1; }
+        }
         @keyframes cc-ball-a {
-          0%,100% { transform: translateY(0px) rotate(0deg); }
-          50%      { transform: translateY(-18px) rotate(180deg); }
+          0%,100% { transform: translateY(0) rotate(0deg); }
+          50%      { transform: translateY(-20px) rotate(200deg); }
         }
         @keyframes cc-ball-b {
-          0%,100% { transform: translateY(0px); }
-          50%      { transform: translateY(-10px); }
+          0%,100% { transform: translateY(0); }
+          50%      { transform: translateY(-12px); }
         }
-        @keyframes cc-line-in {
-          from { opacity: 0; transform: scaleX(0); transform-origin: left; }
-          to   { opacity: 1; transform: scaleX(1); transform-origin: left; }
+        @keyframes cc-ball-c {
+          0%,100% { transform: translateY(0) translateX(0); }
+          33%     { transform: translateY(-8px) translateX(5px); }
+          66%     { transform: translateY(4px) translateX(-4px); }
         }
-        .cc-content { animation: cc-fade-in 0.35s ease-out both; }
+        .cc-content  { animation: cc-content-in 0.4s ease-out both; }
+        .cc-court-in { animation: cc-court-in 2.8s ease-out both; }
+        /* ── 카드 hover ──────────────────────────────────────── */
         .cc-card {
-          transition: transform 0.2s ease, box-shadow 0.2s ease;
+          transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
         }
         .cc-card:hover {
           transform: translateY(-2px);
-          box-shadow: 0 0 0 1px rgba(139,92,246,0.35),
-                      0 8px 28px rgba(0,0,0,0.45);
+          box-shadow:
+            0 0 0 1px rgba(139,92,246,0.4),
+            0 8px 28px rgba(0,0,0,0.5),
+            0 0 20px rgba(139,92,246,0.08);
+          border-color: rgba(139,92,246,0.35) !important;
         }
-        .cc-nav-item {
+        /* ── 네비 링크 ──────────────────────────────────────── */
+        .cc-nav {
           transition: color 0.15s, background 0.15s, border-color 0.15s;
         }
-        .cc-logout-btn {
-          transition: opacity 0.15s, background 0.15s;
+        .cc-nav:hover { color: #f5f0e8 !important; }
+        /* ── 로그아웃 버튼 ──────────────────────────────────── */
+        .cc-logout {
+          transition: background 0.15s, color 0.15s;
         }
-        .cc-logout-btn:hover { background: rgba(245,240,232,0.08); }
+        .cc-logout:hover {
+          background: rgba(245,240,232,0.07) !important;
+          color: #f5f0e8 !important;
+        }
+        /* ── 모션 감소 ──────────────────────────────────────── */
         @media (prefers-reduced-motion: reduce) {
-          .cc-content, .cc-card, .cc-nav-item { animation: none !important; transition: none !important; }
+          .cc-content, .cc-court-in { animation: none !important; }
+          .cc-card { transition: none !important; }
         }
       `}</style>
 
-      {/* ── 전체 화면 오버레이 (root layout 헤더/탭바 완전 덮기) ──────── */}
+      {/* ════════════════════════════════════════════════════════
+          전체 화면 오버레이 — root layout 헤더/탭바 완전 격리
+          ════════════════════════════════════════════════════════ */}
       <div
         className="fixed inset-0 z-[9999] overflow-auto"
         style={{
-          background:
-            "radial-gradient(ellipse at 25% 15%, #1e4d32 0%, #0f2318 55%, #070f0b 100%)",
+          /* 잔디 모잉 스트라이프 + deep green 기반 */
+          background: [
+            "radial-gradient(ellipse at 18% 8%, rgba(255,255,255,0.055) 0%, transparent 38%)",
+            "repeating-linear-gradient(90deg, rgba(255,255,255,0.038) 0px, rgba(255,255,255,0.038) 10px, transparent 10px, transparent 90px)",
+            "linear-gradient(175deg, #082d21 0%, #0a3328 40%, #061d14 100%)",
+          ].join(", "),
         }}
       >
-        {/* 코트 라인 그리드 */}
-        <div
-          className="pointer-events-none fixed inset-0 z-0"
-          style={{
-            backgroundImage: `
-              linear-gradient(rgba(245,240,232,0.035) 1px, transparent 1px),
-              linear-gradient(90deg, rgba(245,240,232,0.035) 1px, transparent 1px)
-            `,
-            backgroundSize: "72px 72px",
-          }}
-        />
-        {/* 코트 센터 서비스라인 (수직 중앙선) */}
-        <div
-          className="pointer-events-none fixed inset-y-0 z-0"
-          style={{
-            left: "50%",
-            width: 1,
-            background:
-              "linear-gradient(to bottom, transparent 0%, rgba(245,240,232,0.06) 20%, rgba(245,240,232,0.06) 80%, transparent 100%)",
-          }}
-        />
+        {/* ── 테니스 코트 라인 오버레이 ─────────────────────── */}
+        <div className="cc-court-in pointer-events-none fixed inset-0 z-0">
+          <CourtLinesSVG />
+        </div>
 
-        {/* 테니스볼 데코 */}
-        <div
-          className="pointer-events-none fixed z-0"
-          style={{
-            top: "12%",
-            right: "6%",
-            width: 40,
-            height: 40,
-            borderRadius: "50%",
-            background:
-              "radial-gradient(circle at 38% 36%, #ccff44 0%, #88bb00 100%)",
-            opacity: 0.12,
-            animation: "cc-ball-a 7s ease-in-out infinite",
-            boxShadow: "0 0 18px rgba(180,220,0,0.25)",
-          }}
+        {/* ── 테니스볼 데코 ──────────────────────────────────── */}
+        <TennisBallDot
+          style={{ top: "11%", right: "7%", width: 38, height: 38, opacity: 0.13 }}
+          animation="cc-ball-a 7.5s ease-in-out infinite"
         />
-        <div
-          className="pointer-events-none fixed z-0"
-          style={{
-            bottom: "18%",
-            left: "4%",
-            width: 22,
-            height: 22,
-            borderRadius: "50%",
-            background:
-              "radial-gradient(circle at 38% 36%, #ccff44 0%, #88bb00 100%)",
-            opacity: 0.07,
-            animation: "cc-ball-b 9s ease-in-out infinite 1.5s",
-          }}
+        <TennisBallDot
+          style={{ top: "55%", right: "3%", width: 20, height: 20, opacity: 0.07 }}
+          animation="cc-ball-b 10s ease-in-out infinite 1.8s"
+        />
+        <TennisBallDot
+          style={{ bottom: "16%", left: "5%", width: 26, height: 26, opacity: 0.08 }}
+          animation="cc-ball-c 12s ease-in-out infinite 3s"
         />
 
         {/* ── 레이아웃 ─────────────────────────────────────────── */}
         <div className="relative z-10 flex min-h-full flex-col">
 
-          {/* ── 상단 헤더 ──────────────────────────────────────── */}
+          {/* ════════════════════ HEADER ════════════════════════ */}
           <header
             className="sticky top-0 z-20"
             style={{
-              background: "rgba(7, 15, 11, 0.82)",
-              backdropFilter: "blur(14px)",
-              WebkitBackdropFilter: "blur(14px)",
+              background: "rgba(4, 16, 9, 0.88)",
+              backdropFilter: "blur(16px)",
+              WebkitBackdropFilter: "blur(16px)",
               borderBottom: "1px solid rgba(245,240,232,0.10)",
+              /* 상단 퍼플 라인 */
+              boxShadow: "inset 0 2px 0 rgba(109,40,217,0.45)",
             }}
           >
-            <div className="mx-auto max-w-5xl px-4 sm:px-6">
-              {/* 메인 행 */}
-              <div className="flex h-14 items-center justify-between gap-3">
-                {/* 브랜드 */}
+            <div className="mx-auto max-w-6xl px-4 sm:px-6">
+              <div className="flex h-[52px] items-center justify-between gap-4">
+
+                {/* ── 브랜드 (CC Emblem + 타이틀 + subtitle) ── */}
                 <Link
                   href="/center-court"
-                  className="flex shrink-0 items-center gap-2.5"
+                  className="flex shrink-0 items-center gap-3"
+                  style={{ textDecoration: "none" }}
                 >
-                  <CourtIcon />
-                  <span
-                    style={{
-                      color: "#f5f0e8",
-                      fontSize: 13,
-                      fontWeight: 700,
-                      letterSpacing: "0.14em",
-                      textTransform: "uppercase",
-                    }}
-                  >
-                    Center Court
-                  </span>
+                  <CCEmblem />
+                  <div>
+                    <span
+                      style={{
+                        display: "block",
+                        color: "#f5f0e8",
+                        fontSize: 13,
+                        fontWeight: 700,
+                        letterSpacing: "0.18em",
+                        textTransform: "uppercase",
+                        fontFamily: "Georgia, 'Times New Roman', serif",
+                        lineHeight: 1.2,
+                      }}
+                    >
+                      Center Court
+                    </span>
+                    <span
+                      style={{
+                        display: "block",
+                        color: "rgba(245,240,232,0.28)",
+                        fontSize: 7.5,
+                        fontWeight: 600,
+                        letterSpacing: "0.24em",
+                        textTransform: "uppercase",
+                        lineHeight: 1,
+                        marginTop: 2,
+                      }}
+                    >
+                      Championships Console
+                    </span>
+                  </div>
                 </Link>
 
-                {/* 데스크탑 네비 */}
+                {/* ── 데스크탑 네비 ─────────────────────────── */}
                 <nav className="hidden items-center gap-1 sm:flex">
-                  <CcNavLink
+                  <HeaderNavLink
                     href="/center-court"
                     active={pathname === "/center-court"}
                   >
                     Overview
-                  </CcNavLink>
+                  </HeaderNavLink>
                   {session.role === "owner" && (
-                    <CcNavLink
+                    <HeaderNavLink
                       href="/center-court/platform-admins"
-                      active={pathname.startsWith(
-                        "/center-court/platform-admins"
-                      )}
+                      active={pathname.startsWith("/center-court/platform-admins")}
                     >
                       Platform Admins
-                    </CcNavLink>
+                    </HeaderNavLink>
                   )}
                 </nav>
 
-                {/* 사용자 정보 + 로그아웃 */}
+                {/* ── 사용자 정보 + 로그아웃 ─────────────────── */}
                 <div className="flex shrink-0 items-center gap-2">
                   <span
                     className="hidden sm:block"
                     style={{
-                      color: "rgba(245,240,232,0.45)",
+                      color: "rgba(245,240,232,0.38)",
                       fontSize: 10,
                       fontWeight: 500,
+                      letterSpacing: "0.04em",
                     }}
                   >
                     {session.displayName || session.username}
@@ -186,42 +198,40 @@ export function CenterCourtShell({ session, children }: Props) {
                 </div>
               </div>
 
-              {/* 모바일 서브 네비 */}
-              <div className="flex gap-1 pb-2 sm:hidden">
-                <CcNavLink
+              {/* ── 모바일 서브 네비 ──────────────────────────── */}
+              <div className="flex gap-1 pb-2.5 sm:hidden">
+                <HeaderNavLink
                   href="/center-court"
                   active={pathname === "/center-court"}
                   small
                 >
                   Overview
-                </CcNavLink>
+                </HeaderNavLink>
                 {session.role === "owner" && (
-                  <CcNavLink
+                  <HeaderNavLink
                     href="/center-court/platform-admins"
-                    active={pathname.startsWith(
-                      "/center-court/platform-admins"
-                    )}
+                    active={pathname.startsWith("/center-court/platform-admins")}
                     small
                   >
                     Admins
-                  </CcNavLink>
+                  </HeaderNavLink>
                 )}
               </div>
             </div>
           </header>
 
-          {/* ── 본문 ──────────────────────────────────────────── */}
-          <main className="cc-content mx-auto w-full max-w-5xl flex-1 px-4 py-6 sm:px-6">
+          {/* ════════════════════ 본문 ══════════════════════════ */}
+          <main className="cc-content mx-auto w-full max-w-6xl flex-1 px-4 py-7 sm:px-6">
             {children}
           </main>
 
-          {/* ── 푸터 ──────────────────────────────────────────── */}
-          <footer className="pb-6 pt-2 text-center">
+          {/* ════════════════════ 푸터 ══════════════════════════ */}
+          <footer className="pb-5 pt-1 text-center">
             <p
               style={{
-                color: "rgba(245,240,232,0.18)",
-                fontSize: 9,
-                letterSpacing: "0.12em",
+                color: "rgba(245,240,232,0.14)",
+                fontSize: 8.5,
+                letterSpacing: "0.14em",
                 textTransform: "uppercase",
               }}
             >
@@ -234,29 +244,41 @@ export function CenterCourtShell({ session, children }: Props) {
   );
 }
 
-// ── 서브 컴포넌트 ─────────────────────────────────────────────────────────
+/* ════════════════════════════════════════════════════════════
+   서브 컴포넌트
+   ════════════════════════════════════════════════════════════ */
 
-function CourtIcon() {
+function CCEmblem() {
   return (
     <div
       style={{
-        width: 26,
-        height: 26,
-        borderRadius: 5,
-        background: "rgba(139,92,246,0.18)",
-        border: "1px solid rgba(139,92,246,0.4)",
+        width: 36,
+        height: 36,
+        borderRadius: 8,
+        background:
+          "linear-gradient(145deg, rgba(109,40,217,0.35) 0%, rgba(76,29,149,0.18) 100%)",
+        border: "1px solid rgba(139,92,246,0.55)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
         flexShrink: 0,
+        boxShadow:
+          "0 2px 10px rgba(0,0,0,0.4), inset 0 1px 0 rgba(245,240,232,0.08), 0 0 12px rgba(109,40,217,0.2)",
       }}
     >
-      {/* 미니 테니스 코트 */}
-      <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-        <rect x="1" y="2" width="12" height="10" rx="1" stroke="rgba(245,240,232,0.6)" strokeWidth="1"/>
-        <line x1="7" y1="2" x2="7" y2="12" stroke="rgba(245,240,232,0.6)" strokeWidth="0.75"/>
-        <line x1="1" y1="7" x2="13" y2="7" stroke="rgba(245,240,232,0.6)" strokeWidth="0.75"/>
-      </svg>
+      <span
+        style={{
+          color: "rgba(245,240,232,0.92)",
+          fontSize: 12,
+          fontWeight: 700,
+          fontFamily: "Georgia, 'Times New Roman', serif",
+          letterSpacing: "0.02em",
+          lineHeight: 1,
+          userSelect: "none",
+        }}
+      >
+        CC
+      </span>
     </div>
   );
 }
@@ -267,14 +289,15 @@ function RoleBadge({ role }: { role: string }) {
       style={{
         fontSize: 9,
         fontWeight: 700,
-        letterSpacing: "0.1em",
+        letterSpacing: "0.12em",
         textTransform: "uppercase",
-        padding: "2px 7px",
+        padding: "2px 8px",
         borderRadius: 4,
-        background: "rgba(139,92,246,0.18)",
-        border: "1px solid rgba(139,92,246,0.4)",
+        background: "rgba(109,40,217,0.25)",
+        border: "1px solid rgba(139,92,246,0.5)",
         color: "#c4b5fd",
         flexShrink: 0,
+        boxShadow: "0 0 8px rgba(109,40,217,0.15)",
       }}
     >
       {role}
@@ -282,7 +305,7 @@ function RoleBadge({ role }: { role: string }) {
   );
 }
 
-function CcNavLink({
+function HeaderNavLink({
   href,
   active,
   children,
@@ -296,20 +319,23 @@ function CcNavLink({
   return (
     <Link
       href={href}
-      className="cc-nav-item rounded"
+      className="cc-nav rounded"
       style={{
-        padding: small ? "3px 10px" : "5px 12px",
-        fontSize: small ? 10 : 11,
-        fontWeight: 600,
-        letterSpacing: "0.1em",
-        textTransform: "uppercase",
-        color: active ? "#f5f0e8" : "rgba(245,240,232,0.45)",
-        background: active ? "rgba(245,240,232,0.08)" : "transparent",
-        border: active
-          ? "1px solid rgba(245,240,232,0.15)"
-          : "1px solid transparent",
-        textDecoration: "none",
         display: "inline-block",
+        padding: small ? "3px 10px" : "5px 13px",
+        fontSize: small ? 9.5 : 10.5,
+        fontWeight: 600,
+        letterSpacing: "0.12em",
+        textTransform: "uppercase",
+        textDecoration: "none",
+        color: active ? "#f5f0e8" : "rgba(245,240,232,0.38)",
+        background: active
+          ? "rgba(109,40,217,0.22)"
+          : "transparent",
+        border: active
+          ? "1px solid rgba(139,92,246,0.45)"
+          : "1px solid transparent",
+        boxShadow: active ? "0 0 10px rgba(109,40,217,0.12)" : "none",
       }}
     >
       {children}
@@ -330,15 +356,15 @@ function CcLogoutButton() {
     <button
       onClick={handleLogout}
       disabled={busy}
-      className="cc-logout-btn rounded"
+      className="cc-logout rounded"
       style={{
-        padding: "4px 10px",
-        fontSize: 10,
+        padding: "4px 11px",
+        fontSize: 9.5,
         fontWeight: 600,
-        letterSpacing: "0.1em",
+        letterSpacing: "0.12em",
         textTransform: "uppercase",
-        color: "rgba(245,240,232,0.55)",
-        border: "1px solid rgba(245,240,232,0.18)",
+        color: "rgba(245,240,232,0.45)",
+        border: "1px solid rgba(245,240,232,0.16)",
         background: "transparent",
         cursor: busy ? "not-allowed" : "pointer",
         opacity: busy ? 0.4 : 1,
@@ -347,5 +373,60 @@ function CcLogoutButton() {
     >
       {busy ? "…" : "Logout"}
     </button>
+  );
+}
+
+function TennisBallDot({
+  style,
+  animation,
+}: {
+  style: React.CSSProperties;
+  animation: string;
+}) {
+  return (
+    <div
+      className="pointer-events-none fixed z-0"
+      style={{
+        borderRadius: "50%",
+        background:
+          "radial-gradient(circle at 36% 34%, #d8ff48 0%, #96cc00 60%, #6a9900 100%)",
+        boxShadow: "0 0 14px rgba(180,220,0,0.2)",
+        animation,
+        ...style,
+      }}
+    />
+  );
+}
+
+/* ── 테니스 코트 라인 SVG ────────────────────────────────── */
+function CourtLinesSVG() {
+  return (
+    <svg
+      className="fixed inset-0 h-full w-full"
+      viewBox="0 0 200 100"
+      preserveAspectRatio="xMidYMid slice"
+      style={{ opacity: 0.055 }}
+    >
+      {/* 더블스 코트 외곽선 */}
+      <rect
+        x="10" y="6" width="180" height="88"
+        fill="none"
+        stroke="#f5f0e8"
+        strokeWidth="0.55"
+      />
+      {/* 싱글스 사이드라인 */}
+      <line x1="24" y1="6"  x2="24" y2="94" stroke="#f5f0e8" strokeWidth="0.35"/>
+      <line x1="176" y1="6" x2="176" y2="94" stroke="#f5f0e8" strokeWidth="0.35"/>
+      {/* 네트 (가로 중앙) */}
+      <line x1="10" y1="50" x2="190" y2="50" stroke="#f5f0e8" strokeWidth="0.8"/>
+      {/* 서비스 라인 */}
+      <line x1="24" y1="28"  x2="176" y2="28"  stroke="#f5f0e8" strokeWidth="0.35"/>
+      <line x1="24" y1="72"  x2="176" y2="72"  stroke="#f5f0e8" strokeWidth="0.35"/>
+      {/* 센터 서비스 라인 */}
+      <line x1="100" y1="28" x2="100" y2="72" stroke="#f5f0e8" strokeWidth="0.35"/>
+      {/* 센터 마크 (베이스라인) */}
+      <line x1="100" y1="6"  x2="100" y2="10" stroke="#f5f0e8" strokeWidth="0.35"/>
+      <line x1="100" y1="90" x2="100" y2="94" stroke="#f5f0e8" strokeWidth="0.35"/>
+    </svg>
   );
 }
