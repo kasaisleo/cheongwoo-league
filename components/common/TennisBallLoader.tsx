@@ -1,5 +1,5 @@
 /**
- * TennisBallLoader — 청우회 리그 브랜드 로딩 컴포넌트.
+ * TennisBallLoader — 슈퍼매치 브랜드 로딩 컴포넌트.
  *
  * variant="inline"
  *   - 자체 full-screen 없음. 부모(app/loading.tsx의 <main>)가 중앙 정렬 담당.
@@ -23,7 +23,7 @@ export default function TennisBallLoader({
   mode = "default",
   variant = "inline",
 }: TennisBallLoaderProps) {
-  const eyebrow = mode === "admin" ? "ADMIN MODE" : "CHUNGWOO LEAGUE";
+  const eyebrow = mode === "admin" ? "ADMIN MODE" : "SUPER MATCH";
   const message =
     label ??
     (mode === "admin"
