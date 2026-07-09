@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { getAdminAccessServer } from "@/lib/admin-permissions";
-import { getCurrentClubId } from "@/lib/current-club";
 
 /**
  * POST /api/admin/unlink-member
@@ -23,14 +22,15 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "memberId가 필요합니다." }, { status: 400 });
   }
 
+  const clubId = access.clubId ?? "";
+
   // 대상 member 조회: service role (RLS 우회 — auth_user_id 정확히 읽음)
   const supabaseAdmin = createServiceClient();
-  const currentClubId = await getCurrentClubId();
   const { data: member, error: memberError } = await supabaseAdmin
     .from("members")
     .select("id, name, permission_role, auth_user_id")
     .eq("id", memberId)
-    .eq("club_id", currentClubId)
+    .eq("club_id", clubId)
     .maybeSingle();
 
   if (memberError || !member) {
@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
     .from("members")
     .update({ auth_user_id: null, is_kakao_linked: false })
     .eq("id", memberId)
-    .eq("club_id", currentClubId);
+    .eq("club_id", clubId);
 
   if (updateError) {
     return NextResponse.json({ error: "연결 해제에 실패했습니다." }, { status: 500 });

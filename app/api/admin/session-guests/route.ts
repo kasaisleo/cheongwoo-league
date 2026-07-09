@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { getAdminAccessServer } from "@/lib/admin-permissions";
-import { getCurrentClubId } from "@/lib/current-club";
 
 /**
  * GET /api/admin/session-guests?sessionId=...
@@ -49,14 +48,13 @@ export async function POST(request: NextRequest) {
   }
 
   const supabase = createServiceClient();
-  const currentClubId = await getCurrentClubId();
 
   // 게스트 유효성 확인
   const { data: guest } = await supabase
     .from("guests")
     .select("id, name, is_active, converted_to_member_id")
     .eq("id", guestId)
-    .eq("club_id", currentClubId)
+    .eq("club_id", access.clubId ?? "")
     .maybeSingle();
 
   if (!guest) {

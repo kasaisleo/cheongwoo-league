@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getAdminAccessServer } from "@/lib/admin-permissions";
-import { getCurrentClubId } from "@/lib/current-club";
 
 /**
  * GET /api/admin/guests/recent
@@ -14,12 +13,11 @@ export async function GET() {
   }
 
   const supabase = createClient();
-  const currentClubId = await getCurrentClubId();
   const { data } = await supabase
     .from("guests")
     .select("id, name, phone, years_playing")
     .eq("is_active", true)
-    .eq("club_id", currentClubId)
+    .eq("club_id", access.clubId ?? "")
     .is("converted_to_member_id", null)
     .order("created_at", { ascending: false })
     .limit(10);

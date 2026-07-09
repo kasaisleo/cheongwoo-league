@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { getAdminAccessServer } from "@/lib/admin-permissions";
 import type { MemberGrade, MemberType } from "@/lib/supabase/database.types";
-import { getCurrentClubId } from "@/lib/current-club";
 
 /**
  * POST /api/admin/members
@@ -97,7 +96,7 @@ export async function POST(request: NextRequest) {
   }
 
   const supabase = createServiceClient();
-  const currentClubId = await getCurrentClubId();
+  const clubId = access.clubId ?? "";
 
   // 전화번호 중복 체크 (입력한 경우만)
   if (digitsPhone) {
@@ -105,7 +104,7 @@ export async function POST(request: NextRequest) {
       .from("members")
       .select("id")
       .eq("phone", digitsPhone)
-      .eq("club_id", currentClubId)
+      .eq("club_id", clubId)
       .limit(1);
     if (existing && existing.length > 0) {
       return NextResponse.json({ error: "이미 등록된 휴대폰 번호입니다." }, { status: 409 });
@@ -117,7 +116,7 @@ export async function POST(request: NextRequest) {
     .insert({
       name: normalizedName,
       nickname: normalizedNickname,
-      club_id: currentClubId,
+      club_id: clubId,
       phone: digitsPhone,
       grade,
       role: null,

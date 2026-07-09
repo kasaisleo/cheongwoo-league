@@ -4,7 +4,6 @@ import { MATCH_SELECT_WITH_PLAYERS, toDisplayMatches } from "@/lib/match-display
 import { getAdminAccessServer } from "@/lib/admin-permissions";
 import { SessionMatchCard, type SessionGroup } from "./SessionMatchCard";
 import type { SessionDay } from "@/lib/supabase/database.types";
-import { getCurrentClubId } from "@/lib/current-club";
 
 /**
  * /admin/matches — 매치별 경기 히스토리 관리 허브.
@@ -28,7 +27,7 @@ interface PageProps {
 export default async function AdminMatchesPage({ searchParams }: PageProps) {
   const access = await getAdminAccessServer();
   const supabase = createClient();
-  const currentClubId = await getCurrentClubId();
+  const currentClubId = access.clubId ?? "";
   const today = new Date().toISOString().slice(0, 10);
 
   const rawType = searchParams.sessionType ?? "all";

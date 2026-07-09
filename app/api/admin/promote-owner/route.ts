@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { getAdminAccessServer } from "@/lib/admin-permissions";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
-import { getCurrentClubId } from "@/lib/current-club";
 
 /**
  * POST /api/admin/promote-owner
@@ -37,15 +36,15 @@ export async function POST() {
   }
 
   const authUserId = session.user.id;
+  const clubId = access.clubId ?? "";
 
   // 3. 연결된 members 레코드 확인 (service-role로 RLS 우회)
   const supabaseAdmin = createServiceClient();
-  const currentClubId = await getCurrentClubId();
   const { data: member, error: memberError } = await supabaseAdmin
     .from("members")
     .select("id, permission_role, name")
     .eq("auth_user_id", authUserId)
-    .eq("club_id", currentClubId)
+    .eq("club_id", clubId)
     .maybeSingle();
 
   if (memberError || !member) {
@@ -68,7 +67,7 @@ export async function POST() {
     .from("members")
     .update({ permission_role: "master" })
     .eq("id", member.id)
-    .eq("club_id", currentClubId);
+    .eq("club_id", clubId);
 
   if (updateError) {
     return NextResponse.json(

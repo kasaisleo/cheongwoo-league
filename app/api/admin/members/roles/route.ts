@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { getAdminAccessServer } from "@/lib/admin-permissions";
-import { getCurrentClubId } from "@/lib/current-club";
 
 /**
  * GET /api/admin/members/roles
@@ -20,13 +19,12 @@ export async function GET() {
 
   // 2. DB 조회 — service role (RLS 우회, auth_user_id 정확히 읽음)
   const supabase = createServiceClient();
-  const currentClubId = await getCurrentClubId();
   const { data, error } = await supabase
     .from("members")
     .select("id, name, nickname, permission_role, auth_user_id")
     .in("permission_role", ["manager", "admin", "master"])
     .eq("is_active", true)
-    .eq("club_id", currentClubId)
+    .eq("club_id", access.clubId ?? "")
     .order("name");
 
   if (error) {

@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { getAdminAccessServer } from "@/lib/admin-permissions";
 import type { PermissionRole } from "@/lib/supabase/database.types";
-import { getCurrentClubId } from "@/lib/current-club";
 
 /**
  * POST /api/admin/update-member-role
@@ -46,14 +45,15 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // 대상 member 조회: service role (RLS 우회 — auth_user_id 정확히 읽음)
   const supabaseAdmin = createServiceClient();
-  const currentClubId = await getCurrentClubId();
+  const clubId = access.clubId ?? "";
+
+  // 대상 member 조회: service role (RLS 우회 — auth_user_id 정확히 읽음)
   const { data: member, error: memberError } = await supabaseAdmin
     .from("members")
     .select("id, name, permission_role, auth_user_id")
     .eq("id", memberId)
-    .eq("club_id", currentClubId)
+    .eq("club_id", clubId)
     .maybeSingle();
 
   if (memberError || !member) {
@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
     .from("members")
     .update({ permission_role: newRole as PermissionRole })
     .eq("id", memberId)
-    .eq("club_id", currentClubId);
+    .eq("club_id", clubId);
 
   if (updateError) {
     return NextResponse.json({ error: "권한 변경에 실패했습니다." }, { status: 500 });

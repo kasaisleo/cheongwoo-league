@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { getAdminAccessServer } from "@/lib/admin-permissions";
 import type { Member, SessionDay } from "@/lib/supabase/database.types";
-import { getCurrentClubId } from "@/lib/current-club";
 
 /**
  * POST /api/admin/sessions
@@ -37,7 +36,7 @@ export async function POST(request: NextRequest) {
   }
 
   const supabase = createServiceClient();
-  const currentClubId = await getCurrentClubId();
+  const clubId = access.clubId ?? "";
 
   const { data: session, error: insertError } = await supabase
     .from("attendance_sessions")
@@ -46,7 +45,7 @@ export async function POST(request: NextRequest) {
       session_day: sessionDay,
       title: title.trim(),
       status: "open",
-      club_id: currentClubId,
+      club_id: clubId,
     })
     .select()
     .single();
@@ -60,7 +59,7 @@ export async function POST(request: NextRequest) {
     .from("members")
     .select("id")
     .eq("is_active", true)
-    .eq("club_id", currentClubId);
+    .eq("club_id", clubId);
 
   const members = (activeMembers ?? []) as Pick<Member, "id">[];
   if (members.length > 0) {
