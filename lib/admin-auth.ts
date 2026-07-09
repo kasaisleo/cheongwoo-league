@@ -117,6 +117,11 @@ export function createAdminSession(role: AdminRole): { name: string; value: stri
 
 export const ADMIN_COOKIE_NAME = COOKIE_NAME;
 
+/** admin context 쿠키 — /api/admin/enter 에서 설정, getAdminAccessServer()가 읽음.
+ *  cw_admin_session과 달리 서명 없이 slug 문자열만 담는다.
+ *  admin context 전용이므로 공개 페이지 데이터 기준으로 쓰면 안 된다. */
+export const ADMIN_CLUB_SLUG_COOKIE = "admin_club_slug";
+
 /** 현재 요청의 운영진 역할을 반환한다. 세션이 없거나 무효하면 null. */
 export function getAdminRole(): AdminRole | null {
   const token = cookies().get(COOKIE_NAME)?.value;

@@ -15,11 +15,13 @@ import { createClient } from "@/lib/supabase/client";
 interface FullSignOutButtonProps {
   className?: string;
   label?: string;
+  returnSlug?: string; // admin page에서 현재 admin club slug 전달
 }
 
 export function FullSignOutButton({
   className = "",
   label = "전체 로그아웃",
+  returnSlug,
 }: FullSignOutButtonProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -39,7 +41,8 @@ export function FullSignOutButton({
       await supabase.auth.signOut();
       await fetch("/api/auth/logout", { method: "POST" });
 
-      const slug = pathname?.match(/^\/c\/([^/]+)/)?.[1] ?? lastSlug;
+      // returnSlug(서버에서 전달한 admin club slug) 우선, 그 다음 pathname/lastSlug
+      const slug = returnSlug ?? pathname?.match(/^\/c\/([^/]+)/)?.[1] ?? lastSlug;
       router.push(slug ? `/c/${slug}` : "/");
       router.refresh();
     } catch {

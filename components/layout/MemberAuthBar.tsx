@@ -169,9 +169,10 @@ export function MemberAuthBar({ currentClubId }: MemberAuthBarProps) {
 
         {/* ── 좌측: 관리자 영역 ─────────────────────── */}
         <div className="flex items-center">
+          {/* /c/[slug] context가 있으면 enter route로 club context 전달, 없으면 /admin 직접 */}
           {isAdminMode ? (
             <Link
-              href="/admin"
+              href={currentSlug ? `/api/admin/enter?club=${currentSlug}` : "/admin"}
               className="inline-flex items-center justify-center gap-1 rounded-sm border border-gold/40 bg-gold/10 px-2 py-0 leading-none text-[10px] font-bold uppercase tracking-wider text-gold transition-colors hover:bg-gold/20 h-[22px] whitespace-nowrap"
             >
               <span className="inline-block h-1.5 w-1.5 flex-shrink-0 rounded-full bg-gold" />
@@ -179,7 +180,7 @@ export function MemberAuthBar({ currentClubId }: MemberAuthBarProps) {
             </Link>
           ) : (
             <Link
-              href="/admin"
+              href={currentSlug ? `/api/admin/enter?club=${currentSlug}` : "/admin"}
               className="inline-flex items-center h-[22px] text-[10px] font-semibold text-line-500 transition-colors hover:text-line-700 whitespace-nowrap"
             >
               관리자

@@ -69,6 +69,37 @@ export default async function AdminPage({
   const isLoggedInButLacksAdmin = !isAdmin && access.userId !== null;
   const isLoggedInButLacksOwner = isAdmin && !isOwner && reason === "owner_required";
 
+  // ── 멀티클럽: 클럽 선택 화면 ──────────────────────
+  // 로그인 됐고 admin 클럽이 여러 개인데 admin_club_slug 쿠키가 없는 상태
+  if (!isAdmin && access.userId !== null && access.adminClubs.length > 1) {
+    return (
+      <main className="px-4 pt-10 pb-10">
+        <header className="mb-8 text-center">
+          <p className="eyebrow-en text-clay-400">Admin Access</p>
+          <h1 className="headline-kr mt-1 text-4xl text-line-900">클럽 선택</h1>
+        </header>
+        <section>
+          <p className="mb-3 text-center text-sm text-line-600">관리할 클럽을 선택해주세요.</p>
+          <div className="overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50">
+            {access.adminClubs.map((club, idx) => (
+              <Link key={club.id} href={`/api/admin/enter?club=${club.slug}`}>
+                <div className={`flex items-center justify-between px-4 py-4 transition-colors hover:bg-line-100/40 ${
+                  idx < access.adminClubs.length - 1 ? "border-b border-line-200/30" : ""
+                }`}>
+                  <div>
+                    <p className="text-sm font-semibold text-line-900">{club.name}</p>
+                    <p className="font-display text-[10px] font-bold uppercase tracking-wider text-line-500">{club.role}</p>
+                  </div>
+                  <span className="text-xs text-line-400">→</span>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
+      </main>
+    );
+  }
+
   // ── 미인증: 로그인 화면 ────────────────────────────
   if (!isAdmin) {
     return (
@@ -141,7 +172,7 @@ export default async function AdminPage({
           <span className="rounded-sm border border-line-200/40 bg-line-100 px-2 py-0.5 text-[10px] font-semibold text-line-500">
             {cookieRole === "owner" ? "Owner" : cookieRole === "manager" ? "Manager" : "Admin"}
           </span>
-          <FullSignOutButton />
+          <FullSignOutButton returnSlug={access.clubSlug ?? undefined} />
         </div>
       </header>
 

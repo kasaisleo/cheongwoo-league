@@ -1,20 +1,28 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
-import { getAdminRole } from "@/lib/admin-auth";
+import { getAdminRole, ADMIN_CLUB_SLUG_COOKIE } from "@/lib/admin-auth";
 import { getAdminAccessServer } from "@/lib/admin-permissions";
-import { getCurrentClubId } from "@/lib/current-club";
+
+const KAKAO_ADMIN_ROLES = ["manager", "admin", "master"] as const;
 
 /**
  * GET /api/admin/debug-access
+ * GET /api/admin/debug-access?club=namaste
  *
  * 서버 기준 권한 상태 진단용 API.
+ * ?club=slug 를 전달하면 해당 클럽 기준으로도 검사한다.
  * 민감정보 미노출 — 권한 판정 흐름만 반환.
- *
- * 권한: 오너 전용이지만 판정 실패 시에도 기본 진단 정보는 반환.
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const { searchParams } = new URL(request.url);
+  const requestedClubSlug = searchParams.get("club") ?? null;
+
   const supabase = createClient();
-  const currentClubId = await getCurrentClubId();
+  const cookieStore = cookies();
+
+  // 현재 admin_club_slug 쿠키
+  const adminClubSlugCookie = cookieStore.get(ADMIN_CLUB_SLUG_COOKIE)?.value ?? null;
 
   // 1. cw_admin_session 쿠키
   let cookieRole: string | null = null;
@@ -23,90 +31,152 @@ export async function GET() {
   // 2. Supabase Auth user
   let hasUser = false;
   let userIdPrefix: string | null = null;
-  let userError: string | null = null;
-  try {
-    const { data: { user }, error } = await supabase.auth.getUser();
-    hasUser = !!user;
-    userIdPrefix = user ? `${user.id.slice(0, 8)}…` : null;
-    userError = error?.message ?? null;
-  } catch (e) {
-    userError = String(e);
-  }
-
-  // 3. members 조회 (auth_user_id + club_id 기준)
-  let matchedMember = false;
-  let permissionRole: string | null = null;
-  let isActive: boolean | null = null;
-  let clubIdFromMember: string | null = null;
-  let memberQueryError: string | null = null;
-  let clubSlug: string | null = null;
-
   try {
     const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      const { data: member, error: mErr } = await supabase
-        .from("members")
-        .select("id, permission_role, is_active, club_id")
-        .eq("auth_user_id", user.id)
-        .eq("club_id", currentClubId)
-        .maybeSingle();
+    hasUser = !!user;
+    userIdPrefix = user ? `${user.id.slice(0, 8)}…` : null;
+  } catch { /* 무시 */ }
 
-      memberQueryError = mErr?.message ?? null;
-      if (member) {
-        matchedMember = true;
-        permissionRole = member.permission_role;
-        isActive = member.is_active;
-        clubIdFromMember = member.club_id;
+  // 3. 이 user의 모든 admin 클럽 조회
+  let adminClubs: Array<{ slug: string; name: string; role: string }> = [];
+  if (hasUser) {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: adminMembers } = await supabase
+          .from("members")
+          .select("permission_role, club_id")
+          .eq("auth_user_id", user.id)
+          .eq("is_active", true)
+          .in("permission_role", KAKAO_ADMIN_ROLES);
 
-        // slug 조회
-        const { data: club } = await supabase
-          .from("clubs")
-          .select("slug")
-          .eq("id", member.club_id)
-          .maybeSingle();
-        clubSlug = club?.slug ?? null;
+        if (adminMembers && adminMembers.length > 0) {
+          const clubIds = adminMembers.map((m) => m.club_id).filter(Boolean) as string[];
+          const { data: clubs } = await supabase
+            .from("clubs")
+            .select("id, slug, name")
+            .in("id", clubIds)
+            .eq("status", "active");
+
+          const clubMap = new Map((clubs ?? []).map((c) => [c.id, c]));
+          adminClubs = adminMembers
+            .filter((m) => clubMap.has(m.club_id))
+            .map((m) => {
+              const c = clubMap.get(m.club_id)!;
+              return { slug: c.slug, name: c.name, role: m.permission_role };
+            });
+        }
       }
-    }
-  } catch (e) {
-    memberQueryError = String(e);
+    } catch { /* 무시 */ }
   }
 
-  // 4. 실제 getAdminAccessServer() 결과
-  const access = await getAdminAccessServer();
-  const KAKAO_ADMIN_ROLES = ["manager", "admin", "master"];
+  // 4. ?club= 기준 검사 (있으면)
+  let requestedClubFound = false;
+  let hasAdminInRequestedClub = false;
+  let requestedClubIdPrefix: string | null = null;
+  let memberRoleInRequested: string | null = null;
+  let memberActiveInRequested: boolean | null = null;
+  let requestedReason = "not_checked";
 
-  // 5. 판정 reason
-  let reason = "unknown";
-  if (!hasUser) reason = "no_supabase_user";
-  else if (!matchedMember) reason = "member_not_found_for_club";
-  else if (!isActive) reason = "member_not_active";
-  else if (!permissionRole || !KAKAO_ADMIN_ROLES.includes(permissionRole)) reason = "role_not_in_admin_list";
-  else reason = "should_be_admin";
+  if (requestedClubSlug) {
+    try {
+      const { data: club } = await supabase
+        .from("clubs")
+        .select("id, slug")
+        .eq("slug", requestedClubSlug)
+        .eq("status", "active")
+        .maybeSingle();
+
+      if (!club) {
+        requestedReason = "requested_club_not_found";
+      } else {
+        requestedClubFound = true;
+        requestedClubIdPrefix = `${club.id.slice(0, 8)}…`;
+
+        if (!hasUser) {
+          requestedReason = "no_supabase_user";
+        } else {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            const { data: member } = await supabase
+              .from("members")
+              .select("permission_role, is_active")
+              .eq("auth_user_id", user.id)
+              .eq("club_id", club.id)
+              .maybeSingle();
+
+            if (!member) {
+              requestedReason = "not_member_of_requested_club";
+            } else {
+              memberRoleInRequested = member.permission_role;
+              memberActiveInRequested = member.is_active;
+
+              if (!member.is_active) {
+                requestedReason = "member_not_active";
+              } else if (!(KAKAO_ADMIN_ROLES as readonly string[]).includes(member.permission_role)) {
+                requestedReason = "role_not_in_admin_list";
+              } else {
+                requestedReason = "should_be_admin";
+                hasAdminInRequestedClub = true;
+              }
+            }
+          }
+        }
+      }
+    } catch { /* 무시 */ }
+  }
+
+  // 5. 실제 getAdminAccessServer() 결과
+  const access = await getAdminAccessServer();
+
+  // 6. reason 종합
+  let overallReason = "unknown";
+  if (!hasUser) overallReason = "no_supabase_user";
+  else if (adminClubs.length === 0) overallReason = "no_admin_members";
+  else if (adminClubs.length > 1 && !adminClubSlugCookie) overallReason = "multiple_admin_clubs_require_selection";
+  else if (access.isAdmin) overallReason = "should_be_admin";
+  else overallReason = "check_admin_club_slug_cookie";
+
+  // requestedClubSlug vs resolvedAccessClubSlug 불일치 감지
+  const contextMismatch =
+    requestedClubSlug !== null &&
+    access.clubSlug !== null &&
+    requestedClubSlug !== access.clubSlug;
 
   return NextResponse.json({
-    // 판정 요약
+    // 전체 요약
     isAdmin: access.isAdmin,
     isOwner: access.isOwner,
-    reason,
+    overallReason,
+    contextMismatch,
 
-    // 세부 진단
+    // 유저 상태
     hasUser,
     userIdPrefix,
-    userError,
     cookieRole,
-    currentClubId: currentClubId.slice(0, 8) + "…",
 
-    // 멤버 조회 결과
-    matchedMember,
-    permissionRole,
-    isActive,
-    clubSlug,
-    allowedRoles: KAKAO_ADMIN_ROLES,
-    memberQueryError,
+    // admin_club_slug 쿠키 현황
+    adminClubSlugCookie,
 
-    // getAdminAccessServer 결과 요약
+    // 이 user의 admin 클럽 목록
+    adminClubCount: adminClubs.length,
+    adminClubs,
+
+    // getAdminAccessServer() 결과
+    resolvedAccessClubSlug: access.clubSlug,
+    resolvedAccessClubIdPrefix: access.clubId ? `${access.clubId.slice(0, 8)}…` : null,
     accessSource: access.source,
-    accessClubId: access.clubId ? access.clubId.slice(0, 8) + "…" : null,
+
+    // ?club= 기준 검사 (있을 때만)
+    ...(requestedClubSlug !== null && {
+      requestedClubSlug,
+      requestedClubFound,
+      requestedClubIdPrefix,
+      hasAdminInRequestedClub,
+      memberRoleInRequested,
+      memberActiveInRequested,
+      requestedReason,
+    }),
   }, {
     headers: { "Cache-Control": "no-store" },
   });
