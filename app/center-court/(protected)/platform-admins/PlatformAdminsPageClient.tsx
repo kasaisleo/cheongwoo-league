@@ -57,18 +57,18 @@ export default function PlatformAdminsPageClient({
       });
       const data = await res.json();
       if (res.ok) {
-        setCreateSuccess(`${data.admin.username} 계정이 생성되었습니다.`);
+        setCreateSuccess(`Account "${data.admin.username}" created successfully.`);
         setForm({ username: "", display_name: "", password: "", role: "admin" });
         setCreateOpen(false);
         await refreshAdmins();
       } else {
         const msg: Record<string, string> = {
-          username_required: "아이디를 입력하세요.",
-          password_too_short: "비밀번호는 8자 이상이어야 합니다.",
-          invalid_role: "유효하지 않은 역할입니다.",
-          username_taken: "이미 사용 중인 아이디입니다.",
+          username_required: "Username is required.",
+          password_too_short: "Password must be at least 8 characters.",
+          invalid_role: "Invalid role.",
+          username_taken: "Username is already taken.",
         };
-        setCreateError(msg[data.error] ?? "생성에 실패했습니다.");
+        setCreateError(msg[data.error] ?? "Failed to create account.");
       }
     } finally {
       setCreateBusy(false);
@@ -89,11 +89,11 @@ export default function PlatformAdminsPageClient({
         await refreshAdmins();
       } else {
         const msg: Record<string, string> = {
-          cannot_deactivate_self: "본인 계정은 비활성화할 수 없습니다.",
-          last_owner_cannot_be_deactivated: "마지막 owner는 비활성화할 수 없습니다.",
-          last_owner_cannot_be_demoted: "마지막 owner는 admin으로 강등할 수 없습니다.",
+          cannot_deactivate_self: "You cannot deactivate your own account.",
+          last_owner_cannot_be_deactivated: "The last owner account cannot be deactivated.",
+          last_owner_cannot_be_demoted: "The last owner account cannot be demoted to admin.",
         };
-        setPatchError(msg[data.error] ?? "변경에 실패했습니다.");
+        setPatchError(msg[data.error] ?? "Failed to update account.");
       }
     } finally {
       setPatchBusy(null);
@@ -115,9 +115,21 @@ export default function PlatformAdminsPageClient({
       >
         <div>
           <p style={labelStyle}>Platform Admins</p>
-          <h1 style={{ color: "#f5f0e8", fontSize: 24, fontWeight: 700 }}>
-            관리자 계정 관리
+          <h1
+            style={{
+              color: "#f5f0e8",
+              fontSize: 24,
+              fontWeight: 700,
+              fontFamily: "Georgia, 'Times New Roman', serif",
+              letterSpacing: "0.05em",
+              textTransform: "uppercase",
+            }}
+          >
+            Admin Roster
           </h1>
+          <p style={{ color: "rgba(245,240,232,0.32)", fontSize: 12, marginTop: 4 }}>
+            Manage operator accounts and access roles.
+          </p>
         </div>
         <button
           onClick={() => {
@@ -137,7 +149,7 @@ export default function PlatformAdminsPageClient({
             cursor: "pointer",
           }}
         >
-          + 관리자 추가
+          + Create Admin
         </button>
       </div>
 
@@ -153,11 +165,11 @@ export default function PlatformAdminsPageClient({
       {/* 신규 생성 폼 */}
       {createOpen && (
         <div style={courtCardStyle("purple")} className="mb-5">
-          <p style={{ ...labelStyle, marginBottom: 14 }}>새 관리자 생성</p>
+          <p style={{ ...labelStyle, marginBottom: 14 }}>Create Admin</p>
           <form onSubmit={handleCreate} noValidate>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
               <div>
-                <FieldLabel>아이디 *</FieldLabel>
+                <FieldLabel>Username *</FieldLabel>
                 <CcInput
                   value={form.username}
                   onChange={(v) => setForm((f) => ({ ...f, username: v }))}
@@ -167,11 +179,11 @@ export default function PlatformAdminsPageClient({
                 />
               </div>
               <div>
-                <FieldLabel>표시 이름</FieldLabel>
+                <FieldLabel>Display Name</FieldLabel>
                 <CcInput
                   value={form.display_name}
                   onChange={(v) => setForm((f) => ({ ...f, display_name: v }))}
-                  placeholder="관리자"
+                  placeholder="Display name"
                   disabled={createBusy}
                   autoComplete="off"
                 />
@@ -179,7 +191,7 @@ export default function PlatformAdminsPageClient({
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
               <div>
-                <FieldLabel>비밀번호 * (8자 이상)</FieldLabel>
+                <FieldLabel>Password * (min. 8 chars)</FieldLabel>
                 <CcInput
                   type="password"
                   value={form.password}
@@ -190,7 +202,7 @@ export default function PlatformAdminsPageClient({
                 />
               </div>
               <div>
-                <FieldLabel>역할</FieldLabel>
+                <FieldLabel>Role</FieldLabel>
                 <select
                   value={form.role}
                   onChange={(e) =>
@@ -226,7 +238,7 @@ export default function PlatformAdminsPageClient({
                   cursor: createBusy ? "not-allowed" : "pointer",
                 }}
               >
-                {createBusy ? "생성 중…" : "생성"}
+                {createBusy ? "Creating…" : "Create Account"}
               </button>
               <button
                 type="button"
@@ -242,7 +254,7 @@ export default function PlatformAdminsPageClient({
                   cursor: "pointer",
                 }}
               >
-                취소
+                Cancel
               </button>
             </div>
           </form>
@@ -253,7 +265,7 @@ export default function PlatformAdminsPageClient({
       <div style={courtCardStyle()}>
         {admins.length === 0 ? (
           <p style={{ color: "rgba(245,240,232,0.35)", fontSize: 13, textAlign: "center", padding: "24px 16px" }}>
-            관리자 계정이 없습니다.
+            No admin accounts found.
           </p>
         ) : (
           admins.map((admin, idx) => (
@@ -326,7 +338,7 @@ function AdminRow({
             </span>
             {isSelf && (
               <span style={{ ...badgeStyle("rgba(134,239,172,0.1)", "rgba(134,239,172,0.25)", "#86efac") }}>
-                나
+                ME
               </span>
             )}
             <RoleBadgeInline role={admin.role} />
@@ -338,15 +350,15 @@ function AdminRow({
             </p>
           )}
           <p style={{ color: "rgba(245,240,232,0.2)", fontSize: 10, marginTop: 2 }}>
-            마지막 로그인:{" "}
+            Last login:{" "}
             {admin.last_login_at
-              ? new Date(admin.last_login_at).toLocaleString("ko-KR", {
+              ? new Date(admin.last_login_at).toLocaleString("en-GB", {
                   month: "2-digit",
                   day: "2-digit",
                   hour: "2-digit",
                   minute: "2-digit",
                 })
-              : "없음"}
+              : "Never"}
           </p>
         </div>
         <svg
@@ -383,11 +395,11 @@ function AdminRow({
             {/* 표시 이름 변경 */}
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <div style={{ flex: 1 }}>
-                <FieldLabel>표시 이름</FieldLabel>
+                <FieldLabel>Display Name</FieldLabel>
                 <CcInput
                   value={displayName}
                   onChange={setDisplayName}
-                  placeholder="표시 이름"
+                  placeholder="Display name"
                   disabled={patchBusy}
                   autoComplete="off"
                 />
@@ -397,14 +409,14 @@ function AdminRow({
                 disabled={patchBusy}
                 style={smallBtnStyle}
               >
-                저장
+                Save
               </button>
             </div>
 
             {/* 역할 변경 */}
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <div style={{ flex: 1 }}>
-                <FieldLabel>역할</FieldLabel>
+                <FieldLabel>Role</FieldLabel>
                 <select
                   defaultValue={admin.role}
                   disabled={patchBusy}
@@ -420,12 +432,12 @@ function AdminRow({
             {/* 비밀번호 재설정 */}
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <div style={{ flex: 1 }}>
-                <FieldLabel>새 비밀번호 (8자 이상)</FieldLabel>
+                <FieldLabel>New Password (min. 8 chars)</FieldLabel>
                 <CcInput
                   type="password"
                   value={newPassword}
                   onChange={setNewPassword}
-                  placeholder="새 비밀번호"
+                  placeholder="New password"
                   disabled={patchBusy}
                   autoComplete="new-password"
                 />
@@ -440,7 +452,7 @@ function AdminRow({
                 disabled={patchBusy || newPassword.length < 8}
                 style={smallBtnStyle}
               >
-                변경
+                Reset
               </button>
             </div>
 
@@ -468,7 +480,7 @@ function AdminRow({
                   opacity: patchBusy ? 0.5 : 1,
                 }}
               >
-                {patchBusy ? "…" : isActive ? "비활성화" : "활성화"}
+                {patchBusy ? "…" : isActive ? "Deactivate" : "Activate"}
               </button>
             )}
           </div>
@@ -626,14 +638,21 @@ function CcInput({
   autoComplete?: string;
 }) {
   return (
-    <input
-      type={type}
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      placeholder={placeholder}
-      disabled={disabled}
-      autoComplete={autoComplete}
-      style={{ ...inputStyle, opacity: disabled ? 0.5 : 1 }}
-    />
+    <>
+      <style>{`
+        .cc-admin-input { transition: border-color 0.15s, box-shadow 0.15s; }
+        .cc-admin-input:focus { outline: none; border-color: rgba(139,92,246,0.6) !important; box-shadow: 0 0 0 3px rgba(109,40,217,0.12); }
+      `}</style>
+      <input
+        type={type}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        disabled={disabled}
+        autoComplete={autoComplete}
+        className="cc-admin-input"
+        style={{ ...inputStyle, opacity: disabled ? 0.5 : 1 }}
+      />
+    </>
   );
 }

@@ -53,9 +53,10 @@ export default async function CenterCourtPage() {
           <h1
             style={{
               color: "#f5f0e8",
-              fontSize: 28,
+              fontSize: 26,
               fontWeight: 700,
-              letterSpacing: "-0.01em",
+              letterSpacing: "0.06em",
+              textTransform: "uppercase",
               fontFamily: "Georgia, 'Times New Roman', serif",
               lineHeight: 1.15,
             }}
@@ -73,9 +74,9 @@ export default async function CenterCourtPage() {
             marginBottom: 20,
           }}
         >
-          <StatPanel label="전체 클럽" value={allClubs.length} />
-          <StatPanel label="운영 중"   value={activeClubs.length}  accent />
-          <StatPanel label="비활성"    value={inactiveClubs.length} dim />
+          <StatPanel label="Total Clubs" value={allClubs.length} />
+          <StatPanel label="Active"      value={activeClubs.length}   accent />
+          <StatPanel label="Inactive"    value={inactiveClubs.length} dim />
         </div>
 
         {/* Owner: Platform Admins 바로가기 카드 */}
@@ -115,7 +116,7 @@ export default async function CenterCourtPage() {
                   Platform Admins
                 </p>
                 <p style={{ color: "rgba(245,240,232,0.38)", fontSize: 11 }}>
-                  관리자 계정 생성 · 수정 · 권한 관리
+                  Create, edit, and manage operator accounts
                 </p>
               </div>
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
@@ -133,7 +134,7 @@ export default async function CenterCourtPage() {
 
         {/* 클럽 목록 */}
         <section style={{ marginBottom: 20 }}>
-          <ScoreboardLabel>Clubs</ScoreboardLabel>
+          <ScoreboardLabel>Club Registry</ScoreboardLabel>
           {allClubs.length === 0 ? (
             <CourtPanel>
               <p
@@ -144,7 +145,7 @@ export default async function CenterCourtPage() {
                   padding: "20px 16px",
                 }}
               >
-                등록된 클럽이 없습니다.
+                No clubs registered.
               </p>
             </CourtPanel>
           ) : (
@@ -232,10 +233,10 @@ export default async function CenterCourtPage() {
    ════════════════════════════════════════════════════════════ */
 function OrderOfPlay() {
   const items = [
-    { time: "Q1", label: "클럽 생성 플로우",  sub: "New Club · /c/[slug]",         status: "scheduled" },
-    { time: "Q2", label: "클럽 상태 관리",    sub: "Active / Inactive / Suspended", status: "scheduled" },
-    { time: "Q3", label: "사용량 분석",        sub: "Analytics · 활성도",           status: "not_started" },
-    { time: "Q4", label: "플랫폼 설정",        sub: "Platform Settings",             status: "not_started" },
+    { time: "Q1", label: "Club Creation Flow",   sub: "New Club · /c/[slug]",          status: "scheduled" },
+    { time: "Q2", label: "Club Status Control",  sub: "Active / Inactive / Suspended", status: "scheduled" },
+    { time: "Q3", label: "Analytics Court",      sub: "Usage Analytics · Activity",    status: "not_started" },
+    { time: "Q4", label: "Platform Settings",    sub: "Global Config · Access Model",  status: "not_started" },
   ];
 
   return (
@@ -386,8 +387,8 @@ function OrderOfPlay() {
         </p>
         {[
           { label: "Auth",     value: "platform_admin_session" },
-          { label: "DB",       value: "Supabase (service_role)" },
-          { label: "Session",  value: "SHA-256 token hash" },
+          { label: "Database", value: "Supabase (service_role)" },
+          { label: "Access",   value: "SHA-256 token hash" },
           { label: "Password", value: "scrypt · 64-byte key" },
         ].map((row) => (
           <div
