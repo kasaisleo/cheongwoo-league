@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
@@ -25,6 +25,13 @@ export function FullSignOutButton({
   const pathname = usePathname();
   const [loading, setLoading] = useState(false);
 
+  // 마지막으로 방문한 slug 기억 — /admin 등 non-slug 페이지에서 로그아웃 시 fallback
+  const slugFromPath = pathname?.match(/^\/c\/([^/]+)/)?.[1] ?? null;
+  const [lastSlug, setLastSlug] = useState<string | null>(slugFromPath);
+  useEffect(() => {
+    if (slugFromPath) setLastSlug(slugFromPath);
+  }, [slugFromPath]);
+
   async function handleFullSignOut() {
     setLoading(true);
     try {
@@ -32,9 +39,8 @@ export function FullSignOutButton({
       await supabase.auth.signOut();
       await fetch("/api/auth/logout", { method: "POST" });
 
-      const slugMatch = pathname?.match(/^\/c\/([^/]+)/);
-      const dest = slugMatch ? `/c/${slugMatch[1]}` : "/";
-      router.push(dest);
+      const slug = pathname?.match(/^\/c\/([^/]+)/)?.[1] ?? lastSlug;
+      router.push(slug ? `/c/${slug}` : "/");
       router.refresh();
     } catch {
       setLoading(false);

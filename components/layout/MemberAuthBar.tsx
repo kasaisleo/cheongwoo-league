@@ -40,6 +40,12 @@ export function MemberAuthBar({ currentClubId }: MemberAuthBarProps) {
   const slugMatch = pathname.match(/^\/c\/([^/]+)/);
   const currentSlug = slugMatch ? slugMatch[1] : null;
 
+  // 마지막으로 방문한 slug 기억 — /admin, /mypage 등 non-slug 페이지에서 로그아웃 시 fallback
+  const [lastSlug, setLastSlug] = useState<string | null>(currentSlug);
+  useEffect(() => {
+    if (currentSlug) setLastSlug(currentSlug);
+  }, [currentSlug]);
+
   // slug로 resolve한 club ID (slug context에서 회원 쿼리 기준)
   const [resolvedClubId, setResolvedClubId] = useState<string>(currentClubId);
 
@@ -123,7 +129,8 @@ export function MemberAuthBar({ currentClubId }: MemberAuthBarProps) {
     await supabase.auth.signOut();
     setCookieRole(null);
     // 클럽 context 있으면 해당 클럽 홈으로, 없으면 플랫폼 랜딩으로
-    router.push(currentSlug ? `/c/${currentSlug}` : "/");
+    const slug = currentSlug ?? lastSlug;
+    router.push(slug ? `/c/${slug}` : "/");
     router.refresh();
   }
 

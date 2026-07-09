@@ -65,7 +65,8 @@ export default async function AdminPage({
   const reason = searchParams?.reason;
   // 아예 로그인하지 않은 사용자에게 "로그인은 확인됐습니다"라고 보이면
   // 안 되므로, 카카오 세션이 실제로 있는 경우(access.userId)에만 안내한다.
-  const isLoggedInButLacksAdmin = !isAdmin && access.userId !== null && reason === "admin_required";
+  // reason 파라미터 없이 직접 접근해도 로그인 됐는데 권한 없으면 안내 표시 (redirect loop 방지)
+  const isLoggedInButLacksAdmin = !isAdmin && access.userId !== null;
   const isLoggedInButLacksOwner = isAdmin && !isOwner && reason === "owner_required";
 
   // ── 미인증: 로그인 화면 ────────────────────────────

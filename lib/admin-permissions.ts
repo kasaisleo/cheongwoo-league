@@ -45,18 +45,18 @@ export async function getAdminAccessServer(): Promise<AdminAccess> {
 
   try {
     const supabase = createClient();
+    const currentClubId = await getCurrentClubId();
+    clubId = currentClubId; // cookie-only admin 기본값
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
       userId = user.id;
-      // club_id 필터 없이 auth_user_id + admin role 기준으로 조회 →
-      // selected_club_id 쿠키 상태와 무관하게 멤버를 찾고,
-      // member.club_id를 clubId로 사용한다.
+      // RLS는 club_id 컨텍스트가 필요하므로 선택된 클럽 기준으로 조회.
+      // selected_club_id 쿠키 → auth callback에서 로그인 시 항상 세팅.
       const { data: member } = await supabase
         .from("members")
         .select("id, permission_role, club_id")
         .eq("auth_user_id", user.id)
-        .eq("is_active", true)
-        .in("permission_role", KAKAO_ADMIN_ROLES as readonly string[])
+        .eq("club_id", currentClubId)
         .maybeSingle();
       if (member) {
         kakaoRole = member.permission_role;
@@ -65,11 +65,6 @@ export async function getAdminAccessServer(): Promise<AdminAccess> {
       }
     }
   } catch { /* 세션 없음 */ }
-
-  // cookie-only admin (cw_admin_session만, kakao 없음) → 쿠키 기반 fallback
-  if (!clubId) {
-    try { clubId = await getCurrentClubId(); } catch { /* 무시 */ }
-  }
 
   // 3. 권한 계산
   const cookieIsAdmin = cookieRole !== null && (COOKIE_ADMIN_ROLES as readonly string[]).includes(cookieRole);
