@@ -1,6 +1,6 @@
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { getPlatformAdminAccessServer } from "@/lib/platform-auth";
-import LogoutButton from "./LogoutButton";
+import { getPlatformAdminSession } from "@/lib/platform-admin-session";
 
 export const dynamic = "force-dynamic";
 
@@ -14,144 +14,174 @@ interface Club {
 
 async function getCenterCourtData() {
   const supabase = createClient();
-
   const { data: clubs } = await supabase
     .from("clubs")
     .select("id, name, slug, description, status")
     .order("created_at", { ascending: true });
-
-  const allClubs: Club[] = clubs ?? [];
-  const activeClubs = allClubs.filter((c) => c.status === "active");
-  const inactiveClubs = allClubs.filter((c) => c.status !== "active");
-
-  return { allClubs, activeClubs, inactiveClubs };
+  const all: Club[] = clubs ?? [];
+  return {
+    allClubs: all,
+    activeClubs: all.filter((c) => c.status === "active"),
+    inactiveClubs: all.filter((c) => c.status !== "active"),
+  };
 }
 
 export default async function CenterCourtPage() {
-  const [access, data] = await Promise.all([
-    getPlatformAdminAccessServer(),
+  const [session, data] = await Promise.all([
+    getPlatformAdminSession(),
     getCenterCourtData(),
   ]);
-
   const { allClubs, activeClubs, inactiveClubs } = data;
 
   return (
-    <main className="px-4 pt-6 pb-10">
-      {/* ── 헤더 ─────────────────────────────────────────── */}
-      <header className="mb-6 flex items-start justify-between">
-        <div>
-          <p className="eyebrow-en text-clay-400">Center Court</p>
-          <h1 className="headline-kr text-4xl text-line-900">센터코트</h1>
-        </div>
-        <div className="mt-1 flex items-center gap-2">
-          <span className="rounded-sm border border-clay-400/30 bg-clay-400/10 px-2 py-0.5 text-[10px] font-semibold text-clay-400">
-            {access.role === "owner"
-              ? "Platform Owner"
-              : access.role === "analyst"
-                ? "Analyst"
-                : "Platform Admin"}
-          </span>
-          {access.username && (
-            <span className="text-[10px] text-line-400">{access.username}</span>
-          )}
-          <LogoutButton />
-        </div>
-      </header>
-
-      {/* ── 플랫폼 현황 ──────────────────────────────────── */}
-      <section className="mb-6">
-        <p className="mb-2 font-display text-[10px] font-bold uppercase tracking-widest text-line-500">
+    <div>
+      {/* 페이지 타이틀 */}
+      <div className="mb-7">
+        <p
+          style={{
+            color: "rgba(245,240,232,0.35)",
+            fontSize: 9,
+            fontWeight: 700,
+            letterSpacing: "0.18em",
+            textTransform: "uppercase",
+            marginBottom: 4,
+          }}
+        >
           Platform Overview
         </p>
-        <div className="overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50">
-          <div className="grid grid-cols-3 divide-x divide-line-200/30">
-            <div className="px-4 py-3">
-              <p className="font-score text-3xl font-bold tabular-nums text-line-900">
-                {allClubs.length}
+        <h1
+          style={{
+            color: "#f5f0e8",
+            fontSize: 26,
+            fontWeight: 700,
+            lineHeight: 1.2,
+          }}
+        >
+          Dashboard
+        </h1>
+      </div>
+
+      {/* 플랫폼 현황 카드 */}
+      <div className="mb-5 grid grid-cols-3 gap-3">
+        <StatCard label="전체 클럽" value={allClubs.length} />
+        <StatCard label="운영 중" value={activeClubs.length} accent />
+        <StatCard label="비활성" value={inactiveClubs.length} dim />
+      </div>
+
+      {/* Owner 전용: Platform Admins 링크 카드 */}
+      {session?.role === "owner" && (
+        <Link href="/center-court/platform-admins" style={{ display: "block", textDecoration: "none", marginBottom: 20 }}>
+          <div
+            className="cc-card"
+            style={{
+              borderRadius: 14,
+              border: "1px solid rgba(139,92,246,0.25)",
+              background: "rgba(139,92,246,0.08)",
+              padding: "14px 18px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+            }}
+          >
+            <div>
+              <p
+                style={{
+                  color: "#c4b5fd",
+                  fontSize: 11,
+                  fontWeight: 700,
+                  letterSpacing: "0.1em",
+                  textTransform: "uppercase",
+                  marginBottom: 2,
+                }}
+              >
+                Platform Admins
               </p>
-              <p className="mt-0.5 font-display text-[10px] font-bold uppercase tracking-widest text-line-500">
-                전체 클럽
+              <p style={{ color: "rgba(245,240,232,0.4)", fontSize: 11 }}>
+                관리자 계정 생성 · 수정 · 권한 관리
               </p>
             </div>
-            <div className="px-4 py-3">
-              <p className="font-score text-3xl font-bold tabular-nums text-gold">
-                {activeClubs.length}
-              </p>
-              <p className="mt-0.5 font-display text-[10px] font-bold uppercase tracking-widest text-line-500">
-                운영 중
-              </p>
-            </div>
-            <div className="px-4 py-3">
-              <p className="font-score text-3xl font-bold tabular-nums text-line-400">
-                {inactiveClubs.length}
-              </p>
-              <p className="mt-0.5 font-display text-[10px] font-bold uppercase tracking-widest text-line-500">
-                비활성
-              </p>
-            </div>
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <path
+                d="M6 3l5 5-5 5"
+                stroke="rgba(196,181,253,0.6)"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
           </div>
-        </div>
-      </section>
+        </Link>
+      )}
 
-      {/* ── 클럽 목록 ────────────────────────────────────── */}
-      <section className="mb-6">
-        <p className="mb-2 font-display text-[10px] font-bold uppercase tracking-widest text-line-500">
-          Clubs
-        </p>
-
+      {/* 클럽 목록 */}
+      <section className="mb-5">
+        <SectionLabel>Clubs</SectionLabel>
         {allClubs.length === 0 ? (
-          <div className="rounded-[14px] border border-line-200/40 bg-line-50 px-4 py-6 text-center">
-            <p className="text-sm text-line-400">등록된 클럽이 없습니다.</p>
-          </div>
+          <CourtCard>
+            <p style={{ color: "rgba(245,240,232,0.35)", fontSize: 13, textAlign: "center" }}>
+              등록된 클럽이 없습니다.
+            </p>
+          </CourtCard>
         ) : (
-          <div className="overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50">
+          <CourtCard>
             {allClubs.map((club, idx) => (
               <div
                 key={club.id}
-                className={`px-4 py-3 ${
-                  idx < allClubs.length - 1
-                    ? "border-b border-line-200/30"
-                    : ""
-                }`}
+                style={{
+                  padding: "11px 16px",
+                  borderBottom:
+                    idx < allClubs.length - 1
+                      ? "1px solid rgba(245,240,232,0.06)"
+                      : "none",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 12,
+                }}
               >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <p className="text-sm font-semibold text-line-900">
-                        {club.name}
-                      </p>
-                      <span
-                        className={`shrink-0 rounded-sm px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide ${
-                          club.status === "active"
-                            ? "border border-gold/30 bg-gold/10 text-gold"
-                            : "border border-line-200/40 bg-line-100 text-line-400"
-                        }`}
-                      >
-                        {club.status}
-                      </span>
-                    </div>
-                    {club.description && (
-                      <p className="mt-0.5 truncate text-[10px] text-line-500">
-                        {club.description}
-                      </p>
-                    )}
-                    <p className="mt-1 font-display text-[9px] font-bold tracking-wide text-line-400">
-                      /c/{club.slug || "—"}
-                    </p>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
+                    <span style={{ color: "#f5f0e8", fontSize: 13, fontWeight: 600 }}>
+                      {club.name}
+                    </span>
+                    <StatusBadge status={club.status} />
                   </div>
+                  {club.description && (
+                    <p
+                      style={{
+                        color: "rgba(245,240,232,0.35)",
+                        fontSize: 10,
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                        maxWidth: 200,
+                      }}
+                    >
+                      {club.description}
+                    </p>
+                  )}
+                  <p
+                    style={{
+                      color: "rgba(245,240,232,0.25)",
+                      fontSize: 9,
+                      fontWeight: 700,
+                      letterSpacing: "0.08em",
+                      marginTop: 2,
+                    }}
+                  >
+                    /c/{club.slug || "—"}
+                  </p>
                 </div>
               </div>
             ))}
-          </div>
+          </CourtCard>
         )}
       </section>
 
-      {/* ── 예정 기능 안내 ───────────────────────────────── */}
+      {/* Coming soon */}
       <section>
-        <p className="mb-2 font-display text-[10px] font-bold uppercase tracking-widest text-line-500">
-          Coming Soon
-        </p>
-        <div className="overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50">
+        <SectionLabel>Coming Soon</SectionLabel>
+        <CourtCard>
           {[
             { label: "클럽 생성", sub: "New Club · /c/[slug] 활성화" },
             { label: "클럽 상태 관리", sub: "Active / Inactive / Suspended" },
@@ -160,23 +190,129 @@ export default async function CenterCourtPage() {
           ].map((item, idx, arr) => (
             <div
               key={item.label}
-              className={`flex items-center justify-between px-4 py-3 ${
-                idx < arr.length - 1 ? "border-b border-line-200/30" : ""
-              }`}
+              style={{
+                padding: "11px 16px",
+                borderBottom:
+                  idx < arr.length - 1
+                    ? "1px solid rgba(245,240,232,0.06)"
+                    : "none",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+              }}
             >
               <div>
-                <p className="text-sm font-semibold text-line-400">
+                <p style={{ color: "rgba(245,240,232,0.35)", fontSize: 13, fontWeight: 600 }}>
                   {item.label}
                 </p>
-                <p className="text-[10px] text-line-300">{item.sub}</p>
+                <p style={{ color: "rgba(245,240,232,0.2)", fontSize: 10 }}>{item.sub}</p>
               </div>
-              <span className="rounded-sm border border-line-200/40 bg-line-100 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-line-400">
+              <span
+                style={{
+                  fontSize: 9,
+                  fontWeight: 700,
+                  letterSpacing: "0.1em",
+                  textTransform: "uppercase",
+                  padding: "2px 7px",
+                  borderRadius: 4,
+                  border: "1px solid rgba(245,240,232,0.12)",
+                  color: "rgba(245,240,232,0.25)",
+                }}
+              >
                 예정
               </span>
             </div>
           ))}
-        </div>
+        </CourtCard>
       </section>
-    </main>
+    </div>
+  );
+}
+
+// ── 서브 컴포넌트 ─────────────────────────────────────────────────────────
+
+function StatCard({
+  label,
+  value,
+  accent,
+  dim,
+}: {
+  label: string;
+  value: number;
+  accent?: boolean;
+  dim?: boolean;
+}) {
+  const valueColor = accent ? "#a78bfa" : dim ? "rgba(245,240,232,0.3)" : "#f5f0e8";
+  return (
+    <div
+      className="cc-card"
+      style={{
+        borderRadius: 12,
+        border: "1px solid rgba(245,240,232,0.10)",
+        background: "rgba(245,240,232,0.04)",
+        padding: "12px 14px",
+      }}
+    >
+      <p style={{ color: valueColor, fontSize: 28, fontWeight: 700, lineHeight: 1, marginBottom: 4 }}>
+        {value}
+      </p>
+      <p style={{ color: "rgba(245,240,232,0.35)", fontSize: 9, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" }}>
+        {label}
+      </p>
+    </div>
+  );
+}
+
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <p
+      style={{
+        color: "rgba(245,240,232,0.3)",
+        fontSize: 9,
+        fontWeight: 700,
+        letterSpacing: "0.18em",
+        textTransform: "uppercase",
+        marginBottom: 8,
+      }}
+    >
+      {children}
+    </p>
+  );
+}
+
+function CourtCard({ children }: { children: React.ReactNode }) {
+  return (
+    <div
+      style={{
+        borderRadius: 14,
+        border: "1px solid rgba(245,240,232,0.10)",
+        background: "rgba(245,240,232,0.04)",
+        overflow: "hidden",
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+function StatusBadge({ status }: { status: string }) {
+  const active = status === "active";
+  return (
+    <span
+      style={{
+        fontSize: 9,
+        fontWeight: 700,
+        letterSpacing: "0.08em",
+        textTransform: "uppercase",
+        padding: "1px 6px",
+        borderRadius: 3,
+        background: active ? "rgba(134,239,172,0.12)" : "rgba(245,240,232,0.06)",
+        border: active ? "1px solid rgba(134,239,172,0.25)" : "1px solid rgba(245,240,232,0.10)",
+        color: active ? "#86efac" : "rgba(245,240,232,0.3)",
+        flexShrink: 0,
+      }}
+    >
+      {status}
+    </span>
   );
 }

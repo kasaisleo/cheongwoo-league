@@ -1,11 +1,12 @@
 import { requirePlatformAdmin } from "@/lib/platform-admin-session";
+import { CenterCourtShell } from "./CenterCourtShell";
 
 export default async function CenterCourtProtectedLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  await requirePlatformAdmin();
+  const session = await requirePlatformAdmin();
 
-  return <div className="font-body">{children}</div>;
+  return <CenterCourtShell session={session}>{children}</CenterCourtShell>;
 }

@@ -39,68 +39,129 @@ export default function LoginPageClient() {
 
   return (
     <form onSubmit={handleSubmit} noValidate>
-      <div className="overflow-hidden rounded-[18px] border border-line-200/40 bg-line-50">
-        <div className="px-5 py-5">
-          {/* 아이디 */}
-          <div className="mb-4">
-            <label
-              htmlFor="cc-username"
-              className="mb-1.5 block font-display text-[10px] font-bold uppercase tracking-widest text-line-500"
-            >
-              아이디
-            </label>
-            <input
-              id="cc-username"
-              type="text"
-              autoComplete="username"
-              autoCapitalize="none"
-              autoCorrect="off"
-              spellCheck={false}
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              disabled={busy}
-              className="h-11 w-full rounded-xl border border-line-200/50 bg-white/80 px-3.5 text-sm text-line-900 placeholder:text-line-300 focus:border-clay-400/50 focus:outline-none focus:ring-2 focus:ring-clay-400/20 disabled:opacity-50"
-              placeholder="아이디 입력"
-            />
-          </div>
-
-          {/* 비밀번호 */}
-          <div className="mb-5">
-            <label
-              htmlFor="cc-password"
-              className="mb-1.5 block font-display text-[10px] font-bold uppercase tracking-widest text-line-500"
-            >
-              비밀번호
-            </label>
-            <input
-              id="cc-password"
-              type="password"
-              autoComplete="current-password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              disabled={busy}
-              className="h-11 w-full rounded-xl border border-line-200/50 bg-white/80 px-3.5 text-sm text-line-900 placeholder:text-line-300 focus:border-clay-400/50 focus:outline-none focus:ring-2 focus:ring-clay-400/20 disabled:opacity-50"
-              placeholder="비밀번호 입력"
-            />
-          </div>
-
-          {/* 에러 메시지 */}
-          {error && (
-            <p className="mb-4 rounded-xl border border-red-200/60 bg-red-50 px-3.5 py-2.5 text-xs text-red-600">
-              {error}
-            </p>
-          )}
-
-          {/* 로그인 버튼 */}
-          <button
-            type="submit"
-            disabled={busy || !username || !password}
-            className="h-11 w-full rounded-xl bg-clay-400 text-sm font-semibold text-white transition-opacity hover:opacity-90 active:opacity-80 disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            {busy ? "로그인 중…" : "로그인"}
-          </button>
-        </div>
+      {/* 아이디 */}
+      <div style={{ marginBottom: 14 }}>
+        <label
+          htmlFor="cc-username"
+          style={{
+            display: "block",
+            marginBottom: 6,
+            color: "rgba(245,240,232,0.45)",
+            fontSize: 9,
+            fontWeight: 700,
+            letterSpacing: "0.16em",
+            textTransform: "uppercase",
+          }}
+        >
+          아이디
+        </label>
+        <input
+          id="cc-username"
+          type="text"
+          autoComplete="username"
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
+          disabled={busy}
+          placeholder="아이디 입력"
+          style={{
+            width: "100%",
+            height: 44,
+            borderRadius: 10,
+            border: "1px solid rgba(245,240,232,0.15)",
+            background: "rgba(245,240,232,0.05)",
+            color: "#f5f0e8",
+            fontSize: 14,
+            padding: "0 14px",
+            outline: "none",
+            boxSizing: "border-box",
+            opacity: busy ? 0.5 : 1,
+          }}
+        />
       </div>
+
+      {/* 비밀번호 */}
+      <div style={{ marginBottom: 18 }}>
+        <label
+          htmlFor="cc-password"
+          style={{
+            display: "block",
+            marginBottom: 6,
+            color: "rgba(245,240,232,0.45)",
+            fontSize: 9,
+            fontWeight: 700,
+            letterSpacing: "0.16em",
+            textTransform: "uppercase",
+          }}
+        >
+          비밀번호
+        </label>
+        <input
+          id="cc-password"
+          type="password"
+          autoComplete="current-password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          disabled={busy}
+          placeholder="비밀번호 입력"
+          style={{
+            width: "100%",
+            height: 44,
+            borderRadius: 10,
+            border: "1px solid rgba(245,240,232,0.15)",
+            background: "rgba(245,240,232,0.05)",
+            color: "#f5f0e8",
+            fontSize: 14,
+            padding: "0 14px",
+            outline: "none",
+            boxSizing: "border-box",
+            opacity: busy ? 0.5 : 1,
+          }}
+        />
+      </div>
+
+      {/* 에러 */}
+      {error && (
+        <div
+          style={{
+            marginBottom: 16,
+            borderRadius: 10,
+            border: "1px solid rgba(248,113,113,0.25)",
+            background: "rgba(248,113,113,0.08)",
+            padding: "10px 14px",
+            color: "#fca5a5",
+            fontSize: 12,
+          }}
+        >
+          {error}
+        </div>
+      )}
+
+      {/* 로그인 버튼 */}
+      <button
+        type="submit"
+        disabled={busy || !username || !password}
+        style={{
+          width: "100%",
+          height: 44,
+          borderRadius: 10,
+          border: "none",
+          background:
+            busy || !username || !password
+              ? "rgba(139,92,246,0.25)"
+              : "rgba(139,92,246,0.75)",
+          color: "#f5f0e8",
+          fontSize: 13,
+          fontWeight: 700,
+          letterSpacing: "0.06em",
+          cursor: busy || !username || !password ? "not-allowed" : "pointer",
+          transition: "background 0.2s",
+        }}
+      >
+        {busy ? "로그인 중…" : "로그인"}
+      </button>
     </form>
   );
 }
