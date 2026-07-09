@@ -55,23 +55,26 @@ export default function NewGuestPageClient({ currentClubId }: { currentClubId: s
     setError(null);
 
     try {
-      const supabase = createClient();
-      const { error: insertError } = await supabase.from("guests").insert({
-        name: name.trim(),
-        club_id: currentClubId,
-        age: age ? Number(age) : null,
-        years_playing: yearsPlaying ? Number(yearsPlaying) : null,
-        phone: phone.trim() || null,
-        visit_date: visitDate,
-        referred_by: referredBy || null,
-        skill_grade: skillGrade || null,
-        manner_score: mannerScore,
-        reinvite,
-        notes: notes.trim() || null,
+      const res = await fetch("/api/guests", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: name.trim(),
+          visit_date: visitDate,
+          age: age ? Number(age) : null,
+          years_playing: yearsPlaying ? Number(yearsPlaying) : null,
+          phone: phone.trim() || null,
+          referred_by: referredBy || null,
+          skill_grade: skillGrade || null,
+          manner_score: mannerScore,
+          reinvite,
+          notes: notes.trim() || null,
+        }),
       });
 
-      if (insertError) {
-        setError("게스트 등록에 실패했습니다. 다시 시도해주세요.");
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        setError((body as { error?: string }).error ?? "게스트 등록에 실패했습니다. 다시 시도해주세요.");
         return;
       }
 

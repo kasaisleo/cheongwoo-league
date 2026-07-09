@@ -85,24 +85,23 @@ export function GuestRegistrationForm({ currentClubId }: { currentClubId: string
     setSubmitting(true);
 
     try {
-      const supabase = createClient();
-      const { data: guest, error: insertError } = await supabase
-        .from("guests")
-        .insert({
+      const res = await fetch("/api/guests", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
           name: normalizeName(name),
-          club_id: currentClubId,
           visit_date: visitDate,
           phone: phone.trim() ? phone.replace(/\D/g, "") : null,
           age: age.trim() ? Number(age) : null,
           years_playing: yearsPlaying.trim() ? Number(yearsPlaying) : null,
           referred_by: referredBy || null,
           notes: notes.trim() || null,
-        })
-        .select()
-        .single();
+        }),
+      });
 
-      if (insertError || !guest) {
-        toast.error("게스트 등록에 실패했습니다.");
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        toast.error((body as { error?: string }).error ?? "게스트 등록에 실패했습니다.");
         return;
       }
 
