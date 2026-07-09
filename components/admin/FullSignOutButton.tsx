@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 /**
@@ -9,10 +9,8 @@ import { createClient } from "@/lib/supabase/client";
  *
  * 처리 순서:
  *   1. supabase.auth.signOut()  — 카카오 세션 종료
- *   2. POST /api/auth/logout    — cw_admin_session 쿠키 제거 (기존 route 재사용)
- *   3. router.push("/")         — 홈으로 이동
- *
- * app/api/auth/logout/route.ts는 수정하지 않고 그대로 POST로 호출.
+ *   2. POST /api/auth/logout    — cw_admin_session 쿠키 제거
+ *   3. 클럽 context 있으면 /c/[slug], 없으면 /로 이동
  */
 interface FullSignOutButtonProps {
   className?: string;
@@ -24,20 +22,19 @@ export function FullSignOutButton({
   label = "전체 로그아웃",
 }: FullSignOutButtonProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const [loading, setLoading] = useState(false);
 
   async function handleFullSignOut() {
     setLoading(true);
     try {
-      // 1. 카카오 세션 종료
       const supabase = createClient();
       await supabase.auth.signOut();
-
-      // 2. cw_admin_session 쿠키 제거
       await fetch("/api/auth/logout", { method: "POST" });
 
-      // 3. 홈으로 이동
-      router.push("/");
+      const slugMatch = pathname?.match(/^\/c\/([^/]+)/);
+      const dest = slugMatch ? `/c/${slugMatch[1]}` : "/";
+      router.push(dest);
       router.refresh();
     } catch {
       setLoading(false);

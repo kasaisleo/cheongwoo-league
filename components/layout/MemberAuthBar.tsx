@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import type { User } from "@supabase/supabase-js";
 import type { AdminRole } from "@/lib/admin-auth";
@@ -22,22 +22,26 @@ interface MemberInfo {
 const KAKAO_ADMIN_ROLES: PermissionRole[] = ["manager", "admin", "master"];
 
 /**
- * MemberAuthBar v2 — 상단 바 이원화.
+ * MemberAuthBar v3 — slug-aware.
  *
- * 좌측: Owner/관리자 영역
- *   - 비인증: "관리자" → /admin 이동
- *   - cw_admin_session 활성: "관리자 모드" (gold) → /admin
- *   - 카카오 permission_role >= manager: "관리자 모드" (gold) → /admin
+ * /c/[slug] context 감지:
+ *   - "카카오 로그인" 링크에 returnUrl 포함 (현재 경로로 복귀)
+ *   - 로그아웃 후 /c/[slug]로 이동 (/ 플랫폼 랜딩으로 가지 않음)
+ *   - 회원 쿼리도 slug로 resolve한 club_id 기준으로 동작
+ *     (나마스테 회원은 /c/namaste에서 자신의 정보를 볼 수 있음)
  *
- * 우측: 카카오 회원 영역 (기존 동일)
- *   - 비로그인: "카카오 로그인" → /login
- *   - 로그인+연결: 닉네임 | 마이페이지 | 로그아웃
- *
- * 보호 파일(lib/admin-auth.ts, middleware.ts) 수정 없음.
- * cw_admin_session(httpOnly)은 /api/auth/status 폴링으로 읽음.
+ * 클럽 context 없는 페이지(/matches 등)에서는 기존 동작 유지.
  */
 export function MemberAuthBar({ currentClubId }: MemberAuthBarProps) {
   const router = useRouter();
+  const pathname = usePathname();
+
+  // /c/[slug] 감지
+  const slugMatch = pathname.match(/^\/c\/([^/]+)/);
+  const currentSlug = slugMatch ? slugMatch[1] : null;
+
+  // slug로 resolve한 club ID (slug context에서 회원 쿼리 기준)
+  const [resolvedClubId, setResolvedClubId] = useState<string>(currentClubId);
 
   // 우측: 카카오 회원 상태
   const [authUser, setAuthUser] = useState<User | null>(null);
@@ -47,6 +51,24 @@ export function MemberAuthBar({ currentClubId }: MemberAuthBarProps) {
 
   // 좌측: 관리자 상태
   const [cookieRole, setCookieRole] = useState<AdminRole | null>(null);
+
+  // slug → club_id resolve
+  useEffect(() => {
+    if (!currentSlug) {
+      setResolvedClubId(currentClubId);
+      return;
+    }
+    const supabase = createClient();
+    supabase
+      .from("clubs")
+      .select("id")
+      .eq("slug", currentSlug)
+      .eq("status", "active")
+      .maybeSingle()
+      .then(({ data }) => {
+        setResolvedClubId(data?.id ?? currentClubId);
+      });
+  }, [currentSlug, currentClubId]);
 
   // 쿠키 세션 확인 (httpOnly → API 경유)
   useEffect(() => {
@@ -71,7 +93,7 @@ export function MemberAuthBar({ currentClubId }: MemberAuthBarProps) {
     return () => subscription.unsubscribe();
   }, []);
 
-  // 카카오 회원 정보 조회 (permission_role 포함)
+  // 카카오 회원 정보 조회 — resolvedClubId 기준
   useEffect(() => {
     if (!authUser) { setMember(null); return; }
     const supabase = createClient();
@@ -81,14 +103,14 @@ export function MemberAuthBar({ currentClubId }: MemberAuthBarProps) {
           .from("members")
           .select("id, nickname, name, permission_role")
           .eq("auth_user_id", authUser.id)
-          .eq("club_id", currentClubId)
+          .eq("club_id", resolvedClubId)
           .maybeSingle();
         setMember(data ?? null);
       } catch {
         setMember(null);
       }
     })();
-  }, [authUser, currentClubId]);
+  }, [authUser, resolvedClubId]);
 
   async function handleSignOut() {
     setSigningOut(true);
@@ -100,23 +122,16 @@ export function MemberAuthBar({ currentClubId }: MemberAuthBarProps) {
     const supabase = createClient();
     await supabase.auth.signOut();
     setCookieRole(null);
-    router.push("/");
+    // 클럽 context 있으면 해당 클럽 홈으로, 없으면 플랫폼 랜딩으로
+    router.push(currentSlug ? `/c/${currentSlug}` : "/");
     router.refresh();
   }
 
   if (!initialized) return null;
 
-  // 관리자 모드 여부: 쿠키 세션 OR 카카오 permission_role >= manager
   const isKakaoAdmin = member !== null && (KAKAO_ADMIN_ROLES as string[]).includes(member.permission_role);
   const isAdminMode = cookieRole !== null || isKakaoAdmin;
 
-  // 상단 표시명 계산(QA-P1-B):
-  // 1. member.nickname이 있고 member.name과 다르면 nickname을 그대로 사용
-  // 2. 그렇지 않으면(닉네임을 따로 안 정했거나 비어있으면) 카카오 계정의
-  //    실시간 표시명(user_metadata)을 보조 후보로 사용
-  // 3. 그마저 없으면 member.name으로 최종 대체
-  // members 테이블 값/조회 쿼리 자체는 전혀 건드리지 않는다 — 화면 표시
-  // 우선순위만 계산한다.
   const memberNickname = member?.nickname?.trim() || "";
   const memberName = member?.name?.trim() || "";
   const rawUserMetadata = authUser?.user_metadata as Record<string, unknown> | undefined;
@@ -134,6 +149,12 @@ export function MemberAuthBar({ currentClubId }: MemberAuthBarProps) {
       : kakaoDisplayName || memberName;
 
   const shouldShowRealName = memberName !== "" && primaryDisplayName !== memberName;
+
+  // 로그인 링크에 현재 경로를 returnUrl로 포함 (클럽 내부에서 로그인하면 돌아올 수 있게)
+  const loginHref =
+    pathname && pathname !== "/" && pathname !== "/login"
+      ? `/login?returnUrl=${encodeURIComponent(pathname)}`
+      : "/login";
 
   return (
     <div className="border-b border-line-200/40 bg-line-25">
@@ -182,7 +203,7 @@ export function MemberAuthBar({ currentClubId }: MemberAuthBarProps) {
               </button>
             </div>
           ) : (
-            <Link href="/login" className="inline-flex items-center text-xs font-semibold text-clay-400 whitespace-nowrap">
+            <Link href={loginHref} className="inline-flex items-center text-xs font-semibold text-clay-400 whitespace-nowrap">
               카카오 로그인
             </Link>
           )}

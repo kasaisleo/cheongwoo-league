@@ -4,18 +4,21 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 /**
- * BottomTabBar v2 — ATP/Flashscore 스타일 하단 탭바 (Step 15-6).
+ * BottomTabBar v3 — slug-aware.
  *
- * 변경 전: 아이콘+텍스트, 활성=text-clay-400, 비활성=text-line-400
- * 변경 후:
- *   - 탭바 배경: bg-line-25 (가장 어두운 딥 네이비) + 강한 상단 테두리
- *   - 활성 탭: clay-400 아이콘+텍스트 + 탭 상단 2px clay accent line
- *   - 비활성 탭: line-500 (이전보다 약간 밝게, 가독성 향상)
- *   - 탭 라벨: font-display uppercase tracking 적용 (ATP 스타일)
- *   - 최대 너비 제거: 모바일 full-width가 더 자연스러움
+ * /c/[slug] 또는 /c/[slug]/... 경로에 있을 때 탭 링크를 해당 slug 기반으로 전환.
+ * 이렇게 하면 청우회/나마스테 등 어떤 클럽이든 클럽 내부에서는
+ * 항상 해당 클럽 경로로 이동한다.
+ *
+ * 클럽 context 없는 전역 페이지(/matches, /ranking 등)에서는 기존 글로벌 탭 유지.
  */
 
-const TABS = [
+function extractSlugFromPath(pathname: string): string | null {
+  const match = pathname.match(/^\/c\/([^/]+)/);
+  return match ? match[1] : null;
+}
+
+const GLOBAL_TABS = [
   { href: "/", label: "홈", icon: HomeIcon },
   { href: "/attendance", label: "매치", icon: CalendarIcon },
   { href: "/matches", label: "기록", icon: ListIcon },
@@ -25,16 +28,36 @@ const TABS = [
 
 export function BottomTabBar() {
   const pathname = usePathname();
+  const slug = extractSlugFromPath(pathname);
+
+  const tabs = slug
+    ? [
+        { href: `/c/${slug}`,             label: "홈",  icon: HomeIcon },
+        { href: `/c/${slug}/attendance`,  label: "매치", icon: CalendarIcon },
+        { href: `/c/${slug}/matches`,     label: "기록", icon: ListIcon },
+        { href: `/c/${slug}/members`,     label: "회원", icon: UsersIcon },
+        { href: "/mypage",                label: "마이", icon: PersonIcon },
+      ]
+    : GLOBAL_TABS;
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-40 bg-line-25 pb-[env(safe-area-inset-bottom)]">
-      {/* 상단 구분선 — 강한 clay accent + 어두운 배경으로 ATP 레이아웃 느낌 */}
       <div className="h-px bg-gradient-to-r from-transparent via-clay-400/30 to-transparent" />
 
       <div className="flex items-stretch">
-        {TABS.map((tab) => {
-          const isActive =
-            tab.href === "/" ? pathname === "/" : pathname.startsWith(tab.href);
+        {tabs.map((tab) => {
+          let isActive: boolean;
+          if (slug) {
+            isActive =
+              tab.href === `/c/${slug}`
+                ? pathname === `/c/${slug}`
+                : pathname.startsWith(tab.href) && tab.href !== "/mypage"
+                  ? true
+                  : tab.href === "/mypage" && pathname.startsWith("/mypage");
+          } else {
+            isActive =
+              tab.href === "/" ? pathname === "/" : pathname.startsWith(tab.href);
+          }
           const Icon = tab.icon;
 
           return (
@@ -43,14 +66,12 @@ export function BottomTabBar() {
               href={tab.href}
               className="relative flex flex-1 flex-col items-center pt-2 pb-2 gap-1"
             >
-              {/* 활성 탭 상단 accent line */}
               {isActive && (
                 <span
                   className="absolute top-0 left-1/2 h-0.5 w-8 -translate-x-1/2 rounded-full bg-clay-400"
                   aria-hidden="true"
                 />
               )}
-
               <Icon
                 className={`h-[22px] w-[22px] transition-colors ${
                   isActive ? "text-clay-400" : "text-line-500"
