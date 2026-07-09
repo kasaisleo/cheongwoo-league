@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Card } from "@/components/ui/Card";
 import { createClient } from "@/lib/supabase/client";
+import { formatClubEyebrow } from "@/lib/club-display";
 
 /**
  * 일반 회원용 카카오 로그인 폼.
@@ -15,9 +16,10 @@ import { createClient } from "@/lib/supabase/client";
  */
 interface LoginPageClientProps {
   returnUrl: string;
+  currentClubSlug: string;
 }
 
-export default function LoginPageClient({ returnUrl }: LoginPageClientProps) {
+export default function LoginPageClient({ returnUrl, currentClubSlug }: LoginPageClientProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -49,7 +51,7 @@ export default function LoginPageClient({ returnUrl }: LoginPageClientProps) {
   return (
     <main className="flex min-h-screen flex-col items-center justify-center px-6">
       <Card className="w-full max-w-sm border-clay-400/30 p-6">
-        <p className="eyebrow-en text-clay-400">Mapo Cheongwoo Club</p>
+        <p className="eyebrow-en text-clay-400">{formatClubEyebrow(currentClubSlug)}</p>
         <h1 className="headline-kr mt-1 text-2xl text-line-900">회원 로그인</h1>
         <p className="mt-1 text-sm text-line-500">
           카카오 계정으로 로그인하면 내 회원 정보를 확인할 수 있어요.

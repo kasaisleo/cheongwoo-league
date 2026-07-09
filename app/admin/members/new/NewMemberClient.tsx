@@ -13,9 +13,12 @@ import {
 
 type FormType = "member" | "guest";
 
-interface Props { type: FormType; }
+interface Props {
+  type: FormType;
+  currentClubName?: string;
+}
 
-export function NewMemberClient({ type }: Props) {
+export function NewMemberClient({ type, currentClubName }: Props) {
   const router = useRouter();
   const isGuest = type === "guest";
 
@@ -30,7 +33,7 @@ export function NewMemberClient({ type }: Props) {
   const headline   = isGuest ? "게스트 등록" : "회원 등록";
   const desc       = isGuest
     ? "게스트 경기에 참여할 임시 회원 정보를 등록합니다."
-    : "청우회 리그에 참여할 회원 정보를 등록합니다.";
+    : `${currentClubName || "우리 클럽"}에 참여할 회원 정보를 등록합니다.`;
 
   function validate(): boolean {
     const e: Record<string, string> = {};

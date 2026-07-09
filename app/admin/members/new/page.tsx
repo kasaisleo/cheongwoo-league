@@ -1,6 +1,6 @@
 import { NewMemberClient } from "./NewMemberClient";
 import { GuestRegistrationForm } from "./GuestRegistrationForm";
-import { getCurrentClubId } from "@/lib/current-club";
+import { getCurrentClubId, getCurrentClub } from "@/lib/current-club";
 
 interface PageProps {
   searchParams: { type?: string };
@@ -13,5 +13,7 @@ export default async function NewMemberPage({ searchParams }: PageProps) {
     const currentClubId = await getCurrentClubId();
     return <GuestRegistrationForm currentClubId={currentClubId} />;
   }
-  return <NewMemberClient type="member" />;
+
+  const currentClub = await getCurrentClub();
+  return <NewMemberClient type="member" currentClubName={currentClub.name} />;
 }

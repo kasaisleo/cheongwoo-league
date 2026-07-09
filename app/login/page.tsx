@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentClub } from "@/lib/current-club";
 import LoginPageClient from "./LoginPageClient";
 
 /**
@@ -30,5 +31,7 @@ export default async function LoginPage({
   const { data: { user } } = await supabase.auth.getUser();
   if (user) redirect(safeReturn);
 
-  return <LoginPageClient returnUrl={safeReturn} />;
+  const currentClub = await getCurrentClub();
+
+  return <LoginPageClient returnUrl={safeReturn} currentClubSlug={currentClub.slug} />;
 }
