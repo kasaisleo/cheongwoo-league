@@ -42,7 +42,7 @@ export default async function CenterCourtPage() {
           <p className="eyebrow-en text-clay-400">Center Court</p>
           <h1 className="headline-kr text-4xl text-line-900">센터코트</h1>
         </div>
-        <div className="mt-1">
+        <div className="mt-1 flex items-center gap-2">
           <span className="rounded-sm border border-clay-400/30 bg-clay-400/10 px-2 py-0.5 text-[10px] font-semibold text-clay-400">
             {access.role === "owner"
               ? "Platform Owner"
@@ -50,6 +50,9 @@ export default async function CenterCourtPage() {
                 ? "Analyst"
                 : "Platform Admin"}
           </span>
+          {access.username && (
+            <span className="text-[10px] text-line-400">{access.username}</span>
+          )}
         </div>
       </header>
 

@@ -1,6 +1,6 @@
 import { requirePlatformAdminAccess } from "@/lib/platform-auth";
 
-export default async function CenterCourtLayout({
+export default async function CenterCourtProtectedLayout({
   children,
 }: {
   children: React.ReactNode;

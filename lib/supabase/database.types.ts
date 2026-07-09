@@ -216,11 +216,26 @@ export interface Guest {
 
 export interface PlatformAdmin {
   id: string;
-  auth_user_id: string;
+  username: string;
+  password_hash: string;
+  display_name: string | null;
   /** 'owner' | 'admin' | 'analyst' */
   role: string;
+  /** 'active' | 'inactive' */
+  status: string;
+  last_login_at: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface PlatformAdminSession {
+  id: string;
+  admin_id: string;
+  token_hash: string;
+  expires_at: string;
+  revoked_at: string | null;
+  last_seen_at: string | null;
+  created_at: string;
 }
 
 export interface SessionGuest {
@@ -316,8 +331,18 @@ export interface Database {
       };
       platform_admins: {
         Row: PlatformAdmin;
-        Insert: Partial<PlatformAdmin> & { auth_user_id: string };
+        Insert: Partial<PlatformAdmin> & { username: string; password_hash: string };
         Update: Partial<PlatformAdmin>;
+        Relationships: [];
+      };
+      platform_admin_sessions: {
+        Row: PlatformAdminSession;
+        Insert: Partial<PlatformAdminSession> & {
+          admin_id: string;
+          token_hash: string;
+          expires_at: string;
+        };
+        Update: Partial<PlatformAdminSession>;
         Relationships: [];
       };
     };
