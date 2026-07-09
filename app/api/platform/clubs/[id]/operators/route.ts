@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { getPlatformAdminSession } from "@/lib/platform-admin-session";
+import { recordPlatformAuditLog } from "@/lib/platform-audit-log";
 
 const OPERATOR_ROLES = new Set(["master", "admin", "manager"]);
 const ALLOWED_ROLES  = ["master", "admin", "manager", "member"] as const;
@@ -167,7 +168,24 @@ export async function PATCH(
 
   if (error) return NextResponse.json({ error: "db_error" }, { status: 500 });
 
-  // TODO CenterCourt-7C: platform audit log for club/operator changes
+  // Fetch club label for audit
+  const { data: clubRow } = await supabase
+    .from("clubs").select("name, slug").eq("id", clubId).maybeSingle();
+  const clubLabel = clubRow ? `${(clubRow as { name: string }).name} (/c/${(clubRow as { slug: string }).slug})` : clubId;
+
+  await recordPlatformAuditLog(session!, {
+    action:      "club.operator_role_change",
+    targetType:  "club_member",
+    targetId:    memberId,
+    targetLabel: member.name,
+    clubId,
+    metadata: {
+      club:     clubLabel,
+      member:   member.name,
+      from:     member.permission_role,
+      to:       newRole,
+    },
+  });
 
   return NextResponse.json({ member: updated });
 }

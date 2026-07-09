@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { getPlatformAdminSession } from "@/lib/platform-admin-session";
 import { createPlatformPasswordHash } from "@/lib/platform-password";
+import { recordPlatformAuditLog } from "@/lib/platform-audit-log";
 
 const SAFE_FIELDS =
   "id, username, display_name, role, status, last_login_at, created_at, updated_at";
@@ -76,6 +77,14 @@ export async function POST(req: NextRequest) {
     }
     return NextResponse.json({ error: "db_error" }, { status: 500 });
   }
+
+  await recordPlatformAuditLog(session!, {
+    action:      "platform_admin.create",
+    targetType:  "platform_admin",
+    targetId:    data.id,
+    targetLabel: data.username,
+    metadata:    { username: data.username, role: data.role },
+  });
 
   return NextResponse.json({ admin: data }, { status: 201 });
 }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { getPlatformAdminSession } from "@/lib/platform-admin-session";
+import { recordPlatformAuditLog } from "@/lib/platform-audit-log";
 
 const RESERVED_SLUGS = new Set([
   "admin", "center-court", "demo", "api", "login",
@@ -82,5 +83,18 @@ export async function PATCH(
     .single();
 
   if (error) return NextResponse.json({ error: "db_error" }, { status: 500 });
+
+  const isStatusOnly = Object.keys(patch).length === 1 && status !== undefined;
+  const action = isStatusOnly ? "club.status_change" : "club.update";
+
+  await recordPlatformAuditLog(session!, {
+    action,
+    targetType:  "club",
+    targetId:    data.id,
+    targetLabel: `${data.name} (/c/${data.slug})`,
+    clubId:      data.id,
+    metadata:    patch,
+  });
+
   return NextResponse.json({ club: data });
 }

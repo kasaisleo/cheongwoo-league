@@ -176,6 +176,12 @@ export function CenterCourtShell({ session, children }: Props) {
                   >
                     Club Registry
                   </HeaderNavLink>
+                  <HeaderNavLink
+                    href="/center-court/audit"
+                    active={pathname.startsWith("/center-court/audit")}
+                  >
+                    Audit Log
+                  </HeaderNavLink>
                   {session.role === "owner" && (
                     <HeaderNavLink
                       href="/center-court/platform-admins"
@@ -219,6 +225,13 @@ export function CenterCourtShell({ session, children }: Props) {
                   small
                 >
                   Clubs
+                </HeaderNavLink>
+                <HeaderNavLink
+                  href="/center-court/audit"
+                  active={pathname.startsWith("/center-court/audit")}
+                  small
+                >
+                  Audit
                 </HeaderNavLink>
                 {session.role === "owner" && (
                   <HeaderNavLink

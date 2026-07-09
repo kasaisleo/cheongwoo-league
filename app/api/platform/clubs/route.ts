@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { getPlatformAdminSession } from "@/lib/platform-admin-session";
+import { recordPlatformAuditLog } from "@/lib/platform-audit-log";
 
 const RESERVED_SLUGS = new Set([
   "admin", "center-court", "demo", "api", "login",
@@ -77,5 +78,15 @@ export async function POST(req: NextRequest) {
     .single();
 
   if (error) return NextResponse.json({ error: "db_error" }, { status: 500 });
+
+  await recordPlatformAuditLog(session!, {
+    action:      "club.create",
+    targetType:  "club",
+    targetId:    data.id,
+    targetLabel: `${data.name} (/c/${data.slug})`,
+    clubId:      data.id,
+    metadata:    { name: data.name, slug: data.slug, description: data.description },
+  });
+
   return NextResponse.json({ club: data }, { status: 201 });
 }
