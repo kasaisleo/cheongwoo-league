@@ -381,6 +381,76 @@ export function PlatformLandingClient({ clubs }: Props) {
                     Coming Soon
                   </span>
                 </div>
+
+                {/* ── TRY DEMO CTA ── */}
+                <Link
+                  href="/demo"
+                  className="sm-demo-cta"
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: 12,
+                    flexWrap: "wrap",
+                    marginTop: 10,
+                    borderRadius: 13,
+                    border: "1px solid rgba(196,181,253,0.18)",
+                    background:
+                      "linear-gradient(135deg, rgba(109,40,217,0.10) 0%, rgba(2,6,4,0.82) 100%)",
+                    backdropFilter: "blur(8px)",
+                    WebkitBackdropFilter: "blur(8px)",
+                    padding: "14px 18px",
+                    textDecoration: "none",
+                    transition: "border-color 0.15s, background 0.15s",
+                  }}
+                >
+                  <div>
+                    <p
+                      style={{
+                        color: "rgba(196,181,253,0.75)",
+                        fontSize: 8.5,
+                        fontWeight: 700,
+                        letterSpacing: "0.20em",
+                        textTransform: "uppercase",
+                        fontFamily: "Georgia, serif",
+                        marginBottom: 4,
+                      }}
+                    >
+                      Try Demo
+                    </p>
+                    <p
+                      style={{
+                        color: "rgba(245,240,232,0.55)",
+                        fontSize: 11,
+                        lineHeight: 1.5,
+                        marginBottom: 5,
+                      }}
+                    >
+                      Experience SUPER MATCH before creating a club.
+                    </p>
+                    <p style={{ color: "rgba(245,240,232,0.25)", fontSize: 10, lineHeight: 1.5 }}>
+                      체험 모드에서는 실제 클럽 데이터가 변경되지 않습니다.
+                      <br />
+                      생성한 데모 데이터는 최대 1시간 동안만 유지됩니다.
+                    </p>
+                  </div>
+                  <span
+                    style={{
+                      padding: "6px 14px",
+                      borderRadius: 7,
+                      border: "1px solid rgba(196,181,253,0.35)",
+                      background: "rgba(109,40,217,0.20)",
+                      color: "#c4b5fd",
+                      fontSize: 9,
+                      fontWeight: 700,
+                      letterSpacing: "0.14em",
+                      textTransform: "uppercase",
+                      flexShrink: 0,
+                    }}
+                  >
+                    Enter →
+                  </span>
+                </Link>
               </div>
             </div>
           </div>
@@ -608,6 +678,12 @@ function SmStyles() {
       .sm-club-row:hover .sm-enter-btn {
         background: rgba(109,40,217,0.30);
         border-color: rgba(139,92,246,0.6);
+      }
+
+      /* TRY DEMO CTA hover */
+      .sm-demo-cta:hover {
+        border-color: rgba(196,181,253,0.38) !important;
+        background: linear-gradient(135deg, rgba(109,40,217,0.18) 0%, rgba(2,6,4,0.88) 100%) !important;
       }
 
       /* Operator link hover */
