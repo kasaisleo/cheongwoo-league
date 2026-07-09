@@ -1,6 +1,13 @@
+import { redirect } from "next/navigation";
+import { getPlatformAdminSession } from "@/lib/platform-admin-session";
 import LoginPageClient from "./LoginPageClient";
 
-export default function CenterCourtLoginPage() {
+export default async function CenterCourtLoginPage() {
+  const session = await getPlatformAdminSession();
+  if (session) {
+    redirect("/center-court");
+  }
+
   return (
     <main className="flex min-h-screen flex-col items-center justify-center px-6">
       <div className="w-full max-w-sm">

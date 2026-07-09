@@ -75,7 +75,7 @@ export async function POST(req: NextRequest) {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
-    path: "/center-court",
+    path: "/",
     maxAge: PLATFORM_SESSION_MAX_AGE,
   });
   return res;
