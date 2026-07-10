@@ -1,16 +1,7 @@
-import { getCurrentClubId } from "@/lib/current-club";
+import { getAdminAccessServer } from "@/lib/admin-permissions";
 import AttendanceRecordsPageClient from "./AttendanceRecordsPageClient";
 
-/**
- * /admin/records/attendance — 서버 wrapper.
- *
- * 권한 검증(requireAdminAccess)은 app/admin/records/layout.tsx가 이미
- * 담당한다. 이 파일은 여기서 중복 호출하지 않고, selected_club_id 쿠키는
- * httpOnly라 클라이언트에서 직접 읽을 수 없으므로 서버에서
- * getCurrentClubId()로 확보한 뒤 클라이언트 컴포넌트에 prop으로 전달한다.
- * 기존 UI/로직은 AttendanceRecordsPageClient.tsx로 그대로 옮겨졌다(Phase 3D-10D).
- */
 export default async function AdminRecordsAttendancePage() {
-  const currentClubId = await getCurrentClubId();
-  return <AttendanceRecordsPageClient currentClubId={currentClubId} />;
+  const access = await getAdminAccessServer();
+  return <AttendanceRecordsPageClient currentClubId={access.clubId ?? ""} />;
 }

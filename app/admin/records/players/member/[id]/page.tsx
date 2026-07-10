@@ -2,7 +2,7 @@ import Link from "next/link";
 import { pct, fmtPct } from "@/lib/records/dashboardUtils";
 import { createClient } from "@/lib/supabase/server";
 import { MATCH_SESSION_DAY_LABEL } from "@/lib/match-session-label";
-import { getCurrentClubId } from "@/lib/current-club";
+import { getAdminAccessServer } from "@/lib/admin-permissions";
 
 // ── 매치명 헬퍼 ─────────────────────────────────────────────────
 function matchTitle(s: { session_day: string; title: string }) {
@@ -13,7 +13,8 @@ function matchTitle(s: { session_day: string; title: string }) {
 // ── 페이지 ──────────────────────────────────────────────────────
 export default async function MemberRecordPage({ params }: { params: { id: string } }) {
   const supabase = createClient();
-  const currentClubId = await getCurrentClubId();
+  const access = await getAdminAccessServer();
+  const currentClubId = access.clubId ?? "";
   const memberId = params.id;
   const today = new Date().toISOString().slice(0, 10);
 

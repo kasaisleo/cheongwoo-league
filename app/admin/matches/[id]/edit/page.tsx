@@ -2,21 +2,16 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { MATCH_SELECT_WITH_PLAYERS, toDisplayMatches } from "@/lib/match-display";
 import { EditMatchPageClient } from "./EditMatchPageClient";
-import { getCurrentClubId } from "@/lib/current-club";
+import { getAdminAccessServer } from "@/lib/admin-permissions";
 
-/**
- * /admin/matches/[id]/edit — 경기 수정 페이지 (서버 컴포넌트).
- *
- * 권한: layout.tsx requireAdminAccess() 가 서버에서 선처리.
- * 데이터: match id로 서버에서 조회 후 클라이언트 편집 UI로 전달.
- */
 interface PageProps {
   params: { id: string };
 }
 
 export default async function EditMatchPage({ params }: PageProps) {
   const supabase = createClient();
-  const currentClubId = await getCurrentClubId();
+  const access = await getAdminAccessServer();
+  const currentClubId = access.clubId ?? "";
 
   const { data: raw } = await supabase
     .from("matches")

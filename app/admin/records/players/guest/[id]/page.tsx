@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { MATCH_SESSION_DAY_LABEL } from "@/lib/match-session-label";
-import { getCurrentClubId } from "@/lib/current-club";
+import { getAdminAccessServer } from "@/lib/admin-permissions";
 
 export default async function GuestRecordPage({ params }: { params: { id: string } }) {
   const supabase = createClient();
-  const currentClubId = await getCurrentClubId();
+  const access = await getAdminAccessServer();
+  const currentClubId = access.clubId ?? "";
   const guestId = params.id;
 
   const [{ data: guest }, { data: allMatches }, { data: allSessions }, { data: allMembers }] = await Promise.all([

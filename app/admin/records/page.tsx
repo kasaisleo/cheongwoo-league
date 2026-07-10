@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { MATCH_SESSION_DAY_LABEL } from "@/lib/match-session-label";
 import { pct, fmtPct, buildRecordsDashboardSummary, buildManagementAlerts } from "@/lib/records/dashboardUtils";
 import type { MemberType } from "@/lib/supabase/database.types";
-import { getCurrentClubId } from "@/lib/current-club";
+import { getAdminAccessServer } from "@/lib/admin-permissions";
 
 function todayStr() {
   return new Date().toISOString().slice(0, 10);
@@ -36,7 +36,8 @@ function MemberTypeBadge({ isGuest, memberType }: { isGuest: boolean; memberType
 
 export default async function AdminRecordsPage() {
   const supabase = createClient();
-  const currentClubId = await getCurrentClubId();
+  const access = await getAdminAccessServer();
+  const currentClubId = access.clubId ?? "";
   const today = todayStr();
 
   const [

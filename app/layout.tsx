@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { headers } from "next/headers";
 import { BottomTabBar } from "@/components/layout/BottomTabBar";
 import { BrandHeader } from "@/components/layout/BrandHeader";
 import { MemberAuthBar } from "@/components/layout/MemberAuthBar";
@@ -42,15 +43,21 @@ export const viewport: Viewport = {
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const currentClubId = await getCurrentClubId();
+  const pathname = headers().get("x-pathname") ?? "";
+  const showPublicShell =
+    !pathname.startsWith("/admin") && !pathname.startsWith("/center-court");
+
+  const currentClubId = showPublicShell ? await getCurrentClubId() : "";
 
   return (
     <html lang="ko">
       <body className="font-body">
-        <BrandHeader />
-        <MemberAuthBar currentClubId={currentClubId} />
-        <div className="mx-auto min-h-screen max-w-md pb-20">{children}</div>
-        <BottomTabBar />
+        {showPublicShell && <BrandHeader />}
+        {showPublicShell && <MemberAuthBar currentClubId={currentClubId} />}
+        <div className={`mx-auto min-h-screen max-w-md${showPublicShell ? " pb-20" : ""}`}>
+          {children}
+        </div>
+        {showPublicShell && <BottomTabBar />}
         <ToastViewport />
       </body>
     </html>

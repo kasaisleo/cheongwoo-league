@@ -582,15 +582,21 @@ input[type="date"]::-webkit-calendar-picker-indicator {
  * ══════════════════════════════════════════════════════════════════ */
 [data-admin-skin="namaste"] .text-clay-400                    { color: var(--club-primary); }
 [data-admin-skin="namaste"] .bg-clay-400                      { background-color: var(--club-primary); }
+[data-admin-skin="namaste"] .bg-clay-400\/5                   { background-color: color-mix(in srgb, var(--club-primary)  5%, transparent); }
 [data-admin-skin="namaste"] .bg-clay-400\/10                  { background-color: color-mix(in srgb, var(--club-primary) 10%, transparent); }
 [data-admin-skin="namaste"] .bg-clay-400\/20                  { background-color: color-mix(in srgb, var(--club-primary) 20%, transparent); }
+[data-admin-skin="namaste"] .bg-clay-400\/30                  { background-color: color-mix(in srgb, var(--club-primary) 30%, transparent); }
 [data-admin-skin="namaste"] .bg-clay-400\/40                  { background-color: color-mix(in srgb, var(--club-primary) 40%, transparent); }
 [data-admin-skin="namaste"] .bg-clay-400\/50                  { background-color: color-mix(in srgb, var(--club-primary) 50%, transparent); }
 [data-admin-skin="namaste"] .border-clay-400                  { border-color: var(--club-primary); }
+[data-admin-skin="namaste"] .border-clay-400\/10              { border-color: color-mix(in srgb, var(--club-primary) 10%, transparent); }
+[data-admin-skin="namaste"] .border-clay-400\/20              { border-color: color-mix(in srgb, var(--club-primary) 20%, transparent); }
+[data-admin-skin="namaste"] .border-clay-400\/30              { border-color: color-mix(in srgb, var(--club-primary) 30%, transparent); }
 [data-admin-skin="namaste"] .border-clay-400\/40              { border-color: color-mix(in srgb, var(--club-primary) 40%, transparent); }
 [data-admin-skin="namaste"] .border-clay-400\/60              { border-color: color-mix(in srgb, var(--club-primary) 60%, transparent); }
 [data-admin-skin="namaste"] .border-l-clay-400                { border-left-color: var(--club-primary); }
 [data-admin-skin="namaste"] .hover\:text-clay-400:hover       { color: var(--club-primary); }
+[data-admin-skin="namaste"] .hover\:bg-clay-400\/10:hover     { background-color: color-mix(in srgb, var(--club-primary) 10%, transparent); }
 [data-admin-skin="namaste"] .hover\:bg-clay-400\/20:hover     { background-color: color-mix(in srgb, var(--club-primary) 20%, transparent); }
 [data-admin-skin="namaste"] .hover\:border-clay-400\/60:hover { border-color: color-mix(in srgb, var(--club-primary) 60%, transparent); }
 
