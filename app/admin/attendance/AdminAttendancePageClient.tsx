@@ -1,5 +1,6 @@
 "use client";
 
+import type { CSSProperties } from "react";
 import { Suspense, useEffect, useMemo, useState, useCallback } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -16,23 +17,15 @@ import TennisBallLoader from "@/components/common/TennisBallLoader";
 
 /**
  * /admin/attendance — 운영진 전용 출석 관리 페이지.
- *
- * Phase 2 이관: /attendance의 관리자 기능을 여기로 이동.
- *   - 매치 생성 (주간/커스텀)
- *   - 매치 완료 (closed)
- *   - 출석 수정 (완료된 매치 강제 수정)
- *   - 출석 현황 토글
- *
- * /attendance (회원용)는 이제 출석 신청 + 현황 조회만 담당한다.
  */
 
 const MIN_REQUIRED_PLAYERS = 4;
 
-const SESSION_TYPE_BADGE: Record<string, { label: string; cls: string }> = {
-  saturday: { label: "정기", cls: "border-clay-400/40 bg-clay-400/10 text-clay-400" },
-  sunday:   { label: "정기", cls: "border-clay-400/40 bg-clay-400/10 text-clay-400" },
-  holiday:  { label: "휴일", cls: "border-gold/40 bg-gold/10 text-gold" },
-  custom:   { label: "이벤트", cls: "border-line-300/40 bg-line-100 text-line-500" },
+const SESSION_TYPE_BADGE: Record<string, { label: string; style: CSSProperties }> = {
+  saturday: { label: "정기",   style: { borderColor: "var(--admin-accent)", background: "var(--admin-accent-soft)", color: "var(--admin-accent)" } },
+  sunday:   { label: "정기",   style: { borderColor: "var(--admin-accent)", background: "var(--admin-accent-soft)", color: "var(--admin-accent)" } },
+  holiday:  { label: "휴일",   style: { borderColor: "rgba(201,168,76,0.45)", background: "rgba(201,168,76,0.1)", color: "var(--admin-achievement)" } },
+  custom:   { label: "이벤트", style: { borderColor: "var(--admin-border)", background: "var(--admin-surface-raised, var(--admin-surface))", color: "var(--admin-muted)" } },
 };
 
 function todayString(): string {
@@ -50,9 +43,6 @@ function AdminAttendanceInner({ currentClubId }: { currentClubId: string }) {
   const initialSessionId = searchParams.get("session_id");
   const supabase = useMemo(() => createClient(), []);
 
-  // 권한 체크는 layout.tsx의 requireAdminAccess()가 서버에서 처리.
-  // 이 컴포넌트까지 도달했으면 이미 관리자 확인 완료.
-
   const [openSessions, setOpenSessions] = useState<AttendanceSession[]>([]);
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
   const [rows, setRows] = useState<MemberAttendance[]>([]);
@@ -66,8 +56,6 @@ function AdminAttendanceInner({ currentClubId }: { currentClubId: string }) {
   const [memberQuery, setMemberQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<AttendanceStatus | "all">("all");
 
-  
-  // 매치(출석 세션) 목록 로드
   useEffect(() => {
     let isCurrent = true;
     async function loadSessions() {
@@ -87,7 +75,6 @@ function AdminAttendanceInner({ currentClubId }: { currentClubId: string }) {
     return () => { isCurrent = false; };
   }, [supabase, initialSessionId, currentClubId]);
 
-  // 선택 세션의 명단 로드
   useEffect(() => {
     setEditingClosedSession(false);
     setMemberQuery("");
@@ -114,7 +101,6 @@ function AdminAttendanceInner({ currentClubId }: { currentClubId: string }) {
     return () => { isCurrent = false; };
   }, [selectedSessionId, supabase, currentClubId]);
 
-  // 출석 상태 변경 (운영진 전용 — closed 세션 포함)
   const updateStatus = useCallback(async (memberId: string, newStatus: AttendanceStatus) => {
     if (!selectedSessionId || !selectedSession) {
       toast.error("매치를 선택해주세요.");
@@ -173,7 +159,6 @@ function AdminAttendanceInner({ currentClubId }: { currentClubId: string }) {
   async function handleSessionStatusChange(sessionId: string, targetStatus: "closed" | "archived", closeMenu?: () => void) {
     closeMenu?.();
 
-    // 완료 처리 시 경기 기록 / 출석 후 미참여 사전 검수
     if (targetStatus === "closed") {
       const supabase = createClient();
       const [{ data: matchData }, { data: attendData }] = await Promise.all([
@@ -210,7 +195,6 @@ function AdminAttendanceInner({ currentClubId }: { currentClubId: string }) {
       if (!window.confirm("이 매치를 보관 처리할까요?")) return;
     }
 
-    // confirm 확인 후 실제 API 호출 시작 — 이때 overlay ON
     setProcessingSessionId(sessionId);
     setProcessingOverlay(
       targetStatus === "closed"
@@ -232,7 +216,7 @@ function AdminAttendanceInner({ currentClubId }: { currentClubId: string }) {
       window.location.reload();
     } finally {
       setProcessingSessionId(null);
-      setProcessingOverlay(null);  // 성공/실패 무관하게 반드시 해제
+      setProcessingOverlay(null);
     }
   }
 
@@ -241,7 +225,6 @@ function AdminAttendanceInner({ currentClubId }: { currentClubId: string }) {
   const absent = rows.filter((r) => r.status === "absent").length;
   const shortage = Math.max(0, MIN_REQUIRED_PLAYERS - attending);
   const selectedSession = openSessions.find((s) => s.id === selectedSessionId) ?? null;
-  const selectedSessionIsCustom = selectedSession?.session_day === "holiday" || selectedSession?.session_day === "custom";
 
   const filteredRows = rows.filter((row) => {
     const label = getDisambiguatedName(row.member, rows.map((r) => r.member));
@@ -250,18 +233,23 @@ function AdminAttendanceInner({ currentClubId }: { currentClubId: string }) {
     return matchesQuery && matchesStatus;
   });
 
-
+  const borderStyle: CSSProperties = { borderColor: "var(--admin-border)" };
+  const surfaceStyle: CSSProperties = { background: "var(--admin-surface)", borderColor: "var(--admin-border)" };
 
   return (
     <main className="px-4 pt-6 pb-28">
       {/* ── 헤더 ─────────────────────────────────────── */}
       <header className="mb-5 flex items-center justify-between">
         <div>
-          <p className="eyebrow-en text-clay-400">Admin · Attendance</p>
-          <h1 className="headline-kr text-4xl text-line-900">출석 관리</h1>
+          <p className="eyebrow-en text-[9px]" style={{ color: "var(--admin-muted)" }}>ATTENDANCE</p>
+          <h1 className="headline-kr text-4xl" style={{ color: "var(--admin-text)" }}>출석 관리</h1>
         </div>
         <div className="flex items-center gap-2">
-          <Link href="/admin" className="flex-shrink-0 whitespace-nowrap rounded-sm border border-line-200/40 px-2.5 py-1.5 text-xs font-semibold text-line-500 hover:text-line-700">
+          <Link
+            href="/admin"
+            className="flex-shrink-0 whitespace-nowrap rounded-[var(--admin-button-radius,6px)] border px-2.5 py-1.5 text-xs font-semibold transition-opacity hover:opacity-70"
+            style={{ borderColor: "var(--admin-border)", color: "var(--admin-muted)" }}
+          >
             ← 관리자
           </Link>
         </div>
@@ -269,32 +257,39 @@ function AdminAttendanceInner({ currentClubId }: { currentClubId: string }) {
 
       {/* ── 매치 선택 드롭다운 ───────────────────────── */}
       {loadingSessions ? (
-        <p className="text-center text-sm text-line-400">매치를 불러오는 중...</p>
+        <p className="text-center text-sm" style={{ color: "var(--admin-muted)" }}>매치를 불러오는 중...</p>
       ) : openSessions.length === 0 ? (
-        <div className="mb-4 rounded-[14px] border border-line-200/40 bg-line-50 p-8 text-center">
-          <p className="font-display text-xs font-bold uppercase tracking-widest text-line-500">No Matches</p>
-          <p className="mt-1 text-xs text-line-400">⚙ 메뉴에서 매치를 먼저 생성해주세요.</p>
+        <div className="mb-4 rounded-[var(--admin-card-radius,14px)] border p-8 text-center" style={surfaceStyle}>
+          <p className="font-display text-xs font-bold uppercase tracking-widest" style={{ color: "var(--admin-muted)" }}>
+            매치 없음
+          </p>
+          <p className="mt-1 text-xs" style={{ color: "var(--admin-muted)", opacity: 0.7 }}>
+            ⚙ 메뉴에서 매치를 먼저 생성해주세요.
+          </p>
         </div>
       ) : (
         <div className="mb-4">
           <Dropdown
             align="left"
-            triggerClassName="flex w-full items-center justify-between rounded-sm border border-line-200/40 bg-line-50 px-3 py-2.5"
+            triggerClassName="flex w-full items-center justify-between rounded-[var(--admin-button-radius,6px)] border border-[color:var(--admin-border)] bg-[color:var(--admin-surface)] px-3 py-2.5"
             trigger={
               <>
                 <span className="flex items-center gap-2">
-                  <span className="text-sm font-semibold text-line-900">
+                  <span className="text-sm font-semibold" style={{ color: "var(--admin-text)" }}>
                     {selectedSession
                       ? `${selectedSession.title} · ${selectedSession.session_date}`
                       : "매치 선택"}
                   </span>
                   {selectedSession && SESSION_TYPE_BADGE[selectedSession.session_day] && (
-                    <span className={`rounded-sm border px-1.5 py-0.5 text-[9px] font-semibold ${SESSION_TYPE_BADGE[selectedSession.session_day].cls}`}>
+                    <span
+                      className="rounded-sm border px-1.5 py-0.5 text-[9px] font-semibold"
+                      style={SESSION_TYPE_BADGE[selectedSession.session_day].style}
+                    >
                       {SESSION_TYPE_BADGE[selectedSession.session_day].label}
                     </span>
                   )}
                 </span>
-                <span className="text-xs text-line-500">▼</span>
+                <span className="text-xs" style={{ color: "var(--admin-muted)" }}>▼</span>
               </>
             }
           >
@@ -305,11 +300,11 @@ function AdminAttendanceInner({ currentClubId }: { currentClubId: string }) {
                   return (
                     <DropdownItem key={session.id} onClick={() => { setSelectedSessionId(session.id); close(); }}>
                       <div className="flex items-center gap-2">
-                        <span className={selectedSessionId === session.id ? "text-clay-400" : ""}>
+                        <span style={selectedSessionId === session.id ? { color: "var(--admin-accent)" } : { color: "var(--admin-text)" }}>
                           {session.title} · {session.session_date}
                         </span>
                         {badge && (
-                          <span className={`rounded-sm border px-1.5 py-0.5 text-[9px] font-semibold ${badge.cls}`}>
+                          <span className="rounded-sm border px-1.5 py-0.5 text-[9px] font-semibold" style={badge.style}>
                             {badge.label}
                           </span>
                         )}
@@ -323,60 +318,79 @@ function AdminAttendanceInner({ currentClubId }: { currentClubId: string }) {
         </div>
       )}
 
-
-
       {selectedSession && (
         <>
           {/* ── 통계 + 완료/수정 버튼 ─────────────────── */}
           <div className="mb-4">
             <div className="mb-2 flex items-center justify-between">
-              <p className="font-display text-[10px] font-bold uppercase tracking-widest text-line-500">
+              <p className="font-display text-[10px] font-bold uppercase tracking-widest" style={{ color: "var(--admin-muted)" }}>
                 출석 현황
                 {selectedSession.status === "closed" && (
-                  <span className={`ml-1.5 rounded-sm px-1.5 py-0.5 text-[9px] font-semibold ${
-                    editingClosedSession ? "bg-clay-400/10 text-clay-400" : "bg-line-200 text-line-500"
-                  }`}>
+                  <span
+                    className="ml-1.5 rounded-sm px-1.5 py-0.5 text-[9px] font-semibold"
+                    style={editingClosedSession
+                      ? { background: "var(--admin-accent-soft)", color: "var(--admin-accent)" }
+                      : { background: "var(--admin-surface-raised, var(--admin-surface))", color: "var(--admin-muted)" }
+                    }
+                  >
                     {editingClosedSession ? "수정 중" : "완료됨"}
                   </span>
                 )}
               </p>
-              {/* 매치 완료/수정 버튼 */}
               <div className="flex gap-1.5">
                 {selectedSession.status === "open" && (
-                  <Link href={`/matches/new?sessionId=${selectedSessionId}`}
-                    className="rounded-sm border border-line-200/40 px-2.5 py-1 text-[11px] font-semibold text-line-500 hover:text-line-700">
+                  <Link
+                    href={`/matches/new?sessionId=${selectedSessionId}`}
+                    className="rounded-sm border px-2.5 py-1 text-[11px] font-semibold transition-opacity hover:opacity-70"
+                    style={{ borderColor: "var(--admin-border)", color: "var(--admin-muted)" }}
+                  >
                     결과 입력
                   </Link>
                 )}
                 {selectedSession.status === "open" && (
-                  <button type="button"
+                  <button
+                    type="button"
                     disabled={processingSessionId === selectedSessionId}
                     onClick={() => handleSessionStatusChange(selectedSessionId!, "closed")}
-                    className="rounded-sm border border-clay-400/60 bg-clay-400/10 px-2.5 py-1 text-[11px] font-semibold text-clay-400 disabled:opacity-40">
+                    className="rounded-sm border border-clay-400/60 bg-clay-400/10 px-2.5 py-1 text-[11px] font-semibold text-clay-400 disabled:opacity-40"
+                  >
                     완료 처리
                   </button>
                 )}
                 {selectedSession.status === "closed" && !editingClosedSession && (
-                  <button type="button" onClick={() => setEditingClosedSession(true)}
-                    className="rounded-sm border border-clay-400/60 px-2.5 py-1 text-[11px] font-semibold text-clay-400">
+                  <button
+                    type="button"
+                    onClick={() => setEditingClosedSession(true)}
+                    className="rounded-sm border border-clay-400/60 px-2.5 py-1 text-[11px] font-semibold text-clay-400"
+                  >
                     출석 수정
                   </button>
                 )}
                 {selectedSession.status === "closed" && editingClosedSession && (
-                  <button type="button" onClick={() => setEditingClosedSession(false)}
-                    className="rounded-sm border border-line-200/40 px-2.5 py-1 text-[11px] font-semibold text-line-500">
+                  <button
+                    type="button"
+                    onClick={() => setEditingClosedSession(false)}
+                    className="rounded-sm border px-2.5 py-1 text-[11px] font-semibold transition-opacity hover:opacity-70"
+                    style={{ borderColor: "var(--admin-border)", color: "var(--admin-muted)" }}
+                  >
                     수정 완료
                   </button>
                 )}
                 {selectedSession.status === "closed" && (
-                  <Link href={`/matches/new?sessionId=${selectedSessionId}`}
-                    className="rounded-sm border border-line-200/40 px-2.5 py-1 text-[11px] font-semibold text-line-500 hover:text-line-700">
+                  <Link
+                    href={`/matches/new?sessionId=${selectedSessionId}`}
+                    className="rounded-sm border px-2.5 py-1 text-[11px] font-semibold transition-opacity hover:opacity-70"
+                    style={{ borderColor: "var(--admin-border)", color: "var(--admin-muted)" }}
+                  >
                     결과 입력
                   </Link>
                 )}
                 {selectedSession.status === "closed" && (
-                  <Link href="/admin/records/matches"
-                    className="rounded-sm border border-line-200/40 px-2.5 py-1 text-[11px] font-semibold text-line-500 hover:text-line-700">
+                  <Link
+                    href="/admin/records/matches"
+                    className="rounded-sm border px-2.5 py-1 text-[11px] font-semibold transition-opacity hover:opacity-70"
+                    style={{ borderColor: "var(--admin-border)", color: "var(--admin-muted)" }}
+                  >
                     기록 검수
                   </Link>
                 )}
@@ -384,63 +398,86 @@ function AdminAttendanceInner({ currentClubId }: { currentClubId: string }) {
             </div>
 
             {/* 통계 3단 */}
-            <div className="overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50">
-              <div className="grid grid-cols-3 divide-x divide-line-200/30">
-                <button type="button" onClick={() => setStatusFilter(statusFilter === "attending" ? "all" : "attending")}
-                  className={`rounded-none p-3 text-center transition-colors ${statusFilter === "attending" ? "border-gold bg-gold/10" : "border-line-200/40 bg-line-50"}`}>
-                  <p className="font-score text-2xl font-bold text-gold">{attending}</p>
-                  <p className="text-[9px] font-bold tracking-wide text-line-500">출석</p>
+            <div className="overflow-hidden rounded-[var(--admin-card-radius,14px)] border" style={surfaceStyle}>
+              <div className="grid grid-cols-3 divide-x divide-[color:var(--admin-border)]">
+                <button
+                  type="button"
+                  onClick={() => setStatusFilter(statusFilter === "attending" ? "all" : "attending")}
+                  className="rounded-none p-3 text-center transition-colors"
+                  style={statusFilter === "attending"
+                    ? { background: "rgba(201,168,76,0.1)", borderColor: "rgba(201,168,76,0.4)" }
+                    : undefined}
+                >
+                  <p className="font-score text-2xl font-bold" style={{ color: "var(--admin-achievement)" }}>{attending}</p>
+                  <p className="text-[9px] font-bold tracking-wide" style={{ color: "var(--admin-muted)" }}>출석</p>
                 </button>
-                <button type="button" onClick={() => setStatusFilter(statusFilter === "undecided" ? "all" : "undecided")}
-                  className={`rounded-none p-3 text-center transition-colors ${statusFilter === "undecided" ? "border-clay-400 bg-clay-400/10" : "border-line-200/40 bg-line-50"}`}>
+                <button
+                  type="button"
+                  onClick={() => setStatusFilter(statusFilter === "undecided" ? "all" : "undecided")}
+                  className="rounded-none p-3 text-center transition-colors"
+                  style={statusFilter === "undecided"
+                    ? { background: "var(--admin-accent-soft)", borderColor: "var(--admin-accent)" }
+                    : undefined}
+                >
                   <p className="font-score text-2xl font-bold text-clay-400">{undecided}</p>
-                  <p className="text-[9px] font-bold tracking-wide text-line-500">미정</p>
+                  <p className="text-[9px] font-bold tracking-wide" style={{ color: "var(--admin-muted)" }}>미정</p>
                 </button>
-                <button type="button" onClick={() => setStatusFilter(statusFilter === "absent" ? "all" : "absent")}
-                  className={`rounded-none p-3 text-center transition-colors ${statusFilter === "absent" ? "border-line-300 bg-line-200" : "border-line-200/40 bg-line-50"}`}>
-                  <p className="font-score text-2xl font-bold text-line-500">{absent}</p>
-                  <p className="text-[9px] font-bold tracking-wide text-line-500">불참</p>
+                <button
+                  type="button"
+                  onClick={() => setStatusFilter(statusFilter === "absent" ? "all" : "absent")}
+                  className="rounded-none p-3 text-center transition-colors"
+                  style={statusFilter === "absent"
+                    ? { background: "var(--admin-surface-raised, var(--admin-surface))", borderColor: "var(--admin-border-strong, var(--admin-border))" }
+                    : undefined}
+                >
+                  <p className="font-score text-2xl font-bold" style={{ color: "var(--admin-muted)" }}>{absent}</p>
+                  <p className="text-[9px] font-bold tracking-wide" style={{ color: "var(--admin-muted)" }}>불참</p>
                 </button>
               </div>
               {shortage > 0 && (
-                <div className="border-t border-line-200/30 px-4 py-2 text-center">
+                <div className="border-t px-4 py-2 text-center" style={borderStyle}>
                   <Badge tone="loss">{shortage}명 더 필요해요</Badge>
                 </div>
               )}
               {attending >= MIN_REQUIRED_PLAYERS && (
-                <div className="border-t border-line-200/30 px-4 py-2 text-center">
+                <div className="border-t px-4 py-2 text-center" style={borderStyle}>
                   <Badge tone="clay">복식 경기 가능</Badge>
                 </div>
               )}
             </div>
           </div>
 
-          {/* ── 게스트 참석자 (통계 아래, 출석 현황 위) ─ */}
+          {/* ── 게스트 참석자 */}
           {selectedSession.status !== "archived" && (
             <div className="mb-3">
-              <SessionGuestSection
-                sessionId={selectedSession.id}
-                editable={true}
-              />
+              <SessionGuestSection sessionId={selectedSession.id} editable={true} />
             </div>
           )}
 
           {/* ── 검색 + 필터 칩 ───────────────────────── */}
           <div className="mb-3 space-y-2">
-            <input value={memberQuery} onChange={(e) => setMemberQuery(e.target.value)}
+            <input
+              value={memberQuery}
+              onChange={(e) => setMemberQuery(e.target.value)}
               placeholder="이름 검색"
-              className="box-border block h-9 w-full rounded-sm border border-line-200/40 bg-line-50 px-3 text-sm text-line-900 placeholder:text-line-500" />
+              className="box-border block h-9 w-full rounded-[var(--admin-button-radius,6px)] border px-3 text-sm placeholder:[color:var(--admin-muted)]"
+              style={{ background: "var(--admin-surface)", borderColor: "var(--admin-border)", color: "var(--admin-text)" }}
+            />
             <div className="flex gap-1.5">
               {(["all", "attending", "undecided", "absent"] as const).map((f) => {
                 const LABELS: Record<string, string> = { all: "전체", attending: "출석", undecided: "미정", absent: "불참" };
                 const isActive = statusFilter === f;
                 return (
-                  <button key={f} type="button" onClick={() => setStatusFilter(f === "all" ? "all" : f as AttendanceStatus)}
-                    className={`rounded-sm border px-2.5 py-1 text-xs font-semibold transition-colors ${
-                      isActive
-                        ? "border-clay-400/60 bg-clay-400/10 text-clay-400"
-                        : "border-line-200/40 text-line-500"
-                    }`}>
+                  <button
+                    key={f}
+                    type="button"
+                    onClick={() => setStatusFilter(f === "all" ? "all" : f as AttendanceStatus)}
+                    className="rounded-[var(--admin-button-radius,6px)] border px-2.5 py-1 text-xs font-semibold transition-colors"
+                    style={isActive
+                      ? { borderColor: "var(--admin-accent)", background: "var(--admin-accent-soft)", color: "var(--admin-accent)" }
+                      : { borderColor: "var(--admin-border)", color: "var(--admin-muted)" }
+                    }
+                  >
                     {LABELS[f]}
                   </button>
                 );
@@ -450,30 +487,43 @@ function AdminAttendanceInner({ currentClubId }: { currentClubId: string }) {
 
           {/* ── 출석 현황 ──────────────────────────────── */}
           {loadingRows ? (
-            <p className="text-center text-sm text-line-400">출석 현황을 불러오는 중...</p>
+            <p className="text-center text-sm" style={{ color: "var(--admin-muted)" }}>출석 현황을 불러오는 중...</p>
           ) : (
-            <div className="overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50">
+            <div className="overflow-hidden rounded-[var(--admin-card-radius,14px)] border" style={surfaceStyle}>
               {filteredRows.length === 0 ? (
                 <div className="p-6 text-center">
-                  <p className="font-display text-[10px] font-bold uppercase tracking-widest text-line-500">No Results</p>
-                  <p className="mt-1 text-sm text-line-400">해당하는 회원이 없습니다.</p>
+                  <p className="font-display text-[10px] font-bold uppercase tracking-widest" style={{ color: "var(--admin-muted)" }}>
+                    결과 없음
+                  </p>
+                  <p className="mt-1 text-sm" style={{ color: "var(--admin-muted)", opacity: 0.7 }}>해당하는 회원이 없습니다.</p>
                 </div>
               ) : filteredRows.map((row, idx) => {
                 const isLast = idx === filteredRows.length - 1;
                 const label = getDisambiguatedName(row.member, rows.map((r) => r.member));
                 const isUpdating = updatingMemberId === row.member.id;
                 const isDisabled = (selectedSession.status === "closed" && !editingClosedSession) || selectedSession.status === "archived";
-                const accentColor =
-                  row.status === "attending" ? "border-l-gold"
-                  : row.status === "absent"   ? "border-l-line-300"
-                  : "border-l-clay-400";
+                const accentStyle: CSSProperties =
+                  row.status === "attending" ? { borderLeftColor: "var(--admin-achievement)" }
+                  : row.status === "absent"   ? { borderLeftColor: "var(--admin-muted)", opacity: 0.6 }
+                  : { borderLeftColor: "var(--admin-accent)" };
                 return (
-                  <div key={row.member.id}
-                    className={`flex items-center gap-3 border-l-4 ${accentColor} px-4 py-3 ${isLast ? "" : "border-b border-line-200/30"}`}>
+                  <div
+                    key={row.member.id}
+                    className="flex items-center gap-3 border-l-4 px-4 py-3"
+                    style={{
+                      ...accentStyle,
+                      ...(isLast ? {} : { borderBottom: "1px solid var(--admin-border)" }),
+                    }}
+                  >
                     <div className="min-w-0 flex-1">
-                      <p className="text-[15px] font-semibold leading-snug truncate text-line-900">{label}</p>
+                      <p className="truncate text-[15px] font-semibold leading-snug" style={{ color: "var(--admin-text)" }}>
+                        {label}
+                      </p>
                       {row.member.role && (
-                        <span className="rounded-sm bg-line-200 px-1.5 py-0.5 text-[9px] font-semibold text-line-600">
+                        <span
+                          className="rounded-sm px-1.5 py-0.5 text-[9px] font-semibold"
+                          style={{ background: "var(--admin-surface-raised, var(--admin-surface))", color: "var(--admin-muted)" }}
+                        >
                           {row.member.role}
                         </span>
                       )}
@@ -492,7 +542,6 @@ function AdminAttendanceInner({ currentClubId }: { currentClubId: string }) {
         </>
       )}
 
-      {/* ── 세션 완료/보관 처리 중 오버레이 (confirm 이후에만 표시) */}
       {processingOverlay && (
         <TennisBallLoader
           variant="overlay"

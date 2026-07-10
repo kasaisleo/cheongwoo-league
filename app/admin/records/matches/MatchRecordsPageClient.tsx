@@ -1,19 +1,21 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import type { CSSProperties } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { MATCH_SESSION_DAY_LABEL } from "@/lib/match-session-label";
 import { judgeMatchStatus, type MatchStatus } from "@/lib/records/matchStatus";
 import { pct, fmtPct } from "@/lib/records/dashboardUtils";
 import type { AttendanceStatus } from "@/lib/supabase/database.types";
 
 
-const STATUS_STYLE: Record<MatchStatus, string> = {
-  "정상":    "border-gold/40 bg-gold/10 text-gold",
-  "확인 필요": "border-clay-400/40 bg-clay-400/10 text-clay-400",
-  "기록 부족": "border-line-200/40 bg-line-200/40 text-line-500",
-  "완료 전":  "border-line-200/40 bg-line-50 text-line-400",
+const STATUS_STYLE: Record<MatchStatus, CSSProperties> = {
+  "정상":    { borderColor: "var(--admin-border)", background: "var(--admin-surface)", color: "var(--admin-muted)", opacity: 0.7 },
+  "확인 필요": { borderColor: "rgba(201,168,76,0.4)", background: "rgba(201,168,76,0.1)", color: "var(--admin-achievement)" },
+  "기록 부족": { borderColor: "rgba(212,120,60,0.4)", background: "rgba(212,120,60,0.1)", color: "#d4783c" },
+  "완료 전":  { borderColor: "var(--admin-border)", background: "var(--admin-surface-raised,var(--admin-surface))", color: "var(--admin-muted)" },
 };
 
 // ── 선수별 상태 ───────────────────────────────────────────────────
@@ -39,11 +41,11 @@ interface SessionSummary {
   attendingCount: number;
   absentCount: number;
   undecidedCount: number;
-  noResponseCount: number;    // 완료 매치 총 회원 - 응답자 수 (미출석)
-  gameParticipantIds: Set<string>;  // 경기 기록 등장 멤버
+  noResponseCount: number;
+  gameParticipantIds: Set<string>;
   gameParticipantCount: number;
-  noShowCount: number;        // 출석했지만 경기 기록 없는 인원
-  noShowMembers: string[];    // 해당 멤버 ID 목록
+  noShowCount: number;
+  noShowMembers: string[];
   matchStatus: MatchStatus;
 }
 
@@ -80,7 +82,6 @@ export default function MatchRecordsPageClient({ currentClubId }: { currentClubI
 
       const totalMembers = (members ?? []).length;
 
-      // session별 attendance 맵
       const attendBySession = new Map<string, { member_id: string; status: AttendanceStatus }[]>();
       for (const row of allAttendance ?? []) {
         if (!row.session_id) continue;
@@ -88,7 +89,6 @@ export default function MatchRecordsPageClient({ currentClubId }: { currentClubI
         attendBySession.get(row.session_id)!.push({ member_id: row.member_id, status: row.status as AttendanceStatus });
       }
 
-      // session별 경기 참여자 맵
       const participantsBySession = new Map<string, Set<string>>();
       for (const m of allMatches ?? []) {
         if (!m.session_id) continue;
@@ -98,7 +98,6 @@ export default function MatchRecordsPageClient({ currentClubId }: { currentClubI
           .filter(Boolean).forEach((id) => s.add(id!));
       }
 
-      // session별 경기 수
       const gameCountBySession = new Map<string, number>();
       for (const m of allMatches ?? []) {
         if (!m.session_id) continue;
@@ -117,7 +116,6 @@ export default function MatchRecordsPageClient({ currentClubId }: { currentClubI
         const participants = participantsBySession.get(session.id) ?? new Set<string>();
         const gameCount = gameCountBySession.get(session.id) ?? 0;
 
-        // 출석 후 미참여: attending이지만 경기 슬롯에 없는 인원
         const noShowMembers = attendRows
           .filter((r) => r.status === "attending" && !participants.has(r.member_id))
           .map((r) => r.member_id);
@@ -140,18 +138,17 @@ export default function MatchRecordsPageClient({ currentClubId }: { currentClubI
       });
 
       setSummaries(result);
+      setTotalMembersCount(totalMembers);
       setLoading(false);
     }
     load();
   }, [supabase, currentClubId]);
 
-  // 상세 펼칠 때 선수별 상태 계산
   async function toggleExpand(sid: string, summary: SessionSummary) {
     if (expandedId === sid) { setExpandedId(null); setPlayerRows([]); return; }
     setExpandedId(sid);
     setLoadingDetail(true);
 
-    // 해당 세션 attendance 재조회
     const { data: attendRows } = await supabase
       .from("attendance").select("member_id, status").eq("session_id", sid);
     const { data: sessionMembers } = await supabase
@@ -172,13 +169,11 @@ export default function MatchRecordsPageClient({ currentClubId }: { currentClubI
       } else if (attendStatus === "absent" || attendStatus === "undecided") {
         status = "미참여";
       } else {
-        // 응답 없음
         status = summary.isCompleted ? "미출석" : "미참여";
       }
       return { memberId: m.id, name: m.name, status };
     });
 
-    // 경기 참여 → 출석 후 미참여 → 미참여 → 미출석 순
     const ORDER: Record<PlayerStatus, number> = { "경기 참여": 0, "출석 후 미참여": 1, "미참여": 2, "미출석": 3 };
     rows.sort((a, b) => ORDER[a.status] - ORDER[b.status] || a.name.localeCompare(b.name, "ko"));
 
@@ -191,108 +186,99 @@ export default function MatchRecordsPageClient({ currentClubId }: { currentClubI
     return (s.session_day === "holiday" || s.session_day === "custom") ? `${base} · ${s.title}` : base;
   }
 
-  const PLAYER_STATUS_STYLE: Record<PlayerStatus, string> = {
-    "경기 참여":    "text-gold",
-    "출석 후 미참여": "text-clay-400",
-    "미참여":      "text-line-400",
-    "미출석":      "text-line-300",
+  const PLAYER_STATUS_STYLE: Record<PlayerStatus, CSSProperties> = {
+    "경기 참여":    { color: "var(--admin-achievement)" },
+    "출석 후 미참여": { color: "#d4783c" },
+    "미참여":      { color: "var(--admin-muted)", opacity: 0.7 },
+    "미출석":      { color: "var(--admin-muted)", opacity: 0.5 },
   };
 
   const STATUS_FILTERS: (MatchStatus | "전체")[] = ["전체", "확인 필요", "기록 부족", "완료 전", "정상"];
 
   const filtered = filterStatus === "전체" ? summaries : summaries.filter((s) => s.matchStatus === filterStatus);
 
+  const cardStyle = { borderColor: "var(--admin-border)", background: "var(--admin-surface)" };
+
   return (
     <main className="px-4 pt-6 pb-28">
-
-      {/* 헤더 */}
-      <header className="mb-4 flex items-center justify-between">
-        <div>
-          <p className="eyebrow-en text-clay-400">Admin · Records</p>
-          <h1 className="headline-kr text-4xl text-line-900">경기 검수</h1>
-          <p className="mt-1 max-w-[280px] break-keep text-xs leading-relaxed text-line-500">경기 기록 누락과 이상을 검수합니다.</p>
-        </div>
-        <Link href="/admin/records" className="flex-shrink-0 whitespace-nowrap rounded-sm border border-line-200/40 px-2.5 py-1.5 text-xs font-semibold text-line-500 hover:text-line-700">
-          ← 기록 대시보드
-        </Link>
-      </header>
+      <AdminPageHeader
+        title="경기 검수"
+        description="경기 기록 누락과 이상을 검수합니다."
+        backHref="/admin/records"
+      />
 
       {/* 상태 필터 */}
       <div className="mb-4 flex flex-wrap gap-1.5">
         {STATUS_FILTERS.map((f) => (
           <button key={f} type="button" onClick={() => setFilterStatus(f)}
-            className={`rounded-sm border px-2.5 py-1 text-xs font-semibold transition-colors ${
-              filterStatus === f
-                ? "border-clay-400/60 bg-clay-400/10 text-clay-400"
-                : "border-line-200/40 text-line-500 hover:border-line-300"
-            }`}>
+            className="rounded-sm border px-2.5 py-1 text-xs font-semibold transition-colors"
+            style={filterStatus === f
+              ? { borderColor: "rgba(201,168,76,0.6)", background: "rgba(201,168,76,0.1)", color: "var(--admin-achievement)" }
+              : { borderColor: "var(--admin-border)", color: "var(--admin-muted)" }}>
             {f}
           </button>
         ))}
       </div>
 
       {loading ? (
-        <p className="text-center text-sm text-line-400">불러오는 중...</p>
+        <p className="text-center text-sm" style={{ color: "var(--admin-muted)" }}>불러오는 중...</p>
       ) : filtered.length === 0 ? (
-        <div className="rounded-[14px] border border-line-200/40 bg-line-50 p-6 text-center">
-          <p className="text-sm text-line-400">해당 상태의 매치가 없어요.</p>
+        <div className="rounded-[var(--admin-card-radius,14px)] border p-6 text-center" style={cardStyle}>
+          <p className="text-sm" style={{ color: "var(--admin-muted)" }}>해당 상태의 매치가 없어요.</p>
         </div>
       ) : (
         <div className="space-y-2">
           {filtered.map((s) => (
-            <div key={s.session.id} className="overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50">
+            <div key={s.session.id} className="overflow-hidden rounded-[var(--admin-card-radius,14px)] border" style={cardStyle}>
 
               {/* 카드 헤더 */}
               <button type="button" onClick={() => toggleExpand(s.session.id, s)}
-                className="flex w-full items-start justify-between px-4 py-3 text-left transition-colors hover:bg-line-100/40">
+                className="flex w-full items-start justify-between px-4 py-3 text-left transition-colors hover:bg-[color:var(--admin-surface-raised,var(--admin-surface))]">
                 <div className="min-w-0 flex-1">
-                  {/* 날짜 + 상태 배지 */}
                   <div className="mb-1 flex items-center gap-2">
-                    <span className="font-score text-[10px] font-bold tabular-nums text-line-400">
+                    <span className="font-score text-[10px] font-bold tabular-nums" style={{ color: "var(--admin-muted)" }}>
                       {s.session.session_date}
                     </span>
-                    <span className={`rounded-sm border px-1.5 py-0.5 text-[9px] font-semibold ${STATUS_STYLE[s.matchStatus]}`}>
+                    <span className="rounded-sm border px-1.5 py-0.5 text-[9px] font-semibold" style={STATUS_STYLE[s.matchStatus]}>
                       {s.matchStatus}
                     </span>
                   </div>
-                  {/* 매치명 */}
-                  <p className="text-[15px] font-semibold leading-snug text-line-900">{sessionTitle(s.session)}</p>
-                  {/* 요약 수치 */}
+                  <p className="text-[15px] font-semibold leading-snug" style={{ color: "var(--admin-text)" }}>{sessionTitle(s.session)}</p>
                   <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px]">
-                    <span className="text-gold">{s.gameParticipantCount}명 경기 참여</span>
-                    <span className="text-line-500">{s.gameCount}경기</span>
+                    <span style={{ color: "var(--admin-achievement)" }}>{s.gameParticipantCount}명 경기 참여</span>
+                    <span style={{ color: "var(--admin-muted)" }}>{s.gameCount}경기</span>
                     {s.noShowCount > 0 && (
-                      <span className="text-clay-400">출석 후 미참여 {s.noShowCount}명</span>
+                      <span style={{ color: "#d4783c" }}>출석 후 미참여 {s.noShowCount}명</span>
                     )}
                     {s.noResponseCount > 0 && (
-                      <span className="text-line-400">미출석 {s.noResponseCount}명</span>
+                      <span style={{ color: "var(--admin-muted)", opacity: 0.6 }}>미출석 {s.noResponseCount}명</span>
                     )}
                     {!s.isCompleted && (
-                      <span className="text-line-400">진행 중</span>
+                      <span style={{ color: "var(--admin-muted)" }}>진행 중</span>
                     )}
                   </div>
                 </div>
-                {/* 경기 결과 입력 */}
                 <div className="ml-3 flex flex-shrink-0 flex-col items-end gap-1.5">
                   {s.isCompleted && s.gameCount === 0 && (
                     <Link href={`/admin/matches/new?sessionId=${s.session.id}`}
-                      className="rounded-sm border border-clay-400/60 bg-clay-400/10 px-2 py-0.5 text-[10px] font-semibold text-clay-400 hover:bg-clay-400/20"
+                      className="rounded-sm border px-2 py-0.5 text-[10px] font-semibold transition-colors"
+                      style={{ borderColor: "rgba(212,120,60,0.6)", background: "rgba(212,120,60,0.1)", color: "#d4783c" }}
                       onClick={(e) => e.stopPropagation()}>
                       결과 입력
                     </Link>
                   )}
-                  <span className="text-[10px] text-line-400">{expandedId === s.session.id ? "▲" : "▼"}</span>
+                  <span className="text-[10px]" style={{ color: "var(--admin-muted)" }}>{expandedId === s.session.id ? "▲" : "▼"}</span>
                 </div>
               </button>
 
               {/* 출석 통계 바 */}
-              <div className="border-t border-line-200/30 px-4 py-2">
+              <div className="border-t px-4 py-2" style={{ borderColor: "var(--admin-border)" }}>
                 <div className="flex items-center gap-3 text-[10px]">
-                  <span className="text-gold">출석 {s.attendingCount}</span>
-                  <span className="text-clay-400">미정 {s.undecidedCount}</span>
-                  <span className="text-line-400">불참 {s.absentCount}</span>
-                  <span className="text-line-300">미응답 {s.noResponseCount}</span>
-                  <span className="ml-auto text-line-500">
+                  <span style={{ color: "var(--admin-achievement)" }}>출석 {s.attendingCount}</span>
+                  <span style={{ color: "#d4783c" }}>미정 {s.undecidedCount}</span>
+                  <span style={{ color: "var(--admin-muted)", opacity: 0.7 }}>불참 {s.absentCount}</span>
+                  <span style={{ color: "var(--admin-muted)", opacity: 0.5 }}>미응답 {s.noResponseCount}</span>
+                  <span className="ml-auto" style={{ color: "var(--admin-muted)" }}>
                     출석 체크율 {fmtPct(pct(s.attendingCount + s.absentCount + s.undecidedCount, totalMembersCount))}
                   </span>
                 </div>
@@ -300,28 +286,27 @@ export default function MatchRecordsPageClient({ currentClubId }: { currentClubI
 
               {/* 상세 — 선수별 상태 */}
               {expandedId === s.session.id && (
-                <div className="border-t border-line-200/30 px-4 pb-3 pt-2">
+                <div className="border-t px-4 pb-3 pt-2" style={{ borderColor: "var(--admin-border)" }}>
                   {loadingDetail ? (
-                    <p className="py-2 text-center text-sm text-line-400">불러오는 중...</p>
+                    <p className="py-2 text-center text-sm" style={{ color: "var(--admin-muted)" }}>불러오는 중...</p>
                   ) : (
                     <>
-                      <p className="mb-2 font-display text-[9px] font-bold uppercase tracking-widest text-line-500">
+                      <p className="mb-2 font-display text-[9px] font-bold uppercase tracking-widest" style={{ color: "var(--admin-muted)" }}>
                         선수별 상태 ({playerRows.length}명)
                       </p>
                       <div className="space-y-0.5">
                         {playerRows.map((r) => (
                           <div key={r.memberId} className="flex items-center justify-between py-1">
-                            <span className="text-[14px] font-semibold text-line-900">{r.name}</span>
-                            <span className={`text-[11px] font-semibold ${PLAYER_STATUS_STYLE[r.status]}`}>
+                            <span className="text-[14px] font-semibold" style={{ color: "var(--admin-text)" }}>{r.name}</span>
+                            <span className="text-[11px] font-semibold" style={PLAYER_STATUS_STYLE[r.status]}>
                               {r.status}
                             </span>
                           </div>
                         ))}
                       </div>
-                      {/* 빠른 링크 */}
                       {s.gameCount > 0 && (
-                        <div className="mt-3 border-t border-line-200/20 pt-2">
-                          <Link href="/admin/matches" className="text-[10px] font-semibold text-line-500 hover:text-clay-400">
+                        <div className="mt-3 border-t pt-2" style={{ borderColor: "var(--admin-border)" }}>
+                          <Link href="/admin/matches" className="text-[10px] font-semibold transition-colors hover:text-[color:var(--admin-text)]" style={{ color: "var(--admin-muted)" }}>
                             경기 기록 관리 →
                           </Link>
                         </div>

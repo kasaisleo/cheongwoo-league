@@ -37,7 +37,7 @@ export function DeleteMatchButton({ matchId, playedAt }: DeleteMatchButtonProps)
   if (confirming) {
     return (
       <div className="flex items-center gap-1.5">
-        <span className="text-[10px] text-line-500">삭제할까요?</span>
+        <span className="text-[10px]" style={{ color: "var(--admin-muted)" }}>삭제할까요?</span>
         <button
           type="button"
           disabled={deleting}
@@ -50,7 +50,7 @@ export function DeleteMatchButton({ matchId, playedAt }: DeleteMatchButtonProps)
           type="button"
           disabled={deleting}
           onClick={() => setConfirming(false)}
-          className="rounded-sm border border-line-200/40 px-2 py-0.5 text-[10px] font-semibold text-line-500"
+          className="rounded-sm border border-[color:var(--admin-border)] px-2 py-0.5 text-[10px] font-semibold text-[color:var(--admin-muted)] transition-colors hover:border-[color:var(--admin-border-strong)]"
         >
           취소
         </button>
@@ -62,7 +62,7 @@ export function DeleteMatchButton({ matchId, playedAt }: DeleteMatchButtonProps)
     <button
       type="button"
       onClick={() => setConfirming(true)}
-      className="rounded-sm border border-line-200/40 px-2 py-0.5 text-[10px] font-semibold text-line-400 hover:border-fault-400/60 hover:text-fault-400"
+      className="rounded-sm border border-[color:var(--admin-border)] px-2 py-0.5 text-[10px] font-semibold text-[color:var(--admin-muted)] transition-colors hover:border-fault-400/60 hover:text-fault-400"
     >
       삭제
     </button>

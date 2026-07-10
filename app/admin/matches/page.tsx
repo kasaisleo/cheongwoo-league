@@ -2,12 +2,12 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { MATCH_SELECT_WITH_PLAYERS, toDisplayMatches } from "@/lib/match-display";
 import { getAdminAccessServer } from "@/lib/admin-permissions";
+import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { SessionMatchCard, type SessionGroup } from "./SessionMatchCard";
 import type { SessionDay } from "@/lib/supabase/database.types";
 
 /**
  * /admin/matches — 매치별 경기 히스토리 관리 허브.
- * 세션(매치) 단위로 먼저 보여주고, 각 매치 카드 안에서 경기 히스토리를 펼쳐 볼 수 있다.
  */
 
 const SESSION_FILTERS = [
@@ -28,7 +28,6 @@ export default async function AdminMatchesPage({ searchParams }: PageProps) {
   const access = await getAdminAccessServer();
   const supabase = createClient();
   const currentClubId = access.clubId ?? "";
-  const today = new Date().toISOString().slice(0, 10);
 
   const rawType = searchParams.sessionType ?? "all";
   const sessionType = VALID_SESSION_TYPES.includes(rawType as SessionDay)
@@ -49,7 +48,6 @@ export default async function AdminMatchesPage({ searchParams }: PageProps) {
   const { data: sessions } = await sessionQuery;
   const sessionList = sessions ?? [];
 
-  // 검색 (매치명, 날짜)
   const filteredSessions = q
     ? sessionList.filter((s) =>
         s.title.toLowerCase().includes(q.toLowerCase()) ||
@@ -59,7 +57,6 @@ export default async function AdminMatchesPage({ searchParams }: PageProps) {
 
   const sessionIds = filteredSessions.map((s) => s.id);
 
-  // ── 해당 세션들의 경기 목록 ────────────────────────────────────
   const { data: rawMatches } = sessionIds.length > 0
     ? await supabase
         .from("matches")
@@ -68,7 +65,6 @@ export default async function AdminMatchesPage({ searchParams }: PageProps) {
         .order("played_at", { ascending: true })
     : { data: [] };
 
-  // 선수명 검색 포함
   let matchList = toDisplayMatches(rawMatches ?? []);
   if (q) {
     const playerMatch = matchList.filter((m) =>
@@ -76,9 +72,7 @@ export default async function AdminMatchesPage({ searchParams }: PageProps) {
         p.name.toLowerCase().includes(q.toLowerCase())
       )
     );
-    // 선수명으로도 매치를 찾으면 해당 세션 ID 추가
     const extraSessionIds = new Set(playerMatch.map((m) => m.session_id).filter(Boolean));
-    // 기존 filteredSessions에서 해당 세션도 포함
     const extraSessions = (sessions ?? []).filter(
       (s) => extraSessionIds.has(s.id) && !filteredSessions.find((f) => f.id === s.id)
     );
@@ -86,7 +80,6 @@ export default async function AdminMatchesPage({ searchParams }: PageProps) {
     filteredSessions.sort((a, b) => b.session_date.localeCompare(a.session_date));
   }
 
-  // 세션별 경기 그룹핑
   const matchesBySession = new Map<string, typeof matchList>();
   for (const m of matchList) {
     if (!m.session_id) continue;
@@ -94,7 +87,6 @@ export default async function AdminMatchesPage({ searchParams }: PageProps) {
     matchesBySession.get(m.session_id)!.push(m);
   }
 
-  // ── 출석 현황 ─────────────────────────────────────────────────
   const allIds = filteredSessions.map((s) => s.id);
   const { data: attendRows } = allIds.length > 0
     ? await supabase
@@ -103,7 +95,6 @@ export default async function AdminMatchesPage({ searchParams }: PageProps) {
         .in("session_id", allIds)
     : { data: [] };
 
-  // 총 회원 수 (미응답 계산용)
   const { count: totalMembers } = await supabase
     .from("members")
     .select("id", { count: "exact", head: true })
@@ -120,7 +111,6 @@ export default async function AdminMatchesPage({ searchParams }: PageProps) {
     attendBySession.set(row.session_id, cur);
   }
 
-  // ── SessionGroup 조합 ─────────────────────────────────────────
   const groups: SessionGroup[] = filteredSessions.map((s) => {
     const attend = attendBySession.get(s.id) ?? { attending: 0, undecided: 0, absent: 0 };
     const responded = attend.attending + attend.undecided + attend.absent;
@@ -150,23 +140,16 @@ export default async function AdminMatchesPage({ searchParams }: PageProps) {
   return (
     <main className="px-4 pt-6 pb-28">
 
-      {/* ── 헤더 */}
-      <header className="mb-5 flex items-center justify-between">
-        <div>
-          <p className="eyebrow-en text-clay-400">Admin · Matches</p>
-          <h1 className="headline-kr text-4xl text-line-900">경기 관리</h1>
-        </div>
-        <Link href="/admin"
-          className="flex-shrink-0 whitespace-nowrap rounded-sm border border-line-200/40 px-2.5 py-1.5 text-xs font-semibold text-line-500 hover:text-line-700">
-          ← 관리자
-        </Link>
-      </header>
-      <p className="mb-4 max-w-[280px] break-keep text-xs leading-relaxed text-line-500">매치별 경기 히스토리와 결과를 관리합니다.</p>
+      <AdminPageHeader
+        eyebrow="MATCHES"
+        title="경기 관리"
+        description="매치별 경기 히스토리와 결과를 관리합니다."
+      />
 
       {/* ── 매치 생성 버튼 */}
       <div className="mb-5">
         <Link href="/admin/matches/create"
-          className="inline-flex items-center rounded-sm border border-clay-400/60 bg-clay-400/10 px-3 py-2 text-sm font-semibold text-clay-400 hover:bg-clay-400/20">
+          className="inline-flex items-center rounded-[var(--admin-button-radius,6px)] border border-clay-400/60 bg-clay-400/10 px-3 py-2 text-sm font-semibold text-clay-400 hover:bg-clay-400/20">
           + 매치 생성
         </Link>
       </div>
@@ -181,11 +164,14 @@ export default async function AdminMatchesPage({ searchParams }: PageProps) {
             if (q) fp.set("q", q); else fp.delete("q");
             return (
               <Link key={f.key} href={`/admin/matches?${fp.toString()}`}>
-                <span className={`rounded-sm border px-2.5 py-1 text-xs font-semibold transition-colors ${
-                  isActive
-                    ? "border-clay-400/60 bg-clay-400/10 text-clay-400"
-                    : "border-line-200/40 bg-line-50 text-line-500 hover:border-line-300"
-                }`}>
+                <span
+                  className="rounded-[var(--admin-button-radius,6px)] border px-2.5 py-1 text-xs font-semibold transition-colors"
+                  style={
+                    isActive
+                      ? { borderColor: "var(--admin-accent)", background: "var(--admin-accent-soft)", color: "var(--admin-accent)" }
+                      : { borderColor: "var(--admin-border)", background: "var(--admin-surface)", color: "var(--admin-muted)" }
+                  }
+                >
                   {f.label}
                 </span>
               </Link>
@@ -194,20 +180,31 @@ export default async function AdminMatchesPage({ searchParams }: PageProps) {
         </div>
       </section>
 
-      {/* ── 검색 (매치명 / 날짜 / 선수명) */}
+      {/* ── 검색 */}
       <section className="mb-5">
         <form method="GET" action="/admin/matches">
           {sessionType && <input type="hidden" name="sessionType" value={sessionType} />}
           <div className="flex gap-2">
-            <input name="q" defaultValue={q} placeholder="매치명 · 날짜 · 선수명 검색"
-              className="h-9 flex-1 rounded-sm border border-line-200/40 bg-line-50 px-3 text-sm text-line-900 placeholder:text-line-500" />
-            <button type="submit"
-              className="rounded-sm border border-line-200/40 px-3 text-xs font-semibold text-line-600">
+            <input
+              name="q"
+              defaultValue={q}
+              placeholder="매치명 · 날짜 · 선수명 검색"
+              className="h-9 flex-1 rounded-[var(--admin-button-radius,6px)] border px-3 text-sm placeholder:[color:var(--admin-muted)]"
+              style={{ background: "var(--admin-surface)", borderColor: "var(--admin-border)", color: "var(--admin-text)" }}
+            />
+            <button
+              type="submit"
+              className="rounded-[var(--admin-button-radius,6px)] border px-3 text-xs font-semibold"
+              style={{ borderColor: "var(--admin-border)", color: "var(--admin-muted)" }}
+            >
               검색
             </button>
             {q && (
-              <Link href={`/admin/matches${sessionType ? `?sessionType=${sessionType}` : ""}`}
-                className="flex items-center rounded-sm border border-line-200/40 px-3 text-xs font-semibold text-line-500">
+              <Link
+                href={`/admin/matches${sessionType ? `?sessionType=${sessionType}` : ""}`}
+                className="flex items-center rounded-[var(--admin-button-radius,6px)] border px-3 text-xs font-semibold"
+                style={{ borderColor: "var(--admin-border)", color: "var(--admin-muted)" }}
+              >
                 초기화
               </Link>
             )}
@@ -218,22 +215,27 @@ export default async function AdminMatchesPage({ searchParams }: PageProps) {
       {/* ── 매치 카드 목록 */}
       <section>
         <div className="mb-3 flex items-center justify-between">
-          <p className="font-display text-[10px] font-bold uppercase tracking-widest text-line-500">
+          <p className="font-display text-[10px] font-bold uppercase tracking-widest" style={{ color: "var(--admin-muted)" }}>
             매치 목록
-            <span className="ml-1.5 text-line-400">({groups.length})</span>
+            <span className="ml-1.5" style={{ color: "var(--admin-muted)", opacity: 0.6 }}>({groups.length})</span>
           </p>
         </div>
 
         {groups.length === 0 ? (
-          <div className="rounded-[14px] border border-line-200/40 bg-line-50 p-8 text-center">
-            <p className="font-display text-[10px] font-bold uppercase tracking-widest text-line-500">
-              No Sessions
+          <div
+            className="rounded-[var(--admin-card-radius,14px)] border p-8 text-center"
+            style={{ background: "var(--admin-surface)", borderColor: "var(--admin-border)" }}
+          >
+            <p className="font-display text-[10px] font-bold uppercase tracking-widest" style={{ color: "var(--admin-muted)" }}>
+              매치 없음
             </p>
-            <p className="mt-1 text-sm text-line-500">
+            <p className="mt-1 text-sm" style={{ color: "var(--admin-muted)" }}>
               {q ? `"${q}" 검색 결과가 없어요.` : "등록된 매치가 없어요."}
             </p>
-            <Link href="/admin/matches/create"
-              className="mt-3 inline-block rounded-sm border border-clay-400/60 px-3 py-1.5 text-xs font-semibold text-clay-400">
+            <Link
+              href="/admin/matches/create"
+              className="mt-3 inline-block rounded-[var(--admin-button-radius,6px)] border border-clay-400/60 px-3 py-1.5 text-xs font-semibold text-clay-400"
+            >
               매치 생성 →
             </Link>
           </div>

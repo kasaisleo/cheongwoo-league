@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import type { CSSProperties } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { MATCH_SESSION_DAY_LABEL } from "@/lib/match-session-label";
 import { pct, fmtPct } from "@/lib/records/dashboardUtils";
 import {
@@ -14,12 +16,12 @@ import {
 // ── 선수별 출석 상태 ──────────────────────────────────────────────
 type PlayerAttendStatus = "출석" | "미정" | "불참" | "미응답" | "출석 후 미참여";
 
-const PLAYER_ATTEND_STYLE: Record<PlayerAttendStatus, string> = {
-  "출석":         "text-gold",
-  "출석 후 미참여": "text-clay-400",
-  "미정":         "text-line-500",
-  "불참":         "text-line-400",
-  "미응답":       "text-line-300",
+const PLAYER_ATTEND_STYLE: Record<PlayerAttendStatus, CSSProperties> = {
+  "출석":         { color: "var(--admin-achievement)" },
+  "출석 후 미참여": { color: "#d4783c" },
+  "미정":         { color: "var(--admin-muted)", opacity: 0.8 },
+  "불참":         { color: "var(--admin-muted)", opacity: 0.65 },
+  "미응답":       { color: "var(--admin-muted)", opacity: 0.45 },
 };
 
 interface MemberRow {
@@ -41,7 +43,7 @@ interface SessionAttendSummary {
   noResponseCount: number;
   noShowCount: number;
   respondedCount: number;
-  checkRate: number | null;   // 응답률 (responded / totalMembers)
+  checkRate: number | null;
   checkStatus: AttendanceCheckStatus;
 }
 
@@ -61,7 +63,6 @@ export default function AttendanceRecordsPageClient({ currentClubId }: { current
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [filterStatus, setFilterStatus] = useState<AttendanceCheckStatus | "전체">("전체");
 
-  // 세션별 경기 참여자 캐시
   const [participantsBySid, setParticipantsBySid] = useState<Map<string, Set<string>>>(new Map());
   const [allMembersCache, setAllMembersCache] = useState<{ id: string; name: string }[]>([]);
 
@@ -85,7 +86,6 @@ export default function AttendanceRecordsPageClient({ currentClubId }: { current
       setTotalMembers(memberCount);
       setAllMembersCache(members ?? []);
 
-      // session별 attendance 집계
       const attendBySid = new Map<string, Map<string, string>>();
       for (const row of allAttendance ?? []) {
         if (!row.session_id) continue;
@@ -93,7 +93,6 @@ export default function AttendanceRecordsPageClient({ currentClubId }: { current
         attendBySid.get(row.session_id)!.set(row.member_id, row.status);
       }
 
-      // session별 경기 참여자
       const ptsBySid = new Map<string, Set<string>>();
       for (const m of allMatches ?? []) {
         if (!m.session_id) continue;
@@ -118,7 +117,6 @@ export default function AttendanceRecordsPageClient({ currentClubId }: { current
         const respondedCount = attendingCount + undecidedCount + absentCount;
         const noResponseCount = Math.max(0, memberCount - respondedCount);
 
-        // 출석 후 미참여
         const participants = ptsBySid.get(session.id) ?? new Set<string>();
         let noShowCount = 0;
         for (const [mid, st] of statusMap) {
@@ -159,7 +157,6 @@ export default function AttendanceRecordsPageClient({ currentClubId }: { current
     load();
   }, [supabase, currentClubId]);
 
-  // 선수별 출석 상태 펼침
   async function toggleExpand(sid: string) {
     if (expandedId === sid) { setExpandedId(null); setMemberRows([]); return; }
     setExpandedId(sid);
@@ -186,7 +183,6 @@ export default function AttendanceRecordsPageClient({ currentClubId }: { current
       return { memberId: m.id, name: m.name, status };
     });
 
-    // 정렬: 출석 후 미참여 → 출석 → 미정 → 불참 → 미응답
     const ORDER: Record<PlayerAttendStatus, number> = {
       "출석 후 미참여": 0,
       "출석": 1,
@@ -209,84 +205,73 @@ export default function AttendanceRecordsPageClient({ currentClubId }: { current
     ? summaries
     : summaries.filter((s) => s.checkStatus === filterStatus);
 
+  const cardStyle = { borderColor: "var(--admin-border)", background: "var(--admin-surface)" };
+
   return (
     <main className="px-4 pt-6 pb-28">
-
-      {/* ── 헤더 */}
-      <header className="mb-4 flex items-center justify-between">
-        <div>
-          <p className="eyebrow-en text-clay-400">Admin · Records</p>
-          <h1 className="headline-kr text-4xl text-line-900">출석 체크 검수</h1>
-          <p className="mt-1 max-w-[280px] break-keep text-xs leading-relaxed text-line-500">출석 응답 현황을 검수합니다.</p>
-        </div>
-        <Link href="/admin/records"
-          className="flex-shrink-0 whitespace-nowrap rounded-sm border border-line-200/40 px-2.5 py-1.5 text-xs font-semibold text-line-500 hover:text-line-700">
-          ← 기록 대시보드
-        </Link>
-      </header>
+      <AdminPageHeader
+        title="출석 체크 검수"
+        description="출석 응답 현황을 검수합니다."
+        backHref="/admin/records"
+      />
 
       {/* ── 상태 필터 */}
       <div className="mb-4 flex flex-wrap gap-1.5">
         {STATUS_FILTERS.map((f) => (
           <button key={f} type="button" onClick={() => setFilterStatus(f)}
-            className={`rounded-sm border px-2.5 py-1 text-xs font-semibold transition-colors ${
-              filterStatus === f
-                ? "border-clay-400/60 bg-clay-400/10 text-clay-400"
-                : "border-line-200/40 text-line-500 hover:border-line-300"
-            }`}>
+            className="rounded-sm border px-2.5 py-1 text-xs font-semibold transition-colors"
+            style={filterStatus === f
+              ? { borderColor: "rgba(201,168,76,0.6)", background: "rgba(201,168,76,0.1)", color: "var(--admin-achievement)" }
+              : { borderColor: "var(--admin-border)", color: "var(--admin-muted)" }}>
             {f}
           </button>
         ))}
       </div>
 
       {loading ? (
-        <p className="text-center text-sm text-line-400">불러오는 중...</p>
+        <p className="text-center text-sm" style={{ color: "var(--admin-muted)" }}>불러오는 중...</p>
       ) : filtered.length === 0 ? (
-        <div className="rounded-[14px] border border-line-200/40 bg-line-50 p-6 text-center">
-          <p className="text-sm text-line-400">해당 상태의 매치가 없어요.</p>
+        <div className="rounded-[var(--admin-card-radius,14px)] border p-6 text-center" style={cardStyle}>
+          <p className="text-sm" style={{ color: "var(--admin-muted)" }}>해당 상태의 매치가 없어요.</p>
         </div>
       ) : (
         <div className="space-y-2">
           {filtered.map((s) => (
-            <div key={s.id} className="overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50">
+            <div key={s.id} className="overflow-hidden rounded-[var(--admin-card-radius,14px)] border" style={cardStyle}>
 
               {/* ── 카드 헤더 */}
               <button type="button" onClick={() => toggleExpand(s.id)}
-                className="flex w-full items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-line-100/40">
+                className="flex w-full items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-[color:var(--admin-surface-raised,var(--admin-surface))]">
                 <div className="min-w-0 flex-1">
-                  {/* 날짜 + 상태 배지 */}
                   <div className="mb-1 flex items-center gap-2">
-                    <span className="font-score text-[10px] font-bold tabular-nums text-line-400">
+                    <span className="font-score text-[10px] font-bold tabular-nums" style={{ color: "var(--admin-muted)" }}>
                       {s.session_date}
                     </span>
                     <span className={`rounded-sm border px-1.5 py-0.5 text-[9px] font-semibold ${ATTENDANCE_STATUS_STYLE[s.checkStatus]}`}>
                       {s.checkStatus}
                     </span>
                   </div>
-                  {/* 매치명 */}
-                  <p className="text-[15px] font-semibold leading-snug text-line-900">
+                  <p className="text-[15px] font-semibold leading-snug" style={{ color: "var(--admin-text)" }}>
                     {sessionTitle(s.session_day, s.title)}
                   </p>
-                  {/* 요약 수치 */}
                   <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px]">
-                    <span className="text-gold">출석 {s.attendingCount}</span>
-                    <span className="text-line-500">미정 {s.undecidedCount}</span>
-                    <span className="text-line-400">불참 {s.absentCount}</span>
-                    <span className="text-line-300">미응답 {s.noResponseCount}</span>
+                    <span style={{ color: "var(--admin-achievement)" }}>출석 {s.attendingCount}</span>
+                    <span style={{ color: "var(--admin-muted)", opacity: 0.8 }}>미정 {s.undecidedCount}</span>
+                    <span style={{ color: "var(--admin-muted)", opacity: 0.65 }}>불참 {s.absentCount}</span>
+                    <span style={{ color: "var(--admin-muted)", opacity: 0.45 }}>미응답 {s.noResponseCount}</span>
                     {s.noShowCount > 0 && (
-                      <span className="text-clay-400">출석 후 미참여 {s.noShowCount}명</span>
+                      <span style={{ color: "#d4783c" }}>출석 후 미참여 {s.noShowCount}명</span>
                     )}
                   </div>
                 </div>
-                {/* 출석 체크율 */}
                 <div className="flex flex-shrink-0 flex-col items-end gap-1">
-                  <span className="font-score text-xl font-bold tabular-nums text-line-900">
+                  <span className="font-score text-xl font-bold tabular-nums" style={{ color: "var(--admin-text)" }}>
                     {fmtPct(s.checkRate)}
                   </span>
-                  <span className="font-display text-[9px] font-bold uppercase tracking-widest text-line-400">
+                  <span className="font-display text-[9px] font-bold uppercase tracking-widest" style={{ color: "var(--admin-muted)" }}>
                     체크율
                   </span>
-                  <span className="text-[10px] text-line-400">
+                  <span className="text-[10px]" style={{ color: "var(--admin-muted)" }}>
                     {expandedId === s.id ? "▲" : "▼"}
                   </span>
                 </div>
@@ -294,20 +279,19 @@ export default function AttendanceRecordsPageClient({ currentClubId }: { current
 
               {/* ── 출석 현황 바 */}
               {s.respondedCount > 0 && (
-                <div className="border-t border-line-200/30 px-4 py-1.5">
-                  {/* 시각 바 */}
-                  <div className="flex h-1.5 overflow-hidden rounded-sm bg-line-200/40">
+                <div className="border-t px-4 py-1.5" style={{ borderColor: "var(--admin-border)" }}>
+                  <div className="flex h-1.5 overflow-hidden rounded-sm" style={{ background: "var(--admin-border)" }}>
                     {s.attendingCount > 0 && (
-                      <div className="bg-gold/60" style={{ width: `${pct(s.attendingCount, totalMembers) ?? 0}%` }} />
+                      <div style={{ width: `${pct(s.attendingCount, totalMembers) ?? 0}%`, background: "var(--admin-achievement)", opacity: 0.6 }} />
                     )}
                     {s.undecidedCount > 0 && (
-                      <div className="bg-line-400/40" style={{ width: `${pct(s.undecidedCount, totalMembers) ?? 0}%` }} />
+                      <div style={{ width: `${pct(s.undecidedCount, totalMembers) ?? 0}%`, background: "var(--admin-muted)", opacity: 0.3 }} />
                     )}
                     {s.absentCount > 0 && (
-                      <div className="bg-line-300/40" style={{ width: `${pct(s.absentCount, totalMembers) ?? 0}%` }} />
+                      <div style={{ width: `${pct(s.absentCount, totalMembers) ?? 0}%`, background: "var(--admin-muted)", opacity: 0.2 }} />
                     )}
                   </div>
-                  <p className="mt-1 text-[9px] text-line-400">
+                  <p className="mt-1 text-[9px]" style={{ color: "var(--admin-muted)" }}>
                     응답 {s.respondedCount}/{totalMembers}명 · 미응답 {s.noResponseCount}명
                   </p>
                 </div>
@@ -315,27 +299,28 @@ export default function AttendanceRecordsPageClient({ currentClubId }: { current
 
               {/* ── 펼침: 선수별 출석 상태 */}
               {expandedId === s.id && (
-                <div className="border-t border-line-200/30 px-4 pb-3 pt-2">
+                <div className="border-t px-4 pb-3 pt-2" style={{ borderColor: "var(--admin-border)" }}>
                   {loadingDetail ? (
-                    <p className="py-2 text-center text-sm text-line-400">불러오는 중...</p>
+                    <p className="py-2 text-center text-sm" style={{ color: "var(--admin-muted)" }}>불러오는 중...</p>
                   ) : (
                     <>
-                      <p className="mb-2 font-display text-[9px] font-bold uppercase tracking-widest text-line-500">
+                      <p className="mb-2 font-display text-[9px] font-bold uppercase tracking-widest" style={{ color: "var(--admin-muted)" }}>
                         선수별 출석 상태 ({memberRows.length}명)
                       </p>
                       <div className="space-y-0.5">
                         {memberRows.map((r) => (
                           <div key={r.memberId} className="flex items-center justify-between py-1">
-                            <span className="text-[14px] font-semibold text-line-900">{r.name}</span>
-                            <span className={`text-[11px] font-semibold ${PLAYER_ATTEND_STYLE[r.status]}`}>
+                            <span className="text-[14px] font-semibold" style={{ color: "var(--admin-text)" }}>{r.name}</span>
+                            <span className="text-[11px] font-semibold" style={PLAYER_ATTEND_STYLE[r.status]}>
                               {r.status}
                             </span>
                           </div>
                         ))}
                       </div>
-                      <div className="mt-3 border-t border-line-200/20 pt-2">
+                      <div className="mt-3 border-t pt-2" style={{ borderColor: "var(--admin-border)" }}>
                         <Link href="/admin/attendance"
-                          className="text-[10px] font-semibold text-line-500 hover:text-clay-400">
+                          className="text-[10px] font-semibold transition-colors hover:text-[color:var(--admin-text)]"
+                          style={{ color: "var(--admin-muted)" }}>
                           출석 관리 →
                         </Link>
                       </div>

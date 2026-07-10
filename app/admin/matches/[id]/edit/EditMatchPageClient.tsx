@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { PlayerSelector, playerKey, type SelectedPlayer } from "@/components/match/PlayerSelector";
 import { ScoreStepper } from "@/components/match/ScoreStepper";
 import { QuickGuestModal } from "@/components/match/QuickGuestModal";
@@ -100,54 +101,52 @@ export function EditMatchPageClient({
 
   const selectedSession = sessions.find((s) => s.id === sessionId);
 
+  const sectionStyle = { borderColor: "var(--admin-border)", background: "var(--admin-surface)" } as const;
+  const dividerStyle = { borderColor: "var(--admin-border)" } as const;
+
   return (
     <main className="px-4 pt-6 pb-28">
-      {/* 헤더 */}
-      <header className="mb-5 flex items-center justify-between">
-        <div>
-          <p className="eyebrow-en text-clay-400">Admin · Match Record</p>
-          <h1 className="headline-kr text-4xl text-line-900">경기 기록 수정</h1>
-        </div>
-        <Link href="/admin/matches"
-          className="rounded-sm border border-line-200/40 px-2.5 py-1.5 text-xs font-semibold text-line-500 hover:text-line-700">
-          ← 경기 관리
-        </Link>
-      </header>
-
-      <p className="mb-5 text-sm text-line-500">{match.played_at} 경기를 수정합니다.</p>
+      <AdminPageHeader
+        title="경기 기록 수정"
+        description={`${match.played_at} 경기를 수정합니다.`}
+        backHref="/admin/matches"
+      />
 
       {loading ? (
-        <div className="rounded-[14px] border border-line-200/40 bg-line-50 p-8 text-center">
-          <p className="text-sm text-line-500">데이터를 불러오는 중...</p>
+        <div
+          className="rounded-[var(--admin-card-radius,14px)] border p-8 text-center"
+          style={sectionStyle}
+        >
+          <p className="text-sm" style={{ color: "var(--admin-muted)" }}>데이터를 불러오는 중...</p>
         </div>
       ) : (
         <div className="space-y-4">
           {/* 매치 선택 */}
-          <section className="overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50">
-            <div className="border-b border-line-200/30 px-4 py-3">
-              <p className="text-[11px] font-semibold text-line-500">매치</p>
+          <section className="overflow-hidden rounded-[var(--admin-card-radius,14px)] border" style={sectionStyle}>
+            <div className="border-b px-4 py-3" style={dividerStyle}>
+              <p className="text-[11px] font-semibold" style={{ color: "var(--admin-muted)" }}>매치</p>
             </div>
             <div className="px-4 py-3">
               <Dropdown align="left"
-                triggerClassName="flex w-full items-center justify-between rounded-sm border border-line-200/40 bg-line-100 px-3 py-2"
+                triggerClassName="flex w-full items-center justify-between rounded-[var(--admin-button-radius,6px)] border border-[color:var(--admin-border)] bg-[color:var(--admin-surface-raised,var(--admin-surface))] px-3 py-2 transition-colors hover:border-[color:var(--admin-border-strong)]"
                 trigger={
                   <>
-                    <span className="text-sm text-line-900">
+                    <span className="text-sm text-[color:var(--admin-text)]">
                       {selectedSession
                         ? `${selectedSession.title} · ${selectedSession.session_date}`
                         : "매치 없음"}
                     </span>
-                    <span className="text-xs text-line-500">▼</span>
+                    <span className="text-xs text-[color:var(--admin-muted)]">▼</span>
                   </>
                 }>
                 {(close) => (
                   <div className="max-h-48 overflow-y-auto">
                     <DropdownItem onClick={() => { setSessionId(null); close(); }}>
-                      <span className={!sessionId ? "text-clay-400" : ""}>세션 없음</span>
+                      <span className={!sessionId ? "text-[color:var(--admin-accent)]" : ""}>세션 없음</span>
                     </DropdownItem>
                     {sessions.map((s) => (
                       <DropdownItem key={s.id} onClick={() => { setSessionId(s.id); close(); }}>
-                        <span className={sessionId === s.id ? "text-clay-400" : ""}>
+                        <span className={sessionId === s.id ? "text-[color:var(--admin-accent)]" : ""}>
                           {s.title} · {s.session_date} ({MATCH_SESSION_DAY_LABEL[s.session_day]})
                         </span>
                       </DropdownItem>
@@ -159,9 +158,9 @@ export function EditMatchPageClient({
           </section>
 
           {/* 청팀 */}
-          <section className="overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50">
-            <div className="border-b border-line-200/30 px-4 py-3">
-              <p className="text-[11px] font-semibold text-line-500">{TEAM_LABEL["A"]}</p>
+          <section className="overflow-hidden rounded-[var(--admin-card-radius,14px)] border" style={sectionStyle}>
+            <div className="border-b px-4 py-3" style={dividerStyle}>
+              <p className="text-[11px] font-semibold" style={{ color: "var(--admin-muted)" }}>{TEAM_LABEL["A"]}</p>
             </div>
             <div className="space-y-2 px-4 py-3">
               <PlayerSelector label="첫 번째 선수" value={p1A} members={members} guests={guests}
@@ -174,16 +173,16 @@ export function EditMatchPageClient({
           </section>
 
           {/* 스코어 */}
-          <section className="overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50">
-            <div className="border-b border-line-200/30 px-4 py-3">
-              <p className="text-[11px] font-semibold text-line-500">스코어</p>
+          <section className="overflow-hidden rounded-[var(--admin-card-radius,14px)] border" style={sectionStyle}>
+            <div className="border-b px-4 py-3" style={dividerStyle}>
+              <p className="text-[11px] font-semibold" style={{ color: "var(--admin-muted)" }}>스코어</p>
             </div>
             <div className="space-y-4 px-4 py-4">
               <div className="flex items-center gap-4">
                 <div className="flex-1">
                   <ScoreStepper label={scoreLabel("A")} value={scoreA} onChange={setScoreA} max={7} />
                 </div>
-                <span className="font-score text-xl font-bold text-line-500">:</span>
+                <span className="font-score text-xl font-bold" style={{ color: "var(--admin-muted)" }}>:</span>
                 <div className="flex-1">
                   <ScoreStepper label={scoreLabel("B")} value={scoreB} onChange={setScoreB} max={7} />
                 </div>
@@ -193,22 +192,27 @@ export function EditMatchPageClient({
                   <div className="flex-1">
                     <ScoreStepper label={scoreLabel("A", true)} value={tbA} onChange={setTbA} />
                   </div>
-                  <span className="font-score text-xl font-bold text-line-500">:</span>
+                  <span className="font-score text-xl font-bold" style={{ color: "var(--admin-muted)" }}>:</span>
                   <div className="flex-1">
                     <ScoreStepper label={scoreLabel("B", true)} value={tbB} onChange={setTbB} />
                   </div>
                 </div>
               )}
               <div>
-                <p className="mb-2 text-[11px] font-semibold text-line-500">승리 팀 선택</p>
+                <p className="mb-2 text-[11px] font-semibold" style={{ color: "var(--admin-muted)" }}>승리 팀 선택</p>
                 <div className="flex gap-2">
                   {(["A", "B"] as const).map((team) => (
-                    <button key={team} type="button" onClick={() => setWinner(team)}
-                      className={`flex-1 rounded-sm border py-2 text-sm font-bold transition-colors ${
+                    <button
+                      key={team}
+                      type="button"
+                      onClick={() => setWinner(team)}
+                      className="flex-1 rounded-[var(--admin-button-radius,6px)] border py-2 text-sm font-bold transition-colors"
+                      style={
                         winner === team
-                          ? "border-gold/60 bg-gold/10 text-gold"
-                          : "border-line-200/40 bg-line-50 text-line-500"
-                      }`}>
+                          ? { borderColor: "var(--admin-achievement)", background: "rgba(201,168,76,0.1)", color: "var(--admin-achievement)" }
+                          : { borderColor: "var(--admin-border)", background: "var(--admin-surface)", color: "var(--admin-muted)" }
+                      }
+                    >
                       {winnerLabel(team)}
                     </button>
                   ))}
@@ -218,9 +222,9 @@ export function EditMatchPageClient({
           </section>
 
           {/* 우팀 */}
-          <section className="overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50">
-            <div className="border-b border-line-200/30 px-4 py-3">
-              <p className="text-[11px] font-semibold text-line-500">{TEAM_LABEL["B"]}</p>
+          <section className="overflow-hidden rounded-[var(--admin-card-radius,14px)] border" style={sectionStyle}>
+            <div className="border-b px-4 py-3" style={dividerStyle}>
+              <p className="text-[11px] font-semibold" style={{ color: "var(--admin-muted)" }}>{TEAM_LABEL["B"]}</p>
             </div>
             <div className="space-y-2 px-4 py-3">
               <PlayerSelector label="첫 번째 선수" value={p1B} members={members} guests={guests}
@@ -239,8 +243,11 @@ export function EditMatchPageClient({
           )}
 
           <div className="flex gap-3">
-            <Link href="/admin/matches"
-              className="flex h-12 flex-1 items-center justify-center rounded-sm border border-line-200/40 text-sm font-semibold text-line-500">
+            <Link
+              href="/admin/matches"
+              className="flex h-12 flex-1 items-center justify-center rounded-[var(--admin-button-radius,6px)] border text-sm font-semibold transition-colors hover:border-[color:var(--admin-border-strong)]"
+              style={{ borderColor: "var(--admin-border)", color: "var(--admin-muted)" }}
+            >
               취소
             </Link>
             <Button disabled={submitting || !allUnique} onClick={handleSave} className="flex-1 h-12">

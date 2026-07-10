@@ -1,5 +1,6 @@
 "use client";
 
+import type { CSSProperties } from "react";
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -33,13 +34,12 @@ interface AuthState {
 const ROLE_LABEL: Record<string, string> = {
   master: "Master", admin: "Admin", manager: "Manager", member: "Member", scorer: "Scorer",
 };
-const ROLE_CHIP: Record<string, string> = {
-  master: "border-gold/40 bg-gold/10 text-gold",
-  admin: "border-clay-400/40 bg-clay-400/10 text-clay-400",
-  manager: "border-line-400/40 bg-line-200 text-line-700",
-  member: "border-line-200/40 bg-line-100 text-line-500",
-  scorer: "border-line-200/40 bg-line-100 text-line-500",
-};
+
+function getRoleChipStyle(role: string): CSSProperties {
+  if (role === "master") return { borderColor: "rgba(201,168,76,0.45)", background: "rgba(201,168,76,0.1)", color: "var(--admin-achievement)" };
+  if (role === "admin")  return { borderColor: "var(--admin-accent)", background: "var(--admin-accent-soft)", color: "var(--admin-accent)" };
+  return { borderColor: "var(--admin-border)", background: "var(--admin-surface-raised, var(--admin-surface))", color: "var(--admin-muted)" };
+}
 
 type SettingsPageClientProps = {
   currentClubId: string;
@@ -58,7 +58,6 @@ export default function SettingsPageClient({ currentClubId }: SettingsPageClient
   const [assigningId, setAssigningId] = useState<string | null>(null);
   const [assignRole, setAssignRole] = useState("manager");
 
-  // auth 상태 로드
   useEffect(() => {
     if (adminAccess === null) return;
     if (!adminAccess.isOwner) { router.replace("/admin"); return; }
@@ -81,7 +80,6 @@ export default function SettingsPageClient({ currentClubId }: SettingsPageClient
     load();
   }, [adminAccess, router, currentClubId]);
 
-  // 관리자 목록
   const loadAdminMembers = useCallback(async () => {
     setLoadingAdmins(true);
     const res = await fetch("/api/admin/members/roles");
@@ -121,40 +119,53 @@ export default function SettingsPageClient({ currentClubId }: SettingsPageClient
   if (auth.loading) {
     return (
       <main className="flex min-h-[60vh] items-center justify-center">
-        <p className="text-sm text-line-500">확인 중...</p>
+        <p className="text-sm" style={{ color: "var(--admin-muted)" }}>확인 중...</p>
       </main>
     );
   }
 
   const isKakaoMaster = auth.kakaoPermission === "master";
+  const surfaceStyle: CSSProperties = { background: "var(--admin-surface)", borderColor: "var(--admin-border)" };
+  const borderStyle: CSSProperties = { borderColor: "var(--admin-border)" };
 
   return (
     <main className="px-4 pt-6 pb-10">
       {/* 헤더 */}
       <header className="mb-5 flex items-center justify-between">
         <div>
-          <p className="eyebrow-en text-clay-400">Admin · Settings</p>
-          <h1 className="headline-kr text-4xl text-line-900">시스템 설정</h1>
+          <p className="eyebrow-en text-[9px]" style={{ color: "var(--admin-muted)" }}>SETTINGS</p>
+          <h1 className="headline-kr text-4xl" style={{ color: "var(--admin-text)" }}>시스템 설정</h1>
         </div>
-        <Link href="/admin"
-          className="rounded-sm border border-line-200/40 px-2.5 py-1.5 text-xs font-semibold text-line-500 hover:text-line-700">
+        <Link
+          href="/admin"
+          className="rounded-[var(--admin-button-radius,6px)] border px-2.5 py-1.5 text-xs font-semibold transition-opacity hover:opacity-70"
+          style={{ borderColor: "var(--admin-border)", color: "var(--admin-muted)" }}
+        >
           ← 관리자
         </Link>
       </header>
 
       {/* 현재 권한 상태 */}
       <section className="mb-5">
-        <p className="mb-2 font-display text-[10px] font-bold uppercase tracking-widest text-line-500">Current Status</p>
-        <div className="overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50">
+        <p className="mb-2 font-display text-[10px] font-bold uppercase tracking-widest" style={{ color: "var(--admin-muted)" }}>
+          현재 상태
+        </p>
+        <div className="overflow-hidden rounded-[var(--admin-card-radius,14px)] border" style={surfaceStyle}>
           <div className="flex items-center justify-between px-4 py-3">
             <div>
-              <p className="text-sm font-semibold text-line-900">Kakao Account</p>
-              <p className="text-[10px] text-line-500">{auth.kakaoName ?? "로그인 없음"}</p>
+              <p className="text-sm font-semibold" style={{ color: "var(--admin-text)" }}>카카오 계정</p>
+              <p className="text-[10px]" style={{ color: "var(--admin-muted)" }}>{auth.kakaoName ?? "로그인 없음"}</p>
             </div>
-            <span className={`rounded-sm border px-2.5 py-1 text-xs font-semibold ${
-              isKakaoMaster ? "border-gold/40 bg-gold/10 text-gold"
-              : auth.kakaoPermission ? "border-line-200/40 bg-line-100 text-line-600"
-              : "border-line-200/40 bg-line-50 text-line-500"}`}>
+            <span
+              className="rounded-[var(--admin-button-radius,6px)] border px-2.5 py-1 text-xs font-semibold"
+              style={
+                isKakaoMaster
+                  ? { borderColor: "rgba(201,168,76,0.45)", background: "rgba(201,168,76,0.1)", color: "var(--admin-achievement)" }
+                  : auth.kakaoPermission
+                    ? { borderColor: "var(--admin-border)", background: "var(--admin-surface-raised, var(--admin-surface))", color: "var(--admin-text)" }
+                    : { borderColor: "var(--admin-border)", color: "var(--admin-muted)" }
+              }
+            >
               {isKakaoMaster ? "master" : auth.kakaoPermission ?? "없음"}
             </span>
           </div>
@@ -164,73 +175,111 @@ export default function SettingsPageClient({ currentClubId }: SettingsPageClient
       {/* 관리자 목록 */}
       <section className="mb-5">
         <div className="mb-2 flex items-center justify-between">
-          <p className="font-display text-[10px] font-bold uppercase tracking-widest text-line-500">Admin Members</p>
-          <button type="button" onClick={loadAdminMembers}
-            className="text-[10px] font-semibold text-line-500 hover:text-line-700">
+          <p className="font-display text-[10px] font-bold uppercase tracking-widest" style={{ color: "var(--admin-muted)" }}>
+            운영진 목록
+          </p>
+          <button
+            type="button"
+            onClick={loadAdminMembers}
+            className="text-[10px] font-semibold transition-opacity hover:opacity-70"
+            style={{ color: "var(--admin-muted)" }}
+          >
             {loadingAdmins ? "로딩 중..." : "새로고침"}
           </button>
         </div>
-        <div className="overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50">
+        <div className="overflow-hidden rounded-[var(--admin-card-radius,14px)] border" style={surfaceStyle}>
           {loadingAdmins ? (
             <div className="p-6 text-center">
-              <p className="font-display text-[10px] font-bold uppercase tracking-widest text-line-500">Loading...</p>
+              <p className="font-display text-[10px] font-bold uppercase tracking-widest" style={{ color: "var(--admin-muted)" }}>
+                불러오는 중...
+              </p>
             </div>
           ) : adminMembers.length === 0 ? (
             <div className="p-6 text-center">
-              <p className="text-sm text-line-500">관리자 권한을 가진 회원이 없습니다.</p>
+              <p className="text-sm" style={{ color: "var(--admin-muted)" }}>관리자 권한을 가진 회원이 없습니다.</p>
             </div>
           ) : adminMembers.map((m, idx) => (
-            <div key={m.id}
-              className={`px-4 py-3 ${idx < adminMembers.length - 1 ? "border-b border-line-200/30" : ""}`}>
+            <div
+              key={m.id}
+              className="px-4 py-3"
+              style={idx < adminMembers.length - 1 ? { borderBottom: "1px solid var(--admin-border)" } : undefined}
+            >
               <div className="flex items-center gap-2">
-                <span className={`rounded-sm border px-2 py-0.5 text-[10px] font-bold ${ROLE_CHIP[m.permission_role] ?? ROLE_CHIP.member}`}>
+                <span className="rounded-sm border px-2 py-0.5 text-[10px] font-bold" style={getRoleChipStyle(m.permission_role)}>
                   {ROLE_LABEL[m.permission_role] ?? m.permission_role}
                 </span>
-                <p className="name-kr-sm text-line-900">{m.name}</p>
-                <p className="text-xs text-line-500">({m.nickname})</p>
-                <span className={`ml-auto rounded-sm border px-1.5 py-0.5 text-[9px] font-semibold ${
-                  m.is_kakao_connected ? "border-line-200/40 bg-line-100 text-line-500" : "border-line-200/30 text-line-400"}`}>
+                <p className="name-kr-sm" style={{ color: "var(--admin-text)" }}>{m.name}</p>
+                <p className="text-xs" style={{ color: "var(--admin-muted)" }}>({m.nickname})</p>
+                <span
+                  className="ml-auto rounded-sm border px-1.5 py-0.5 text-[9px] font-semibold"
+                  style={m.is_kakao_connected
+                    ? { borderColor: "var(--admin-border)", background: "var(--admin-surface-raised, var(--admin-surface))", color: "var(--admin-muted)" }
+                    : { borderColor: "var(--admin-border)", color: "var(--admin-muted)", opacity: 0.5 }
+                  }
+                >
                   {m.is_kakao_connected ? "카카오 연결" : "미연결"}
                 </span>
               </div>
 
               {m.permission_role !== "master" && (
                 <div className="mt-2 flex flex-wrap gap-1.5">
-                  <button type="button"
+                  <button
+                    type="button"
                     disabled={actionId === m.id}
                     onClick={() => handleUpdateRole(m.id, "member")}
-                    className="rounded-sm border border-line-200/40 px-2 py-0.5 text-[10px] font-semibold text-line-500 disabled:opacity-40 hover:border-line-300">
+                    className="rounded-sm border px-2 py-0.5 text-[10px] font-semibold disabled:opacity-40 transition-opacity hover:opacity-70"
+                    style={{ borderColor: "var(--admin-border)", color: "var(--admin-muted)" }}
+                  >
                     권한 해제
                   </button>
 
                   {assigningId === m.id ? (
                     <>
-                      <select value={assignRole} onChange={(e) => setAssignRole(e.target.value)}
-                        className="h-6 rounded-sm border border-line-200/40 bg-line-100 px-1.5 text-[10px] text-line-900">
+                      <select
+                        value={assignRole}
+                        onChange={(e) => setAssignRole(e.target.value)}
+                        className="h-6 rounded-sm border px-1.5 text-[10px]"
+                        style={{ borderColor: "var(--admin-border)", background: "var(--admin-surface-raised, var(--admin-surface))", color: "var(--admin-text)" }}
+                      >
                         <option value="manager">Manager</option>
                         <option value="admin">Admin</option>
                       </select>
-                      <button type="button" disabled={actionId === m.id}
+                      <button
+                        type="button"
+                        disabled={actionId === m.id}
                         onClick={() => handleUpdateRole(m.id, assignRole)}
-                        className="rounded-sm border border-clay-400/60 bg-clay-400/10 px-2 py-0.5 text-[10px] font-semibold text-clay-400 disabled:opacity-40">
+                        className="rounded-sm border border-clay-400/60 bg-clay-400/10 px-2 py-0.5 text-[10px] font-semibold text-clay-400 disabled:opacity-40"
+                      >
                         적용
                       </button>
-                      <button type="button" onClick={() => setAssigningId(null)}
-                        className="rounded-sm border border-line-200/40 px-2 py-0.5 text-[10px] font-semibold text-line-500">
+                      <button
+                        type="button"
+                        onClick={() => setAssigningId(null)}
+                        className="rounded-sm border px-2 py-0.5 text-[10px] font-semibold transition-opacity hover:opacity-70"
+                        style={{ borderColor: "var(--admin-border)", color: "var(--admin-muted)" }}
+                      >
                         취소
                       </button>
                     </>
                   ) : (
-                    <button type="button" onClick={() => { setAssigningId(m.id); setAssignRole("manager"); }}
-                      className="rounded-sm border border-line-200/40 px-2 py-0.5 text-[10px] font-semibold text-line-500 hover:border-line-300">
+                    <button
+                      type="button"
+                      onClick={() => { setAssigningId(m.id); setAssignRole("manager"); }}
+                      className="rounded-sm border px-2 py-0.5 text-[10px] font-semibold transition-opacity hover:opacity-70"
+                      style={{ borderColor: "var(--admin-border)", color: "var(--admin-muted)" }}
+                    >
                       권한 변경
                     </button>
                   )}
 
                   {m.is_kakao_connected && (
-                    <button type="button" disabled={actionId === m.id}
+                    <button
+                      type="button"
+                      disabled={actionId === m.id}
                       onClick={() => handleUnlink(m.id, m.name)}
-                      className="rounded-sm border border-line-200/40 px-2 py-0.5 text-[10px] font-semibold text-line-500 disabled:opacity-40 hover:border-fault-400 hover:text-fault-400">
+                      className="rounded-sm border px-2 py-0.5 text-[10px] font-semibold disabled:opacity-40 hover:border-fault-400 hover:text-fault-400"
+                      style={{ borderColor: "var(--admin-border)", color: "var(--admin-muted)" }}
+                    >
                       카카오 해제
                     </button>
                   )}
@@ -243,10 +292,12 @@ export default function SettingsPageClient({ currentClubId }: SettingsPageClient
 
       {/* 운영진 권한 지정 */}
       <section className="mb-5">
-        <p className="mb-2 font-display text-[10px] font-bold uppercase tracking-widest text-line-500">Assign Role</p>
-        <div className="overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50 px-4 py-4">
-          <p className="text-sm font-semibold text-line-900">일반 회원 → 운영진 지정</p>
-          <p className="mt-0.5 mb-3 text-xs text-line-500">
+        <p className="mb-2 font-display text-[10px] font-bold uppercase tracking-widest" style={{ color: "var(--admin-muted)" }}>
+          권한 지정
+        </p>
+        <div className="overflow-hidden rounded-[var(--admin-card-radius,14px)] border px-4 py-4" style={surfaceStyle}>
+          <p className="text-sm font-semibold" style={{ color: "var(--admin-text)" }}>일반 회원 → 운영진 지정</p>
+          <p className="mb-3 mt-0.5 text-xs" style={{ color: "var(--admin-muted)" }}>
             카카오 계정 연결 후 권한을 부여하면 카카오 로그인으로 관리 기능을 사용할 수 있습니다.
           </p>
           <MemberRoleAssigner currentClubId={currentClubId} onSuccess={loadAdminMembers} />
@@ -255,19 +306,29 @@ export default function SettingsPageClient({ currentClubId }: SettingsPageClient
 
       {/* Coming Soon */}
       <section>
-        <p className="mb-2 font-display text-[10px] font-bold uppercase tracking-widest text-line-500">Coming Soon</p>
-        <div className="overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50">
+        <p className="mb-2 font-display text-[10px] font-bold uppercase tracking-widest" style={{ color: "var(--admin-muted)" }}>
+          예정 기능
+        </p>
+        <div className="overflow-hidden rounded-[var(--admin-card-radius,14px)] border" style={surfaceStyle}>
           {[
             { label: "공유 정책 설정", sub: "공유 링크 및 접근 정책 관리" },
             { label: "클럽 기본 설정", sub: "클럽명 · 시즌 · 기본 정보" },
           ].map((item, idx, arr) => (
-            <div key={item.label}
-              className={`flex items-center justify-between px-4 py-3 ${idx < arr.length - 1 ? "border-b border-line-200/30" : ""}`}>
+            <div
+              key={item.label}
+              className="flex items-center justify-between px-4 py-3"
+              style={idx < arr.length - 1 ? { borderBottom: "1px solid var(--admin-border)" } : undefined}
+            >
               <div>
-                <p className="text-sm font-semibold text-line-500">{item.label}</p>
-                <p className="text-[10px] text-line-400">{item.sub}</p>
+                <p className="text-sm font-semibold" style={{ color: "var(--admin-muted)" }}>{item.label}</p>
+                <p className="text-[10px]" style={{ color: "var(--admin-muted)", opacity: 0.6 }}>{item.sub}</p>
               </div>
-              <span className="rounded-sm border border-line-200/40 bg-line-100 px-2 py-0.5 text-[9px] font-semibold text-line-500">예정</span>
+              <span
+                className="rounded-sm border px-2 py-0.5 text-[9px] font-semibold"
+                style={{ borderColor: "var(--admin-border)", background: "var(--admin-surface-raised, var(--admin-surface))", color: "var(--admin-muted)" }}
+              >
+                예정
+              </span>
             </div>
           ))}
         </div>
@@ -319,12 +380,21 @@ function MemberRoleAssigner({ currentClubId, onSuccess }: { currentClubId: strin
   return (
     <div className="space-y-2">
       <div className="flex gap-2">
-        <input value={query} onChange={(e) => setQuery(e.target.value)}
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && handleSearch()}
           placeholder="이름 또는 닉네임 검색"
-          className="h-9 flex-1 rounded-sm border border-line-200/40 bg-line-100 px-3 text-sm text-line-900 placeholder:text-line-500" />
-        <button type="button" onClick={handleSearch} disabled={searching}
-          className="rounded-sm border border-line-200/40 px-3 text-xs font-semibold text-line-600 disabled:opacity-40">
+          className="h-9 flex-1 rounded-[var(--admin-button-radius,6px)] border px-3 text-sm placeholder:[color:var(--admin-muted)]"
+          style={{ background: "var(--admin-surface-raised, var(--admin-surface))", borderColor: "var(--admin-border)", color: "var(--admin-text)" }}
+        />
+        <button
+          type="button"
+          onClick={handleSearch}
+          disabled={searching}
+          className="rounded-[var(--admin-button-radius,6px)] border px-3 text-xs font-semibold disabled:opacity-40 transition-opacity hover:opacity-70"
+          style={{ borderColor: "var(--admin-border)", color: "var(--admin-muted)" }}
+        >
           {searching ? "..." : "검색"}
         </button>
       </div>
@@ -332,15 +402,26 @@ function MemberRoleAssigner({ currentClubId, onSuccess }: { currentClubId: strin
       {results.length > 0 && (
         <div className="space-y-1">
           {results.map((m) => (
-            <label key={m.id}
-              className={`flex cursor-pointer items-center gap-2 rounded-sm border px-3 py-2 transition-colors ${
-                selectedId === m.id ? "border-clay-400/60 bg-clay-400/10" : "border-line-200/40 bg-line-50"}`}>
-              <input type="radio" name="assign-member" value={m.id}
-                checked={selectedId === m.id} onChange={() => setSelectedId(m.id)}
-                className="accent-clay-400" />
-              <span className="name-kr-sm text-line-900">{m.name}</span>
-              <span className="text-xs text-line-500">({m.nickname})</span>
-              <span className={`ml-auto rounded-sm border px-1.5 py-0.5 text-[9px] font-semibold ${ROLE_CHIP[m.permission_role] ?? ROLE_CHIP.member}`}>
+            <label
+              key={m.id}
+              className="flex cursor-pointer items-center gap-2 rounded-sm border px-3 py-2 transition-colors"
+              style={
+                selectedId === m.id
+                  ? { borderColor: "var(--admin-accent)", background: "var(--admin-accent-soft)" }
+                  : { borderColor: "var(--admin-border)", background: "var(--admin-surface)" }
+              }
+            >
+              <input
+                type="radio"
+                name="assign-member"
+                value={m.id}
+                checked={selectedId === m.id}
+                onChange={() => setSelectedId(m.id)}
+                className="accent-clay-400"
+              />
+              <span className="name-kr-sm" style={{ color: "var(--admin-text)" }}>{m.name}</span>
+              <span className="text-xs" style={{ color: "var(--admin-muted)" }}>({m.nickname})</span>
+              <span className="ml-auto rounded-sm border px-1.5 py-0.5 text-[9px] font-semibold" style={getRoleChipStyle(m.permission_role)}>
                 {ROLE_LABEL[m.permission_role] ?? m.permission_role}
               </span>
             </label>
@@ -350,13 +431,21 @@ function MemberRoleAssigner({ currentClubId, onSuccess }: { currentClubId: strin
 
       {selectedId && (
         <div className="flex gap-2">
-          <select value={role} onChange={(e) => setRole(e.target.value)}
-            className="h-9 flex-1 rounded-sm border border-line-200/40 bg-line-100 px-2 text-sm text-line-900">
+          <select
+            value={role}
+            onChange={(e) => setRole(e.target.value)}
+            className="h-9 flex-1 rounded-[var(--admin-button-radius,6px)] border px-2 text-sm"
+            style={{ background: "var(--admin-surface-raised, var(--admin-surface))", borderColor: "var(--admin-border)", color: "var(--admin-text)" }}
+          >
             <option value="manager">Manager</option>
             <option value="admin">Admin</option>
           </select>
-          <button type="button" onClick={handleAssign} disabled={acting}
-            className="rounded-sm bg-clay-400 px-4 text-sm font-bold text-line-25 disabled:opacity-40">
+          <button
+            type="button"
+            onClick={handleAssign}
+            disabled={acting}
+            className="rounded-[var(--admin-button-radius,6px)] bg-clay-400 px-4 text-sm font-bold text-line-25 disabled:opacity-40"
+          >
             {acting ? "지정 중..." : "권한 지정"}
           </button>
         </div>

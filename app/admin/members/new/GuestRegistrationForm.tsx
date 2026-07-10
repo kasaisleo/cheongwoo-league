@@ -16,6 +16,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "@/components/ui/Toast";
+import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import type { Member } from "@/lib/supabase/database.types";
 
 function todayString(): string {
@@ -115,42 +116,34 @@ export function GuestRegistrationForm({ currentClubId }: { currentClubId: string
   }
 
   const inputCls = (err?: string) =>
-    `h-10 w-full rounded-sm border px-3 text-sm text-line-900 placeholder:text-line-400 ${
-      err ? "border-fault-400/60 bg-fault-400/5" : "border-line-200/40 bg-line-50"
+    `h-10 w-full rounded-sm border px-3 text-sm text-[color:var(--admin-text)] placeholder:[color:var(--admin-muted)] ${
+      err ? "border-fault-400/60 bg-fault-400/5" : "border-[color:var(--admin-border)] bg-[color:var(--admin-surface)]"
     }`;
 
-  const labelCls = "mb-1 block text-xs font-semibold text-line-600";
+  const labelCls = "mb-1 block text-xs font-semibold text-[color:var(--admin-muted)]";
 
   return (
     <main className="px-4 pt-6 pb-28">
-      {/* 헤더 */}
-      <header className="mb-5 flex items-center justify-between">
-        <div>
-          <p className="eyebrow-en text-clay-400">Admin · New Guest</p>
-          <h1 className="headline-kr text-4xl text-line-900">게스트 등록</h1>
-        </div>
-        <Link href="/admin"
-          className="rounded-sm border border-line-200/40 px-2.5 py-1.5 text-xs font-semibold text-line-500 hover:text-line-700">
-          ← 관리자
-        </Link>
-      </header>
-
-      <p className="mb-6 text-sm text-line-500">
-        게스트 경기에 참여할 방문자 정보를 등록합니다.
-      </p>
+      <AdminPageHeader
+        title="게스트 등록"
+        description="게스트 경기에 참여할 방문자 정보를 등록합니다."
+        backHref="/admin/guests"
+      />
 
       <div className="space-y-4">
 
         {/* 필수 정보 */}
-        <section className="overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50">
-          <div className="border-b border-line-200/30 px-4 py-2.5">
-            <p className="text-[11px] font-semibold text-line-500">
+        <section
+          className="overflow-hidden rounded-[var(--admin-card-radius,14px)] border"
+          style={{ borderColor: "var(--admin-border)", background: "var(--admin-surface)" }}
+        >
+          <div className="border-b px-4 py-2.5" style={{ borderColor: "var(--admin-border)" }}>
+            <p className="text-[11px] font-semibold" style={{ color: "var(--admin-muted)" }}>
               필수 정보
             </p>
           </div>
           <div className="space-y-3 px-4 py-4">
 
-            {/* 이름 */}
             <div>
               <label className={labelCls}>
                 이름 <span className="text-fault-400">*</span>
@@ -164,7 +157,6 @@ export function GuestRegistrationForm({ currentClubId }: { currentClubId: string
               {errors.name && <p className="mt-1 text-[11px] text-fault-400">{errors.name}</p>}
             </div>
 
-            {/* 방문 날짜 */}
             <div>
               <label className={labelCls}>
                 방문 날짜 <span className="text-fault-400">*</span>
@@ -182,15 +174,17 @@ export function GuestRegistrationForm({ currentClubId }: { currentClubId: string
         </section>
 
         {/* 추가 정보 */}
-        <section className="overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50">
-          <div className="border-b border-line-200/30 px-4 py-2.5">
-            <p className="text-[11px] font-semibold text-line-500">
-              추가 정보 <span className="text-line-400 text-[10px] font-normal">(선택)</span>
+        <section
+          className="overflow-hidden rounded-[var(--admin-card-radius,14px)] border"
+          style={{ borderColor: "var(--admin-border)", background: "var(--admin-surface)" }}
+        >
+          <div className="border-b px-4 py-2.5" style={{ borderColor: "var(--admin-border)" }}>
+            <p className="text-[11px] font-semibold" style={{ color: "var(--admin-muted)" }}>
+              추가 정보 <span className="text-[10px] font-normal" style={{ color: "var(--admin-muted)", opacity: 0.6 }}>(선택)</span>
             </p>
           </div>
           <div className="space-y-3 px-4 py-4">
 
-            {/* 전화번호 */}
             <div>
               <label className={labelCls}>전화번호</label>
               <input
@@ -204,7 +198,6 @@ export function GuestRegistrationForm({ currentClubId }: { currentClubId: string
               {errors.phone && <p className="mt-1 text-[11px] text-fault-400">{errors.phone}</p>}
             </div>
 
-            {/* 나이 + 구력 */}
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className={labelCls}>나이</label>
@@ -233,13 +226,12 @@ export function GuestRegistrationForm({ currentClubId }: { currentClubId: string
               </div>
             </div>
 
-            {/* 소개 회원 */}
             <div>
               <label className={labelCls}>소개 회원</label>
               <select
                 value={referredBy}
                 onChange={(e) => setReferredBy(e.target.value)}
-                className="h-10 w-full rounded-sm border border-line-200/40 bg-line-50 px-3 text-sm text-line-900"
+                className="h-10 w-full rounded-sm border border-[color:var(--admin-border)] bg-[color:var(--admin-surface)] px-3 text-sm text-[color:var(--admin-text)]"
               >
                 <option value="">소개 회원 없음</option>
                 {members.map((m) => (
@@ -251,7 +243,6 @@ export function GuestRegistrationForm({ currentClubId }: { currentClubId: string
               </select>
             </div>
 
-            {/* 메모 */}
             <div>
               <label className={labelCls}>메모</label>
               <textarea
@@ -259,7 +250,7 @@ export function GuestRegistrationForm({ currentClubId }: { currentClubId: string
                 onChange={(e) => setNotes(e.target.value)}
                 placeholder="게스트 관련 메모"
                 rows={3}
-                className="w-full resize-none rounded-sm border border-line-200/40 bg-line-50 px-3 py-2 text-sm text-line-900 placeholder:text-line-400"
+                className="w-full resize-none rounded-sm border border-[color:var(--admin-border)] bg-[color:var(--admin-surface)] px-3 py-2 text-sm text-[color:var(--admin-text)] placeholder:[color:var(--admin-muted)]"
               />
             </div>
 
@@ -268,15 +259,19 @@ export function GuestRegistrationForm({ currentClubId }: { currentClubId: string
 
         {/* 저장 + 취소 */}
         <div className="flex gap-3 pt-2">
-          <Link href="/admin"
-            className="flex h-12 flex-1 items-center justify-center rounded-sm border border-line-200/40 text-sm font-semibold text-line-500">
+          <Link
+            href="/admin/guests"
+            className="flex h-12 flex-1 items-center justify-center rounded-[var(--admin-button-radius,6px)] border text-sm font-semibold transition-colors hover:border-[color:var(--admin-border-strong)]"
+            style={{ borderColor: "var(--admin-border)", color: "var(--admin-muted)" }}
+          >
             취소
           </Link>
           <button
             type="button"
             disabled={submitting}
             onClick={handleSubmit}
-            className="flex h-12 flex-[2] items-center justify-center rounded-sm bg-clay-400 text-sm font-bold text-line-25 disabled:opacity-40"
+            className="flex h-12 flex-[2] items-center justify-center rounded-[var(--admin-button-radius,6px)] text-sm font-bold text-line-25 disabled:opacity-40"
+            style={{ background: "var(--admin-accent)" }}
           >
             {submitting ? "등록 중..." : "게스트 등록"}
           </button>

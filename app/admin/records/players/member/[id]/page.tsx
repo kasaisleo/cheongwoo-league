@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { pct, fmtPct } from "@/lib/records/dashboardUtils";
 import { createClient } from "@/lib/supabase/server";
+import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { MATCH_SESSION_DAY_LABEL } from "@/lib/match-session-label";
 import { getAdminAccessServer } from "@/lib/admin-permissions";
 
@@ -37,8 +38,8 @@ export default async function MemberRecordPage({ params }: { params: { id: strin
   if (!member) {
     return (
       <main className="px-4 pt-6">
-        <p className="text-sm text-line-400">회원을 찾을 수 없어요.</p>
-        <Link href="/admin/records/players" className="mt-2 block text-xs text-clay-400">← 선수 기록 분석</Link>
+        <p className="text-sm" style={{ color: "var(--admin-muted)" }}>회원을 찾을 수 없어요.</p>
+        <Link href="/admin/records/players" className="mt-2 block text-xs" style={{ color: "var(--admin-accent)" }}>← 선수 기록 분석</Link>
       </main>
     );
   }
@@ -47,7 +48,7 @@ export default async function MemberRecordPage({ params }: { params: { id: strin
   const completedIds = new Set(
     (allSessions ?? []).filter((s) => s.status === "closed" || s.session_date < today).map((s) => s.id)
   );
-  const completedCount = completedIds.size;  // 분모 (0이면 모두 "-")
+  const completedCount = completedIds.size;
 
   // ── 내 경기 ──────────────────────────────────────────────────
   const myMatches = (allMatches ?? []).filter((m) => {
@@ -64,16 +65,15 @@ export default async function MemberRecordPage({ params }: { params: { id: strin
     if (recentForms.length < 5) recentForms.push(isWin ? "W" : "L");
   }
   const games = wins + losses;
-  const winRate = pct(wins, games);  // null if games=0
+  const winRate = pct(wins, games);
 
-  // 실제 경기 참여 session (완료 매치만)
   const gameSessionIds = new Set(
     myMatches.map((m) => m.session_id).filter((sid): sid is string => !!sid && completedIds.has(sid))
   );
   const gameSessionCount = gameSessionIds.size;
-  const participationRate = pct(gameSessionCount, completedCount);  // 경기 참여율
+  const participationRate = pct(gameSessionCount, completedCount);
   const absenceCount = completedCount - gameSessionCount;
-  const absenceRate = participationRate === null ? null : 100 - participationRate;  // 미참여도
+  const absenceRate = participationRate === null ? null : 100 - participationRate;
 
   // ── 출석 ────────────────────────────────────────────────────
   const attendMap = new Map((attendanceRows ?? []).map((r) => [r.session_id, r.status]));
@@ -84,7 +84,7 @@ export default async function MemberRecordPage({ params }: { params: { id: strin
     else if (status === "absent") absent++;
     else undecided++;
   }
-  const attendRate = pct(attending, completedCount);  // 출석 체크율
+  const attendRate = pct(attending, completedCount);
 
   // ── 세션별 참여자 집합 ────────────────────────────────────────
   const participantsPerSession = new Map<string, Set<string>>();
@@ -95,7 +95,6 @@ export default async function MemberRecordPage({ params }: { params: { id: strin
       .filter(Boolean).forEach((id) => participantsPerSession.get(m.session_id)!.add(id!));
   }
 
-  // 출석 후 미참여 — 어떤 session인지 기록
   const noShowSessionIds: string[] = [];
   for (const [sid, status] of attendMap) {
     if (!completedIds.has(sid)) continue;
@@ -104,13 +103,10 @@ export default async function MemberRecordPage({ params }: { params: { id: strin
     }
   }
   const noShowCount = noShowSessionIds.length;
-  const noShowRate = pct(noShowCount, attending);  // 출석 후 미참여율
 
-  // ── sessionMap / memberNameMap ────────────────────────────────
   const sessionMap = new Map((allSessions ?? []).map((s) => [s.id, s]));
   const memberNameMap = new Map((allMembers ?? []).map((m) => [m.id, m.name]));
 
-  // ── 최근 경기 (최대 10개) ─────────────────────────────────────
   const recentMatchItems = myMatches.slice(0, 10).map((m) => {
     const isTeamA = [m.team_a_player1_member, m.team_a_player2_member].includes(memberId);
     const isWin = (isTeamA && m.winner_team === "A") || (!isTeamA && m.winner_team === "B");
@@ -129,58 +125,52 @@ export default async function MemberRecordPage({ params }: { params: { id: strin
 
   const memberTypeLabel: Record<string, string> = { 정회원: "정회원", 준회원: "준회원", 게스트: "게스트" };
 
-  // ── 출석 후 미참여 세션 상세 ──────────────────────────────────
   const noShowSessions = noShowSessionIds.map((sid) => sessionMap.get(sid)).filter(Boolean);
+
+  const cardStyle = { borderColor: "var(--admin-border)", background: "var(--admin-surface)" };
+  const divStyle  = { borderColor: "var(--admin-border)" };
 
   return (
     <main className="px-4 pt-6 pb-28">
-
-      {/* 헤더 */}
-      <header className="mb-5 flex items-center justify-between">
-        <div>
-          <p className="eyebrow-en text-clay-400">Admin · Records</p>
-          <h1 className="headline-kr text-4xl text-line-900">{member.name}</h1>
-          <p className="mt-1 text-xs text-line-500">{memberTypeLabel[member.member_type] ?? member.member_type}</p>
-        </div>
-        <Link href="/admin/records/players"
-          className="flex-shrink-0 whitespace-nowrap rounded-sm border border-line-200/40 px-2.5 py-1.5 text-xs font-semibold text-line-500 hover:text-line-700">
-          ← 선수 기록 분석
-        </Link>
-      </header>
+      <AdminPageHeader
+        title={member.name}
+        description={memberTypeLabel[member.member_type] ?? member.member_type}
+        backHref="/admin/records/players"
+      />
 
       {/* ── 시즌 요약 카드 */}
       {completedCount > 0 && (
         <section className="mb-5">
-          <p className="mb-2 font-display text-[10px] font-bold uppercase tracking-widest text-line-500">시즌 요약</p>
-          <div className="overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50">
-            <div className="grid grid-cols-3 divide-x divide-line-200/30 border-b border-line-200/30">
+          <p className="mb-2 font-display text-[10px] font-bold uppercase tracking-widest" style={{ color: "var(--admin-muted)" }}>시즌 요약</p>
+          <div className="overflow-hidden rounded-[var(--admin-card-radius,14px)] border" style={cardStyle}>
+            <div className="grid grid-cols-3 divide-x divide-[color:var(--admin-border)] border-b" style={divStyle}>
               <div className="px-4 py-3 text-center">
-                <p className="font-score text-2xl font-bold tabular-nums text-line-900">{completedCount}</p>
-                <p className="mt-0.5 font-display text-[9px] font-bold uppercase tracking-widest text-line-400">완료 매치</p>
+                <p className="font-score text-2xl font-bold tabular-nums" style={{ color: "var(--admin-text)" }}>{completedCount}</p>
+                <p className="mt-0.5 font-display text-[9px] font-bold uppercase tracking-widest" style={{ color: "var(--admin-muted)" }}>완료 매치</p>
               </div>
               <div className="px-4 py-3 text-center">
-                <p className="font-score text-2xl font-bold tabular-nums text-gold">{gameSessionCount}</p>
-                <p className="mt-0.5 font-display text-[9px] font-bold uppercase tracking-widest text-line-400">참여 매치</p>
+                <p className="font-score text-2xl font-bold tabular-nums" style={{ color: "var(--admin-achievement)" }}>{gameSessionCount}</p>
+                <p className="mt-0.5 font-display text-[9px] font-bold uppercase tracking-widest" style={{ color: "var(--admin-muted)" }}>참여 매치</p>
               </div>
               <div className="px-4 py-3 text-center">
-                <p className={`font-score text-2xl font-bold tabular-nums ${absenceCount > 0 ? "text-clay-400" : "text-line-400"}`}>{absenceCount}</p>
-                <p className="mt-0.5 font-display text-[9px] font-bold uppercase tracking-widest text-line-400">미참여 매치</p>
+                <p className="font-score text-2xl font-bold tabular-nums" style={{ color: absenceCount > 0 ? "#d4783c" : "var(--admin-muted)" }}>{absenceCount}</p>
+                <p className="mt-0.5 font-display text-[9px] font-bold uppercase tracking-widest" style={{ color: "var(--admin-muted)" }}>미참여 매치</p>
               </div>
             </div>
-            <div className="grid grid-cols-3 divide-x divide-line-200/30">
+            <div className="grid grid-cols-3 divide-x divide-[color:var(--admin-border)]">
               <div className="px-4 py-3 text-center">
-                <p className="font-score text-xl font-bold tabular-nums text-line-900">{fmtPct(participationRate)}</p>
-                <p className="mt-0.5 font-display text-[9px] font-bold uppercase tracking-widest text-line-400">경기 참여율</p>
+                <p className="font-score text-xl font-bold tabular-nums" style={{ color: "var(--admin-text)" }}>{fmtPct(participationRate)}</p>
+                <p className="mt-0.5 font-display text-[9px] font-bold uppercase tracking-widest" style={{ color: "var(--admin-muted)" }}>경기 참여율</p>
               </div>
               <div className="px-4 py-3 text-center">
-                <p className="font-score text-xl font-bold tabular-nums text-line-900">{fmtPct(attendRate)}</p>
-                <p className="mt-0.5 font-display text-[9px] font-bold uppercase tracking-widest text-line-400">출석 체크율</p>
+                <p className="font-score text-xl font-bold tabular-nums" style={{ color: "var(--admin-text)" }}>{fmtPct(attendRate)}</p>
+                <p className="mt-0.5 font-display text-[9px] font-bold uppercase tracking-widest" style={{ color: "var(--admin-muted)" }}>출석 체크율</p>
               </div>
               <div className="px-4 py-3 text-center">
-                <p className={`font-score text-xl font-bold tabular-nums ${noShowCount > 0 ? "text-clay-400" : "text-line-400"}`}>
+                <p className="font-score text-xl font-bold tabular-nums" style={{ color: noShowCount > 0 ? "#d4783c" : "var(--admin-muted)" }}>
                   {noShowCount > 0 ? `${noShowCount}회` : "없음"}
                 </p>
-                <p className="mt-0.5 font-display text-[9px] font-bold uppercase tracking-widest text-line-400">출석 후 미참여</p>
+                <p className="mt-0.5 font-display text-[9px] font-bold uppercase tracking-widest" style={{ color: "var(--admin-muted)" }}>출석 후 미참여</p>
               </div>
             </div>
           </div>
@@ -189,41 +179,41 @@ export default async function MemberRecordPage({ params }: { params: { id: strin
 
       {/* ── Summary Cards */}
       <section className="mb-5">
-        <div className="overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50">
-          <div className="grid grid-cols-2 divide-x divide-y divide-line-200/30">
+        <div className="overflow-hidden rounded-[var(--admin-card-radius,14px)] border" style={cardStyle}>
+          <div className="grid grid-cols-2 divide-x divide-y divide-[color:var(--admin-border)]">
             <div className="px-5 py-4">
-              <p className="font-score text-4xl font-bold tabular-nums text-line-900">{games}</p>
-              <p className="mt-1 font-display text-[10px] font-bold uppercase tracking-widest text-line-500">총 경기</p>
-              <p className="text-[10px] text-line-400">{wins}승 {losses}패</p>
+              <p className="font-score text-4xl font-bold tabular-nums" style={{ color: "var(--admin-text)" }}>{games}</p>
+              <p className="mt-1 font-display text-[10px] font-bold uppercase tracking-widest" style={{ color: "var(--admin-muted)" }}>총 경기</p>
+              <p className="text-[10px]" style={{ color: "var(--admin-muted)" }}>{wins}승 {losses}패</p>
             </div>
             <div className="px-5 py-4">
-              <p className="font-score text-4xl font-bold tabular-nums text-gold">{fmtPct(winRate)}</p>
-              <p className="mt-1 font-display text-[10px] font-bold uppercase tracking-widest text-line-500">승률</p>
-              {games === 0 && <p className="text-[10px] text-line-400">경기 기록 없음</p>}
+              <p className="font-score text-4xl font-bold tabular-nums" style={{ color: "var(--admin-achievement)" }}>{fmtPct(winRate)}</p>
+              <p className="mt-1 font-display text-[10px] font-bold uppercase tracking-widest" style={{ color: "var(--admin-muted)" }}>승률</p>
+              {games === 0 && <p className="text-[10px]" style={{ color: "var(--admin-muted)" }}>경기 기록 없음</p>}
             </div>
             <div className="px-5 py-4">
-              <p className="font-score text-4xl font-bold tabular-nums text-line-900">{fmtPct(attendRate)}</p>
-              <p className="mt-1 font-display text-[10px] font-bold uppercase tracking-widest text-line-500">출석 체크율</p>
-              <p className="text-[10px] text-line-400">
+              <p className="font-score text-4xl font-bold tabular-nums" style={{ color: "var(--admin-text)" }}>{fmtPct(attendRate)}</p>
+              <p className="mt-1 font-display text-[10px] font-bold uppercase tracking-widest" style={{ color: "var(--admin-muted)" }}>출석 체크율</p>
+              <p className="text-[10px]" style={{ color: "var(--admin-muted)" }}>
                 {completedCount > 0 ? `완료 ${completedCount}매치 중 ${attending}회` : "완료 매치 없음"}
               </p>
             </div>
             <div className="px-5 py-4">
-              <p className="font-score text-4xl font-bold tabular-nums text-line-900">{member.league_point}</p>
-              <p className="mt-1 font-display text-[10px] font-bold uppercase tracking-widest text-line-500">현재 LP</p>
+              <p className="font-score text-4xl font-bold tabular-nums" style={{ color: "var(--admin-achievement)" }}>{member.league_point}</p>
+              <p className="mt-1 font-display text-[10px] font-bold uppercase tracking-widest" style={{ color: "var(--admin-muted)" }}>현재 LP</p>
             </div>
             <div className="px-5 py-4">
-              <p className="font-score text-4xl font-bold tabular-nums text-line-900">{fmtPct(participationRate)}</p>
-              <p className="mt-1 font-display text-[10px] font-bold uppercase tracking-widest text-line-500">경기 참여율</p>
-              <p className="text-[10px] text-line-400">
+              <p className="font-score text-4xl font-bold tabular-nums" style={{ color: "var(--admin-text)" }}>{fmtPct(participationRate)}</p>
+              <p className="mt-1 font-display text-[10px] font-bold uppercase tracking-widest" style={{ color: "var(--admin-muted)" }}>경기 참여율</p>
+              <p className="text-[10px]" style={{ color: "var(--admin-muted)" }}>
                 {completedCount > 0 ? `완료 ${completedCount}매치 중 ${gameSessionCount}회` : "완료 매치 없음"}
               </p>
             </div>
             {(absenceRate ?? 0) > 0 && (
               <div className="px-5 py-4">
-                <p className="font-score text-4xl font-bold tabular-nums text-clay-400">{fmtPct(absenceRate)}</p>
-                <p className="mt-1 font-display text-[10px] font-bold uppercase tracking-widest text-line-500">미참여도</p>
-                <p className="text-[10px] text-line-400">{absenceCount}회 / 완료 {completedCount}매치</p>
+                <p className="font-score text-4xl font-bold tabular-nums" style={{ color: "#d4783c" }}>{fmtPct(absenceRate)}</p>
+                <p className="mt-1 font-display text-[10px] font-bold uppercase tracking-widest" style={{ color: "var(--admin-muted)" }}>미참여도</p>
+                <p className="text-[10px]" style={{ color: "var(--admin-muted)" }}>{absenceCount}회 / 완료 {completedCount}매치</p>
               </div>
             )}
           </div>
@@ -233,25 +223,28 @@ export default async function MemberRecordPage({ params }: { params: { id: strin
       {/* ── 최근 폼 */}
       {recentForms.length > 0 && (
         <section className="mb-5">
-          <p className="mb-2 font-display text-[10px] font-bold uppercase tracking-widest text-line-500">최근 폼</p>
+          <p className="mb-2 font-display text-[10px] font-bold uppercase tracking-widest" style={{ color: "var(--admin-muted)" }}>최근 폼</p>
           <div className="flex items-center gap-2">
             {recentForms.map((f, i) => (
-              <span key={i} className={`font-score rounded-sm px-2.5 py-1 text-sm font-bold ${f === "W" ? "bg-gold/10 text-gold" : "bg-line-200/40 text-line-500"}`}>
+              <span key={i} className="font-score rounded-sm px-2.5 py-1 text-sm font-bold"
+                style={f === "W"
+                  ? { background: "rgba(201,168,76,0.1)", color: "var(--admin-achievement)" }
+                  : { background: "var(--admin-surface-raised,var(--admin-surface))", color: "var(--admin-muted)" }}>
                 {f}
               </span>
             ))}
-            <span className="text-[10px] text-line-400">최근 {recentForms.length}경기</span>
+            <span className="text-[10px]" style={{ color: "var(--admin-muted)" }}>최근 {recentForms.length}경기</span>
           </div>
         </section>
       )}
 
       {/* ── LP 히스토리 */}
       <section className="mb-5">
-        <p className="mb-2 font-display text-[10px] font-bold uppercase tracking-widest text-line-500">LP 히스토리</p>
+        <p className="mb-2 font-display text-[10px] font-bold uppercase tracking-widest" style={{ color: "var(--admin-muted)" }}>LP 히스토리</p>
         {!(pointHistory ?? []).length ? (
-          <div className="rounded-[14px] border border-line-200/40 bg-line-50 p-4 text-center">
-            <p className="text-sm text-line-400">LP 히스토리 없음</p>
-            <p className="text-[10px] text-line-400">경기 결과 입력 후 LP가 집계되면 표시됩니다.</p>
+          <div className="rounded-[var(--admin-card-radius,14px)] border p-4 text-center" style={cardStyle}>
+            <p className="text-sm" style={{ color: "var(--admin-muted)" }}>LP 히스토리 없음</p>
+            <p className="text-[10px]" style={{ color: "var(--admin-muted)" }}>경기 결과 입력 후 LP가 집계되면 표시됩니다.</p>
           </div>
         ) : (() => {
           const pts = pointHistory ?? [];
@@ -265,29 +258,31 @@ export default async function MemberRecordPage({ params }: { params: { id: strin
           const pathD = xs.map((x, i) => `${i === 0 ? "M" : "L"}${x.toFixed(1)},${ys[i].toFixed(1)}`).join(" ");
           const lastX = xs[xs.length - 1], lastY = ys[ys.length - 1];
           return (
-            <div className="overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50">
+            <div className="overflow-hidden rounded-[var(--admin-card-radius,14px)] border" style={cardStyle}>
               <div className="px-4 pt-3">
-                <div className="flex items-center justify-between text-[10px] text-line-400">
+                <div className="flex items-center justify-between text-[10px]" style={{ color: "var(--admin-muted)" }}>
                   <span className="font-score">{minV} LP</span>
-                  <span className="font-score font-bold text-gold">{maxV} LP</span>
+                  <span className="font-score font-bold" style={{ color: "var(--admin-achievement)" }}>{maxV} LP</span>
                 </div>
                 <svg width="100%" viewBox={`0 0 ${W} ${H}`} className="mt-1 block">
                   <path d={pathD} fill="none" stroke="#B9A64B" strokeWidth="1.5" strokeLinejoin="round" />
                   {pts.length > 1 && <circle cx={lastX} cy={lastY} r="3" fill="#B9A64B" />}
                 </svg>
               </div>
-              <div className="border-t border-line-200/30 px-4 pb-3 pt-2">
-                <p className="text-[10px] text-line-400">{pts[0]?.created_at.slice(0, 10)} – {pts[pts.length - 1]?.created_at.slice(0, 10)}</p>
+              <div className="border-t px-4 pb-3 pt-2" style={divStyle}>
+                <p className="text-[10px]" style={{ color: "var(--admin-muted)" }}>{pts[0]?.created_at.slice(0, 10)} – {pts[pts.length - 1]?.created_at.slice(0, 10)}</p>
               </div>
-              <div className="border-t border-line-200/30">
+              <div className="border-t" style={divStyle}>
                 {[...pts].reverse().slice(0, 5).map((ph, idx, arr) => (
                   <div key={ph.id}
-                    className={`flex items-center justify-between px-4 py-2 ${idx < arr.length - 1 ? "border-b border-line-200/20" : ""}`}>
+                    className={`flex items-center justify-between px-4 py-2 ${idx < arr.length - 1 ? "border-b" : ""}`}
+                    style={{ borderColor: "var(--admin-border)" }}>
                     <div>
-                      <p className="text-xs text-line-700">{ph.reason}</p>
-                      <p className="text-[9px] text-line-400">{ph.created_at.slice(0, 10)}</p>
+                      <p className="text-xs" style={{ color: "var(--admin-text)" }}>{ph.reason}</p>
+                      <p className="text-[9px]" style={{ color: "var(--admin-muted)" }}>{ph.created_at.slice(0, 10)}</p>
                     </div>
-                    <p className={`font-score text-sm font-bold tabular-nums ${ph.point_change >= 0 ? "text-gold" : "text-clay-400"}`}>
+                    <p className="font-score text-sm font-bold tabular-nums"
+                      style={{ color: ph.point_change >= 0 ? "var(--admin-achievement)" : "#d4783c" }}>
                       {ph.point_change >= 0 ? "+" : ""}{ph.point_change}
                     </p>
                   </div>
@@ -301,24 +296,25 @@ export default async function MemberRecordPage({ params }: { params: { id: strin
       {/* ── 출석 후 미참여 상세 */}
       {noShowCount > 0 && (
         <section className="mb-5">
-          <p className="mb-2 font-display text-[10px] font-bold uppercase tracking-widest text-line-500">
+          <p className="mb-2 font-display text-[10px] font-bold uppercase tracking-widest" style={{ color: "var(--admin-muted)" }}>
             출석 후 미참여 상세
           </p>
-          <div className="overflow-hidden rounded-[14px] border border-clay-400/30 bg-line-50">
-            <div className="border-b border-clay-400/20 px-4 py-2.5">
-              <p className="text-xs font-semibold text-clay-400">
+          <div className="overflow-hidden rounded-[var(--admin-card-radius,14px)] border" style={{ borderColor: "rgba(212,120,60,0.3)", background: "var(--admin-surface)" }}>
+            <div className="border-b px-4 py-2.5" style={{ borderColor: "rgba(212,120,60,0.2)" }}>
+              <p className="text-xs font-semibold" style={{ color: "#d4783c" }}>
                 출석 체크 후 경기 기록이 없는 매치 {noShowCount}회
               </p>
-              <p className="text-[9px] text-line-400">부상·대기·운영 참여 등이 포함될 수 있습니다.</p>
+              <p className="text-[9px]" style={{ color: "var(--admin-muted)" }}>부상·대기·운영 참여 등이 포함될 수 있습니다.</p>
             </div>
             {noShowSessions.map((s, idx) => s && (
               <div key={s.id}
-                className={`flex items-center justify-between px-4 py-2.5 ${idx < noShowSessions.length - 1 ? "border-b border-line-200/20" : ""}`}>
+                className={`flex items-center justify-between px-4 py-2.5 ${idx < noShowSessions.length - 1 ? "border-b" : ""}`}
+                style={{ borderColor: "var(--admin-border)" }}>
                 <div>
-                  <p className="text-[13px] font-semibold text-line-900">{matchTitle(s)}</p>
-                  <p className="font-score text-[10px] tabular-nums text-line-400">{s.session_date}</p>
+                  <p className="text-[13px] font-semibold" style={{ color: "var(--admin-text)" }}>{matchTitle(s)}</p>
+                  <p className="font-score text-[10px] tabular-nums" style={{ color: "var(--admin-muted)" }}>{s.session_date}</p>
                 </div>
-                <span className="rounded-sm border border-clay-400/30 bg-clay-400/10 px-1.5 py-0.5 text-[9px] font-semibold text-clay-400">
+                <span className="rounded-sm border px-1.5 py-0.5 text-[9px] font-semibold" style={{ borderColor: "rgba(212,120,60,0.3)", background: "rgba(212,120,60,0.1)", color: "#d4783c" }}>
                   출석 후 미참여
                 </span>
               </div>
@@ -329,28 +325,32 @@ export default async function MemberRecordPage({ params }: { params: { id: strin
 
       {/* ── 최근 경기 */}
       <section className="mb-5">
-        <p className="mb-2 font-display text-[10px] font-bold uppercase tracking-widest text-line-500">최근 경기</p>
+        <p className="mb-2 font-display text-[10px] font-bold uppercase tracking-widest" style={{ color: "var(--admin-muted)" }}>최근 경기</p>
         {recentMatchItems.length === 0 ? (
-          <div className="rounded-[14px] border border-line-200/40 bg-line-50 p-4 text-center">
-            <p className="text-sm text-line-400">경기 기록이 없어요.</p>
+          <div className="rounded-[var(--admin-card-radius,14px)] border p-4 text-center" style={cardStyle}>
+            <p className="text-sm" style={{ color: "var(--admin-muted)" }}>경기 기록이 없어요.</p>
           </div>
         ) : (
-          <div className="overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50">
+          <div className="overflow-hidden rounded-[var(--admin-card-radius,14px)] border" style={cardStyle}>
             {recentMatchItems.map(({ m, isTeamA, isWin, session, partnerName, opponentNames }, idx) => (
               <div key={m.id}
-                className={`flex items-center gap-3 px-4 py-3 ${idx < recentMatchItems.length - 1 ? "border-b border-line-200/30" : ""}`}>
-                <span className={`font-score rounded-sm px-2 py-0.5 text-[11px] font-bold ${isWin ? "bg-gold/10 text-gold" : "bg-line-200/40 text-line-500"}`}>
+                className={`flex items-center gap-3 px-4 py-3 ${idx < recentMatchItems.length - 1 ? "border-b" : ""}`}
+                style={{ borderColor: "var(--admin-border)" }}>
+                <span className="font-score rounded-sm px-2 py-0.5 text-[11px] font-bold"
+                  style={isWin
+                    ? { background: "rgba(201,168,76,0.1)", color: "var(--admin-achievement)" }
+                    : { background: "var(--admin-surface-raised,var(--admin-surface))", color: "var(--admin-muted)" }}>
                   {isWin ? "W" : "L"}
                 </span>
                 <div className="min-w-0 flex-1">
-                  <p className="text-[13px] font-semibold text-line-900">
+                  <p className="text-[13px] font-semibold" style={{ color: "var(--admin-text)" }}>
                     {session ? matchTitle(session) : m.played_at}
                   </p>
-                  <p className="font-score text-[10px] tabular-nums text-line-400">
+                  <p className="font-score text-[10px] tabular-nums" style={{ color: "var(--admin-muted)" }}>
                     {isTeamA ? "청팀" : "우팀"} · {m.score_a}:{m.score_b}
                   </p>
                   {(partnerName || opponentNames.length > 0) && (
-                    <p className="text-[10px] text-line-400">
+                    <p className="text-[10px]" style={{ color: "var(--admin-muted)" }}>
                       {partnerName && `파트너: ${partnerName}`}
                       {partnerName && opponentNames.length > 0 && " · "}
                       {opponentNames.length > 0 && `상대: ${opponentNames.join(", ")}`}
@@ -365,18 +365,18 @@ export default async function MemberRecordPage({ params }: { params: { id: strin
 
       {/* ── 출석 기록 */}
       <section>
-        <p className="mb-2 font-display text-[10px] font-bold uppercase tracking-widest text-line-500">출석 기록</p>
-        <div className="overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50">
-          <div className="grid grid-cols-4 divide-x divide-line-200/30">
+        <p className="mb-2 font-display text-[10px] font-bold uppercase tracking-widest" style={{ color: "var(--admin-muted)" }}>출석 기록</p>
+        <div className="overflow-hidden rounded-[var(--admin-card-radius,14px)] border" style={cardStyle}>
+          <div className="grid grid-cols-4 divide-x divide-[color:var(--admin-border)]">
             {[
-              { label: "출석", value: attending, color: "text-gold" },
-              { label: "미정", value: undecided, color: "text-clay-400" },
-              { label: "불참", value: absent, color: "text-line-500" },
-              { label: "미출석", value: completedCount - attending - absent - undecided, color: "text-line-400" },
+              { label: "출석",  value: attending,                                   color: "var(--admin-achievement)" },
+              { label: "미정",  value: undecided,                                   color: "#d4783c" },
+              { label: "불참",  value: absent,                                      color: "var(--admin-muted)" },
+              { label: "미출석", value: completedCount - attending - absent - undecided, color: "var(--admin-muted)" },
             ].map(({ label, value, color }) => (
               <div key={label} className="px-3 py-3 text-center">
-                <p className={`font-score text-xl font-bold tabular-nums ${color}`}>{value}</p>
-                <p className="mt-0.5 text-[9px] text-line-400">{label}</p>
+                <p className="font-score text-xl font-bold tabular-nums" style={{ color }}>{value}</p>
+                <p className="mt-0.5 text-[9px]" style={{ color: "var(--admin-muted)" }}>{label}</p>
               </div>
             ))}
           </div>

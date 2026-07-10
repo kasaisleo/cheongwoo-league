@@ -30,7 +30,7 @@ export function NewMemberClient({ type, currentClubName, clubSlug }: Props) {
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const memberType = isGuest ? "게스트" : "정회원";
-  const eyebrow    = isGuest ? "Admin · New Guest" : "Admin · New Member";
+  const eyebrow    = isGuest ? "NEW GUEST" : "NEW MEMBER";
   const headline   = isGuest ? "게스트 등록" : "회원 등록";
   const desc       = isGuest
     ? "게스트 경기에 참여할 임시 회원 정보를 등록합니다."
@@ -65,7 +65,7 @@ export function NewMemberClient({ type, currentClubName, clubSlug }: Props) {
       body: JSON.stringify({
         name: normalizedName,
         nickname: values.nickname.trim() || undefined,
-        grade: "C",           // API 내부에서 무시됨 — DB default 사용
+        grade: "C",
         memberType,
         phone: values.phoneDigits || undefined,
         mapoScore: values.mapoScore ?? undefined,
@@ -96,19 +96,25 @@ export function NewMemberClient({ type, currentClubName, clubSlug }: Props) {
       {/* 헤더 */}
       <header className="mb-5 flex items-center justify-between">
         <div>
-          <p className="eyebrow-en text-clay-400">{eyebrow}</p>
-          <h1 className="headline-kr text-4xl text-line-900">{headline}</h1>
+          <p className="eyebrow-en text-[9px]" style={{ color: "var(--admin-muted)" }}>{eyebrow}</p>
+          <h1 className="headline-kr text-4xl" style={{ color: "var(--admin-text)" }}>{headline}</h1>
         </div>
-        <Link href="/admin"
-          className="rounded-sm border border-line-200/40 px-2.5 py-1.5 text-xs font-semibold text-line-500 hover:text-line-700">
+        <Link
+          href="/admin"
+          className="rounded-[var(--admin-button-radius,6px)] border px-2.5 py-1.5 text-xs font-semibold transition-opacity hover:opacity-70"
+          style={{ borderColor: "var(--admin-border)", color: "var(--admin-muted)" }}
+        >
           ← 관리자
         </Link>
       </header>
 
-      <p className="mb-6 text-sm text-line-500">{desc}</p>
+      <p className="mb-6 text-sm" style={{ color: "var(--admin-muted)" }}>{desc}</p>
 
       {/* 공용 폼 */}
-      <div className="overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50 px-4 py-5">
+      <div
+        className="overflow-hidden rounded-[var(--admin-card-radius,14px)] border px-4 py-5"
+        style={{ background: "var(--admin-surface)", borderColor: "var(--admin-border)" }}
+      >
         <MemberForm
           mode="create"
           values={values}
@@ -119,15 +125,18 @@ export function NewMemberClient({ type, currentClubName, clubSlug }: Props) {
 
       {/* 저장 + 취소 */}
       <div className="mt-4 flex gap-3">
-        <Link href="/admin"
-          className="flex h-12 flex-1 items-center justify-center rounded-sm border border-line-200/40 text-sm font-semibold text-line-500">
+        <Link
+          href="/admin"
+          className="flex h-12 flex-1 items-center justify-center rounded-[var(--admin-button-radius,6px)] border text-sm font-semibold transition-opacity hover:opacity-70"
+          style={{ borderColor: "var(--admin-border)", color: "var(--admin-muted)" }}
+        >
           취소
         </Link>
         <button
           type="button"
           disabled={submitting}
           onClick={handleSubmit}
-          className="flex h-12 flex-[2] items-center justify-center rounded-sm bg-clay-400 text-sm font-bold text-line-25 disabled:opacity-40"
+          className="flex h-12 flex-[2] items-center justify-center rounded-[var(--admin-button-radius,6px)] bg-clay-400 text-sm font-bold text-line-25 disabled:opacity-40"
         >
           {submitting ? "등록 중..." : `${isGuest ? "게스트" : "회원"} 등록`}
         </button>

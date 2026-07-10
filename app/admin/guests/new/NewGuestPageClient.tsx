@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
+import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import type { Member, MemberGrade } from "@/lib/supabase/database.types";
 
 const GRADES: MemberGrade[] = ["A", "B", "C", "D"];
@@ -85,39 +86,41 @@ export default function NewGuestPageClient({ currentClubId }: { currentClubId: s
     }
   }
 
+  const inactiveBtnCls = "flex-1 rounded-[var(--admin-button-radius,6px)] border border-[color:var(--admin-border)] py-2 text-sm font-semibold text-[color:var(--admin-muted)] transition-colors hover:border-[color:var(--admin-border-strong)]";
+
   return (
     <main className="px-4 pt-6 pb-28">
-      <header className="mb-5">
-        <p className="eyebrow-en text-clay-400">New Guest</p>
-        <h1 className="headline-kr text-3xl font-bold text-line-900">게스트 등록</h1>
-      </header>
+      <AdminPageHeader
+        title="게스트 등록"
+        backHref="/admin/guests"
+      />
 
       <form onSubmit={handleSubmit}>
         <Card className="space-y-4 overflow-hidden p-4">
           <div>
-            <label className="mb-1 block text-xs font-semibold text-line-600">이름</label>
+            <label className="mb-1 block text-xs font-semibold text-[color:var(--admin-muted)]">이름</label>
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="예: 박지민"
-              className="h-11 w-full rounded-sm border border-line-200/40 bg-line-50 px-3 text-sm text-line-900 placeholder:text-line-400"
+              className="h-11 w-full rounded-sm border border-[color:var(--admin-border)] bg-[color:var(--admin-surface)] px-3 text-sm text-[color:var(--admin-text)] placeholder:[color:var(--admin-muted)]"
             />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="mb-1 block text-xs font-semibold text-line-600">나이</label>
+              <label className="mb-1 block text-xs font-semibold text-[color:var(--admin-muted)]">나이</label>
               <input
                 type="number"
                 inputMode="numeric"
                 value={age}
                 onChange={(e) => setAge(e.target.value)}
                 placeholder="예: 35"
-                className="h-11 w-full rounded-sm border border-line-200/40 bg-line-50 px-3 text-sm text-line-900 placeholder:text-line-400"
+                className="h-11 w-full rounded-sm border border-[color:var(--admin-border)] bg-[color:var(--admin-surface)] px-3 text-sm text-[color:var(--admin-text)] placeholder:[color:var(--admin-muted)]"
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs font-semibold text-line-600">구력(년)</label>
+              <label className="mb-1 block text-xs font-semibold text-[color:var(--admin-muted)]">구력(년)</label>
               <input
                 type="number"
                 inputMode="decimal"
@@ -125,30 +128,30 @@ export default function NewGuestPageClient({ currentClubId }: { currentClubId: s
                 value={yearsPlaying}
                 onChange={(e) => setYearsPlaying(e.target.value)}
                 placeholder="예: 2"
-                className="h-11 w-full rounded-sm border border-line-200/40 bg-line-50 px-3 text-sm text-line-900 placeholder:text-line-400"
+                className="h-11 w-full rounded-sm border border-[color:var(--admin-border)] bg-[color:var(--admin-surface)] px-3 text-sm text-[color:var(--admin-text)] placeholder:[color:var(--admin-muted)]"
               />
             </div>
           </div>
 
           <div>
-            <label className="mb-1 block text-xs font-semibold text-line-600">휴대폰 번호</label>
+            <label className="mb-1 block text-xs font-semibold text-[color:var(--admin-muted)]">휴대폰 번호</label>
             <input
               type="tel"
               inputMode="numeric"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               placeholder="010-0000-0000"
-              className="h-11 w-full rounded-sm border border-line-200/40 bg-line-50 px-3 text-sm text-line-900 placeholder:text-line-400"
+              className="h-11 w-full rounded-sm border border-[color:var(--admin-border)] bg-[color:var(--admin-surface)] px-3 text-sm text-[color:var(--admin-text)] placeholder:[color:var(--admin-muted)]"
             />
           </div>
 
           <div className="w-full overflow-hidden">
-            <label className="mb-1 block text-xs font-semibold text-line-600">방문일</label>
+            <label className="mb-1 block text-xs font-semibold text-[color:var(--admin-muted)]">방문일</label>
             <input
               type="date"
               value={visitDate}
               onChange={(e) => setVisitDate(e.target.value)}
-              className="box-border block h-11 w-full min-w-0 max-w-full rounded-sm border border-line-200/40 bg-line-50 px-3 text-sm text-line-900"
+              className="box-border block h-11 w-full min-w-0 max-w-full rounded-sm border border-[color:var(--admin-border)] bg-[color:var(--admin-surface)] px-3 text-sm text-[color:var(--admin-text)]"
             />
           </div>
         </Card>
@@ -156,7 +159,8 @@ export default function NewGuestPageClient({ currentClubId }: { currentClubId: s
         <button
           type="button"
           onClick={() => setShowMore((v) => !v)}
-          className="mt-3 text-xs font-semibold text-clay-400"
+          className="mt-3 text-xs font-semibold"
+          style={{ color: "var(--admin-accent)" }}
         >
           {showMore ? "추가 정보 닫기 ▲" : "추가 정보 입력 (소개자, 매너평가 등) ▼"}
         </button>
@@ -164,11 +168,11 @@ export default function NewGuestPageClient({ currentClubId }: { currentClubId: s
         {showMore && (
           <Card className="mt-3 space-y-4 p-4">
             <div>
-              <label className="mb-1 block text-xs font-semibold text-line-600">소개자</label>
+              <label className="mb-1 block text-xs font-semibold text-[color:var(--admin-muted)]">소개자</label>
               <select
                 value={referredBy}
                 onChange={(e) => setReferredBy(e.target.value)}
-                className="h-11 w-full rounded-sm border border-line-200/40 bg-line-50 px-3 text-sm text-line-900"
+                className="h-11 w-full rounded-sm border border-[color:var(--admin-border)] bg-[color:var(--admin-surface)] px-3 text-sm text-[color:var(--admin-text)]"
               >
                 <option value="">선택 안 함</option>
                 {members.map((m) => (
@@ -180,18 +184,19 @@ export default function NewGuestPageClient({ currentClubId }: { currentClubId: s
             </div>
 
             <div>
-              <label className="mb-1 block text-xs font-semibold text-line-600">실력 등급 (추정)</label>
+              <label className="mb-1 block text-xs font-semibold text-[color:var(--admin-muted)]">실력 등급 (추정)</label>
               <div className="flex gap-2">
                 {GRADES.map((g) => (
                   <button
                     key={g}
                     type="button"
                     onClick={() => setSkillGrade(skillGrade === g ? "" : g)}
-                    className={`flex-1 rounded-sm border py-2 text-sm font-semibold ${
+                    className={`flex-1 rounded-[var(--admin-button-radius,6px)] border py-2 text-sm font-semibold transition-colors ${
                       skillGrade === g
-                        ? "border-clay-400 bg-clay-400 text-line-25"
-                        : "border-line-200/40 text-line-600"
+                        ? "border-[color:var(--admin-accent)] text-line-25"
+                        : "border-[color:var(--admin-border)] text-[color:var(--admin-muted)] hover:border-[color:var(--admin-border-strong)]"
                     }`}
+                    style={skillGrade === g ? { background: "var(--admin-accent)" } : undefined}
                   >
                     {g}급
                   </button>
@@ -200,17 +205,17 @@ export default function NewGuestPageClient({ currentClubId }: { currentClubId: s
             </div>
 
             <div>
-              <label className="mb-1 block text-xs font-semibold text-line-600">매너 평가</label>
+              <label className="mb-1 block text-xs font-semibold text-[color:var(--admin-muted)]">매너 평가</label>
               <div className="flex gap-2">
                 {[1, 2, 3, 4, 5].map((score) => (
                   <button
                     key={score}
                     type="button"
                     onClick={() => setMannerScore(mannerScore === score ? null : score)}
-                    className={`flex-1 rounded-sm border py-2 text-sm font-semibold ${
+                    className={`flex-1 rounded-[var(--admin-button-radius,6px)] border py-2 text-sm font-semibold transition-colors ${
                       mannerScore === score
                         ? "border-amber-400 bg-amber-400 text-line-25"
-                        : "border-line-200/40 text-line-600"
+                        : "border-[color:var(--admin-border)] text-[color:var(--admin-muted)] hover:border-[color:var(--admin-border-strong)]"
                     }`}
                   >
                     {score}
@@ -220,15 +225,15 @@ export default function NewGuestPageClient({ currentClubId }: { currentClubId: s
             </div>
 
             <div>
-              <label className="mb-1 block text-xs font-semibold text-line-600">재초청 여부</label>
+              <label className="mb-1 block text-xs font-semibold text-[color:var(--admin-muted)]">재초청 여부</label>
               <div className="flex gap-2">
                 <button
                   type="button"
                   onClick={() => setReinvite(reinvite === true ? null : true)}
-                  className={`flex-1 rounded-sm border py-2 text-sm font-semibold ${
+                  className={`flex-1 rounded-[var(--admin-button-radius,6px)] border py-2 text-sm font-semibold transition-colors ${
                     reinvite === true
                       ? "border-court-400 bg-court-400 text-line-25"
-                      : "border-line-200/40 text-line-600"
+                      : inactiveBtnCls
                   }`}
                 >
                   재초청 희망
@@ -236,10 +241,10 @@ export default function NewGuestPageClient({ currentClubId }: { currentClubId: s
                 <button
                   type="button"
                   onClick={() => setReinvite(reinvite === false ? null : false)}
-                  className={`flex-1 rounded-sm border py-2 text-sm font-semibold ${
+                  className={`flex-1 rounded-[var(--admin-button-radius,6px)] border py-2 text-sm font-semibold transition-colors ${
                     reinvite === false
                       ? "border-fault-400 bg-fault-400 text-line-25"
-                      : "border-line-200/40 text-line-600"
+                      : inactiveBtnCls
                   }`}
                 >
                   보류
@@ -248,13 +253,13 @@ export default function NewGuestPageClient({ currentClubId }: { currentClubId: s
             </div>
 
             <div>
-              <label className="mb-1 block text-xs font-semibold text-line-600">메모</label>
+              <label className="mb-1 block text-xs font-semibold text-[color:var(--admin-muted)]">메모</label>
               <textarea
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 rows={3}
                 placeholder="특이사항을 적어주세요"
-                className="w-full rounded-sm border border-line-200/40 bg-line-50 px-3 py-2 text-sm text-line-900 placeholder:text-line-400"
+                className="w-full rounded-sm border border-[color:var(--admin-border)] bg-[color:var(--admin-surface)] px-3 py-2 text-sm text-[color:var(--admin-text)] placeholder:[color:var(--admin-muted)]"
               />
             </div>
           </Card>

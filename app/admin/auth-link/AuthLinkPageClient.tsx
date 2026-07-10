@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useState, useCallback, useMemo } from "react";
-import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { toast } from "@/components/ui/Toast";
 import { createClient } from "@/lib/supabase/client";
+import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 
 /**
  * /admin/auth-link — Owner/Master 전용 카카오 회원 연결 화면.
@@ -100,22 +100,11 @@ export default function AuthLinkPageClient({ currentClubId }: { currentClubId: s
 
   return (
     <main className="px-4 pt-6 pb-28">
-      {/* ── 헤더 ─────────────────────────────────────── */}
-      <header className="mb-5 flex items-center justify-between">
-        <div>
-          <p className="eyebrow-en text-clay-400">Admin · Auth</p>
-          <h1 className="headline-kr text-4xl text-line-900">카카오 회원 연결</h1>
-        </div>
-        <Link
-          href="/admin"
-          className="flex-shrink-0 whitespace-nowrap rounded-sm border border-line-200/40 px-2.5 py-1.5 text-xs font-semibold text-line-500 hover:text-line-700"
-        >
-          ← 관리자
-        </Link>
-      </header>
-
-      {/* ── 설명 ─────────────────────────────────────── */}
-      <p className="mb-5 max-w-[280px] break-keep text-xs leading-relaxed text-line-500">카카오 로그인 후 회원 연결이 필요한 사용자를 연결합니다.</p>
+      <AdminPageHeader
+        title="카카오 회원 연결"
+        description="카카오 로그인 후 회원 연결이 필요한 사용자를 연결합니다."
+        backHref="/admin"
+      />
 
       {/* ── 검색창 ───────────────────────────────────── */}
       <div className="mb-4">
@@ -123,42 +112,52 @@ export default function AuthLinkPageClient({ currentClubId }: { currentClubId: s
           value={memberQuery}
           onChange={(e) => setMemberQuery(e.target.value)}
           placeholder="회원 이름 검색"
-          className="box-border block h-9 w-full rounded-sm border border-line-200/40 bg-line-50 px-3 text-sm text-line-900 placeholder:text-line-500"
+          className="box-border block h-9 w-full rounded-sm border border-[color:var(--admin-border)] bg-[color:var(--admin-surface)] px-3 text-sm text-[color:var(--admin-text)] placeholder:[color:var(--admin-muted)]"
         />
       </div>
 
       {/* ── 본문 ─────────────────────────────────────── */}
       {loading ? (
-        <div className="rounded-[14px] border border-line-200/40 bg-line-50 p-8 text-center">
-          <p className="font-display text-[10px] font-bold uppercase tracking-widest text-line-500">
+        <div
+          className="rounded-[var(--admin-card-radius,14px)] border p-8 text-center"
+          style={{ borderColor: "var(--admin-border)", background: "var(--admin-surface)" }}
+        >
+          <p className="font-display text-[10px] font-bold uppercase tracking-widest" style={{ color: "var(--admin-muted)" }}>
             불러오는 중...
           </p>
         </div>
       ) : pendingUsers.length === 0 ? (
-        <div className="rounded-[14px] border border-line-200/40 bg-line-50 p-8 text-center">
-          <p className="font-display text-[10px] font-bold uppercase tracking-widest text-line-500">
-            No Pending Users
+        <div
+          className="rounded-[var(--admin-card-radius,14px)] border p-8 text-center"
+          style={{ borderColor: "var(--admin-border)", background: "var(--admin-surface)" }}
+        >
+          <p className="font-display text-[10px] font-bold uppercase tracking-widest" style={{ color: "var(--admin-muted)" }}>
+            대기 없음
           </p>
-          <p className="mt-1 text-sm text-line-500">대기 중인 카카오 사용자가 없습니다.</p>
+          <p className="mt-1 text-sm" style={{ color: "var(--admin-muted)" }}>대기 중인 카카오 사용자가 없습니다.</p>
         </div>
       ) : (
         <div className="space-y-3">
           {pendingUsers.map((user) => (
             <div
               key={user.id}
-              className="overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50"
+              className="overflow-hidden rounded-[var(--admin-card-radius,14px)] border"
+              style={{ borderColor: "var(--admin-border)", background: "var(--admin-surface)" }}
             >
               {/* 카카오 사용자 정보 */}
-              <div className="border-b border-line-200/30 px-4 py-3">
+              <div
+                className="border-b px-4 py-3 transition-colors hover:bg-[color:var(--admin-surface-raised,var(--admin-surface))]"
+                style={{ borderColor: "var(--admin-border)" }}
+              >
                 <div className="flex items-center gap-2">
                   <span className="rounded-sm border border-clay-400/40 bg-clay-400/10 px-2 py-0.5 text-[10px] font-bold text-clay-400">
                     KAKAO
                   </span>
-                  <p className="name-kr-sm text-line-900">
+                  <p className="name-kr-sm" style={{ color: "var(--admin-text)" }}>
                     {user.nickname ?? "이름 없음"}
                   </p>
                 </div>
-                <p className="mt-0.5 text-[11px] text-line-500">
+                <p className="mt-0.5 text-[11px]" style={{ color: "var(--admin-muted)" }}>
                   {user.email ?? "이메일 없음"} · {new Date(user.createdAt).toLocaleDateString("ko-KR")}
                 </p>
               </div>
@@ -170,7 +169,7 @@ export default function AuthLinkPageClient({ currentClubId }: { currentClubId: s
                   onChange={(e) =>
                     setSelections((prev) => ({ ...prev, [user.id]: e.target.value }))
                   }
-                  className="h-9 flex-1 rounded-sm border border-line-200/40 bg-line-100 px-2 text-sm text-line-900"
+                  className="h-9 flex-1 rounded-sm border border-[color:var(--admin-border)] bg-[color:var(--admin-surface-raised,var(--admin-surface))] px-2 text-sm text-[color:var(--admin-text)]"
                 >
                   <option value="">연결할 회원 선택</option>
                   {filteredMembers.map((m) => (

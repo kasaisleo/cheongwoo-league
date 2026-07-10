@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "@/components/ui/Toast";
 import TennisBallLoader from "@/components/common/TennisBallLoader";
+import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import type { SessionDay } from "@/lib/supabase/database.types";
 
 const SESSION_DAY_OPTIONS: { value: SessionDay; label: string }[] = [
@@ -53,71 +54,70 @@ export default function MatchesCreatePage() {
   return (
     <main className="px-4 pt-6 pb-20">
 
-      {/* 헤더 */}
-      <header className="mb-5 flex items-center justify-between">
-        <div>
-          <p className="eyebrow-en text-clay-400">Admin · Matches</p>
-          <h1 className="headline-kr text-4xl text-line-900">매치 생성</h1>
-          <p className="mt-1 max-w-[280px] break-keep text-xs leading-relaxed text-line-500">새 매치를 생성합니다.</p>
-        </div>
-        <Link href="/admin"
-          className="flex-shrink-0 rounded-sm border border-line-200/40 px-2.5 py-1.5 text-xs font-semibold text-line-500 hover:text-line-700 whitespace-nowrap">
-          ← 관리자
-        </Link>
-      </header>
+      <AdminPageHeader
+        title="매치 생성"
+        description="새 매치를 생성합니다."
+        backHref="/admin/matches"
+      />
 
       {/* 입력 폼 */}
       <div className="space-y-4">
 
         <div>
-          <label className="mb-1.5 block text-xs font-semibold text-line-600">
-            매치명 <span className="text-clay-400">*</span>
+          <label className="mb-1.5 block text-xs font-semibold text-[color:var(--admin-muted)]">
+            매치명 <span style={{ color: "var(--admin-accent)" }}>*</span>
           </label>
           <input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="예: 7월 토요 정기매치"
-            className="h-11 w-full rounded-sm border border-line-200/40 bg-line-50 px-3 text-sm text-line-900 placeholder:text-line-400"
+            className="h-11 w-full rounded-sm border border-[color:var(--admin-border)] bg-[color:var(--admin-surface)] px-3 text-sm text-[color:var(--admin-text)] placeholder:[color:var(--admin-muted)]"
           />
         </div>
 
         <div>
-          <label className="mb-1.5 block text-xs font-semibold text-line-600">
-            날짜 <span className="text-clay-400">*</span>
+          <label className="mb-1.5 block text-xs font-semibold text-[color:var(--admin-muted)]">
+            날짜 <span style={{ color: "var(--admin-accent)" }}>*</span>
           </label>
           <input
             type="date"
             value={date}
             onChange={(e) => setDate(e.target.value)}
-            className="h-11 w-full rounded-sm border border-line-200/40 bg-line-50 px-3 text-sm text-line-900"
+            className="h-11 w-full rounded-sm border border-[color:var(--admin-border)] bg-[color:var(--admin-surface)] px-3 text-sm text-[color:var(--admin-text)]"
           />
         </div>
 
         <div>
-          <label className="mb-1.5 block text-xs font-semibold text-line-600">매치 유형</label>
+          <label className="mb-1.5 block text-xs font-semibold text-[color:var(--admin-muted)]">매치 유형</label>
           <select
             value={day}
             onChange={(e) => setDay(e.target.value as SessionDay)}
-            className="h-11 w-full rounded-sm border border-line-200/40 bg-line-50 px-3 text-sm text-line-900">
+            className="h-11 w-full rounded-sm border border-[color:var(--admin-border)] bg-[color:var(--admin-surface)] px-3 text-sm text-[color:var(--admin-text)]"
+          >
             {SESSION_DAY_OPTIONS.map((o) => (
               <option key={o.value} value={o.value}>{o.label}</option>
             ))}
           </select>
         </div>
 
-        {error && <p className="text-sm text-clay-400">{error}</p>}
+        {error && <p className="text-sm" style={{ color: "var(--admin-accent)" }}>{error}</p>}
 
         {/* 버튼 */}
         <div className="flex gap-2 pt-2">
-          <Link href="/admin"
-            className="flex h-11 flex-1 items-center justify-center rounded-sm border border-line-200/40 text-sm font-semibold text-line-500 hover:text-line-700">
+          <Link
+            href="/admin/matches"
+            className="flex h-11 flex-1 items-center justify-center rounded-[var(--admin-button-radius,6px)] border text-sm font-semibold transition-colors hover:border-[color:var(--admin-border-strong)]"
+            style={{ borderColor: "var(--admin-border)", color: "var(--admin-muted)" }}
+          >
             취소
           </Link>
           <button
             type="button"
             disabled={creating}
             onClick={handleCreate}
-            className="flex h-11 flex-1 items-center justify-center rounded-sm bg-clay-400 text-sm font-bold text-line-25 disabled:opacity-40">
+            className="flex h-11 flex-1 items-center justify-center rounded-[var(--admin-button-radius,6px)] text-sm font-bold text-line-25 disabled:opacity-40"
+            style={{ background: "var(--admin-accent)" }}
+          >
             {creating ? "생성 중..." : "매치 생성"}
           </button>
         </div>
