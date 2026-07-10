@@ -91,7 +91,7 @@ export default async function ClubPointHistoryPage({ params, searchParams }: Poi
               Point History
             </p>
           </div>
-          <h1 className="font-display text-3xl font-bold uppercase tracking-tight text-line-900">
+          <h1 className="headline-kr text-3xl text-line-900">
             포인트 히스토리
           </h1>
         </div>

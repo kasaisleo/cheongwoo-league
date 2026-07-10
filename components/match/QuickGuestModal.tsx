@@ -63,7 +63,7 @@ export function QuickGuestModal({ onClose, onCreated, currentClubId }: QuickGues
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 px-4 pb-4 sm:items-center">
-      <div className="w-full max-w-sm rounded-xl border border-line-200 bg-line-100 p-4 shadow-card">
+      <div className="w-full max-w-sm rounded-[var(--club-card-radius,14px)] border border-line-200 bg-line-100 p-4 shadow-card">
         <p className="mb-3 text-sm font-bold uppercase tracking-wide text-clay-400">게스트 등록</p>
 
         <div className="space-y-3 overflow-hidden">

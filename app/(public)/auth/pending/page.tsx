@@ -16,7 +16,7 @@ export default function AuthPendingPage() {
             Pending
           </p>
         </div>
-        <h1 className="mt-1 font-display text-xl font-bold uppercase tracking-tight text-line-900">
+        <h1 className="mt-1 headline-kr text-xl text-line-900">
           회원 연결 대기 중
         </h1>
         <p className="mt-3 text-sm text-line-600">

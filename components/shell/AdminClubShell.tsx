@@ -57,6 +57,7 @@ const ADMIN_SKIN_VARS: Record<string, Record<string, string>> = {
   },
   namaste: {
     "--admin-bg":             "#1a0f28",
+    "--admin-bar-bg":         "#221135",
     "--admin-surface":        "#221135",
     "--admin-surface-strong": "#2c1848",
     "--admin-text":           "#ecddf5",

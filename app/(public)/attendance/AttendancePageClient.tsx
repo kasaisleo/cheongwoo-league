@@ -455,8 +455,8 @@ function AttendancePageInner({ currentClubId }: { currentClubId: string }) {
         <p className="text-center text-sm text-line-400">세션을 불러오는 중...</p>
       ) : openSessions.length === 0 ? (
         <div className="mb-4 rounded-[14px] border border-line-200/40 bg-line-50 p-8 text-center">
-          <p className="font-display text-xs font-bold uppercase tracking-widest text-line-500">
-            "현재 진행 중인 출석 세션이 없어요."
+          <p className="text-sm text-line-500">
+            현재 진행 중인 출석 세션이 없어요.
           </p>
         </div>
       ) : (

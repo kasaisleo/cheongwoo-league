@@ -48,7 +48,7 @@ function AdminLoginInner() {
         value={password}
         onChange={(e) => setPassword(e.target.value)}
         placeholder="Owner 비밀번호"
-        className="h-12 w-full rounded-sm border border-line-200/40 bg-line-100 px-4 text-base text-line-900 placeholder:text-line-500"
+        className="h-12 w-full rounded-[var(--admin-button-radius,6px)] border border-line-200/40 bg-line-100 px-4 text-base text-line-900 placeholder:text-line-500"
       />
       {error && <p className="text-sm text-fault-400">{error}</p>}
       <Button

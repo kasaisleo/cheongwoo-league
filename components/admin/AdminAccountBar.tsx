@@ -45,7 +45,7 @@ export function AdminAccountBar({
         {clubSlug && (
           <Link
             href={`/c/${clubSlug}`}
-            className="flex-shrink-0 rounded-sm border border-line-200/30 px-1.5 py-0.5 text-[9px] font-semibold text-line-500 hover:text-line-300 transition-colors"
+            className="flex-shrink-0 rounded-[var(--admin-button-radius,6px)] border border-line-200/30 px-1.5 py-0.5 text-[9px] font-semibold text-line-500 hover:text-line-300 transition-colors"
           >
             공개 홈 ↗
           </Link>
@@ -59,7 +59,7 @@ export function AdminAccountBar({
             {displayName}
           </span>
         )}
-        <span className="rounded-sm border border-line-200/30 bg-line-100/10 px-1.5 py-0.5 text-[9px] font-semibold text-line-500">
+        <span className="rounded-[var(--admin-button-radius,6px)] border border-line-200/30 bg-line-100/10 px-1.5 py-0.5 text-[9px] font-semibold text-line-500">
           {roleLabel}
         </span>
         <AdminLogoutButton />

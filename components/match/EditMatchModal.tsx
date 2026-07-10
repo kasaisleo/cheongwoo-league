@@ -176,7 +176,7 @@ export function EditMatchModal({ match, onClose, onSaved, currentClubId }: EditM
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 px-4 pb-4 sm:items-center">
-      <div className="max-h-[85vh] w-full max-w-sm overflow-y-auto rounded-xl border border-line-200 bg-line-100 p-4 shadow-card">
+      <div className="max-h-[85vh] w-full max-w-sm overflow-y-auto rounded-[var(--club-card-radius,14px)] border border-line-200 bg-line-100 p-4 shadow-card">
         <div className="mb-3 flex items-center justify-between">
           <p className="text-sm font-bold uppercase tracking-wide text-clay-400">경기 수정</p>
           <button type="button" onClick={onClose} className="text-xs font-semibold text-line-500">
