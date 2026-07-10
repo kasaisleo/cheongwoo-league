@@ -3,19 +3,17 @@ import { createClient as createBrowserClient } from "@/lib/supabase/client";
 import type { PermissionRole } from "@/lib/supabase/database.types";
 
 /**
- * kakao-admin-auth.ts — 카카오 로그인 사용자의 관리자 권한 확인.
+ * @deprecated — 이 파일의 모든 함수는 현재 import가 없습니다.
  *
- * 기존 admin-auth.ts (cw_admin_session 쿠키 기반)와 독립적으로 동작.
- * 두 시스템은 OR 관계: 어느 쪽이든 인증되면 관리자로 인정.
+ * 사용하지 말 것:
+ *   - club_id 필터 없음 → 여러 클럽에 가입된 사용자일 때 잘못된 클럽의 role을 반환할 수 있음.
+ *   - getSession() 사용 (서버에서 재검증하지 않는 캐시 세션) → getUser() 대신 사용해야 함.
  *
- * 권한 기준:
- *   관리자 (isKakaoAdmin = true):
- *     permission_role = "manager" | "admin" | "master"
- *   일반 회원:
- *     permission_role = "member" | "scorer"
+ * 대체 함수:
+ *   - 서버 컴포넌트/Route Handler: lib/admin-permissions.ts → getAdminAccessServer()
+ *   - 클라이언트: lib/hooks/useAdminAccess.ts → useAdminAccess()
  *
- * 서버 컴포넌트용: isKakaoAdminServer()
- * 클라이언트 컴포넌트용: isKakaoAdminClient()
+ * kakao-admin-auth.ts — 카카오 로그인 사용자의 관리자 권한 확인 (레거시).
  */
 
 export const KAKAO_ADMIN_ROLES: PermissionRole[] = ["manager", "admin", "master"];

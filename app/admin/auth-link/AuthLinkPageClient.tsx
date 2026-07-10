@@ -9,19 +9,17 @@ import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 /**
  * /admin/auth-link — Owner/Master 전용 카카오 회원 연결 화면.
  *
- * 권한:
- *   - 서버: layout.tsx requireOwnerAccess() → cw_admin_session owner OR kakao master
- *   - API:  /api/auth/pending-users, /api/auth/link-member 모두 isOwner 기준
- *
- * 이 컴포넌트까지 도달하면 이미 owner/master 확인 완료.
- * 클라이언트 권한 차단 UI 불필요.
+ * 보안 정책:
+ *   - 서버: layout.tsx requireAdminAccess() → page.tsx에서 clubId 필수 확인
+ *   - API: /api/auth/pending-users, /api/auth/link-member 모두 isOwner(master) 기준
+ *   - pending 목록은 pending_link_requests 테이블 기반 (현재 클럽 scope만)
+ *   - 응답에 이메일 없음: displayName(카카오 표시명)만 표시
+ *   - 타 클럽 연결 계정은 pending 목록에 나타나지 않음
  */
 
 interface PendingUser {
-  id: string;
-  email: string | null;
-  nickname: string | null;
-  kakaoId: string | null;
+  id: string;           // auth_user_id (link-member API에 전달)
+  displayName: string | null;
   createdAt: string;
 }
 
@@ -134,7 +132,12 @@ export default function AuthLinkPageClient({ currentClubId }: { currentClubId: s
           <p className="font-display text-[10px] font-bold uppercase tracking-widest" style={{ color: "var(--admin-muted)" }}>
             대기 없음
           </p>
-          <p className="mt-1 text-sm" style={{ color: "var(--admin-muted)" }}>대기 중인 카카오 사용자가 없습니다.</p>
+          <p className="mt-1 text-sm" style={{ color: "var(--admin-muted)" }}>
+            카카오 로그인 후 연결 대기 중인 사용자가 없습니다.
+          </p>
+          <p className="mt-2 text-[11px]" style={{ color: "var(--admin-muted)", opacity: 0.7 }}>
+            사용자가 이 클럽 페이지에서 카카오 로그인을 시도하면 이 목록에 나타납니다.
+          </p>
         </div>
       ) : (
         <div className="space-y-3">
@@ -144,9 +147,9 @@ export default function AuthLinkPageClient({ currentClubId }: { currentClubId: s
               className="overflow-hidden rounded-[var(--admin-card-radius,14px)] border"
               style={{ borderColor: "var(--admin-border)", background: "var(--admin-surface)" }}
             >
-              {/* 카카오 사용자 정보 */}
+              {/* 카카오 사용자 표시명 */}
               <div
-                className="border-b px-4 py-3 transition-colors hover:bg-[color:var(--admin-surface-raised,var(--admin-surface))]"
+                className="border-b px-4 py-3"
                 style={{ borderColor: "var(--admin-border)" }}
               >
                 <div className="flex items-center gap-2">
@@ -154,11 +157,11 @@ export default function AuthLinkPageClient({ currentClubId }: { currentClubId: s
                     KAKAO
                   </span>
                   <p className="name-kr-sm" style={{ color: "var(--admin-text)" }}>
-                    {user.nickname ?? "이름 없음"}
+                    {user.displayName ?? "이름 없음"}
                   </p>
                 </div>
                 <p className="mt-0.5 text-[11px]" style={{ color: "var(--admin-muted)" }}>
-                  {user.email ?? "이메일 없음"} · {new Date(user.createdAt).toLocaleDateString("ko-KR")}
+                  연결 요청 · {new Date(user.createdAt).toLocaleDateString("ko-KR")}
                 </p>
               </div>
 

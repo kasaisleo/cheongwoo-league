@@ -68,6 +68,18 @@ export interface MemberWithStats extends Member {
   score_diff: number;
 }
 
+/** 클럽별 카카오 연결 대기 요청. 사용자가 해당 클럽 context에서 로그인했으나 미연결 상태일 때 생성된다. */
+export interface PendingLinkRequest {
+  id: string;
+  auth_user_id: string;
+  club_id: string;
+  /** 카카오 표시명만 저장. 이메일·identities 저장 금지. */
+  display_name: string | null;
+  created_at: string;
+  /** 재로그인(upsert) 시 갱신. 관리자가 staleness 판단에 사용. */
+  updated_at: string;
+}
+
 export interface Match {
   id: string;
   played_at: string;
