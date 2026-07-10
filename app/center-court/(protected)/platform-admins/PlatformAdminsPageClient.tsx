@@ -413,16 +413,26 @@ export default function PlatformAdminsPageClient({
             No admin accounts found.
           </p>
         ) : (
-          admins.map((admin, idx) => (
-            <AdminRow
-              key={admin.id}
-              admin={admin}
-              isSelf={admin.id === currentAdminId}
-              isLast={idx === admins.length - 1}
-              onPatch={(updates) => handlePatch(admin.id, updates)}
-              patchBusy={patchBusy === admin.id}
-            />
-          ))
+          (() => {
+            const activeOwners = admins.filter(
+              a => a.role === "owner" && a.status === "active"
+            ).length;
+            return admins.map((admin, idx) => (
+              <AdminRow
+                key={admin.id}
+                admin={admin}
+                isSelf={admin.id === currentAdminId}
+                isLastOwner={
+                  admin.role === "owner" &&
+                  admin.status === "active" &&
+                  activeOwners <= 1
+                }
+                isLast={idx === admins.length - 1}
+                onPatch={(updates) => handlePatch(admin.id, updates)}
+                patchBusy={patchBusy === admin.id}
+              />
+            ));
+          })()
         )}
       </div>
     </div>
@@ -435,6 +445,7 @@ export default function PlatformAdminsPageClient({
 function AdminRow({
   admin,
   isSelf,
+  isLastOwner,
   isLast,
   onPatch,
   patchBusy,
@@ -449,6 +460,7 @@ function AdminRow({
     created_at: string;
   };
   isSelf: boolean;
+  isLastOwner: boolean;
   isLast: boolean;
   onPatch: (u: Record<string, unknown>) => void;
   patchBusy: boolean;
@@ -458,6 +470,8 @@ function AdminRow({
   const [displayName, setDisplayName] = useState(admin.display_name ?? "");
 
   const isActive = admin.status === "active";
+  const roleChangeLocked = isSelf || isLastOwner;
+  const statusChangeLocked = isSelf || isLastOwner;
 
   return (
     <div
@@ -615,12 +629,19 @@ function AdminRow({
               <CcSelect
                 value={admin.role}
                 onChange={(v) => onPatch({ role: v })}
-                disabled={patchBusy}
+                disabled={patchBusy || roleChangeLocked}
                 options={[
                   { value: "admin", label: "ADMIN" },
                   { value: "owner", label: "OWNER" },
                 ]}
               />
+              {roleChangeLocked && (
+                <p style={{ color: "rgba(252,211,77,0.55)", fontSize: 9, marginTop: 5, lineHeight: 1.5 }}>
+                  {isSelf
+                    ? "본인 계정의 OWNER 권한은 변경할 수 없습니다."
+                    : "마지막 활성 OWNER는 권한을 변경하거나 비활성화할 수 없습니다."}
+                </p>
+              )}
             </div>
 
             {/* New Password */}
@@ -653,7 +674,7 @@ function AdminRow({
             </div>
 
             {/* Activate / Deactivate */}
-            {!isSelf && (
+            {!statusChangeLocked && (
               <button
                 onClick={() =>
                   onPatch({ status: isActive ? "inactive" : "active" })

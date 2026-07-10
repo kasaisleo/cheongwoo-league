@@ -74,8 +74,7 @@ function fmtRelative(iso: string): string {
 /* ── confirm modal kinds ─────────────────────────────────── */
 type ModalKind =
   | { kind: "status" }
-  | { kind: "password" }
-  | { kind: "demote_self" };
+  | { kind: "password" };
 
 /* ════════════════════════════════════════════════════════
    Main component
@@ -101,8 +100,6 @@ export function AdminDetailPageClient({
   /* password reset */
   const [newPassword, setNewPassword] = useState("");
 
-  /* role change */
-  const [pendingRole, setPendingRole] = useState<string | null>(null);
 
   const isSelf       = admin.id === currentAdminId;
   const isLastOwner  = admin.role === "owner" && (activeOwnerCount ?? 0) <= 1;
@@ -147,25 +144,8 @@ export function AdminDetailPageClient({
   }
 
   /* ── role change ── */
-  async function applyRoleChange() {
-    if (!pendingRole) return;
-    const ok = await patch({ role: pendingRole });
-    if (ok) {
-      showToast(`Role이 ${pendingRole}로 변경되었습니다.`, true);
-      router.refresh();
-    }
-    setModal(null);
-    setPendingRole(null);
-  }
-
   function requestRoleChange(newRole: string) {
     if (newRole === admin.role) return;
-    if (isSelf && admin.role === "owner" && newRole === "admin") {
-      setPendingRole(newRole);
-      setModal({ kind: "demote_self" });
-      return;
-    }
-    setPendingRole(newRole);
     patch({ role: newRole }).then(ok => {
       if (ok) {
         showToast(`Role이 ${newRole}로 변경되었습니다.`, true);
@@ -226,7 +206,7 @@ export function AdminDetailPageClient({
 
       {/* ── Confirm Modal ── */}
       {modal && (
-        <Overlay onClose={() => { setModal(null); setPendingRole(null); setNewPassword(""); }}>
+        <Overlay onClose={() => { setModal(null); setNewPassword(""); }}>
           {modal.kind === "status" && (
             <ConfirmBody
               title={admin.status === "active" ? "계정 비활성화" : "계정 활성화"}
@@ -276,18 +256,6 @@ export function AdminDetailPageClient({
             </div>
           )}
 
-          {modal.kind === "demote_self" && (
-            <ConfirmBody
-              title="본인 Role 강등 확인"
-              message="본인 계정의 role을 admin으로 낮추면 owner 권한을 잃게 됩니다. 계속하시겠습니까?"
-              confirmLabel="Role 낮추기"
-              confirmColor={C.amber}
-              confirmBorder={C.amberBdr}
-              busy={busy}
-              onCancel={() => { setModal(null); setPendingRole(null); }}
-              onConfirm={applyRoleChange}
-            />
-          )}
         </Overlay>
       )}
 
@@ -420,18 +388,26 @@ export function AdminDetailPageClient({
                 {/* Role field with inline change */}
                 <div style={{ display: "flex", gap: 16, paddingBottom: 10, marginBottom: 10, borderBottom: `1px solid ${C.border}`, alignItems: "center" }}>
                   <span style={{ color: C.dim, fontSize: 10, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", flexShrink: 0, width: 88 }}>Role</span>
-                  <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, flexWrap: "wrap" }}>
                     <RoleBadge role={admin.role} />
-                    <select
-                      className="adm-select"
-                      value={admin.role}
-                      onChange={e => requestRoleChange(e.target.value)}
-                      disabled={busy || isLastOwner}
-                      style={{ marginLeft: "auto" }}
-                    >
-                      <option value="owner">owner</option>
-                      <option value="admin">admin</option>
-                    </select>
+                    {(isSelf || isLastOwner) ? (
+                      <p style={{ color: "rgba(252,211,77,0.55)", fontSize: 9, lineHeight: 1.5, marginLeft: "auto", textAlign: "right", maxWidth: 180 }}>
+                        {isSelf
+                          ? "본인 계정의 OWNER 권한은 변경할 수 없습니다."
+                          : "마지막 활성 OWNER는 권한을 변경하거나 비활성화할 수 없습니다."}
+                      </p>
+                    ) : (
+                      <select
+                        className="adm-select"
+                        value={admin.role}
+                        onChange={e => requestRoleChange(e.target.value)}
+                        disabled={busy}
+                        style={{ marginLeft: "auto" }}
+                      >
+                        <option value="owner">owner</option>
+                        <option value="admin">admin</option>
+                      </select>
+                    )}
                   </div>
                 </div>
 
