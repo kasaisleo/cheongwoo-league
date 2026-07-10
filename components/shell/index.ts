@@ -24,6 +24,8 @@ export { ClubBrandHeader } from "./ClubBrandHeader";
 export { ClubPageHeader } from "./ClubPageHeader";
 export { PublicShell } from "./PublicShell";
 export { AdminClubShell } from "./AdminClubShell";
+export { useShellTransition } from "./ShellTransition";
+export { ShellHeader } from "./ShellHeader";
 
 // Canonical naming aliases — 실제 구현은 components/layout/ 에 있음
 export { MemberAuthBar as TopUtilityBar } from "@/components/layout/MemberAuthBar";

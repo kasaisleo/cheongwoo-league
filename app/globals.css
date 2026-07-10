@@ -38,6 +38,39 @@
   --club-card-radius:    14px;
   --club-button-radius:  6px;
   --club-shadow:         0 1px 2px 0 rgba(0, 0, 0, 0.4);
+  /* 관리자 모드 배지 색상 — cheongwoo: lime(primary)와 동일 */
+  --club-achievement:      var(--club-primary);
+  --club-achievement-soft: var(--club-primary-soft);
+
+  /* ── Shell geometry tokens — Public + Admin 공유 ───────────────────
+   * 두 모드에서 동일한 값. 별도 컴포넌트에서 임의 px 선언 금지.
+   * ─────────────────────────────────────────────────────────────────── */
+  --shell-row1-h:       36px;   /* Row 1 최소 높이 */
+  --shell-row2-h:       32px;   /* Row 2 최소 높이 */
+  --shell-px:           16px;   /* 수평 padding */
+  --shell-brand-size:   9px;    /* SUPER MATCH font-size */
+  --shell-brand-track:  0.15em; /* SUPER MATCH letter-spacing */
+  --shell-user-size:    11px;   /* 사용자명 / role font-size */
+  --shell-club-size:    11px;   /* 클럽명 font-size */
+  --shell-pill-px:      6px;    /* pill 수평 padding */
+  --shell-pill-py:      2px;    /* pill 수직 padding */
+  --shell-action-size:  9px;    /* opposite action font-size */
+  --shell-gap:          6px;    /* 아이템 간격 */
+
+  /* Shell color context vars — AdminClubShell에서 --admin-* 기준으로 오버라이드됨 */
+  --shell-brand-color: var(--club-muted);
+  --shell-row-border:  var(--club-border);
+  --shell-row1-bg:     var(--club-bg);
+  --shell-row2-bg:     var(--club-bg);
+
+  /* Bottom nav geometry tokens — BottomTabBar + AdminBottomNav 공유 */
+  --shell-bottom-icon-size:   22px;
+  --shell-bottom-label-size:  10px;
+  --shell-bottom-gap:         4px;
+  --shell-bottom-pt:          8px;
+  --shell-bottom-pb:          8px;
+  --shell-bottom-indicator-h: 2px;
+  --shell-bottom-indicator-w: 32px;
 }
 
 /* ── 나마스테 스킨 활성 시 :root 오버라이드 ─────────────────────────
@@ -57,6 +90,9 @@
   --club-card-radius:    22px;
   --club-button-radius:  9999px;
   --club-shadow:         0 2px 8px 0 rgba(85, 34, 119, 0.08);
+  /* namaste: 관리자 모드 배지 = pale gold (admin achievement와 동일) */
+  --club-achievement:      #c9a84c;
+  --club-achievement-soft: rgba(201, 168, 76, 0.12);
 }
 
 /* 모든 /c/[slug] 클럽 페이지 body 배경 — skin token 기준. slug 조건문 없이 확장 가능 */
@@ -172,6 +208,35 @@ input[type="date"]::-webkit-date-and-time-value {
 /* 캘린더 아이콘은 남기되, iOS가 그 주변에 강제로 그리는 둥근 버튼 배경만 제거 */
 input[type="date"]::-webkit-calendar-picker-indicator {
   background: transparent;
+}
+
+/* ── Shell 전환 애니메이션 (Public ↔ Admin inversion) ──────────────
+ * .shell-row-enter  : 페이지 mount 시 rows 가 아래서 위로 fade-in
+ * .shell-row-exiting: 전환 클릭 시 JS로 추가 → rows가 위로 fade-out
+ * prefers-reduced-motion: 즉시 표시 (animation 없음)
+ * ─────────────────────────────────────────────────────────────────── */
+@keyframes shell-row-enter {
+  from { opacity: 0;   transform: translateY(3px); }
+  to   { opacity: 1;   transform: translateY(0);   }
+}
+@keyframes shell-row-exit {
+  from { opacity: 1;   transform: translateY(0);   }
+  to   { opacity: 0.3; transform: translateY(-2px);}
+}
+.shell-row-enter {
+  animation: shell-row-enter 140ms ease-out both;
+}
+.shell-row-enter + .shell-row-enter {
+  animation-delay: 30ms;
+}
+.shell-row-exiting {
+  animation: shell-row-exit 120ms ease-in forwards !important;
+  animation-delay: 0ms !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  .shell-row-enter          { animation: none; opacity: 1; transform: none; }
+  .shell-row-enter + .shell-row-enter { animation: none; }
+  .shell-row-exiting        { animation: none !important; opacity: 0.6; }
 }
 
 /* ── 테니스공 바운스 로딩 애니메이션 ────────────────────────────── */
@@ -455,11 +520,37 @@ input[type="date"]::-webkit-calendar-picker-indicator {
  * ─────────────────────────────────────────────────────────────────── */
 .nav-label-kr {
   font-family: "Noto Sans KR", system-ui, sans-serif;
-  font-size: 10px;
+  font-size: var(--shell-bottom-label-size, 10px);
   font-weight: 700;
   letter-spacing: -0.01em;
   line-height: 1.2;
   text-transform: none;
+}
+
+/* ── Bottom nav geometry utilities — BottomTabBar + AdminBottomNav 공유 ──
+ * --shell-bottom-* 토큰 기준. 임의 pt-2/pb-2/gap-1/h-[22px] 금지.
+ * ─────────────────────────────────────────────────────────────────────── */
+.shell-bottom-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top:    var(--shell-bottom-pt);
+  padding-bottom: var(--shell-bottom-pb);
+  gap:            var(--shell-bottom-gap);
+}
+.shell-bottom-tab svg {
+  width:       var(--shell-bottom-icon-size);
+  height:      var(--shell-bottom-icon-size);
+  flex-shrink: 0;
+}
+.shell-bottom-indicator {
+  position:         absolute;
+  top:              0;
+  left:             50%;
+  transform:        translateX(-50%);
+  height:           var(--shell-bottom-indicator-h);
+  width:            var(--shell-bottom-indicator-w);
+  border-radius:    9999px;
 }
 
 /* ── 숫자/한글 혼합 텍스트 분리 유틸 ──────────────────────────────

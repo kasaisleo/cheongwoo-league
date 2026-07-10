@@ -96,17 +96,17 @@ export function BottomTabBar() {
             <Link
               key={tab.href}
               href={tab.href}
-              className="relative flex flex-1 flex-col items-center pt-2 pb-2 gap-1"
+              className="relative flex-1 shell-bottom-tab"
               style={{ color }}
             >
               {isActive && (
                 <span
-                  className="absolute top-0 left-1/2 h-0.5 w-8 -translate-x-1/2 rounded-full"
+                  className="shell-bottom-indicator"
                   style={{ backgroundColor: "var(--club-primary)" }}
                   aria-hidden="true"
                 />
               )}
-              <Icon className="h-[22px] w-[22px] transition-colors" />
+              <Icon className="transition-colors" />
               <span className="nav-label-kr transition-colors">{tab.label}</span>
             </Link>
           );

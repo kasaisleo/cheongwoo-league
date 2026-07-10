@@ -45,7 +45,8 @@ export function AdminLogoutButton({
       type="button"
       disabled={loading}
       onClick={handleLogout}
-      className={`text-xs font-semibold text-line-500 transition-colors hover:text-line-700 disabled:opacity-40 ${className}`}
+      className={`font-semibold whitespace-nowrap transition-opacity hover:opacity-70 disabled:opacity-40 ${className}`}
+      style={{ fontSize: "var(--shell-user-size, 11px)", color: "var(--admin-muted)" }}
     >
       {loading ? "로그아웃 중..." : label}
     </button>

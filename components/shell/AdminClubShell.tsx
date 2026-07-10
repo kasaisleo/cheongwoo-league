@@ -45,6 +45,10 @@ const ADMIN_SKIN_VARS: Record<string, Record<string, string>> = {
     "--admin-button-radius":  "6px",
     "--admin-card-radius":    "10px",
     "--admin-focus-ring":     "rgba(212,255,61,0.45)",
+    "--shell-brand-color":    "var(--admin-muted)",
+    "--shell-row-border":     "var(--admin-border)",
+    "--shell-row1-bg":        "var(--admin-bar-bg)",
+    "--shell-row2-bg":        "var(--admin-surface)",
   },
   cheongwoo: {
     "--admin-bg":             "#111827",
@@ -62,6 +66,10 @@ const ADMIN_SKIN_VARS: Record<string, Record<string, string>> = {
     "--admin-button-radius":  "6px",
     "--admin-card-radius":    "10px",
     "--admin-focus-ring":     "rgba(212,255,61,0.45)",
+    "--shell-brand-color":    "var(--admin-muted)",
+    "--shell-row-border":     "var(--admin-border)",
+    "--shell-row1-bg":        "var(--admin-bar-bg)",
+    "--shell-row2-bg":        "var(--admin-surface)",
   },
   namaste: {
     "--admin-bg":             "#1e1232",
@@ -79,6 +87,10 @@ const ADMIN_SKIN_VARS: Record<string, Record<string, string>> = {
     "--admin-button-radius":  "13px",
     "--admin-card-radius":    "16px",
     "--admin-focus-ring":     "rgba(176,127,216,0.45)",
+    "--shell-brand-color":    "var(--admin-muted)",
+    "--shell-row-border":     "var(--admin-border)",
+    "--shell-row1-bg":        "var(--admin-bar-bg)",
+    "--shell-row2-bg":        "var(--admin-surface)",
   },
 };
 

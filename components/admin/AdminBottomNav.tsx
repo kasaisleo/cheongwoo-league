@@ -111,12 +111,12 @@ export function AdminBottomNav({ isOwner }: AdminBottomNavProps) {
             <Link
               key={item.href}
               href={item.href}
-              className="relative flex flex-col items-center gap-1 pt-2 pb-2 transition-colors"
+              className="relative shell-bottom-tab transition-colors"
               style={{ color }}
             >
               {active && (
                 <span
-                  className="absolute left-1/2 top-0 h-[2px] w-8 -translate-x-1/2 rounded-full"
+                  className="shell-bottom-indicator"
                   style={{ background: "var(--admin-accent, #D4FF3D)", opacity: 0.8 }}
                   aria-hidden="true"
                 />
