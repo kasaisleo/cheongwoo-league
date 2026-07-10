@@ -5,14 +5,14 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 /**
- * BottomTabBar v4 — slug-aware + last_club_slug tracking.
+ * BottomTabBar v5 — slug-aware + last_club_slug tracking.
  *
  * HOME href 정책:
  *   1. /c/[slug]/* : /c/[slug]
  *   2. /admin/*    : /admin
  *   3. legacy 전역 페이지 (/matches, /attendance, /mypage …):
  *      localStorage에 저장된 last_club_slug → /c/{slug}
- *      저장된 값 없으면 /c/cheongwoo (spec-defined fallback)
+ *      저장된 값 없으면 / (플랫폼 홈)으로 이동 — 특정 클럽 hardcode 금지
  *   4. / 플랫폼 랜딩: PlatformLandingClient 오버레이가 BottomTabBar를 가리므로
  *      HOME="/"를 제거해도 실제 문제 없음.
  *
@@ -20,7 +20,6 @@ import { usePathname } from "next/navigation";
  */
 
 const LAST_CLUB_SLUG_KEY = "last_club_slug";
-const FALLBACK_SLUG = "cheongwoo"; // spec 정의 fallback — localStorage 값 없을 때
 
 function extractSlugFromPath(pathname: string): string | null {
   const match = pathname.match(/^\/c\/([^/]+)/);
@@ -42,7 +41,7 @@ export function BottomTabBar() {
   const isAdminPage = pathname.startsWith("/admin");
 
   // last_club_slug 추적 — /c/[slug] 방문 시 저장, legacy 페이지에서 복원
-  const [lastClubSlug, setLastClubSlug] = useState<string>(FALLBACK_SLUG);
+  const [lastClubSlug, setLastClubSlug] = useState<string | null>(null);
 
   useEffect(() => {
     if (slug) {
@@ -61,7 +60,9 @@ export function BottomTabBar() {
     ? `/c/${slug}`
     : isAdminPage
     ? "/admin"
-    : `/c/${lastClubSlug}`;
+    : lastClubSlug
+    ? `/c/${lastClubSlug}`
+    : "/";
 
   const tabs = slug
     ? [
