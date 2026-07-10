@@ -5,12 +5,17 @@ import type { ClubSkin } from "@/lib/club-skin";
 /**
  * ClubBrandHeader — 클럽 홈/대표 페이지용 브랜드 헤더.
  *
- * skin.logos 존재 여부로 렌더 방식을 결정한다:
- *   - logos 있음: 클럽 로고 이미지 표시
- *   - logos 없음: 컬러 닷 + 영문 eyebrow 텍스트 표시
+ * anatomy:
+ *   <header>
+ *     <content>  eyebrow · title · subtitle  (항상 좌측, flex-1)
+ *     <side>     rightSlot · logo            (optional, 우측)
+ *   </header>
  *
- * 새 스킨 추가 시 이 컴포넌트를 수정할 필요 없다.
- * lib/club-skin.ts의 SKINS 항목과 logos 존재 여부만 설정하면 된다.
+ * - eyebrow/title/subtitle 구조는 모든 스킨에서 동일.
+ * - logo는 side slot의 optional brand asset. eyebrow 대체가 아님.
+ * - rightSlot과 logo는 동시에 렌더 가능 (수직 적층).
+ * - logo 없는 스킨은 logo DOM 미렌더. 빈 공간 유지 안 함.
+ * - 320px: content가 min-w-0 flex-1로 압축, side는 flex-shrink-0.
  */
 interface ClubBrandHeaderProps {
   club: { name: string; slug: string };
@@ -19,7 +24,7 @@ interface ClubBrandHeaderProps {
   title?: string;
   /** 제목 아래 부제. undefined이면 미표시. */
   subtitle?: string;
-  /** 오른쪽 슬롯 (뒤로가기 링크, 액션 버튼 등) */
+  /** side slot 상단 (액션 버튼, 뒤로가기 링크 등). logo와 동시 표시 가능. */
   rightSlot?: ReactNode;
   /** 헤더 wrapper className. 기본값: "mb-6" */
   className?: string;
@@ -34,26 +39,16 @@ export function ClubBrandHeader({
   className = "mb-6",
 }: ClubBrandHeaderProps) {
   const pageTitle = title ?? `${club.name} 리그`;
+  const hasSide = !!(rightSlot || skin.logos);
 
   return (
-    <header className={rightSlot ? `${className} flex items-start justify-between` : className}>
-      <div>
-        {skin.logos ? (
-          <div className="mb-3">
-            <img
-              src={skin.logos.primary}
-              alt={club.name}
-              className="club-brand-logo"
-              width={104}
-              height={104}
-            />
-          </div>
-        ) : (
-          <div className="mb-1.5 inline-flex items-center gap-2">
-            <span className="h-1.5 w-1.5 rounded-full bg-clay-400" />
-            <p className="eyebrow-en text-clay-400">{formatClubEyebrow(club.slug)}</p>
-          </div>
-        )}
+    <header className={`${className} flex items-start gap-3`}>
+      {/* content slot — 항상 좌측, 가용 공간 소유 */}
+      <div className="min-w-0 flex-1">
+        <div className="mb-1.5 inline-flex items-center gap-2">
+          <span className="h-1.5 w-1.5 rounded-full bg-clay-400" />
+          <p className="eyebrow-en text-clay-400">{formatClubEyebrow(club.slug)}</p>
+        </div>
         <h1 className="headline-kr text-4xl text-line-900">{pageTitle}</h1>
         {subtitle && (
           <p className="mt-1 max-w-[240px] break-keep text-xs leading-relaxed text-line-500">
@@ -61,7 +56,22 @@ export function ClubBrandHeader({
           </p>
         )}
       </div>
-      {rightSlot}
+
+      {/* side slot — rightSlot + logo 동시 렌더 가능 */}
+      {hasSide && (
+        <div className="flex flex-shrink-0 flex-col items-end gap-2 pt-0.5">
+          {rightSlot}
+          {skin.logos && (
+            <img
+              src={skin.logos.primary}
+              alt={club.name}
+              className="club-brand-logo"
+              width={104}
+              height={104}
+            />
+          )}
+        </div>
+      )}
     </header>
   );
 }

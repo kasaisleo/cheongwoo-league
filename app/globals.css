@@ -629,18 +629,20 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 [data-admin-skin="namaste"] .hover\:bg-clay-400\/20:hover     { background-color: color-mix(in srgb, var(--club-primary) 20%, transparent); }
 [data-admin-skin="namaste"] .hover\:border-clay-400\/60:hover { border-color: color-mix(in srgb, var(--club-primary) 60%, transparent); }
 
-/* ── 클럽 브랜드 로고 (홈 헤더) ──────────────────────────────── */
+/* ── 클럽 브랜드 로고 (홈 헤더 우측 슬롯) ───────────────────── */
 .club-brand-logo {
-  width: 104px;
+  width: 72px;    /* 320px 뷰포트에서 content와 겹치지 않는 상한 */
   height: auto;
   object-fit: contain;
   display: block;
 }
 
+@media (min-width: 480px) {
+  .club-brand-logo { width: 88px; }
+}
+
 @media (min-width: 768px) {
-  .club-brand-logo {
-    width: 132px;
-  }
+  .club-brand-logo { width: 104px; }
 }
 
 /* ── 워터마크 ─────────────────────────────────────────────────── */
@@ -652,6 +654,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   overflow: hidden;
 }
 
+/* 기본 워터마크 — 스킨별 override 없는 경우의 fallback */
 .club-watermark-img {
   position: absolute;
   right: -5%;
@@ -660,16 +663,25 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   height: auto;
   opacity: 0.035;
   user-select: none;
-  /* 원색이 강할 경우 grayscale 블렌딩으로 완화 */
   filter: grayscale(0.15);
 }
 
+/* namaste 전용 — 헤더 우측 로고와 경쟁 완화.
+   watermark container는 [data-club-skin] wrapper의 형제이므로
+   :root:has() 패턴으로 스코프 적용 (globals.css 기존 패턴과 동일). */
+:root:has([data-club-skin="namaste"]) .club-watermark-img {
+  top: 32%;
+  width: min(44vw, 580px);
+  opacity: 0.022;
+  filter: grayscale(0.35);
+}
+
 @media (max-width: 640px) {
-  .club-watermark-img {
-    width: 88vw;
-    right: -18%;
-    top: 18%;
-    opacity: 0.025;
+  :root:has([data-club-skin="namaste"]) .club-watermark-img {
+    width: 76vw;
+    right: -20%;
+    top: 38%;
+    opacity: 0.016;
   }
 }
 

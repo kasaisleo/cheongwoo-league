@@ -11,9 +11,12 @@ interface AdminAccountBarProps {
 /**
  * AdminAccountBar — admin 전용 계정/클럽 상단 표시.
  *
- * public MemberAuthBar와 완전히 분리된 서버 컴포넌트.
- * admin session(cw_admin_session + admin_club_slug) 기준 데이터만 표시.
- * public 회원 이름·마이페이지 링크 없음.
+ * 구조:
+ *   왼쪽 group  club name · 클럽 홈 링크
+ *   오른쪽 group  user name · role badge · logout
+ *
+ * 색상은 --admin-* CSS 변수만 사용. skin별 JSX 분기 없음.
+ * 320px: 왼쪽 group이 min-w-0 shrink로 압축, 오른쪽 group은 flex-shrink-0으로 보장.
  */
 export function AdminAccountBar({
   clubName,
@@ -32,34 +35,54 @@ export function AdminAccountBar({
 
   return (
     <div
-      className="flex items-center justify-between border-b border-line-200/20 px-4 py-2"
-      style={{ background: "var(--admin-bar-bg, #0a1220)" }}
+      className="flex min-h-[36px] items-center justify-between gap-2 border-b px-4 py-1.5"
+      style={{
+        background: "var(--admin-bar-bg, #0a1220)",
+        borderColor: "var(--admin-border, rgba(30,58,92,0.3))",
+      }}
     >
-      {/* 왼쪽: 클럽명 + 공개 홈 */}
-      <div className="flex items-center gap-2 min-w-0">
+      {/* 왼쪽: club group */}
+      <div className="flex min-w-0 shrink items-center gap-2">
         {clubName && (
-          <span className="truncate text-[11px] font-semibold text-line-400">
+          <span
+            className="truncate text-[11px] font-semibold"
+            style={{ color: "var(--admin-muted, #7C92AC)" }}
+          >
             {clubName}
           </span>
         )}
         {clubSlug && (
           <Link
             href={`/c/${clubSlug}`}
-            className="flex-shrink-0 rounded-[var(--admin-button-radius,6px)] border border-line-200/30 px-1.5 py-0.5 text-[9px] font-semibold text-line-500 hover:text-line-300 transition-colors"
+            className="flex-shrink-0 rounded-[var(--admin-button-radius,6px)] border px-1.5 py-0.5 text-[9px] font-semibold transition-colors"
+            style={{
+              borderColor: "var(--admin-border, rgba(30,58,92,0.3))",
+              color: "var(--admin-accent, #D4FF3D)",
+            }}
           >
-            공개 홈 ↗
+            클럽 홈 ↗
           </Link>
         )}
       </div>
 
-      {/* 오른쪽: 사용자 + 역할 + 로그아웃 */}
-      <div className="flex flex-shrink-0 items-center gap-2 pl-2">
+      {/* 오른쪽: account group */}
+      <div className="flex flex-shrink-0 items-center gap-1.5 pl-1">
         {displayName && (
-          <span className="text-[11px] font-semibold text-line-300">
+          <span
+            className="max-w-[72px] truncate text-[11px] font-semibold"
+            style={{ color: "var(--admin-text, #FFFFFF)" }}
+          >
             {displayName}
           </span>
         )}
-        <span className="rounded-[var(--admin-button-radius,6px)] border border-line-200/30 bg-line-100/10 px-1.5 py-0.5 text-[9px] font-semibold text-line-500">
+        <span
+          className="rounded-[var(--admin-button-radius,6px)] border px-1.5 py-0.5 text-[9px] font-semibold"
+          style={{
+            borderColor: "var(--admin-border, rgba(30,58,92,0.3))",
+            color: "var(--admin-muted, #7C92AC)",
+            background: "var(--admin-surface, #0E1F33)",
+          }}
+        >
           {roleLabel}
         </span>
         <AdminLogoutButton />
