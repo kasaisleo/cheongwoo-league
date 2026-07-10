@@ -78,9 +78,6 @@ export default function NewGuestPageClient({ currentClubId }: { currentClubId: s
         return;
       }
 
-      // router.push + router.refresh 조합은 클라이언트 라우터 캐시 때문에
-      // 방금 등록한 게스트가 목록에 바로 안 보이는 문제가 있어,
-      // 전체 페이지 로드(항상 최신 서버 렌더링 결과)를 보장하는 방식으로 이동한다.
       window.location.assign("/admin/guests");
     } finally {
       submittingRef.current = false;
@@ -89,11 +86,9 @@ export default function NewGuestPageClient({ currentClubId }: { currentClubId: s
   }
 
   return (
-    <main className="px-4 pt-6">
+    <main className="px-4 pt-6 pb-28">
       <header className="mb-5">
-        <p className="font-score text-xs font-semibold uppercase tracking-[0.2em] text-clay-400">
-          New Guest
-        </p>
+        <p className="eyebrow-en text-clay-400">New Guest</p>
         <h1 className="headline-kr text-3xl font-bold text-line-900">게스트 등록</h1>
       </header>
 
@@ -105,7 +100,7 @@ export default function NewGuestPageClient({ currentClubId }: { currentClubId: s
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="예: 박지민"
-              className="h-11 w-full rounded-lg border border-line-200 bg-line-25 px-3 text-sm text-line-900 placeholder:text-line-400"
+              className="h-11 w-full rounded-sm border border-line-200/40 bg-line-50 px-3 text-sm text-line-900 placeholder:text-line-400"
             />
           </div>
 
@@ -118,7 +113,7 @@ export default function NewGuestPageClient({ currentClubId }: { currentClubId: s
                 value={age}
                 onChange={(e) => setAge(e.target.value)}
                 placeholder="예: 35"
-                className="h-11 w-full rounded-lg border border-line-200 bg-line-25 px-3 text-sm text-line-900 placeholder:text-line-400"
+                className="h-11 w-full rounded-sm border border-line-200/40 bg-line-50 px-3 text-sm text-line-900 placeholder:text-line-400"
               />
             </div>
             <div>
@@ -130,7 +125,7 @@ export default function NewGuestPageClient({ currentClubId }: { currentClubId: s
                 value={yearsPlaying}
                 onChange={(e) => setYearsPlaying(e.target.value)}
                 placeholder="예: 2"
-                className="h-11 w-full rounded-lg border border-line-200 bg-line-25 px-3 text-sm text-line-900 placeholder:text-line-400"
+                className="h-11 w-full rounded-sm border border-line-200/40 bg-line-50 px-3 text-sm text-line-900 placeholder:text-line-400"
               />
             </div>
           </div>
@@ -143,7 +138,7 @@ export default function NewGuestPageClient({ currentClubId }: { currentClubId: s
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               placeholder="010-0000-0000"
-              className="h-11 w-full rounded-lg border border-line-200 bg-line-25 px-3 text-sm text-line-900 placeholder:text-line-400"
+              className="h-11 w-full rounded-sm border border-line-200/40 bg-line-50 px-3 text-sm text-line-900 placeholder:text-line-400"
             />
           </div>
 
@@ -153,7 +148,7 @@ export default function NewGuestPageClient({ currentClubId }: { currentClubId: s
               type="date"
               value={visitDate}
               onChange={(e) => setVisitDate(e.target.value)}
-              className="box-border block h-11 w-full min-w-0 max-w-full rounded-lg border border-line-200 bg-line-25 px-3 text-sm text-line-900"
+              className="box-border block h-11 w-full min-w-0 max-w-full rounded-sm border border-line-200/40 bg-line-50 px-3 text-sm text-line-900"
             />
           </div>
         </Card>
@@ -173,7 +168,7 @@ export default function NewGuestPageClient({ currentClubId }: { currentClubId: s
               <select
                 value={referredBy}
                 onChange={(e) => setReferredBy(e.target.value)}
-                className="h-11 w-full rounded-lg border border-line-200 bg-line-25 px-3 text-sm text-line-900"
+                className="h-11 w-full rounded-sm border border-line-200/40 bg-line-50 px-3 text-sm text-line-900"
               >
                 <option value="">선택 안 함</option>
                 {members.map((m) => (
@@ -192,10 +187,10 @@ export default function NewGuestPageClient({ currentClubId }: { currentClubId: s
                     key={g}
                     type="button"
                     onClick={() => setSkillGrade(skillGrade === g ? "" : g)}
-                    className={`flex-1 rounded-lg border py-2 text-sm font-semibold ${
+                    className={`flex-1 rounded-sm border py-2 text-sm font-semibold ${
                       skillGrade === g
                         ? "border-clay-400 bg-clay-400 text-line-25"
-                        : "border-line-200 text-line-600"
+                        : "border-line-200/40 text-line-600"
                     }`}
                   >
                     {g}급
@@ -212,10 +207,10 @@ export default function NewGuestPageClient({ currentClubId }: { currentClubId: s
                     key={score}
                     type="button"
                     onClick={() => setMannerScore(mannerScore === score ? null : score)}
-                    className={`flex-1 rounded-lg border py-2 text-sm font-semibold ${
+                    className={`flex-1 rounded-sm border py-2 text-sm font-semibold ${
                       mannerScore === score
                         ? "border-amber-400 bg-amber-400 text-line-25"
-                        : "border-line-200 text-line-600"
+                        : "border-line-200/40 text-line-600"
                     }`}
                   >
                     {score}
@@ -230,10 +225,10 @@ export default function NewGuestPageClient({ currentClubId }: { currentClubId: s
                 <button
                   type="button"
                   onClick={() => setReinvite(reinvite === true ? null : true)}
-                  className={`flex-1 rounded-lg border py-2 text-sm font-semibold ${
+                  className={`flex-1 rounded-sm border py-2 text-sm font-semibold ${
                     reinvite === true
                       ? "border-court-400 bg-court-400 text-line-25"
-                      : "border-line-200 text-line-600"
+                      : "border-line-200/40 text-line-600"
                   }`}
                 >
                   재초청 희망
@@ -241,10 +236,10 @@ export default function NewGuestPageClient({ currentClubId }: { currentClubId: s
                 <button
                   type="button"
                   onClick={() => setReinvite(reinvite === false ? null : false)}
-                  className={`flex-1 rounded-lg border py-2 text-sm font-semibold ${
+                  className={`flex-1 rounded-sm border py-2 text-sm font-semibold ${
                     reinvite === false
                       ? "border-fault-400 bg-fault-400 text-line-25"
-                      : "border-line-200 text-line-600"
+                      : "border-line-200/40 text-line-600"
                   }`}
                 >
                   보류
@@ -259,7 +254,7 @@ export default function NewGuestPageClient({ currentClubId }: { currentClubId: s
                 onChange={(e) => setNotes(e.target.value)}
                 rows={3}
                 placeholder="특이사항을 적어주세요"
-                className="w-full rounded-lg border border-line-200 bg-line-25 px-3 py-2 text-sm text-line-900 placeholder:text-line-400"
+                className="w-full rounded-sm border border-line-200/40 bg-line-50 px-3 py-2 text-sm text-line-900 placeholder:text-line-400"
               />
             </div>
           </Card>

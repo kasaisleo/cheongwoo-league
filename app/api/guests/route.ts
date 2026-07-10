@@ -1,18 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { getAdminAccessServer } from "@/lib/admin-permissions";
-import { getCurrentClubId } from "@/lib/current-club";
 
 /**
  * POST /api/guests — 게스트 신규 등록.
  * 권한: manager/admin/master/owner (kakaoIsAdmin)
- * club_id는 서버에서 getCurrentClubId()로만 결정 — 클라이언트 값 불신.
+ * club_id는 admin_club_slug 쿠키 → access.clubId 경로로만 결정.
+ * 클라이언트가 보낸 club_id는 신뢰하지 않는다.
  */
 export async function POST(request: NextRequest) {
   const access = await getAdminAccessServer();
   if (!access.kakaoIsAdmin) {
     return NextResponse.json({ error: "관리자 권한이 필요합니다." }, { status: 403 });
   }
+  if (!access.clubId) {
+    return NextResponse.json({ error: "클럽 컨텍스트가 없습니다. 관리자 게이트웨이에서 클럽을 선택해주세요." }, { status: 403 });
+  }
+  const clubId = access.clubId;
 
   let body: Record<string, unknown>;
   try {
@@ -31,14 +35,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "방문 날짜를 입력해주세요." }, { status: 400 });
   }
 
-  const currentClubId = await getCurrentClubId();
   const supabase = createServiceClient();
 
   const { data: guest, error: insertError } = await supabase
     .from("guests")
     .insert({
       name,
-      club_id: currentClubId,
+      club_id: clubId,
       visit_date: visitDate,
       phone: typeof body.phone === "string" && body.phone ? body.phone.replace(/\D/g, "") || null : null,
       age: typeof body.age === "number" ? body.age : null,

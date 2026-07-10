@@ -1,19 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { getAdminAccessServer } from "@/lib/admin-permissions";
-import { getCurrentClubId } from "@/lib/current-club";
 
 interface RouteParams { params: { id: string } }
 
 /**
  * PUT /api/guests/[id] — 게스트 수정.
  * 허용: manager/admin/master/owner (isAdmin)
+ * id + club_id 복합 필터 — 0 rows affected = 404 (다른 클럽 record 차단).
  */
 export async function PUT(request: NextRequest, { params }: RouteParams) {
   const access = await getAdminAccessServer();
   if (!access.kakaoIsAdmin) {
     return NextResponse.json({ error: "관리자 권한이 필요합니다." }, { status: 403 });
   }
+  if (!access.clubId) {
+    return NextResponse.json({ error: "클럽 컨텍스트가 없습니다." }, { status: 403 });
+  }
+  const clubId = access.clubId;
 
   const body = await request.json() as {
     name?: string;
@@ -42,31 +46,46 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
   if (body.visit_date !== undefined)    update.visit_date = body.visit_date;
 
   const supabase = createServiceClient();
-  const currentClubId = await getCurrentClubId();
-  const { error } = await supabase.from("guests").update(update).eq("id", params.id).eq("club_id", currentClubId);
+  const { data: updated, error } = await supabase
+    .from("guests")
+    .update(update)
+    .eq("id", params.id)
+    .eq("club_id", clubId)
+    .select("id");
 
   if (error) return NextResponse.json({ error: "수정에 실패했습니다." }, { status: 500 });
+  if (!updated || updated.length === 0) {
+    return NextResponse.json({ error: "게스트를 찾을 수 없습니다." }, { status: 404 });
+  }
   return NextResponse.json({ ok: true });
 }
 
 /**
  * DELETE /api/guests/[id] — 게스트 비활성화 (is_active = false).
  * 허용: master/owner (isOwner)
+ * id + club_id 복합 필터 — 0 rows affected = 404 (다른 클럽 record 차단).
  */
 export async function DELETE(_req: NextRequest, { params }: RouteParams) {
   const access = await getAdminAccessServer();
   if (!access.kakaoIsOwner) {
     return NextResponse.json({ error: "master/owner 권한이 필요합니다." }, { status: 403 });
   }
+  if (!access.clubId) {
+    return NextResponse.json({ error: "클럽 컨텍스트가 없습니다." }, { status: 403 });
+  }
+  const clubId = access.clubId;
 
   const supabase = createServiceClient();
-  const currentClubId = await getCurrentClubId();
-  const { error } = await supabase
+  const { data: updated, error } = await supabase
     .from("guests")
     .update({ is_active: false })
     .eq("id", params.id)
-    .eq("club_id", currentClubId);
+    .eq("club_id", clubId)
+    .select("id");
 
   if (error) return NextResponse.json({ error: "비활성화에 실패했습니다." }, { status: 500 });
+  if (!updated || updated.length === 0) {
+    return NextResponse.json({ error: "게스트를 찾을 수 없습니다." }, { status: 404 });
+  }
   return NextResponse.json({ ok: true });
 }

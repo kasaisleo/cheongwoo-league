@@ -1,30 +1,30 @@
-import Link from "next/link";
-import { Button } from "@/components/ui/Button";
-import { GuestList } from "@/components/guest/GuestList";
+import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
+import { createClient } from "@/lib/supabase/server";
 
-// 게스트 등록 직후 목록이 최신 상태로 보이도록 이 페이지는 항상 동적 렌더링한다.
-// (등록 → /guests 이동 시 캐시된 결과가 먼저 보이는 문제 방지)
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
+/**
+ * /guests — legacy redirect wrapper.
+ *
+ * canonical route は /c/[slug]/guest.
+ * selected_club_id 쿠키가 유효한 active club을 가리키면 해당 canonical route로 redirect.
+ * 그 외(쿠키 없음/invalid) → / 로 fallback. DEFAULT_CLUB_ID fallback 금지.
+ *
+ * UI를 직접 렌더하지 않는다.
+ */
+export default async function LegacyGuestsPage() {
+  const cookieStore = cookies();
+  const selectedClubId = cookieStore.get("selected_club_id")?.value;
 
-export default async function GuestsPage() {
-  return (
-    <main className="px-4 pt-6">
-      <header className="mb-5 flex items-center justify-between">
-        <div>
-          <p className="font-score text-xs font-semibold uppercase tracking-[0.2em] text-clay-400">
-            Guests
-          </p>
-          <h1 className="headline-kr text-3xl text-line-900">
-            게스트 관리
-          </h1>
-        </div>
-        <Link href="/guests/new">
-          <Button size="md">+ 게스트 등록</Button>
-        </Link>
-      </header>
+  if (selectedClubId) {
+    const supabase = createClient();
+    const { data: club } = await supabase
+      .from("clubs")
+      .select("slug")
+      .eq("id", selectedClubId)
+      .eq("status", "active")
+      .maybeSingle();
+    if (club?.slug) redirect(`/c/${club.slug}/guest`);
+  }
 
-      <GuestList mode="public" />
-    </main>
-  );
+  redirect("/");
 }

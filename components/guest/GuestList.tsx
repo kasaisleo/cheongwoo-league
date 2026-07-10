@@ -5,8 +5,6 @@ import { ConvertGuestButton } from "@/components/guest/ConvertGuestButton";
 import { GuestAdminActions } from "@/components/guest/GuestAdminActions";
 import type { GuestWithStats, Member } from "@/lib/supabase/database.types";
 
-import { getCurrentClubId } from "@/lib/current-club";
-
 type GuestWithReferrer = GuestWithStats & {
   referrer: Pick<Member, "nickname"> | null;
   converted_member: Pick<Member, "nickname"> | null;
@@ -14,11 +12,12 @@ type GuestWithReferrer = GuestWithStats & {
 
 interface GuestListProps {
   mode: "public" | "admin";
+  /** caller가 validate한 club.id. 이 값으로만 쿼리 — getCurrentClubId() 금지. */
+  clubId: string;
 }
 
-export async function GuestList({ mode }: GuestListProps) {
+export async function GuestList({ mode, clubId }: GuestListProps) {
   const supabase = createClient();
-  const currentClubId = await getCurrentClubId();
   const isAdmin = mode === "admin";
 
   // 관리자 모드에서는 비활성 게스트도 표시 (상태 확인용)
@@ -28,7 +27,7 @@ export async function GuestList({ mode }: GuestListProps) {
     .select(
       "*, referrer:members!guests_referred_by_fkey(nickname), converted_member:members!guests_converted_to_member_id_fkey(nickname)"
     )
-    .eq("club_id", currentClubId)
+    .eq("club_id", clubId)
     .order("visit_date", { ascending: false });
 
   // guest_stats 뷰에 is_active 컬럼이 추가되어(마지막 18번째 컬럼) 다시 필터링 가능해졌다.
@@ -76,7 +75,7 @@ function AdminGuestList({
       <div className="rounded-[14px] border border-line-200/40 bg-line-50 p-8 text-center">
         <p className="font-display text-[10px] font-bold uppercase tracking-widest text-line-500">No Guests</p>
         <p className="mt-1 text-sm text-line-500">등록된 게스트가 없어요.</p>
-        <Link href="/guests/new"
+        <Link href="/admin/guests/new"
           className="mt-3 inline-block rounded-sm border border-clay-400/60 px-3 py-1.5 text-xs font-semibold text-clay-400">
           첫 게스트 등록 →
         </Link>

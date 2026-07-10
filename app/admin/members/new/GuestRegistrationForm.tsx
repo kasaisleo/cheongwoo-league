@@ -106,7 +106,7 @@ export function GuestRegistrationForm({ currentClubId }: { currentClubId: string
       }
 
       toast.success(`게스트 "${normalizeName(name)}"이(가) 등록되었습니다.`);
-      router.push("/guests");
+      router.push("/admin/guests");
       router.refresh();
     } finally {
       submittingRef.current = false;

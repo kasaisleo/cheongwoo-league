@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { getAdminAccessServer } from "@/lib/admin-permissions";
 import type { MemberGrade } from "@/lib/supabase/database.types";
-import { getCurrentClubId } from "@/lib/current-club";
 
 interface ConvertGuestBody {
   guestId: string;
@@ -11,6 +10,11 @@ interface ConvertGuestBody {
   phone?: string;
 }
 
+/**
+ * POST /api/guests/convert — 게스트 → 정회원 전환.
+ * club_id는 access.clubId로만 결정.
+ * guestId + club_id 복합 조회로 다른 클럽 record 접근을 차단한다.
+ */
 export async function POST(request: NextRequest) {
   const access = await getAdminAccessServer();
   if (!access.kakaoIsAdmin) {
@@ -19,6 +23,10 @@ export async function POST(request: NextRequest) {
       { status: 403 }
     );
   }
+  if (!access.clubId) {
+    return NextResponse.json({ error: "클럽 컨텍스트가 없습니다." }, { status: 403 });
+  }
+  const clubId = access.clubId;
 
   const body = (await request.json()) as ConvertGuestBody;
   const { guestId, nickname, grade, phone } = body;
@@ -28,14 +36,13 @@ export async function POST(request: NextRequest) {
   }
 
   const supabase = createServiceClient();
-  const currentClubId = await getCurrentClubId();
 
-  // 1. 게스트 정보 조회
+  // 1. 게스트 정보 조회 — club_id + id 복합 필터로 cross-club 접근 차단
   const { data: guest, error: fetchError } = await supabase
     .from("guests")
     .select("*")
     .eq("id", guestId)
-    .eq("club_id", currentClubId)
+    .eq("club_id", clubId)
     .single();
 
   if (fetchError || !guest) {
@@ -46,16 +53,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "이미 정회원으로 전환된 게스트입니다." }, { status: 409 });
   }
 
-  // 2. 회원으로 등록. role은 직책 없음(null), member_type은 정회원으로 명시한다 —
-  // DB 컬럼 DEFAULT에 암묵적으로 의존하지 않는다(DEFAULT가 바뀌면 여기 의도와
-  // 다르게 조용히 따라 바뀔 수 있어, 신규 회원 등록 기본값 정책을 코드에서
-  // 직접 보장한다).
+  // 2. 회원으로 등록
   const { data: newMember, error: insertError } = await supabase
     .from("members")
     .insert({
       name: guest.name,
       nickname: nickname.trim(),
-      club_id: currentClubId,
+      club_id: clubId,
       grade,
       phone: phone?.trim() || null,
       role: null,
@@ -70,12 +74,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "회원 등록에 실패했습니다." }, { status: 500 });
   }
 
-  // 3. 게스트 레코드에 전환 결과 기록 (게스트 레코드는 보존)
+  // 3. 게스트 레코드에 전환 결과 기록
   await supabase
     .from("guests")
     .update({ converted_to_member_id: newMember.id })
     .eq("id", guestId)
-    .eq("club_id", currentClubId);
+    .eq("club_id", clubId);
 
   return NextResponse.json({ ok: true, memberId: newMember.id });
 }

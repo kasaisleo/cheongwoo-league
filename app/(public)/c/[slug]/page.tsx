@@ -178,7 +178,7 @@ export default async function ClubHomePage({
 
       {isAdmin && guestsThisWeek.length > 0 && (
         <section>
-          <SectionHeader title="이번 주 게스트" href="/guests" cta="전체보기" />
+          <SectionHeader title="이번 주 게스트" href={`/c/${slug}/guest`} cta="전체보기" />
           <div className="overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50">
             {guestsThisWeek.map((guest, idx) => (
               <div
