@@ -315,22 +315,7 @@ export function AuditLogPageClient({ initialLogs, dbError }: { initialLogs: Audi
                       <DetailRow label="Actor"       value={`${log.platform_admin_username} (${log.platform_admin_role})`} />
                       <DetailRow label="Timestamp"   value={fmtTime(log.created_at)} />
                     </div>
-                    {Object.keys(log.metadata).length > 0 && (
-                      <div style={{ marginTop: 10 }}>
-                        <p style={{ color: C.dim, fontSize: 9, fontWeight: 700, letterSpacing: "0.16em", textTransform: "uppercase", marginBottom: 6 }}>
-                          Metadata
-                        </p>
-                        <pre style={{
-                          background: "rgba(0,4,2,0.7)", border: `1px solid ${C.border}`,
-                          borderRadius: 7, padding: "10px 12px",
-                          color: "rgba(196,181,253,0.75)", fontSize: 10.5,
-                          overflowX: "auto", lineHeight: 1.6, margin: 0,
-                          fontFamily: "'Courier New', monospace",
-                        }}>
-                          {JSON.stringify(log.metadata, null, 2)}
-                        </pre>
-                      </div>
-                    )}
+                    <MetadataSummary metadata={log.metadata} />
                   </div>
                 )}
               </div>
@@ -371,6 +356,140 @@ function DetailRow({ label, value }: { label: string; value: string }) {
       <span style={{ color: "rgba(245,240,232,0.65)", fontSize: 10.5, wordBreak: "break-all" }}>
         {value}
       </span>
+    </div>
+  );
+}
+
+/* ── MetadataSummary ─────────────────────────────────────── */
+const FIELD_LABELS: Record<string, string> = {
+  description:  "클럽 소개",
+  name:         "클럽명",
+  slug:         "클럽 URL",
+  status:       "운영 상태",
+  role:         "권한",
+  username:     "아이디",
+  display_name: "이름",
+  is_active:    "계정 상태",
+  club:         "클럽",
+  member:       "회원",
+  from:         "이전 권한",
+  to:           "변경 권한",
+};
+
+function displayValue(key: string, val: unknown): string {
+  if (val === null || val === undefined || val === "") return "없음";
+  if (typeof val === "boolean") {
+    if (key === "is_active") return val ? "활성" : "비활성";
+    return val ? "예" : "아니오";
+  }
+  if (typeof val === "string" || typeof val === "number") return String(val);
+  return JSON.stringify(val);
+}
+
+function MetadataSummary({ metadata }: { metadata: Record<string, unknown> }) {
+  if (!metadata || Object.keys(metadata).length === 0) return null;
+
+  const changedFields = Array.isArray(metadata.changed_fields)
+    ? (metadata.changed_fields as string[])
+    : null;
+  const before = metadata.before && typeof metadata.before === "object"
+    ? (metadata.before as Record<string, unknown>)
+    : null;
+  const after = metadata.after && typeof metadata.after === "object"
+    ? (metadata.after as Record<string, unknown>)
+    : null;
+
+  // Determine which fields to show
+  let fields: string[] = [];
+  if (changedFields && changedFields.length > 0) {
+    fields = changedFields;
+  } else if (before || after) {
+    // Fallback: union of keys
+    const allKeys = new Set([
+      ...Object.keys(before ?? {}),
+      ...Object.keys(after ?? {}),
+    ]);
+    fields = Array.from(allKeys);
+  }
+
+  // Flat metadata (no before/after structure — e.g. club.create, role change)
+  const flatKeys = Object.keys(metadata).filter(
+    k => !["changed_fields", "before", "after"].includes(k)
+  );
+
+  return (
+    <div style={{ marginTop: 12 }}>
+      <p style={{
+        color: C.dim, fontSize: 9, fontWeight: 700,
+        letterSpacing: "0.16em", textTransform: "uppercase", marginBottom: 8,
+      }}>
+        변경 내용
+      </p>
+
+      {fields.length > 0 && before !== null && after !== null ? (
+        <div style={{ display: "grid", gap: 6 }}>
+          {fields.map(field => {
+            const bv = displayValue(field, before?.[field]);
+            const av = displayValue(field, after?.[field]);
+            const label = FIELD_LABELS[field] ?? field;
+            return (
+              <div key={field} style={{
+                background: "rgba(109,40,217,0.08)",
+                border: "1px solid rgba(139,92,246,0.18)",
+                borderRadius: 7, padding: "8px 12px",
+              }}>
+                <p style={{
+                  color: C.dim, fontSize: 8.5, fontWeight: 700,
+                  letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 5,
+                }}>
+                  {label}
+                </p>
+                <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                  <span style={{
+                    color: "rgba(252,165,165,0.7)", fontSize: 11,
+                    textDecoration: bv === "없음" ? "none" : "line-through",
+                    fontStyle: bv === "없음" ? "italic" : "normal",
+                    maxWidth: 220, wordBreak: "break-all",
+                  }}>
+                    {bv}
+                  </span>
+                  <span style={{ color: C.dim, fontSize: 10, flexShrink: 0 }}>→</span>
+                  <span style={{
+                    color: "rgba(134,239,172,0.85)", fontSize: 11,
+                    fontWeight: av === "없음" ? 400 : 600,
+                    fontStyle: av === "없음" ? "italic" : "normal",
+                    maxWidth: 220, wordBreak: "break-all",
+                  }}>
+                    {av}
+                  </span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ) : flatKeys.length > 0 ? (
+        <div style={{ display: "grid", gap: 5 }}>
+          {flatKeys.map(k => {
+            const val = displayValue(k, metadata[k]);
+            const label = FIELD_LABELS[k] ?? k;
+            return (
+              <div key={k} style={{ display: "flex", gap: 10, alignItems: "baseline", flexWrap: "wrap" }}>
+                <span style={{
+                  color: "rgba(245,240,232,0.28)", fontSize: 9, fontWeight: 700,
+                  letterSpacing: "0.10em", textTransform: "uppercase", minWidth: 80, flexShrink: 0,
+                }}>
+                  {label}
+                </span>
+                <span style={{ color: "rgba(245,240,232,0.65)", fontSize: 10.5, wordBreak: "break-all" }}>
+                  {val}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <p style={{ color: C.dim, fontSize: 11, fontStyle: "italic" }}>기록된 변경 내용이 없습니다.</p>
+      )}
     </div>
   );
 }

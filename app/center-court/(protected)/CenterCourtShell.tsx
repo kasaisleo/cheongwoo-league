@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import type { PlatformAdminSession } from "@/lib/platform-admin-session";
@@ -12,6 +12,13 @@ interface Props {
 
 export function CenterCourtShell({ session, children }: Props) {
   const pathname = usePathname();
+
+  // Suppress body scroll so the fixed overlay is the sole scroll owner.
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = prev; };
+  }, []);
 
   return (
     <>
@@ -76,7 +83,7 @@ export function CenterCourtShell({ session, children }: Props) {
           전체 화면 오버레이 — root layout 헤더/탭바 완전 격리
           ════════════════════════════════════════════════════════ */}
       <div
-        className="fixed inset-0 z-[9999] overflow-auto"
+        className="fixed inset-0 z-[9999] overflow-y-auto"
         style={{
           /* 잔디 모잉 스트라이프 + deep green 기반 */
           background: [
@@ -106,7 +113,7 @@ export function CenterCourtShell({ session, children }: Props) {
         />
 
         {/* ── 레이아웃 ─────────────────────────────────────────── */}
-        <div className="relative z-10 flex min-h-full flex-col">
+        <div className="relative z-10 flex min-h-screen flex-col">
 
           {/* ════════════════════ HEADER ════════════════════════ */}
           <header
