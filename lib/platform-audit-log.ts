@@ -59,7 +59,7 @@ export async function recordPlatformAuditLog(
     const supabase = createServiceClient();
     const metadata = entry.metadata ? redactMetadata(entry.metadata) : {};
 
-    const { error } = await supabase.from("platform_audit_logs").insert({
+    const row = {
       platform_admin_id: session.adminId,
       admin_username:    session.username,
       admin_role:        session.role,
@@ -69,12 +69,45 @@ export async function recordPlatformAuditLog(
       target_label:      entry.targetLabel ?? null,
       club_id:           entry.clubId ?? null,
       metadata,
+    };
+
+    console.info("[platform-audit-log] attempting insert", {
+      action:      entry.action,
+      targetType:  entry.targetType,
+      targetId:    entry.targetId,
+      clubId:      entry.clubId,
+      adminId:     session.adminId     ?? null,
+      adminExists: !!session.adminId,
+      usernameExists: !!session.username,
     });
 
+    const { error } = await supabase.from("platform_audit_logs").insert(row);
+
     if (error) {
-      console.error("[platform-audit-log] insert failed:", error.message);
+      console.error("[platform-audit-log] insert failed", {
+        action:       entry.action,
+        targetType:   entry.targetType,
+        targetId:     entry.targetId,
+        clubId:       entry.clubId,
+        adminId:      session.adminId,
+        adminUsername: session.username,
+        errorMessage: error.message,
+        errorDetails: error.details,
+        errorHint:    error.hint,
+        errorCode:    error.code,
+      });
+    } else {
+      console.info("[platform-audit-log] inserted", {
+        action:   entry.action,
+        targetId: entry.targetId,
+        clubId:   entry.clubId,
+      });
     }
   } catch (err) {
-    console.error("[platform-audit-log] unexpected error:", err);
+    console.error("[platform-audit-log] unexpected error", {
+      action:    entry.action,
+      targetId:  entry.targetId,
+      err: err instanceof Error ? { message: err.message, stack: err.stack } : String(err),
+    });
   }
 }

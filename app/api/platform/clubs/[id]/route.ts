@@ -113,6 +113,14 @@ export async function PATCH(
     changedFields.every(f => f === "status");
   const action = isStatusOnly ? "club.status_change" : "club.update";
 
+  console.info("[platform-audit] attempting club audit", {
+    action,
+    clubId: id,
+    changedFields,
+    adminId:       session!.adminId,
+    adminUsername: session!.username,
+  });
+
   await recordPlatformAuditLog(session!, {
     action,
     targetType:  "club",
