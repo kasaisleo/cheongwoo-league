@@ -14,7 +14,7 @@ import type { MemberWithStats } from "@/lib/supabase/database.types";
  *
  * 상태 흐름:
  *   authState=checking → ClubMemberLoginGate(checking) — auth 확인 중
- *   authState=unauth   → ClubMemberLoginGate(loginHref) — 비로그인
+ *   authState=unauth   → ClubMemberLoginGate(returnUrl) — 비로그인
  *   authState=authed   → data fetch → content 렌더
  *
  * - checking/unauth 모두 동일한 min-height/position → layout shift 없음
@@ -162,10 +162,8 @@ export default function MyPageClient({
   }
 
   if (authState === "unauth") {
-    const loginHref = slug
-      ? `/login?returnUrl=${encodeURIComponent(`/c/${slug}/mypage`)}`
-      : "/login";
-    return <ClubMemberLoginGate loginHref={loginHref} />;
+    const returnUrl = slug ? `/c/${slug}/mypage` : "/";
+    return <ClubMemberLoginGate returnUrl={returnUrl} />;
   }
 
   // authState === "authed"
