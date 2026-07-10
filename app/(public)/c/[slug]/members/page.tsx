@@ -33,7 +33,7 @@ export default async function ClubMembersPage({ params }: { params: { slug: stri
           </Link>
         }
       />
-      <MemberList members={members} />
+      <MemberList members={members} slug={slug} />
     </PublicShell>
   );
 }

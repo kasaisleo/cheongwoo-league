@@ -3,7 +3,6 @@ import { createServiceClient } from "@/lib/supabase/server";
 import { getAdminAccessServer } from "@/lib/admin-permissions";
 import { isValidPlayerBackground } from "@/lib/constants/member-timeline";
 import type { MemberGrade, MemberRole } from "@/lib/supabase/database.types";
-import { getCurrentClubId } from "@/lib/current-club";
 
 interface UpdateMemberBody {
   name?: string;
@@ -87,14 +86,16 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     );
   }
 
+  const clubId = putAccess.clubId;
+  if (!clubId) return NextResponse.json({ error: "클럽 정보를 확인할 수 없습니다." }, { status: 403 });
+
   const supabase = createServiceClient();
-  const currentClubId = await getCurrentClubId();
 
   const { data: existingMember, error: fetchError } = await supabase
     .from("members")
     .select("*")
     .eq("id", memberId)
-    .eq("club_id", currentClubId)
+    .eq("club_id", clubId)
     .single();
 
   if (fetchError || !existingMember) {
@@ -133,7 +134,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       .from("members")
       .select("id")
       .eq("phone", digitsOnlyPhone)
-      .eq("club_id", currentClubId)
+      .eq("club_id", clubId)
       .neq("id", memberId)
       .limit(1);
 
@@ -214,7 +215,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     .from("members")
     .update(updates)
     .eq("id", memberId)
-    .eq("club_id", currentClubId)
+    .eq("club_id", clubId)
     .select()
     .single();
 
@@ -238,14 +239,16 @@ export async function DELETE(_request: NextRequest, { params }: RouteParams) {
   if (!access.kakaoIsOwner) return Response.json({ error: "회원 탈퇴 처리는 master/owner만 가능합니다." }, { status: 403 });
 
   const memberId = params.id;
+  const clubId = access.clubId;
+  if (!clubId) return NextResponse.json({ error: "클럽 정보를 확인할 수 없습니다." }, { status: 403 });
+
   const supabase = createServiceClient();
-  const currentClubId = await getCurrentClubId();
 
   const { data: existingMember, error: fetchError } = await supabase
     .from("members")
     .select("id")
     .eq("id", memberId)
-    .eq("club_id", currentClubId)
+    .eq("club_id", clubId)
     .single();
 
   if (fetchError || !existingMember) {
@@ -256,7 +259,7 @@ export async function DELETE(_request: NextRequest, { params }: RouteParams) {
     .from("members")
     .update({ is_active: false, deleted_at: new Date().toISOString() })
     .eq("id", memberId)
-    .eq("club_id", currentClubId);
+    .eq("club_id", clubId);
 
   if (updateError) {
     return NextResponse.json({ error: "회원 삭제에 실패했습니다." }, { status: 500 });

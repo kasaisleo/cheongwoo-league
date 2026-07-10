@@ -16,9 +16,10 @@ type FormType = "member" | "guest";
 interface Props {
   type: FormType;
   currentClubName?: string;
+  clubSlug?: string;
 }
 
-export function NewMemberClient({ type, currentClubName }: Props) {
+export function NewMemberClient({ type, currentClubName, clubSlug }: Props) {
   const router = useRouter();
   const isGuest = type === "guest";
 
@@ -87,7 +88,7 @@ export function NewMemberClient({ type, currentClubName }: Props) {
     }
 
     toast.success(`${memberType} "${normalizedName}"이(가) 등록되었습니다.`);
-    router.push(`/members/${body.memberId}`);
+    router.push(clubSlug ? `/c/${clubSlug}/members/${body.memberId}` : "/admin");
   }
 
   return (

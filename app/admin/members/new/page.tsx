@@ -25,5 +25,5 @@ export default async function NewMemberPage({ searchParams }: PageProps) {
     .eq("id", currentClubId)
     .maybeSingle();
 
-  return <NewMemberClient type="member" currentClubName={club?.name ?? ""} />;
+  return <NewMemberClient type="member" currentClubName={club?.name ?? ""} clubSlug={access.clubSlug ?? undefined} />;
 }

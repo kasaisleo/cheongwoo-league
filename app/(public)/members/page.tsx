@@ -1,59 +1,30 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
-import { MemberList } from "@/components/member/MemberList";
-import { getAdminAccessServer } from "@/lib/admin-permissions";
-import type { MemberWithStats } from "@/lib/supabase/database.types";
-import { getCurrentClubId } from "@/lib/current-club";
+import { SELECTED_CLUB_COOKIE } from "@/lib/club-constants";
 
-export default async function MembersPage() {
+/**
+ * /members — legacy redirect wrapper.
+ *
+ * selected_club_id 쿠키가 있을 때만 canonical URL로 redirect한다.
+ * 쿠키 없음 / 클럽 inactive / DB 오류 → / 로 이동.
+ *
+ * DEFAULT_CLUB_ID 자동 fallback 금지: 쿠키 없는 Namaste 사용자를
+ * /c/cheongwoo/members 로 잘못 redirect하는 사고를 막기 위함.
+ */
+
+export default async function LegacyMembersPage() {
+  const cookieStore = cookies();
+  const clubId = cookieStore.get(SELECTED_CLUB_COOKIE)?.value;
+  if (!clubId) redirect("/");
+
   const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/login?returnUrl=/members");
+  const { data: club } = await supabase
+    .from("clubs")
+    .select("slug, status")
+    .eq("id", clubId)
+    .maybeSingle();
 
-  const currentClubId = await getCurrentClubId();
-  const { data } = await supabase
-    .from("member_stats")
-    .select("*")
-    .eq("is_active", true)
-    .eq("club_id", currentClubId)
-    .order("league_point", { ascending: false })
-    .order("nickname");
-
-  const members = (data ?? []) as MemberWithStats[];
-  const access = await getAdminAccessServer();
-  const isOwner = access.isOwner;
-  const isAdmin = access.isAdmin;
-
-  return (
-    <main className="px-4 pt-6 pb-28">
-      {/* ── 페이지 헤더 ─────────────────────────────────── */}
-      <header className="mb-5">
-        <p className="eyebrow-en text-clay-400">Club Roster</p>
-        <h1 className="headline-kr text-4xl text-line-900">선수 명단</h1>
-      </header>
-
-      {/* ── 운영진 관리 버튼 — 헤더에서 분리, compact 처리 ── */}
-      {isAdmin && (
-        <div className="mb-4 flex items-center justify-end gap-2">
-          {isOwner && (
-            <Link
-              href="/members/import"
-              className="club-back-link"
-            >
-              명단 가져오기
-            </Link>
-          )}
-          <Link
-            href="/members/new"
-            className="rounded-sm border border-clay-400/60 px-2.5 py-1 text-xs font-semibold text-clay-400 transition-colors hover:border-clay-400 hover:bg-clay-400/5"
-          >
-            + 회원 등록
-          </Link>
-        </div>
-      )}
-
-      <MemberList members={members} />
-    </main>
-  );
+  if (!club || club.status !== "active" || !club.slug) redirect("/");
+  redirect(`/c/${club.slug}/members`);
 }

@@ -9,6 +9,8 @@ import type { MemberWithStats } from "@/lib/supabase/database.types";
 interface MemberDetailActionsProps {
   member: MemberWithStats;
   currentClubId: string;
+  /** 삭제 후 이동할 경로. 미지정 시 "/members" (legacy fallback). */
+  returnPath?: string;
 }
 
 /**
@@ -19,7 +21,7 @@ interface MemberDetailActionsProps {
  * 삭제 버튼은 이 화면(상세 바로가기)이 아니라 수정 모달 하단에 둔다 — 우발적
  * 클릭으로 회원이 바로 삭제되는 사고를 줄이기 위함(EditMemberModal 참고).
  */
-export function MemberDetailActions({ member, currentClubId }: MemberDetailActionsProps) {
+export function MemberDetailActions({ member, currentClubId, returnPath = "/members" }: MemberDetailActionsProps) {
   const router = useRouter();
   const adminAccess = useAdminAccess(currentClubId);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -50,7 +52,7 @@ export function MemberDetailActions({ member, currentClubId }: MemberDetailActio
           }}
           onDeleted={() => {
             setShowEditModal(false);
-            router.push("/members");
+            router.push(returnPath);
             router.refresh();
           }}
         />

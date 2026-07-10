@@ -39,6 +39,8 @@ import type { MemberWithStats } from "@/lib/supabase/database.types";
 
 interface MemberListProps {
   members: MemberWithStats[];
+  /** 클럽 slug. 있으면 /c/[slug]/members/[id] 링크, 없으면 /members/[id] (legacy). */
+  slug?: string;
 }
 
 /** 순위 번호에 Ranking 색상 계층 적용 */
@@ -48,7 +50,7 @@ function rankColor(rank: number): string {
   return "text-line-500";
 }
 
-export function MemberList({ members }: MemberListProps) {
+export function MemberList({ members, slug }: MemberListProps) {
   const [query, setQuery] = useState("");
   const [mapoFilter, setMapoFilter] = useState<MapoScoreFilter>("all");
   const [memberTypeFilter, setMemberTypeFilter] = useState<MemberTypeFilter>("all");
@@ -186,7 +188,7 @@ export function MemberList({ members }: MemberListProps) {
             const isLast = idx === filteredMembers.length - 1;
 
             return (
-              <Link key={member.id} href={`/members/${member.id}`}>
+              <Link key={member.id} href={slug ? `/c/${slug}/members/${member.id}` : `/members/${member.id}`}>
                 <div
                   className={`grid grid-cols-[2.5rem_1fr_auto] items-center gap-3 px-4 py-3 transition-colors hover:bg-line-100/40 ${
                     isLast ? "" : "border-b border-line-200/30"
