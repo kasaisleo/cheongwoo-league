@@ -553,6 +553,9 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 [data-club-skin="namaste"] .border-clay-400\/40 {
   border-color: color-mix(in srgb, var(--club-primary) 40%, transparent);
 }
+[data-club-skin="namaste"] .border-clay-400\/30 {
+  border-color: color-mix(in srgb, var(--club-primary) 30%, transparent);
+}
 
 /* ── 호버 상태 ────────────────────────────────────────────────── */
 [data-club-skin="namaste"] .hover\:bg-line-100\/40:hover {
@@ -568,6 +571,32 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 }
 [data-club-skin="namaste"] .rounded-\[10px\] {
   border-radius: calc(var(--club-card-radius) * 0.55);
+}
+
+/* ── 누락 opacity 변형 ────────────────────────────────────────── */
+[data-club-skin="namaste"] .bg-clay-400\/60 {
+  background-color: color-mix(in srgb, var(--club-primary) 60%, transparent);
+}
+[data-club-skin="namaste"] .bg-clay-400\/30 {
+  background-color: color-mix(in srgb, var(--club-primary) 30%, transparent);
+}
+[data-club-skin="namaste"] .text-clay-400\/60 {
+  color: color-mix(in srgb, var(--club-primary) 60%, transparent);
+}
+
+/* ── bg-line-200 (멤버 타입 배지 배경) ───────────────────────── */
+[data-club-skin="namaste"] .bg-line-200 {
+  background-color: var(--club-surface-strong);
+}
+[data-club-skin="namaste"] .text-line-600 {
+  color: var(--club-muted);
+}
+
+/* ── divide 유틸리티 — border-color override로 적용 ────────────
+ * Tailwind divide-* 는 > * + * 에 border-color를 설정.
+ * .border-line-200\/30 override가 divide children에 적용되지 않으므로 별도 선언. */
+[data-club-skin="namaste"] .divide-line-200\/30 > * + * {
+  border-color: color-mix(in srgb, var(--club-border) 70%, transparent);
 }
 
 /* BottomTabBar는 CSS var inline style로 직접 skin-aware 처리됨.
