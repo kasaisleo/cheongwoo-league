@@ -1,3 +1,4 @@
+import type React from "react";
 import { createClient } from "@/lib/supabase/server";
 import { getAdminAccessServer } from "@/lib/admin-permissions";
 import { AdminLogoutButton } from "@/components/admin/AdminLogoutButton";
@@ -234,95 +235,153 @@ export default async function AdminPage({
   // ── E. 인증됨 + 클럽 선택 완료: 대시보드 ──────────────
   const data = await getAdminDashboardData(access.clubId ?? "");
 
+  // 카드 공통 스타일 (CSS 변수 기반 — skin 자동 적용)
+  const cardSurface: React.CSSProperties = {
+    background: "var(--admin-surface)",
+    border: "1px solid var(--admin-border)",
+  };
+  const cardDivider: React.CSSProperties = {
+    borderColor: "var(--admin-border)",
+  };
+
+  const quickActions = [
+    { href: "/admin/matches/create",          label: "매치 생성",     variant: "primary"    },
+    { href: "/admin/matches",                 label: "경기 관리",     variant: "emphasized" },
+    { href: "/admin/attendance",              label: "출석 관리",     variant: "emphasized" },
+    { href: "/admin/records",                 label: "기록 대시보드", variant: "standard"   },
+    { href: "/admin/members/new?type=member", label: "회원 등록",     variant: "standard"   },
+    { href: "/admin/guests",                  label: "게스트 관리",   variant: "standard"   },
+  ] as const;
+
+  function actionCardStyle(variant: "primary" | "emphasized" | "standard"): React.CSSProperties {
+    if (variant === "primary") {
+      return {
+        background: "var(--admin-accent-soft, rgba(212,255,61,0.08))",
+        border: "1px solid var(--admin-accent)",
+      };
+    }
+    if (variant === "emphasized") {
+      return {
+        background: "var(--admin-surface)",
+        border: "1px solid var(--admin-border)",
+        borderLeftWidth: "3px",
+        borderLeftColor: "var(--admin-accent)",
+      };
+    }
+    return {
+      background: "var(--admin-surface)",
+      border: "1px solid var(--admin-border)",
+    };
+  }
+
   return (
     <main className="px-4 pt-6 pb-10">
-      <header className="mb-6">
-        <p className="eyebrow-en text-clay-400">Admin Dashboard</p>
-        <h1 className="headline-kr text-4xl text-line-900">관리자</h1>
+      <header className="mb-5">
+        <p className="eyebrow-en" style={{ color: "var(--admin-muted)", fontSize: "9px" }}>Admin</p>
+        <h1 className="headline-kr text-4xl" style={{ color: "var(--admin-text)" }}>관리자</h1>
       </header>
 
       {isLoggedInButLacksOwner && (
-        <section className="mb-6">
-          <div className="rounded-[14px] border border-gold/30 bg-gold/10 p-4">
-            <p className="text-xs leading-relaxed text-line-700">
+        <section className="mb-5">
+          <div className="rounded-[14px] p-4" style={{
+            background: "rgba(201,168,76,0.1)",
+            border: "1px solid rgba(201,168,76,0.35)",
+          }}>
+            <p className="text-xs leading-relaxed" style={{ color: "var(--admin-text)" }}>
               이 메뉴는 Owner 권한이 필요합니다. 필요한 경우 클럽 Owner에게 권한 변경을 요청해주세요.
             </p>
           </div>
         </section>
       )}
 
-      <section className="mb-6">
-        <p className="eyebrow-en mb-2 text-line-500">Overview</p>
-        <div className="overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50">
-          <div className="grid grid-cols-2 divide-x divide-y divide-line-200/30">
-            <div className="px-4 py-3">
-              <p className="font-score text-3xl font-bold tabular-nums text-gold">
+      {/* ── 현황 ─────────────────────────────────────────────── */}
+      <section className="mb-5">
+        <p className="mb-2 text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--admin-muted)" }}>현황</p>
+        <div
+          className="overflow-hidden rounded-[var(--admin-card-radius,14px)]"
+          style={cardSurface}
+        >
+          <div className="grid grid-cols-2">
+            {/* 오늘 매치 */}
+            <div className="px-4 py-3.5" style={{ borderBottom: "1px solid var(--admin-border)", borderRight: "1px solid var(--admin-border)" }}>
+              <p className="font-score text-3xl font-bold tabular-nums" style={{ color: "var(--admin-achievement, #c9a84c)" }}>
                 {data.hasTodaySession ? data.todayAttending : "—"}
               </p>
-              <p className="mt-0.5 text-[10px] font-semibold text-line-500">오늘 매치</p>
-              {!data.hasTodaySession && <p className="text-[10px] text-line-400">오늘 매치 없음</p>}
+              <p className="mt-0.5 text-[10px] font-semibold" style={{ color: "var(--admin-muted)" }}>오늘 출석</p>
+              {!data.hasTodaySession && (
+                <p className="text-[10px]" style={{ color: "var(--admin-muted)", opacity: 0.6 }}>세션 없음</p>
+              )}
             </div>
-            <div className="px-4 py-3">
-              <p className="font-score text-3xl font-bold tabular-nums text-clay-400">{data.recentMatches.length}</p>
-              <p className="mt-0.5 text-[10px] font-semibold text-line-500">최근 경기 기록</p>
-              {data.recentMatches[0] && <p className="text-[10px] text-line-400">{data.recentMatches[0].played_at}</p>}
+            {/* 최근 경기 */}
+            <div className="px-4 py-3.5" style={{ borderBottom: "1px solid var(--admin-border)" }}>
+              <p className="font-score text-3xl font-bold tabular-nums" style={{ color: "var(--admin-accent)" }}>
+                {data.recentMatches.length}
+              </p>
+              <p className="mt-0.5 text-[10px] font-semibold" style={{ color: "var(--admin-muted)" }}>최근 경기</p>
+              {data.recentMatches[0] && (
+                <p className="text-[10px]" style={{ color: "var(--admin-muted)", opacity: 0.6 }}>{data.recentMatches[0].played_at}</p>
+              )}
             </div>
-            <div className="px-4 py-3">
-              <p className="font-score text-3xl font-bold tabular-nums text-line-900">{data.totalMembers}</p>
-              <p className="mt-0.5 text-[10px] font-semibold text-line-500">활동 회원</p>
+            {/* 활동 회원 */}
+            <div className="px-4 py-3.5" style={{ borderRight: "1px solid var(--admin-border)" }}>
+              <p className="font-score text-3xl font-bold tabular-nums" style={{ color: "var(--admin-text)" }}>
+                {data.totalMembers}
+              </p>
+              <p className="mt-0.5 text-[10px] font-semibold" style={{ color: "var(--admin-muted)" }}>활동 회원</p>
             </div>
-            <div className="px-4 py-3">
-              <p className="font-score text-3xl font-bold tabular-nums text-line-700">{data.adminMembers}</p>
-              <p className="mt-0.5 text-[10px] font-semibold text-line-500">운영진</p>
+            {/* 운영진 */}
+            <div className="px-4 py-3.5">
+              <p className="font-score text-3xl font-bold tabular-nums" style={{ color: "var(--admin-text)", opacity: 0.65 }}>
+                {data.adminMembers}
+              </p>
+              <p className="mt-0.5 text-[10px] font-semibold" style={{ color: "var(--admin-muted)" }}>운영진</p>
             </div>
           </div>
         </div>
       </section>
 
-      <section className="mb-6">
-        <p className="eyebrow-en mb-2 text-line-500">Quick Actions</p>
+      {/* ── 빠른 실행 ─────────────────────────────────────────── */}
+      <section className="mb-5">
+        <p className="mb-2 text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--admin-muted)" }}>빠른 실행</p>
         <div className="grid grid-cols-2 gap-2">
-          {[
-            { href: "/admin/matches/create",          label: "매치 생성",    sub: "New Match",    accent: "clay" },
-            { href: "/admin/matches",                 label: "경기 관리",    sub: "Matches",      accent: "clay" },
-            { href: "/admin/attendance",              label: "출석 관리",    sub: "Attendance",   accent: "line" },
-            { href: "/admin/records",                 label: "기록 대시보드", sub: "Records",     accent: "line" },
-            { href: "/admin/members/new?type=member", label: "회원 등록",    sub: "New Member",   accent: "line" },
-            { href: "/admin/guests",                  label: "게스트 관리",  sub: "Guest List",   accent: "line" },
-          ].map((item) => (
+          {quickActions.map((item) => (
             <Link key={item.href} href={item.href}>
-              <div className="relative overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50 px-4 py-3 transition-colors hover:bg-line-100/40">
-                <div className={`absolute left-0 top-0 h-full w-1 ${
-                  item.accent === "clay" ? "bg-clay-400/50" : "bg-line-300/40"
-                }`} />
-                <p className="text-sm font-semibold text-line-900">{item.label}</p>
-                <p className="eyebrow-en text-[9px] text-line-500">{item.sub}</p>
+              <div
+                className="min-h-[44px] overflow-hidden rounded-[var(--admin-card-radius,14px)] px-4 py-3 transition-opacity hover:opacity-80"
+                style={actionCardStyle(item.variant)}
+              >
+                <p className="text-sm font-semibold" style={{ color: "var(--admin-text)" }}>{item.label}</p>
               </div>
             </Link>
           ))}
         </div>
       </section>
 
+      {/* ── 관리 ─────────────────────────────────────────────── */}
       <section className="mb-6">
-        <p className="eyebrow-en mb-2 text-line-500">Management</p>
-        <div className="overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50">
+        <p className="mb-2 text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--admin-muted)" }}>관리</p>
+        <div
+          className="overflow-hidden rounded-[var(--admin-card-radius,14px)]"
+          style={cardSurface}
+        >
           {[
-            { href: "/admin/records/players",    label: "선수 기록 분석",  sub: "참여도 · 승률 · 출석 체크율" },
-            { href: "/admin/records/matches",    label: "경기 검수",       sub: "기록 누락 · 상태 확인" },
-            { href: "/admin/records/attendance", label: "출석 체크 검수",  sub: "응답 현황 · 출석 후 미참여" },
-            { href: "/admin/auth-link",          label: "회원 연결",       sub: "카카오 로그인 연결 대기자" },
-            ...(isOwner ? [{ href: "/admin/settings", label: "시스템 설정", sub: "권한 · 계정 관리" }] : []),
-            ...(isOwner ? [{ href: "/members/import", label: "회원 명단 가져오기", sub: "CSV/XLSX 일괄 등록" }] : []),
+            { href: "/admin/records/players",    label: "선수 기록 분석",     sub: "참여도 · 승률 · 출석 체크율" },
+            { href: "/admin/records/matches",    label: "경기 검수",           sub: "기록 누락 · 상태 확인" },
+            { href: "/admin/records/attendance", label: "출석 체크 검수",      sub: "응답 현황 · 출석 후 미참여" },
+            { href: "/admin/auth-link",          label: "회원 연결",           sub: "카카오 로그인 연결 대기자" },
+            ...(isOwner ? [{ href: "/admin/settings",  label: "시스템 설정",        sub: "권한 · 계정 관리" }] : []),
+            ...(isOwner ? [{ href: "/members/import",  label: "회원 명단 가져오기", sub: "CSV/XLSX 일괄 등록" }] : []),
           ].map((item, idx, arr) => (
             <Link key={item.href} href={item.href}>
-              <div className={`flex items-center justify-between px-4 py-3 transition-colors hover:bg-line-100/40 ${
-                idx < arr.length - 1 ? "border-b border-line-200/30" : ""
-              }`}>
+              <div
+                className="flex items-center justify-between px-4 py-3 transition-opacity hover:opacity-80"
+                style={idx < arr.length - 1 ? { borderBottom: "1px solid var(--admin-border)" } : undefined}
+              >
                 <div>
-                  <p className="text-sm font-semibold text-line-900">{item.label}</p>
-                  <p className="text-[10px] text-line-500">{item.sub}</p>
+                  <p className="text-sm font-semibold" style={{ color: "var(--admin-text)" }}>{item.label}</p>
+                  <p className="text-[10px]" style={{ color: "var(--admin-muted)" }}>{item.sub}</p>
                 </div>
-                <span className="text-xs text-line-400">→</span>
+                <span className="text-xs" style={{ color: "var(--admin-muted)" }}>→</span>
               </div>
             </Link>
           ))}

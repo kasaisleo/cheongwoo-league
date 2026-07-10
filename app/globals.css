@@ -631,7 +631,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 
 /* ── 클럽 브랜드 로고 (홈 헤더 우측 슬롯) ───────────────────── */
 .club-brand-logo {
-  width: 72px;    /* 320px 뷰포트에서 content와 겹치지 않는 상한 */
+  width: 76px;    /* 375px 기준 optical balance, 320px에서도 content와 겹치지 않음 */
   height: auto;
   object-fit: contain;
   display: block;
@@ -643,6 +643,42 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 
 @media (min-width: 768px) {
   .club-brand-logo { width: 104px; }
+}
+
+/* ── Namaste public card — skin-scoped class override ──────── */
+/* border/surface를 club token으로 remapping. Cheongwoo 미발동. */
+:root:has([data-club-skin="namaste"]) .bg-line-50 {
+  background: var(--club-surface);
+}
+:root:has([data-club-skin="namaste"]) .border-line-200\/40 {
+  border-color: var(--club-border);
+}
+:root:has([data-club-skin="namaste"]) .border-line-200\/30 {
+  border-color: color-mix(in srgb, var(--club-border) 70%, transparent);
+}
+:root:has([data-club-skin="namaste"]) .divide-line-200\/30 > * + * {
+  border-color: color-mix(in srgb, var(--club-border) 70%, transparent);
+}
+:root:has([data-club-skin="namaste"]) .hover\:bg-line-100\/40:hover {
+  background: color-mix(in srgb, var(--club-surface-strong) 60%, transparent);
+}
+:root:has([data-club-skin="namaste"]) .text-line-900 {
+  color: var(--club-text);
+}
+:root:has([data-club-skin="namaste"]) .text-line-800 {
+  color: color-mix(in srgb, var(--club-text) 88%, transparent);
+}
+:root:has([data-club-skin="namaste"]) .text-line-700 {
+  color: color-mix(in srgb, var(--club-text) 72%, transparent);
+}
+:root:has([data-club-skin="namaste"]) .text-line-500 {
+  color: var(--club-muted);
+}
+:root:has([data-club-skin="namaste"]) .text-line-400 {
+  color: color-mix(in srgb, var(--club-muted) 70%, transparent);
+}
+:root:has([data-club-skin="namaste"]) .text-clay-400 {
+  color: var(--club-primary);
 }
 
 /* ── 워터마크 ─────────────────────────────────────────────────── */

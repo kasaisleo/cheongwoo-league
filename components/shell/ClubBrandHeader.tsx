@@ -59,7 +59,7 @@ export function ClubBrandHeader({
 
       {/* side slot — rightSlot + logo 동시 렌더 가능 */}
       {hasSide && (
-        <div className="flex flex-shrink-0 flex-col items-end gap-2 pt-0.5">
+        <div className="flex flex-shrink-0 flex-col items-end gap-2 pt-1.5">
           {rightSlot}
           {skin.logos && (
             <img
