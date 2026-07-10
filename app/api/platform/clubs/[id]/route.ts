@@ -56,6 +56,15 @@ export async function PATCH(
 
   const supabase = createServiceClient();
 
+  // Fetch current state for before/after diff in audit
+  const { data: before } = await supabase
+    .from("clubs")
+    .select("id, name, slug, description, status")
+    .eq("id", id)
+    .maybeSingle() as { data: { id: string; name: string; slug: string; description: string | null; status: string } | null };
+
+  if (!before) return NextResponse.json({ error: "not_found" }, { status: 404 });
+
   if (slug !== undefined) {
     const { data: existing } = await supabase
       .from("clubs")
@@ -67,10 +76,10 @@ export async function PATCH(
   }
 
   const patch: Record<string, unknown> = {};
-  if (name !== undefined) patch.name = name;
-  if (slug !== undefined) patch.slug = slug;
+  if (name        !== undefined) patch.name        = name;
+  if (slug        !== undefined) patch.slug        = slug;
   if (description !== undefined) patch.description = description;
-  if (status !== undefined) patch.status = status;
+  if (status      !== undefined) patch.status      = status;
 
   if (Object.keys(patch).length === 0)
     return NextResponse.json({ error: "nothing_to_update" }, { status: 400 });
@@ -84,7 +93,24 @@ export async function PATCH(
 
   if (error) return NextResponse.json({ error: "db_error" }, { status: 500 });
 
-  const isStatusOnly = Object.keys(patch).length === 1 && status !== undefined;
+  // Build before/after diff — only include fields that actually changed
+  const changedFields: string[] = [];
+  const beforeSnap: Record<string, unknown> = {};
+  const afterSnap:  Record<string, unknown> = {};
+
+  for (const key of Object.keys(patch) as Array<keyof typeof before>) {
+    const prev = before[key];
+    const next = patch[key as string];
+    if (prev !== next) {
+      changedFields.push(key as string);
+      beforeSnap[key as string] = prev;
+      afterSnap[key as string]  = next;
+    }
+  }
+
+  // Determine action: status-only change vs general update
+  const isStatusOnly = changedFields.length > 0 &&
+    changedFields.every(f => f === "status");
   const action = isStatusOnly ? "club.status_change" : "club.update";
 
   await recordPlatformAuditLog(session!, {
@@ -93,7 +119,11 @@ export async function PATCH(
     targetId:    data.id,
     targetLabel: `${data.name} (/c/${data.slug})`,
     clubId:      data.id,
-    metadata:    patch,
+    metadata: {
+      changed_fields: changedFields,
+      before: beforeSnap,
+      after:  afterSnap,
+    },
   });
 
   return NextResponse.json({ club: data });
