@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import Link from "next/link";
 
 interface Admin {
   id: string;
@@ -536,6 +537,21 @@ function AdminRow({
               : "Never"}
           </p>
         </div>
+
+        {/* Detail link — stops propagation so it doesn't toggle expand */}
+        <Link
+          href={`/center-court/platform-admins/${admin.id}`}
+          style={{ textDecoration: "none", flexShrink: 0 }}
+          onClick={e => e.stopPropagation()}
+        >
+          <span style={{
+            fontSize: 9, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase",
+            color: "rgba(196,181,253,0.55)", border: "1px solid rgba(139,92,246,0.22)",
+            borderRadius: 5, padding: "3px 9px", display: "inline-block",
+          }}>
+            Detail
+          </span>
+        </Link>
 
         {/* chevron — flex-shrink 0으로 밀리지 않게 */}
         <svg

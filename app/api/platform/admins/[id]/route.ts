@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { getPlatformAdminSession } from "@/lib/platform-admin-session";
 import { createPlatformPasswordHash } from "@/lib/platform-password";
+import { recordPlatformAuditLog } from "@/lib/platform-audit-log";
 
 const SAFE_FIELDS =
   "id, username, display_name, role, status, last_login_at, created_at, updated_at";
@@ -27,10 +28,10 @@ export async function PATCH(
 
   const supabase = createServiceClient();
 
-  // 현재 대상 어드민 조회
+  // 현재 대상 어드민 조회 (before snapshot용 display_name 포함)
   const { data: target, error: fetchErr } = await supabase
     .from("platform_admins")
-    .select("id, role, status, username")
+    .select("id, role, status, username, display_name")
     .eq("id", targetId)
     .maybeSingle();
 
@@ -41,6 +42,11 @@ export async function PATCH(
   // 본인 계정 비활성화 금지
   if (body.status === "inactive" && targetId === session.adminId) {
     return NextResponse.json({ error: "cannot_deactivate_self" }, { status: 400 });
+  }
+
+  // 본인 계정 role 강등 금지 (owner → admin)
+  if (body.role === "admin" && targetId === session.adminId && target.role === "owner") {
+    return NextResponse.json({ error: "cannot_demote_self" }, { status: 400 });
   }
 
   // 마지막 owner 보호
@@ -100,5 +106,46 @@ export async function PATCH(
     .single();
 
   if (error) return NextResponse.json({ error: "db_error" }, { status: 500 });
+
+  // ── Audit logging ──────────────────────────────────────
+  // Determine action type: password_reset > status_change > update
+  const isPasswordReset = typeof body.password === "string";
+  const isStatusChange  = typeof body.status === "string" && !isPasswordReset;
+  const auditAction = isPasswordReset
+    ? "platform_admin.password_reset"
+    : isStatusChange
+      ? "platform_admin.status_change"
+      : "platform_admin.update";
+
+  // Build before/after diff (never include password)
+  const changedFields: string[] = [];
+  const beforeSnap: Record<string, unknown> = {};
+  const afterSnap:  Record<string, unknown> = {};
+
+  if (!isPasswordReset) {
+    const watchFields = ["display_name", "role", "status"] as const;
+    for (const key of watchFields) {
+      const prev = (target as Record<string, unknown>)[key];
+      const next = updates[key];
+      if (next !== undefined && prev !== next) {
+        changedFields.push(key);
+        beforeSnap[key] = prev;
+        afterSnap[key]  = next;
+      }
+    }
+  }
+
+  const metadata = isPasswordReset
+    ? { note: "password hash rotated" }
+    : { changed_fields: changedFields, before: beforeSnap, after: afterSnap };
+
+  await recordPlatformAuditLog(session, {
+    action:      auditAction,
+    targetType:  "platform_admin",
+    targetId:    targetId,
+    targetLabel: target.username,
+    metadata,
+  });
+
   return NextResponse.json({ admin: data });
 }
