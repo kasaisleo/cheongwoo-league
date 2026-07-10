@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef } from "react";
+import Link from "next/link";
 import type { ClubRow } from "./page";
 
 /* ── design tokens ─────────────────────────────────────── */
@@ -365,6 +366,14 @@ export function ClubRegistryPageClient({ clubs: initial, isOwner }: Props) {
                 </p>
               </div>
               <div style={{ display: "flex", gap: 6, flexShrink: 0, flexWrap: "wrap", justifyContent: "flex-end" }}>
+                <Link
+                  href={`/center-court/clubs/${club.id}`}
+                  style={{ textDecoration: "none" }}
+                >
+                  <button className="cr-btn-ghost" style={{ color: "rgba(196,181,253,0.7)", borderColor: "rgba(139,92,246,0.25)" }}>
+                    Detail
+                  </button>
+                </Link>
                 <button className="cr-btn-ops" onClick={() => openOperators(club)} disabled={busy}>
                   Operators
                 </button>
