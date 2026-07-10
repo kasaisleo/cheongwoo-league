@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/Badge";
 import { ResultBadge } from "@/components/ui/ResultBadge";
 import { createClient } from "@/lib/supabase/client";
@@ -10,15 +9,16 @@ import type { User } from "@supabase/supabase-js";
 import type { MemberWithStats } from "@/lib/supabase/database.types";
 
 /**
- * 마이페이지 v5 — 개인 기록 기준 통일 (관리자 기록 영역 기준 맞춤).
+ * 마이페이지 v6 — club skin 로그인 게이트 + slug-aware returnUrl.
  *
- * 출석 체크율 = 출석 체크 수 / 완료 매치 수 (완료 매치 0이면 "-")
- * Recent Attendance = 완료 세션 기준, 세션별 중복 제거, 미응답 포함
+ * 비로그인 시 /login으로 redirect하지 않는다.
+ * 대신 [data-club-skin] wrapper 안에서 login gate를 렌더링한다.
+ * 서버 redirect는 DOM에서 [data-club-skin]을 제거해 BrandHeader/BottomTabBar
+ * skin을 무력화하는 문제가 있었으므로, 서버/클라이언트 양쪽에서 redirect 금지.
  */
 
 const RECENT_ATTENDANCE_LIMIT = 5;
 
-// ── 출석 상태 (DB 값 + 미응답)
 type DisplayAttendStatus = "attending" | "undecided" | "absent" | "no_response";
 
 const STATUS_LABEL: Record<DisplayAttendStatus, string> = {
@@ -40,21 +40,24 @@ function formatDate(dateStr: string): string {
   return `${Number(month)}/${Number(day)}`;
 }
 
-// ── 개인 출석 체크율: 출석 체크 수 / 완료 매치 수
 function calcAttendRate(attendingCount: number, completedCount: number): string {
   if (completedCount === 0) return "-";
   return `${Math.round((attendingCount / completedCount) * 100)}%`;
 }
 
-export default function MyPageClient({ currentClubId }: { currentClubId: string }) {
-  const router = useRouter();
+export default function MyPageClient({
+  currentClubId,
+  slug,
+}: {
+  currentClubId: string;
+  slug?: string;
+}) {
   const [initialized, setInitialized] = useState(false);
   const [authUser, setAuthUser] = useState<User | null>(null);
   const [member, setMember] = useState<MemberWithStats | null>(null);
   const [recentMatches, setRecentMatches] = useState<DisplayMatch[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // 출석 통계
   const [attendingCount, setAttendingCount] = useState(0);
   const [completedCount, setCompletedCount] = useState(0);
   const [recentAttendance, setRecentAttendance] = useState<
@@ -67,7 +70,13 @@ export default function MyPageClient({ currentClubId }: { currentClubId: string 
     void (async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
-        if (!session) { router.replace("/login?returnUrl=/mypage"); return; }
+
+        if (!session) {
+          // 비로그인 — redirect 대신 login gate 렌더링
+          setAuthUser(null);
+          setInitialized(true);
+          return;
+        }
 
         const user = session.user;
         setAuthUser(user);
@@ -86,7 +95,6 @@ export default function MyPageClient({ currentClubId }: { currentClubId: string 
         if (typedMember) {
           const today = new Date().toISOString().slice(0, 10);
 
-          // 완료 세션 (closed OR 날짜 지난 것, archived 제외)
           const { data: completedSessions } = await supabase
             .from("attendance_sessions")
             .select("id, title, session_date, session_day")
@@ -100,7 +108,6 @@ export default function MyPageClient({ currentClubId }: { currentClubId: string 
           const cCount = completedSessionIds.length;
           setCompletedCount(cCount);
 
-          // 이 회원의 attendance (완료 세션만)
           const { data: attendRows } = cCount > 0
             ? await supabase
                 .from("attendance")
@@ -109,16 +116,13 @@ export default function MyPageClient({ currentClubId }: { currentClubId: string 
                 .in("session_id", completedSessionIds)
             : { data: [] };
 
-          // session_id → 상태 맵
           const attendMap = new Map(
             (attendRows ?? []).map((r) => [r.session_id, r.status as "attending" | "undecided" | "absent"])
           );
 
-          // 출석 체크 수 (attending만)
           const aCount = [...attendMap.values()].filter((s) => s === "attending").length;
           setAttendingCount(aCount);
 
-          // Recent Attendance: 최근 N개 완료 세션 기준 (미응답 포함, 세션 중복 없음)
           const recent = sessions.slice(0, RECENT_ATTENDANCE_LIMIT).map((s) => {
             const dbStatus = attendMap.get(s.id);
             const status: DisplayAttendStatus = dbStatus ?? "no_response";
@@ -131,7 +135,6 @@ export default function MyPageClient({ currentClubId }: { currentClubId: string 
           });
           setRecentAttendance(recent);
 
-          // 최근 경기
           const [{ data: matchRows }] = await Promise.all([
             supabase
               .from("matches")
@@ -148,9 +151,34 @@ export default function MyPageClient({ currentClubId }: { currentClubId: string 
         setLoading(false);
       }
     })();
-  }, [router, currentClubId]);
+  }, [currentClubId]);
 
   if (!initialized) return null;
+
+  // 비로그인 — club skin 안에서 login gate 렌더링
+  if (!authUser) {
+    const loginHref = slug
+      ? `/login?returnUrl=${encodeURIComponent(`/c/${slug}/mypage`)}`
+      : "/login";
+    return (
+      <main className="flex min-h-[55vh] flex-col items-center justify-center px-6 py-12">
+        <div className="w-full max-w-xs text-center">
+          <p className="eyebrow-en text-clay-400 mb-1">My Page</p>
+          <h1 className="headline-kr text-3xl text-line-900 mb-3">마이페이지</h1>
+          <p className="mb-6 text-sm text-line-500">
+            회원 정보 확인을 위해 로그인이 필요합니다.
+          </p>
+          <a
+            href={loginHref}
+            className="flex h-12 w-full items-center justify-center gap-2 bg-[#FEE500] text-sm font-bold text-[#191600] transition-opacity hover:opacity-90"
+            style={{ borderRadius: "var(--club-button-radius, 6px)" }}
+          >
+            카카오 로그인
+          </a>
+        </div>
+      </main>
+    );
+  }
 
   if (loading) {
     return (
@@ -179,7 +207,7 @@ export default function MyPageClient({ currentClubId }: { currentClubId: string 
 
       {!member && (
         <div className="rounded-[14px] border border-line-200/40 bg-line-50 p-8 text-center">
-          <p className="font-display text-xs font-bold uppercase tracking-widest text-line-500">Not Linked</p>
+          <p className="eyebrow-en text-line-500">Not Linked</p>
           <p className="mt-1 text-xs text-line-400">운영진에게 회원 연결을 요청해주세요.</p>
         </div>
       )}
@@ -207,7 +235,7 @@ export default function MyPageClient({ currentClubId }: { currentClubId: string 
                 </p>
                 <div className="shrink-0 text-right">
                   <p className="font-score text-3xl font-bold tabular-nums text-clay-400">{member.league_point}</p>
-                  <p className="font-display text-[9px] font-bold uppercase tracking-widest text-clay-400/60">LP</p>
+                  <p className="eyebrow-en text-[9px] text-clay-400/60">LP</p>
                 </div>
               </div>
             </div>
@@ -223,9 +251,7 @@ export default function MyPageClient({ currentClubId }: { currentClubId: string 
                     : <>{attendRateDisplay.replace("%", "")}<span className="ml-0.5 text-sm font-semibold">%</span></>
                   }
                 </p>
-                <p className="font-display text-[9px] font-bold uppercase tracking-widest text-line-500">
-                  출석 체크율
-                </p>
+                <p className="text-[9px] font-semibold text-line-500">출석 체크율</p>
                 {completedCount > 0 && (
                   <p className="text-[9px] text-line-400">{attendingCount}/{completedCount} 매치</p>
                 )}
@@ -234,20 +260,20 @@ export default function MyPageClient({ currentClubId }: { currentClubId: string 
                 <p className="font-score text-2xl font-bold tabular-nums text-line-900">
                   {matchesPlayed}<span className="ml-0.5 text-sm font-semibold">경기</span>
                 </p>
-                <p className="font-display text-[9px] font-bold uppercase tracking-widest text-line-500">Played</p>
+                <p className="eyebrow-en text-[9px] text-line-500">Played</p>
               </div>
               <div className="px-4 py-3 text-center">
                 <p className="font-score text-2xl font-bold tabular-nums text-gold">
                   {winRate}<span className="ml-0.5 text-sm font-semibold">%</span>
                 </p>
-                <p className="font-display text-[9px] font-bold uppercase tracking-widest text-line-500">Win Rate</p>
+                <p className="eyebrow-en text-[9px] text-line-500">Win Rate</p>
               </div>
               <div className="px-4 py-3 text-center">
                 <p className="font-score text-2xl font-bold tabular-nums text-line-900">
                   {member.mapo_score !== null ? member.mapo_score : "—"}
                   {member.mapo_score !== null && <span className="ml-0.5 text-sm font-semibold">점</span>}
                 </p>
-                <p className="font-display text-[9px] font-bold uppercase tracking-widest text-line-500">지역점수</p>
+                <p className="text-[9px] font-semibold text-line-500">지역점수</p>
               </div>
             </div>
           </div>
@@ -256,7 +282,7 @@ export default function MyPageClient({ currentClubId }: { currentClubId: string 
           {recentMatches.length > 0 && (
             <div className="overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50">
               <div className="border-b border-line-200/40 bg-line-100/40 px-4 py-2">
-                <span className="font-display text-[10px] font-bold uppercase tracking-widest text-line-500">Recent Matches</span>
+                <span className="eyebrow-en text-[10px] text-line-500">Recent Matches</span>
               </div>
               {recentMatches.map((match, idx) => {
                 const myTeamIsA = match.teamAPlayer1.name === member.name || match.teamAPlayer2.name === member.name;
@@ -285,16 +311,14 @@ export default function MyPageClient({ currentClubId }: { currentClubId: string 
             </div>
           )}
 
-          {/* 최근 출석 — 완료 세션 기준, 미응답 포함, 세션별 중복 없음 */}
+          {/* 최근 출석 */}
           {recentAttendance.length > 0 && (
             <div className="overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50">
               <div className="border-b border-line-200/40 bg-line-100/40 px-4 py-2">
-                <span className="font-display text-[10px] font-bold uppercase tracking-widest text-line-500">
-                  Recent Attendance
-                </span>
+                <span className="eyebrow-en text-[10px] text-line-500">Recent Attendance</span>
               </div>
               {recentAttendance.map((row, idx) => (
-                <div key={row.sessionId}  // session_id 기준 unique key — 중복 없음
+                <div key={row.sessionId}
                   className={`flex items-center justify-between px-4 py-2.5 ${idx < recentAttendance.length - 1 ? "border-b border-line-200/30" : ""}`}>
                   <div className="min-w-0 flex-1">
                     <p className="font-score text-xs tabular-nums text-line-500">
@@ -310,7 +334,7 @@ export default function MyPageClient({ currentClubId }: { currentClubId: string 
           {/* 카카오 연동 */}
           <div className="overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50">
             <div className="border-b border-line-200/40 bg-line-100/40 px-4 py-2">
-              <span className="font-display text-[10px] font-bold uppercase tracking-widest text-line-500">Kakao</span>
+              <span className="eyebrow-en text-[10px] text-line-500">Kakao</span>
             </div>
             <div className="divide-y divide-line-200/30">
               <div className="flex items-center justify-between px-4 py-2.5">
