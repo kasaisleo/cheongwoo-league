@@ -198,7 +198,7 @@ export function MemberAuthBar({ currentClubId }: MemberAuthBarProps) {
                   <span className="ml-1 font-normal text-line-400">({memberName})</span>
                 )}
               </span>
-              <Link href="/mypage" className="inline-flex items-center text-xs font-semibold text-clay-400 whitespace-nowrap">
+              <Link href={currentSlug ? `/c/${currentSlug}/mypage` : "/mypage"} className="inline-flex items-center text-xs font-semibold text-clay-400 whitespace-nowrap">
                 마이페이지
               </Link>
               <button

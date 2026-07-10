@@ -70,7 +70,7 @@ export function BottomTabBar() {
         { href: `/c/${slug}/attendance`, label: "매치", icon: CalendarIcon },
         { href: `/c/${slug}/matches`,    label: "기록", icon: ListIcon },
         { href: `/c/${slug}/members`,    label: "회원", icon: UsersIcon },
-        { href: "/mypage",               label: "마이", icon: PersonIcon },
+        { href: `/c/${slug}/mypage`,     label: "마이", icon: PersonIcon },
       ]
     : GLOBAL_TABS.map((t) => (t.href === "__HOME__" ? { ...t, href: homeHref } : t));
 
@@ -85,9 +85,7 @@ export function BottomTabBar() {
             isActive =
               tab.href === `/c/${slug}`
                 ? pathname === `/c/${slug}`
-                : pathname.startsWith(tab.href) && tab.href !== "/mypage"
-                  ? true
-                  : tab.href === "/mypage" && pathname.startsWith("/mypage");
+                : pathname.startsWith(tab.href);
           } else {
             // non-slug 페이지: pathname이 tab.href로 시작하면 active
             // homeHref가 /c/... 형태이므로 legacy 페이지에서는 HOME이 active되지 않음
