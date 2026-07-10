@@ -75,8 +75,8 @@ export function BottomTabBar() {
     : GLOBAL_TABS.map((t) => (t.href === "__HOME__" ? { ...t, href: homeHref } : t));
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-40 bg-line-25 pb-[env(safe-area-inset-bottom)]">
-      <div className="h-px bg-gradient-to-r from-transparent via-clay-400/30 to-transparent" />
+    <nav className="club-bottom-nav fixed bottom-0 left-0 right-0 z-40 bg-line-25 pb-[env(safe-area-inset-bottom)]">
+      <div className="club-nav-sep h-px bg-gradient-to-r from-transparent via-clay-400/30 to-transparent" />
 
       <div className="flex items-stretch">
         {tabs.map((tab) => {

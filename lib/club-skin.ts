@@ -6,6 +6,11 @@
  *
  * slug는 URL 식별자일 뿐 스킨을 결정하지 않는다.
  * 새 스킨 추가: SKINS에 항목 추가 + SkinKey 유니온 확장 (migration 불필요).
+ *
+ * CSS 변수 범위:
+ *   - :root (globals.css) — 기본값, 글로벌 컴포넌트(BottomTabBar 등)에 적용
+ *   - :root:has([data-club-skin="namaste"]) — 나마스테 활성 시 :root 오버라이드
+ *   - [data-club-skin] wrapper inline style — 해당 스킨 layout 내 컴포넌트에 적용
  */
 
 export type SkinKey = "default" | "cheongwoo" | "namaste";
@@ -15,17 +20,23 @@ export interface TeamLabels {
   B: string;
 }
 
+export interface ClubLogos {
+  /** 밝은 배경(크림 등)에 사용 — namaste 기본 페이지 배경 */
+  primary: string;
+  /** 어두운 배경에 사용 */
+  inverse: string;
+}
+
 export interface ClubSkin {
   key: SkinKey;
   teamLabels: TeamLabels;
-  /** layout.tsx가 data-club-skin wrapper에 인라인 style로 주입하는 CSS 변수 */
-  cssVars: {
-    "--club-accent": string;
-    "--club-bg": string;
-    "--club-surface": string;
-    "--club-text": string;
-    "--club-muted": string;
-  };
+  /** 로고 정의. 없으면 텍스트 클럽명 표시. */
+  logos?: ClubLogos;
+  /**
+   * layout.tsx가 [data-club-skin] wrapper에 inline style로 주입하는 CSS 변수.
+   * globals.css의 :root 정의와 동일한 키를 사용한다.
+   */
+  cssVars: Record<string, string>;
 }
 
 const SKINS: Record<SkinKey, ClubSkin> = {
@@ -33,33 +44,60 @@ const SKINS: Record<SkinKey, ClubSkin> = {
     key: "default",
     teamLabels: { A: "A팀", B: "B팀" },
     cssVars: {
-      "--club-accent":  "#D4FF3D", // clay-400
-      "--club-bg":      "#0B1929", // line-25
-      "--club-surface": "#0E1F33", // line-50
-      "--club-text":    "#FFFFFF", // line-900
-      "--club-muted":   "#7C92AC", // line-500
+      "--club-bg":             "#0B1929",  // line-25
+      "--club-surface":        "#0E1F33",  // line-50
+      "--club-surface-strong": "#142943",  // line-100
+      "--club-primary":        "#D4FF3D",  // clay-400
+      "--club-primary-dark":   "#C2EB1F",  // clay-500
+      "--club-primary-soft":   "rgba(212,255,61,0.1)",
+      "--club-text":           "#FFFFFF",  // line-900
+      "--club-muted":          "#7C92AC",  // line-500
+      "--club-border":         "rgba(30,58,92,0.5)",
+      "--club-card-radius":    "14px",
+      "--club-button-radius":  "6px",
+      "--club-shadow":         "0 1px 2px 0 rgba(0,0,0,0.4)",
     },
   },
+
   cheongwoo: {
     key: "cheongwoo",
     teamLabels: { A: "청팀", B: "우팀" },
     cssVars: {
-      "--club-accent":  "#D4FF3D",
-      "--club-bg":      "#0B1929",
-      "--club-surface": "#0E1F33",
-      "--club-text":    "#FFFFFF",
-      "--club-muted":   "#7C92AC",
+      "--club-bg":             "#0B1929",
+      "--club-surface":        "#0E1F33",
+      "--club-surface-strong": "#142943",
+      "--club-primary":        "#D4FF3D",
+      "--club-primary-dark":   "#C2EB1F",
+      "--club-primary-soft":   "rgba(212,255,61,0.1)",
+      "--club-text":           "#FFFFFF",
+      "--club-muted":          "#7C92AC",
+      "--club-border":         "rgba(30,58,92,0.5)",
+      "--club-card-radius":    "14px",
+      "--club-button-radius":  "6px",
+      "--club-shadow":         "0 1px 2px 0 rgba(0,0,0,0.4)",
     },
   },
+
   namaste: {
     key: "namaste",
     teamLabels: { A: "A팀", B: "B팀" },
+    logos: {
+      primary: "/club-skins/namaste/logo-primary.png",
+      inverse: "/club-skins/namaste/logo-inverse.png",
+    },
     cssVars: {
-      "--club-accent":  "#D4FF3D",
-      "--club-bg":      "#0B1929",
-      "--club-surface": "#0E1F33",
-      "--club-text":    "#FFFFFF",
-      "--club-muted":   "#7C92AC",
+      "--club-bg":             "#F7F2E8",
+      "--club-surface":        "#FFFDF8",
+      "--club-surface-strong": "#F0EADE",
+      "--club-primary":        "#552277",
+      "--club-primary-dark":   "#351346",
+      "--club-primary-soft":   "#E9DDF0",
+      "--club-text":           "#281B2F",
+      "--club-muted":          "#766C78",
+      "--club-border":         "#D8C9DE",
+      "--club-card-radius":    "22px",
+      "--club-button-radius":  "9999px",
+      "--club-shadow":         "0 2px 8px 0 rgba(85,34,119,0.08)",
     },
   },
 };
