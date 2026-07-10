@@ -14,30 +14,21 @@ interface AdminClubShellProps {
   children: ReactNode;
   /** --club-primary + --club-primary-dark CSS var (accent 색상만) */
   accentVars?: CSSProperties;
-  /** 클럽 로고 이미지 경로 */
+  /** @deprecated 사용 안 함 — AdminAccountBar가 담당 */
   logoSrc?: string | null;
-  /** 클럽 이름 */
+  /** @deprecated 사용 안 함 — AdminAccountBar가 담당 */
   clubName?: string | null;
   /** 스킨 키 — data-admin-skin 속성값 */
   skinKey?: string;
 }
 
-export function AdminClubShell({ children, accentVars, logoSrc, clubName, skinKey }: AdminClubShellProps) {
+export function AdminClubShell({ children, accentVars, skinKey }: AdminClubShellProps) {
   return (
     <div
-      className="font-body"
+      className="mx-auto min-h-screen max-w-md font-body"
       style={accentVars}
       data-admin-skin={skinKey ?? undefined}
     >
-      {logoSrc && clubName && (
-        <div
-          className="flex items-center gap-2 px-4 pt-3"
-          aria-label={`${clubName} 관리`}
-        >
-          <img src={logoSrc} alt={clubName} className="h-6 w-auto opacity-60" />
-          <span className="text-[10px] font-semibold text-line-400">{clubName}</span>
-        </div>
-      )}
       {children}
     </div>
   );

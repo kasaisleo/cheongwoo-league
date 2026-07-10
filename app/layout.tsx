@@ -1,10 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { headers } from "next/headers";
-import { BottomTabBar } from "@/components/layout/BottomTabBar";
-import { BrandHeader } from "@/components/layout/BrandHeader";
-import { MemberAuthBar } from "@/components/layout/MemberAuthBar";
 import { ToastViewport } from "@/components/ui/Toast";
-import { getCurrentClubId } from "@/lib/current-club";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -42,22 +37,11 @@ export const viewport: Viewport = {
   themeColor: "#0B1929",
 };
 
-export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const pathname = headers().get("x-pathname") ?? "";
-  const showPublicShell =
-    !pathname.startsWith("/admin") && !pathname.startsWith("/center-court");
-
-  const currentClubId = showPublicShell ? await getCurrentClubId() : "";
-
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="ko">
       <body className="font-body">
-        {showPublicShell && <BrandHeader />}
-        {showPublicShell && <MemberAuthBar currentClubId={currentClubId} />}
-        <div className={`mx-auto min-h-screen max-w-md${showPublicShell ? " pb-20" : ""}`}>
-          {children}
-        </div>
-        {showPublicShell && <BottomTabBar />}
+        {children}
         <ToastViewport />
       </body>
     </html>

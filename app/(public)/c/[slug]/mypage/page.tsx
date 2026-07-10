@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { requirePublicClubBySlug } from "@/lib/public-club";
-import MyPageClient from "@/app/mypage/MyPageClient";
+import MyPageClient from "@/app/(public)/mypage/MyPageClient";
 
 export const dynamic = "force-dynamic";
 

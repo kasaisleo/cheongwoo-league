@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import { requirePublicClubBySlug } from "@/lib/public-club";
-import AttendancePageClient from "@/app/attendance/AttendancePageClient";
+import AttendancePageClient from "@/app/(public)/attendance/AttendancePageClient";
 
 export const dynamic = "force-dynamic";
 
