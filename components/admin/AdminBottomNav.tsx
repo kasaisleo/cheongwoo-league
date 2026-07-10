@@ -72,15 +72,14 @@ const SETTINGS_ITEM = {
 /**
  * AdminBottomNav — /admin 전용 하단 네비게이션.
  *
- * - 실제 존재하는 /admin/* route만 사용
- * - /c/[slug] 등 public 경로 없음
- * - active state: pathname prefix 기준 (exact match for 대시보드)
- * - isOwner: 설정 탭 표시 여부
- * - CSS var(--club-primary) → data-admin-skin 통해 skin accent 상속
+ * - --admin-bg / --admin-border / --admin-muted / --admin-accent: AdminClubShell에서 주입
+ * - active state: var(--admin-accent)
+ * - inactive state: var(--admin-muted)
+ * - safe area: pb-[env(safe-area-inset-bottom)]
+ * - active top indicator: Link에 relative 기준
  */
 export function AdminBottomNav({ isOwner }: AdminBottomNavProps) {
   const pathname = usePathname();
-
   const items = isOwner ? [...NAV_ITEMS, SETTINGS_ITEM] : [...NAV_ITEMS];
 
   function isActive(href: string, exact: boolean) {
@@ -91,43 +90,42 @@ export function AdminBottomNav({ isOwner }: AdminBottomNavProps) {
   return (
     <nav
       className="fixed bottom-0 left-0 right-0 z-40 mx-auto max-w-md"
-      style={{ background: "#0f1523", borderTop: "1px solid rgba(255,255,255,0.06)" }}
+      style={{
+        background: "var(--admin-bg, #0f1523)",
+        borderTop: "1px solid var(--admin-border, rgba(255,255,255,0.06))",
+      }}
     >
-      {/* 상단 구분선 */}
-      <div
-        aria-hidden="true"
-        style={{
-          height: 1,
-          background:
-            "linear-gradient(to right, transparent, rgba(255,255,255,0.08), transparent)",
-        }}
-      />
       <div
         className="grid"
         style={{ gridTemplateColumns: `repeat(${items.length}, 1fr)` }}
       >
         {items.map((item) => {
           const active = isActive(item.href, item.exact);
+          const color = active
+            ? "var(--admin-accent, #D4FF3D)"
+            : "var(--admin-muted, rgba(255,255,255,0.35))";
+
           return (
             <Link
               key={item.href}
               href={item.href}
-              className="flex flex-col items-center gap-0.5 pb-safe py-2 transition-colors"
-              style={{ color: active ? "var(--club-primary)" : "rgba(255,255,255,0.35)" }}
+              className="relative flex flex-col items-center gap-0.5 py-2 pb-[env(safe-area-inset-bottom)] transition-colors"
+              style={{ color }}
             >
+              {active && (
+                <span
+                  className="absolute left-1/2 top-0 h-[2px] w-8 -translate-x-1/2 rounded-full"
+                  style={{ background: "var(--admin-accent, #D4FF3D)", opacity: 0.8 }}
+                  aria-hidden="true"
+                />
+              )}
               {item.icon}
               <span
                 className="text-[9px] font-semibold tracking-wide"
-                style={{ color: active ? "var(--club-primary)" : "rgba(255,255,255,0.35)" }}
+                style={{ color }}
               >
                 {item.label}
               </span>
-              {active && (
-                <span
-                  className="absolute top-0 h-[2px] w-8 rounded-full"
-                  style={{ background: "var(--club-primary)", opacity: 0.7 }}
-                />
-              )}
             </Link>
           );
         })}

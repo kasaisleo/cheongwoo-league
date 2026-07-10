@@ -28,11 +28,8 @@ export default async function ClubMembersPage({ params }: { params: { slug: stri
         eyebrow="Club Roster"
         title="선수 명단"
         rightSlot={
-          <Link
-            href={`/c/${slug}`}
-            className="flex-shrink-0 whitespace-nowrap rounded-sm border border-line-200/40 px-2.5 py-1.5 text-xs font-semibold text-line-500 hover:text-line-700"
-          >
-            ← {club.name}
+          <Link href={`/c/${slug}`} className="club-back-link mt-1">
+            ← 클럽 홈
           </Link>
         }
       />

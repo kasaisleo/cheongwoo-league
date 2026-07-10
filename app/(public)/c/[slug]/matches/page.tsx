@@ -179,8 +179,8 @@ function MatchesHeader({ slug, clubName }: { slug: string; clubName: string }) {
       title="경기 기록"
       showDot
       rightSlot={
-        <Link href={`/c/${slug}`} className="text-xs text-line-400 hover:text-line-600 transition-colors mt-1">
-          ← {clubName}
+        <Link href={`/c/${slug}`} className="club-back-link mt-1">
+          ← 클럽 홈
         </Link>
       }
     />

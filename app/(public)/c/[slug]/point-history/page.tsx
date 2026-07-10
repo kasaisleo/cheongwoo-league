@@ -97,9 +97,9 @@ export default async function ClubPointHistoryPage({ params, searchParams }: Poi
         </div>
         <Link
           href={`/c/${slug}`}
-          className="flex-shrink-0 whitespace-nowrap rounded-sm border border-line-200/40 px-2.5 py-1.5 text-xs font-semibold text-line-500 hover:text-line-700"
+          className="club-back-link"
         >
-          ← {club.name}
+          ← 클럽 홈
         </Link>
       </header>
 

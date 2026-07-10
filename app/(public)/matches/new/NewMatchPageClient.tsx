@@ -346,8 +346,8 @@ export default function NewMatchPageClient({ currentClubId }: { currentClubId: s
             href={selectedSessionId
               ? `/admin/attendance?session_id=${selectedSessionId}`
               : "/admin/matches"}
-            className="flex-shrink-0 whitespace-nowrap rounded-sm border border-line-200/40 px-2.5 py-1.5 text-xs font-semibold text-line-500 hover:text-line-700">
-            ← 출석 관리
+            className="club-back-link">
+            ← 출석 관리로
           </Link>
           <button type="button" onClick={handleFinish} disabled={submitting || finishing}
             className="flex-shrink-0 whitespace-nowrap rounded-sm border border-clay-400/60 bg-clay-400/10 px-3 py-1.5 text-xs font-semibold text-clay-400 hover:bg-clay-400/20 disabled:opacity-40">

@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 
 /**
@@ -11,7 +11,6 @@ import { Button } from "@/components/ui/Button";
  * 로그인 성공 후: redirect 파라미터 있으면 해당 경로, 없으면 /admin.
  */
 function AdminLoginInner() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -36,8 +35,9 @@ function AdminLoginInner() {
     }
 
     const redirectTo = searchParams.get("redirect") || "/admin";
-    router.push(redirectTo);
-    router.refresh();
+    // router.push + router.refresh 레이스 조건으로 캐시된 로그인 화면이 다시 표시되는
+    // 버그를 방지하기 위해 전체 페이지 이동을 사용한다.
+    window.location.href = redirectTo;
   }
 
   return (

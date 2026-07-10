@@ -39,7 +39,7 @@ export default async function MembersPage() {
           {isOwner && (
             <Link
               href="/members/import"
-              className="rounded-sm border border-line-200/40 px-2.5 py-1 text-xs font-semibold text-line-500 transition-colors hover:border-line-300 hover:text-line-700"
+              className="club-back-link"
             >
               명단 가져오기
             </Link>

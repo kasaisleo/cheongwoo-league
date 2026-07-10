@@ -1,5 +1,5 @@
 import { clsx } from "clsx";
-import type { ButtonHTMLAttributes } from "react";
+import type { ButtonHTMLAttributes, CSSProperties } from "react";
 
 type ButtonVariant = "primary" | "secondary" | "ghost" | "danger";
 type ButtonSize = "md" | "lg";
@@ -26,16 +26,21 @@ export function Button({
   size = "md",
   className,
   disabled,
+  style,
   ...props
 }: ButtonProps) {
   return (
     <button
       className={clsx(
-        "inline-flex items-center justify-center gap-2 rounded-lg font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-40",
+        "inline-flex items-center justify-center gap-2 font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-40",
         variantClasses[variant],
         sizeClasses[size],
         className
       )}
+      style={{
+        borderRadius: "var(--admin-button-radius, var(--club-button-radius, 8px))",
+        ...(style as CSSProperties),
+      }}
       disabled={disabled}
       {...props}
     />

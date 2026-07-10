@@ -45,8 +45,8 @@ export default async function RankingPage() {
           </p>
         </div>
         <Link href="/"
-          className="flex-shrink-0 whitespace-nowrap rounded-sm border border-line-200/40 px-2.5 py-1.5 text-xs font-semibold text-line-500 hover:text-line-700">
-          ← 홈
+          className="club-back-link">
+          ← 홈으로
         </Link>
       </header>
 

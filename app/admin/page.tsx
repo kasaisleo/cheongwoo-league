@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { getAdminAccessServer } from "@/lib/admin-permissions";
+import { getManagerAllowedSlugs } from "@/lib/admin-auth";
 import { AdminLoginForm } from "@/components/admin/AdminLoginForm";
-import { FullSignOutButton } from "@/components/admin/FullSignOutButton";
+import { AdminLogoutButton } from "@/components/admin/AdminLogoutButton";
 
 /**
  * /admin page — 서버 컴포넌트.
@@ -13,9 +14,8 @@ import { FullSignOutButton } from "@/components/admin/FullSignOutButton";
  *   B. 카카오 permission_role >= manager     → 대시보드
  *   C. 둘 다 없음                            → 로그인 화면
  *
- * 버그픽스: 이전에 if(!isAuthenticated) return <AdminLoginForm /> 구조에서
- * 서버 컴포넌트 렌더링 실패 시 빈 화면이 됐음.
- * 수정: 미인증 시 전용 로그인 페이지를 직접 렌더링.
+ * 계정/로그아웃 UI는 AdminAccountBar 단일 owner.
+ * dashboard header에는 title/subtitle/status만 표시.
  */
 async function getAdminDashboardData(currentClubId: string) {
   const supabase = createClient();
@@ -57,27 +57,20 @@ export default async function AdminPage({
   searchParams: { reason?: string; no_access_club?: string };
 }) {
   const access = await getAdminAccessServer();
-  const { isAdmin, isOwner, cookieRole } = access;
+  const { isAdmin, isOwner } = access;
   const isOwnerOrMaster = isOwner;
 
   const reason = searchParams?.reason;
-  // no_access_club: /api/admin/enter 에서 권한 실패 시 전달하는 slug
   const noAccessClub = searchParams?.no_access_club ?? null;
 
   const isLoggedInButLacksAdmin = !isAdmin && access.userId !== null;
   const isLoggedInButLacksOwner = isAdmin && !isOwner && reason === "owner_required";
 
-  // ── 단일 admin 클럽 (no_access_club 없음): enter route로 자동 redirect ──
-  // 자동 선택을 getAdminAccessServer() 에서 하지 않으므로 페이지에서 처리.
-  // no_access_club이 있으면 redirect하지 않고 권한 없음 화면을 표시한다.
   if (!isAdmin && !noAccessClub && access.userId !== null && access.adminClubs.length === 1) {
     redirect(`/api/admin/enter?club=${access.adminClubs[0].slug}`);
   }
 
   // ── 특정 클럽 권한 없음 화면 ────────────────────────
-  // /api/admin/enter?club={slug} 에서 권한 실패 후 여기에 도달.
-  // 기존 admin_club_slug 쿠키는 이미 삭제된 상태.
-  // 절대 다른 클럽 데이터를 표시하거나 자동 선택하지 않는다.
   if (noAccessClub) {
     return (
       <main className="px-4 pt-10 pb-10">
@@ -97,9 +90,7 @@ export default async function AdminPage({
         </section>
         {access.adminClubs.length > 0 && (
           <section>
-            <p className="mb-2 font-display text-[10px] font-bold uppercase tracking-widest text-line-500">
-              관리 가능한 클럽
-            </p>
+            <p className="eyebrow-en mb-2 text-line-500">관리 가능한 클럽</p>
             <div className="overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50">
               {access.adminClubs.map((club, idx) => (
                 <Link key={club.id} href={`/api/admin/enter?club=${club.slug}`}>
@@ -108,7 +99,7 @@ export default async function AdminPage({
                   }`}>
                     <div>
                       <p className="text-sm font-semibold text-line-900">{club.name}</p>
-                      <p className="font-display text-[10px] font-bold uppercase tracking-wider text-line-500">{club.role}</p>
+                      <p className="eyebrow-en text-[10px] text-line-500">{club.role}</p>
                     </div>
                     <span className="text-xs text-line-400">→</span>
                   </div>
@@ -148,7 +139,7 @@ export default async function AdminPage({
                 }`}>
                   <div>
                     <p className="text-sm font-semibold text-line-900">{club.name}</p>
-                    <p className="font-display text-[10px] font-bold uppercase tracking-wider text-line-500">{club.role}</p>
+                    <p className="eyebrow-en text-[10px] text-line-500">{club.role}</p>
                   </div>
                   <span className="text-xs text-line-400">→</span>
                 </div>
@@ -179,12 +170,9 @@ export default async function AdminPage({
           </section>
         )}
 
-        {/* 카카오 운영진 로그인 안내 */}
         <section className="mb-5">
           <div className="overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50 p-5">
-            <p className="font-display text-[10px] font-bold uppercase tracking-widest text-line-500">
-              Kakao Admin
-            </p>
+            <p className="eyebrow-en text-line-500">Kakao Admin</p>
             <p className="mt-2 text-sm font-semibold text-line-900">카카오 운영진 로그인</p>
             <p className="mt-0.5 text-xs text-line-500">
               운영진 권한이 부여된 카카오 계정으로 로그인하면 관리자 화면에 접근할 수 있습니다.
@@ -198,12 +186,9 @@ export default async function AdminPage({
           </div>
         </section>
 
-        {/* Owner 비밀번호 로그인 */}
         <section>
           <div className="overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50 p-5">
-            <p className="font-display text-[10px] font-bold uppercase tracking-widest text-line-500">
-              Owner Login
-            </p>
+            <p className="eyebrow-en text-line-500">Owner Login</p>
             <p className="mt-2 text-sm font-semibold text-line-900">Owner 로그인</p>
             <p className="mt-0.5 text-xs text-line-500">
               초기 설정 또는 비상 복구용 관리자 로그인입니다.
@@ -217,31 +202,97 @@ export default async function AdminPage({
     );
   }
 
-  // ── 대시보드 게이트: admin_club_slug 쿠키로 확인된 club context 없이 렌더 금지 ──
-  // isAdmin=true이지만 clubId=null인 경우:
-  //   - cookie admin이 /c/[slug] 링크를 거치지 않고 /admin 직접 접근한 경우
-  //   - 카카오 자동로그인 후 admin_club_slug 없이 /admin으로 돌아온 경우
-  // 어느 쪽이든 selected_club_id/getCurrentClubId로 대시보드를 채우지 않는다.
+  // ── 대시보드 게이트: club context 없이 렌더 금지 ──
   if (isAdmin && !access.clubId) {
+    // 권한별 진입 가능 클럽 목록 조회
+    let allClubs: Array<{ id: string; slug: string; name: string }> = [];
+    let managerConfigError = false;
+    const supabase = createClient();
+
+    if (access.cookieRole === "owner") {
+      // Owner: 전체 active club 접근 가능
+      const { data } = await supabase
+        .from("clubs")
+        .select("id, slug, name")
+        .eq("status", "active")
+        .order("name");
+      allClubs = data ?? [];
+    } else if (access.cookieRole === "manager") {
+      // Manager: fail-closed — MANAGER_CLUB_SLUGS에 명시된 active club만 표시
+      const allowedSlugs = getManagerAllowedSlugs();
+      if (allowedSlugs.length === 0) {
+        console.error("[admin] Manager session active but MANAGER_CLUB_SLUGS is not configured or empty.");
+        managerConfigError = true;
+      } else {
+        const { data } = await supabase
+          .from("clubs")
+          .select("id, slug, name")
+          .in("slug", allowedSlugs)
+          .eq("status", "active")
+          .order("name");
+        allClubs = data ?? [];
+      }
+    }
+
+    // 클럽 1개면 자동 진입 (Owner/Manager 공통)
+    if (allClubs.length === 1) {
+      redirect(`/api/admin/enter?club=${allClubs[0].slug}`);
+    }
+
     return (
       <main className="px-4 pt-10 pb-10">
         <header className="mb-8 text-center">
           <p className="eyebrow-en text-clay-400">Admin Access</p>
-          <h1 className="headline-kr mt-1 text-4xl text-line-900">클럽 선택 필요</h1>
+          <h1 className="headline-kr mt-1 text-4xl text-line-900">클럽 선택</h1>
         </header>
-        <section className="mb-5">
-          <div className="rounded-[14px] border border-line-200/40 bg-line-50 p-4">
-            <p className="text-sm font-semibold text-line-900 mb-1">
-              관리할 클럽을 먼저 선택해주세요.
-            </p>
-            <p className="text-xs text-line-500">
-              클럽 공개 페이지 상단의 관리자 링크를 통해 진입해야 합니다.
-            </p>
-          </div>
-        </section>
+        {managerConfigError ? (
+          <section className="mb-5">
+            <div className="rounded-[14px] border border-gold/30 bg-gold/10 p-4">
+              <p className="text-sm font-semibold text-line-900 mb-1">
+                설정 오류
+              </p>
+              <p className="text-xs text-line-700">
+                Manager 계정에 허용된 클럽이 설정되지 않았습니다.
+              </p>
+              <p className="mt-1 text-xs text-line-500">
+                서버 관리자에게 MANAGER_CLUB_SLUGS 환경변수 설정을 요청하세요.
+              </p>
+            </div>
+          </section>
+        ) : allClubs.length > 0 ? (
+          <section className="mb-5">
+            <p className="mb-3 text-center text-sm text-line-600">관리할 클럽을 선택해주세요.</p>
+            <div className="overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50">
+              {allClubs.map((club, idx) => (
+                <Link key={club.id} href={`/api/admin/enter?club=${club.slug}`}>
+                  <div className={`flex items-center justify-between px-4 py-4 transition-colors hover:bg-line-100/40 ${
+                    idx < allClubs.length - 1 ? "border-b border-line-200/30" : ""
+                  }`}>
+                    <div>
+                      <p className="text-sm font-semibold text-line-900">{club.name}</p>
+                      <p className="eyebrow-en text-[10px] text-line-500">{club.slug}</p>
+                    </div>
+                    <span className="text-xs text-line-400">→</span>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </section>
+        ) : (
+          <section className="mb-5">
+            <div className="rounded-[14px] border border-line-200/40 bg-line-50 p-4">
+              <p className="text-sm font-semibold text-line-900 mb-1">
+                관리할 클럽을 먼저 선택해주세요.
+              </p>
+              <p className="text-xs text-line-500">
+                클럽 공개 페이지 상단의 관리자 링크를 통해 진입해야 합니다.
+              </p>
+            </div>
+          </section>
+        )}
         <section>
-          <div className="rounded-[14px] border border-line-200/40 bg-line-50 p-4">
-            <FullSignOutButton returnSlug={undefined} />
+          <div className="rounded-[14px] border border-line-200/40 bg-line-50 p-4 flex justify-center">
+            <AdminLogoutButton label="로그아웃 후 다시 시작" />
           </div>
         </section>
       </main>
@@ -253,28 +304,10 @@ export default async function AdminPage({
 
   return (
     <main className="px-4 pt-6 pb-10">
-      {/* ── 헤더 ─────────────────────────────────────── */}
-      <header className="mb-6 flex items-start justify-between">
-        <div>
-          <p className="eyebrow-en text-clay-400">Admin Dashboard</p>
-          <h1 className="headline-kr text-4xl text-line-900">관리자</h1>
-          {/* 현재 admin context 클럽 — 클릭하면 클럽 공개 홈으로 이동 */}
-          {access.clubSlug && (
-            <Link
-              href={`/c/${access.clubSlug}`}
-              className="mt-0.5 inline-flex items-center gap-1 text-[10px] text-line-400 transition-colors hover:text-line-600"
-            >
-              <span>{access.clubSlug}</span>
-              <span>↗</span>
-            </Link>
-          )}
-        </div>
-        <div className="mt-1 flex flex-col items-end gap-1">
-          <span className="rounded-sm border border-line-200/40 bg-line-100 px-2 py-0.5 text-[10px] font-semibold text-line-500">
-            {cookieRole === "owner" ? "Owner" : cookieRole === "manager" ? "Manager" : "Admin"}
-          </span>
-          <FullSignOutButton returnSlug={access.clubSlug ?? undefined} />
-        </div>
+      {/* ── 헤더 (계정/logout은 AdminAccountBar 담당) ── */}
+      <header className="mb-6">
+        <p className="eyebrow-en text-clay-400">Admin Dashboard</p>
+        <h1 className="headline-kr text-4xl text-line-900">관리자</h1>
       </header>
 
       {isLoggedInButLacksOwner && (
@@ -289,28 +322,28 @@ export default async function AdminPage({
 
       {/* ── 운영 현황 ────────────────────────────────── */}
       <section className="mb-6">
-        <p className="mb-2 font-display text-[10px] font-bold uppercase tracking-widest text-line-500">Overview</p>
+        <p className="eyebrow-en mb-2 text-line-500">Overview</p>
         <div className="overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50">
           <div className="grid grid-cols-2 divide-x divide-y divide-line-200/30">
             <div className="px-4 py-3">
               <p className="font-score text-3xl font-bold tabular-nums text-gold">
                 {data.hasTodaySession ? data.todayAttending : "—"}
               </p>
-              <p className="mt-0.5 font-display text-[10px] font-bold uppercase tracking-widest text-line-500">오늘 매치</p>
+              <p className="mt-0.5 text-[10px] font-semibold text-line-500">오늘 매치</p>
               {!data.hasTodaySession && <p className="text-[10px] text-line-400">오늘 매치 없음</p>}
             </div>
             <div className="px-4 py-3">
               <p className="font-score text-3xl font-bold tabular-nums text-clay-400">{data.recentMatches.length}</p>
-              <p className="mt-0.5 font-display text-[10px] font-bold uppercase tracking-widest text-line-500">최근 경기 기록</p>
+              <p className="mt-0.5 text-[10px] font-semibold text-line-500">최근 경기 기록</p>
               {data.recentMatches[0] && <p className="text-[10px] text-line-400">{data.recentMatches[0].played_at}</p>}
             </div>
             <div className="px-4 py-3">
               <p className="font-score text-3xl font-bold tabular-nums text-line-900">{data.totalMembers}</p>
-              <p className="mt-0.5 font-display text-[10px] font-bold uppercase tracking-widest text-line-500">활동 회원</p>
+              <p className="mt-0.5 text-[10px] font-semibold text-line-500">활동 회원</p>
             </div>
             <div className="px-4 py-3">
               <p className="font-score text-3xl font-bold tabular-nums text-line-700">{data.adminMembers}</p>
-              <p className="mt-0.5 font-display text-[10px] font-bold uppercase tracking-widest text-line-500">운영진</p>
+              <p className="mt-0.5 text-[10px] font-semibold text-line-500">운영진</p>
             </div>
           </div>
         </div>
@@ -318,7 +351,7 @@ export default async function AdminPage({
 
       {/* ── 빠른 작업 ───────────────────────────────── */}
       <section className="mb-6">
-        <p className="mb-2 font-display text-[10px] font-bold uppercase tracking-widest text-line-500">Quick Actions</p>
+        <p className="eyebrow-en mb-2 text-line-500">Quick Actions</p>
         <div className="grid grid-cols-2 gap-2">
           {[
             { href: "/admin/matches/create",          label: "매치 생성",    sub: "New Match",    accent: "clay" },
@@ -331,10 +364,10 @@ export default async function AdminPage({
             <Link key={item.href} href={item.href}>
               <div className="relative overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50 px-4 py-3 transition-colors hover:bg-line-100/40">
                 <div className={`absolute left-0 top-0 h-full w-1 ${
-                  item.accent === "clay" ? "bg-clay-400/50" : item.accent === "gold" ? "bg-gold/50" : "bg-line-300/40"
+                  item.accent === "clay" ? "bg-clay-400/50" : "bg-line-300/40"
                 }`} />
                 <p className="text-sm font-semibold text-line-900">{item.label}</p>
-                <p className="font-display text-[9px] font-bold uppercase tracking-wider text-line-500">{item.sub}</p>
+                <p className="eyebrow-en text-[9px] text-line-500">{item.sub}</p>
               </div>
             </Link>
           ))}
@@ -343,7 +376,7 @@ export default async function AdminPage({
 
       {/* ── Management ───────────────────────────────── */}
       <section className="mb-6">
-        <p className="mb-2 font-display text-[10px] font-bold uppercase tracking-widest text-line-500">Management</p>
+        <p className="eyebrow-en mb-2 text-line-500">Management</p>
         <div className="overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50">
           {[
             { href: "/admin/records/players",    label: "선수 기록 분석",  sub: "참여도 · 승률 · 출석 체크율" },

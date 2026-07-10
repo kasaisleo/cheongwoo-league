@@ -25,11 +25,8 @@ export default async function ClubRankingPage({ params }: { params: { slug: stri
         subtitle={`${club.name} 리그 순위와 기록을 확인합니다.`}
         className="mb-6"
         rightSlot={
-          <Link
-            href={`/c/${slug}`}
-            className="flex-shrink-0 whitespace-nowrap rounded-sm border border-line-200/40 px-2.5 py-1.5 text-xs font-semibold text-line-500 hover:text-line-700"
-          >
-            ← {club.name}
+          <Link href={`/c/${slug}`} className="club-back-link mt-1">
+            ← 클럽 홈
           </Link>
         }
       />

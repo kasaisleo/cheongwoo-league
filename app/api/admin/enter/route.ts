@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { getAdminRole, ADMIN_CLUB_SLUG_COOKIE } from "@/lib/admin-auth";
+import { getAdminRole, getManagerAllowedSlugs, ADMIN_CLUB_SLUG_COOKIE } from "@/lib/admin-auth";
 
 const KAKAO_ADMIN_ROLES = ["manager", "admin", "master"] as const;
 const COOKIE_MAX_AGE = 60 * 60 * 8; // 8시간
@@ -68,7 +68,33 @@ export async function GET(request: NextRequest) {
       return redirectClearingCookie(adminHome);
     }
 
-    // 2) 카카오 admin 권한 확인
+    // 2) cookie admin (cw_admin_session) 을 먼저 확인 — 서버 비밀번호 기반이므로 우선순위 높음.
+    //    Kakao 공개 세션이 있어도 Owner/Manager 쿠키가 있으면 진입 허용한다.
+    const cookieRole = getAdminRole();
+
+    if (cookieRole === "owner") {
+      // Owner: 모든 active club 접근 가능 (이미 위에서 club 존재+active 확인 완료)
+      return redirectWithCookie(club.slug);
+    }
+
+    if (cookieRole === "manager") {
+      // Manager: fail-closed — MANAGER_CLUB_SLUGS에 명시된 slug만 허용.
+      // 미설정(빈 배열)이면 모든 클럽 접근 거부.
+      const allowedSlugs = getManagerAllowedSlugs();
+      if (allowedSlugs.length === 0) {
+        // 설정 누락 — production 로그로 식별 가능하게 기록 (민감 정보 제외)
+        console.error("[admin/enter] Manager session active but MANAGER_CLUB_SLUGS is not configured or empty. Denying all club access.");
+        return redirectClearingCookie(adminHome);
+      }
+      if (!allowedSlugs.includes(club.slug.toLowerCase())) {
+        console.error(`[admin/enter] Manager denied: club '${club.slug}' not in MANAGER_CLUB_SLUGS allowlist.`);
+        const noAccessTarget = new URL(`/admin?no_access_club=${encodeURIComponent(club.slug)}`, origin);
+        return redirectClearingCookie(noAccessTarget);
+      }
+      return redirectWithCookie(club.slug);
+    }
+
+    // 3) 카카오 admin 권한 확인 (cookie admin 없을 때만)
     const { data: { user } } = await supabase.auth.getUser();
 
     if (user) {
@@ -89,12 +115,6 @@ export async function GET(request: NextRequest) {
       // 기존 쿠키를 삭제하고 권한 없음 화면으로 redirect
       const noAccessTarget = new URL(`/admin?no_access_club=${encodeURIComponent(club.slug)}`, origin);
       return redirectClearingCookie(noAccessTarget);
-    }
-
-    // 3) cookie admin (cw_admin_session) 은 club 단위 검증 없이 허용
-    const cookieRole = getAdminRole();
-    if (cookieRole === "owner" || cookieRole === "manager") {
-      return redirectWithCookie(club.slug);
     }
 
     // 비로그인 상태 → 쿠키 삭제 후 /admin (로그인 화면)

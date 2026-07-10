@@ -122,6 +122,25 @@ export const ADMIN_COOKIE_NAME = COOKIE_NAME;
  *  admin context 전용이므로 공개 페이지 데이터 기준으로 쓰면 안 된다. */
 export const ADMIN_CLUB_SLUG_COOKIE = "admin_club_slug";
 
+/**
+ * Manager 비밀번호 로그인 시 접근 가능한 클럽 slug 목록을 반환한다. Fail-closed.
+ *
+ * - MANAGER_CLUB_SLUGS 미설정 또는 빈 문자열 → [] (어느 클럽도 접근 불가)
+ * - 값 파싱: comma split → trim → lowercase → 빈 값 제거 → 중복 제거
+ * - 비교 시 substring 매칭 금지, slug 정확 일치만 허용
+ *
+ * 예: MANAGER_CLUB_SLUGS=cheongwoo 또는 MANAGER_CLUB_SLUGS=cheongwoo,namaste
+ */
+export function getManagerAllowedSlugs(): string[] {
+  const env = process.env.MANAGER_CLUB_SLUGS;
+  if (!env || env.trim() === "") return [];
+  return [...new Set(
+    env.split(",")
+      .map((s) => s.trim().toLowerCase())
+      .filter(Boolean),
+  )];
+}
+
 /** 현재 요청의 운영진 역할을 반환한다. 세션이 없거나 무효하면 null. */
 export function getAdminRole(): AdminRole | null {
   const token = cookies().get(COOKIE_NAME)?.value;
