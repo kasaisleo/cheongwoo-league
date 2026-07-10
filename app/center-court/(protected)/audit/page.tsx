@@ -16,20 +16,37 @@ export interface AuditLogRow {
   created_at: string;
 }
 
-async function getInitialLogs(): Promise<AuditLogRow[]> {
-  const supabase = createServiceClient();
-  const { data } = await supabase
-    .from("platform_audit_logs")
-    .select(
-      "id, admin_username, admin_role, action, target_type, target_id, " +
-      "target_label, club_id, metadata, created_at"
-    )
-    .order("created_at", { ascending: false })
-    .limit(50);
-  return (data ?? []) as unknown as AuditLogRow[];
+async function getInitialLogs(): Promise<{ rows: AuditLogRow[]; dbError: string | null }> {
+  try {
+    const supabase = createServiceClient();
+    const { data, error } = await supabase
+      .from("platform_audit_logs")
+      .select(
+        "id, admin_username, admin_role, action, target_type, target_id, " +
+        "target_label, club_id, metadata, created_at"
+      )
+      .order("created_at", { ascending: false })
+      .limit(50);
+
+    if (error) {
+      console.error("[audit-page] getInitialLogs failed", {
+        message: error.message,
+        details: error.details,
+        hint:    error.hint,
+        code:    error.code,
+      });
+      return { rows: [], dbError: error.message };
+    }
+
+    return { rows: (data ?? []) as unknown as AuditLogRow[], dbError: null };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("[audit-page] getInitialLogs threw", msg);
+    return { rows: [], dbError: msg };
+  }
 }
 
 export default async function AuditLogPage() {
-  const logs = await getInitialLogs();
-  return <AuditLogPageClient initialLogs={logs} />;
+  const { rows, dbError } = await getInitialLogs();
+  return <AuditLogPageClient initialLogs={rows} dbError={dbError} />;
 }

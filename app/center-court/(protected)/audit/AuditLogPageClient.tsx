@@ -65,7 +65,7 @@ function timeAgo(iso: string): string {
 /* ════════════════════════════════════════════════════════
    Main component
    ════════════════════════════════════════════════════════ */
-export function AuditLogPageClient({ initialLogs }: { initialLogs: AuditLogRow[] }) {
+export function AuditLogPageClient({ initialLogs, dbError }: { initialLogs: AuditLogRow[]; dbError: string | null }) {
   const [logs, setLogs]         = useState<AuditLogRow[]>(initialLogs);
   const [loading, setLoading]   = useState(false);
   const [hasMore, setHasMore]   = useState(initialLogs.length === 50);
@@ -165,6 +165,24 @@ export function AuditLogPageClient({ initialLogs }: { initialLogs: AuditLogRow[]
           .al-filter-btn, .al-load-btn, .al-refresh-btn { transition: none !important; }
         }
       `}</style>
+
+      {/* ── db error banner ────────────────────────────── */}
+      {dbError && (
+        <div style={{
+          borderRadius: 10, border: "1px solid rgba(252,165,165,0.30)",
+          background: "rgba(50,10,10,0.85)", padding: "12px 16px",
+          marginBottom: 20, color: C.red, fontSize: 11, lineHeight: 1.55,
+        }}>
+          <strong style={{ display: "block", marginBottom: 4, letterSpacing: "0.08em", fontSize: 9, textTransform: "uppercase" }}>
+            DB 조회 오류
+          </strong>
+          {dbError}
+          <br />
+          <span style={{ color: "rgba(252,165,165,0.55)", fontSize: 9.5 }}>
+            Vercel 로그에서 <code>[audit-page] getInitialLogs</code> 키워드로 상세 오류를 확인하세요.
+          </span>
+        </div>
+      )}
 
       {/* ── header ─────────────────────────────────────── */}
       <div style={{ marginBottom: 26 }}>
