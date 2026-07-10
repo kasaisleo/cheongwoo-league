@@ -227,7 +227,7 @@ export function ClubDetailPageClient({ club: initial, members, audit, matchStats
             <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
               <div>
                 <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
-                  <h1 style={{ color: C.cream, fontSize: 22, fontWeight: 700, fontFamily: "Georgia, serif", letterSpacing: "0.03em", lineHeight: 1.2 }}>
+                  <h1 style={{ color: C.cream, fontSize: 22, fontWeight: 700, lineHeight: 1.2 }}>
                     {club.name}
                   </h1>
                   <StatusPill status={club.status} />
