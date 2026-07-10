@@ -13,7 +13,6 @@ export interface ClubDetail {
   description: string | null;
   status: string;
   created_at: string;
-  updated_at?: string | null;
 }
 
 export interface MemberSummary {
@@ -51,7 +50,7 @@ async function fetchClubDetail(id: string) {
   const [clubRes, membersRes, auditRes] = await Promise.allSettled([
     supabase
       .from("clubs")
-      .select("id, name, slug, description, status, created_at, updated_at")
+      .select("id, name, slug, description, status, created_at")
       .eq("id", id)
       .maybeSingle(),
 
@@ -73,6 +72,10 @@ async function fetchClubDetail(id: string) {
   ]);
 
   // Club must exist
+  if (clubRes.status === "rejected" || (clubRes.status === "fulfilled" && clubRes.value.error)) {
+    const err = clubRes.status === "rejected" ? clubRes.reason : clubRes.value.error;
+    console.error("[club-detail] clubs query failed", { id, error: err?.message ?? err });
+  }
   const club =
     clubRes.status === "fulfilled" && !clubRes.value.error
       ? (clubRes.value.data as unknown as ClubDetail | null)
@@ -80,11 +83,19 @@ async function fetchClubDetail(id: string) {
 
   if (!club) return null; // caller will call notFound()
 
+  if (membersRes.status === "rejected" || (membersRes.status === "fulfilled" && membersRes.value.error)) {
+    const err = membersRes.status === "rejected" ? membersRes.reason : membersRes.value.error;
+    console.error("[club-detail] members query failed", { id, error: err?.message ?? err });
+  }
   const members =
     membersRes.status === "fulfilled" && !membersRes.value.error
       ? (membersRes.value.data as unknown as MemberSummary[])
       : null;
 
+  if (auditRes.status === "rejected" || (auditRes.status === "fulfilled" && auditRes.value.error)) {
+    const err = auditRes.status === "rejected" ? auditRes.reason : auditRes.value.error;
+    console.error("[club-detail] audit query failed", { id, error: err?.message ?? err });
+  }
   const audit =
     auditRes.status === "fulfilled" && !auditRes.value.error
       ? (auditRes.value.data as unknown as AuditEntry[])

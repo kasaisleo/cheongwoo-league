@@ -12,7 +12,7 @@ interface ClubRow {
   name: string;
   slug: string;
   status: string;
-  updated_at: string | null;
+  created_at: string;
 }
 
 interface AdminRow {
@@ -51,8 +51,8 @@ async function getDashboardData(): Promise<DashboardData> {
     await Promise.allSettled([
       supabase
         .from("clubs")
-        .select("id, name, slug, status, updated_at")
-        .order("updated_at", { ascending: false }),
+        .select("id, name, slug, status, created_at")
+        .order("created_at", { ascending: false }),
 
       supabase
         .from("platform_admins")
@@ -70,38 +70,52 @@ async function getDashboardData(): Promise<DashboardData> {
         .limit(5),
     ]);
 
+  const clubsErr = clubsRes.status === "rejected" || (clubsRes.status === "fulfilled" && !!clubsRes.value.error);
+  const adminsErr = adminsRes.status === "rejected" || (adminsRes.status === "fulfilled" && !!adminsRes.value.error);
+  const auditCntErr = auditCountRes.status === "rejected" || (auditCountRes.status === "fulfilled" && !!auditCountRes.value.error);
+  const recentAuditErr = recentAuditRes.status === "rejected" || (recentAuditRes.status === "fulfilled" && !!recentAuditRes.value.error);
+
+  if (clubsErr) {
+    const err = clubsRes.status === "rejected" ? clubsRes.reason : (clubsRes.status === "fulfilled" ? clubsRes.value.error : null);
+    console.error("[dashboard] clubs query failed", { error: (err as { message?: string })?.message ?? err });
+  }
+  if (adminsErr) {
+    const err = adminsRes.status === "rejected" ? adminsRes.reason : (adminsRes.status === "fulfilled" ? adminsRes.value.error : null);
+    console.error("[dashboard] admins query failed", { error: (err as { message?: string })?.message ?? err });
+  }
+  if (auditCntErr) {
+    const err = auditCountRes.status === "rejected" ? auditCountRes.reason : (auditCountRes.status === "fulfilled" ? auditCountRes.value.error : null);
+    console.error("[dashboard] audit count query failed", { error: (err as { message?: string })?.message ?? err });
+  }
+  if (recentAuditErr) {
+    const err = recentAuditRes.status === "rejected" ? recentAuditRes.reason : (recentAuditRes.status === "fulfilled" ? recentAuditRes.value.error : null);
+    console.error("[dashboard] recent audit query failed", { error: (err as { message?: string })?.message ?? err });
+  }
+
   return {
     clubs:
       clubsRes.status === "fulfilled" && !clubsRes.value.error
         ? (clubsRes.value.data as unknown as ClubRow[])
         : null,
-    clubsError:
-      clubsRes.status === "rejected" ||
-      (clubsRes.status === "fulfilled" && !!clubsRes.value.error),
+    clubsError: clubsErr,
 
     admins:
       adminsRes.status === "fulfilled" && !adminsRes.value.error
         ? (adminsRes.value.data as unknown as AdminRow[])
         : null,
-    adminsError:
-      adminsRes.status === "rejected" ||
-      (adminsRes.status === "fulfilled" && !!adminsRes.value.error),
+    adminsError: adminsErr,
 
     auditCount24h:
       auditCountRes.status === "fulfilled" && !auditCountRes.value.error
         ? (auditCountRes.value.count ?? 0)
         : null,
-    auditCountError:
-      auditCountRes.status === "rejected" ||
-      (auditCountRes.status === "fulfilled" && !!auditCountRes.value.error),
+    auditCountError: auditCntErr,
 
     recentAudit:
       recentAuditRes.status === "fulfilled" && !recentAuditRes.value.error
         ? (recentAuditRes.value.data as unknown as RecentAuditRow[])
         : null,
-    recentAuditError:
-      recentAuditRes.status === "rejected" ||
-      (recentAuditRes.status === "fulfilled" && !!recentAuditRes.value.error),
+    recentAuditError: recentAuditErr,
   };
 }
 
@@ -134,7 +148,7 @@ export default async function CenterCourtPage() {
   const totalAdmins  = admins?.length ?? 0;
   const activeAdmins = admins?.filter((a) => a.status === "active").length ?? 0;
 
-  // Recent modified clubs (top 5, already ordered by updated_at desc)
+  // Recent clubs (top 5, ordered by created_at desc)
   const recentClubs = clubs?.slice(0, 5) ?? [];
 
   const isOwner = session?.role === "owner";
@@ -208,10 +222,10 @@ export default async function CenterCourtPage() {
           )}
         </div>
 
-        {/* ── 최근 수정된 클럽 5개 ── */}
+        {/* ── 최근 생성 클럽 5개 ── */}
         <section style={{ marginBottom: 24 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 9 }}>
-            <ScoreboardLabel>Recently Updated Clubs</ScoreboardLabel>
+            <ScoreboardLabel>Recent Clubs</ScoreboardLabel>
             <Link
               href="/center-court/clubs"
               style={{ color: "rgba(196,181,253,0.55)", fontSize: 9, letterSpacing: "0.12em", textDecoration: "none", fontWeight: 700, textTransform: "uppercase" }}
@@ -254,7 +268,7 @@ export default async function CenterCourtPage() {
                   </div>
                   <div style={{ flexShrink: 0, textAlign: "right" }}>
                     <p style={{ color: "rgba(245,240,232,0.22)", fontSize: 9, letterSpacing: "0.04em" }}>
-                      {club.updated_at ? formatRelative(club.updated_at) : "—"}
+                      {formatRelative(club.created_at)}
                     </p>
                   </div>
                 </div>

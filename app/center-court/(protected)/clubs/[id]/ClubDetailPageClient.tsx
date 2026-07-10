@@ -237,9 +237,6 @@ export function ClubDetailPageClient({ club: initial, members, audit, matchStats
                 </p>
                 <div style={{ display: "flex", gap: 16 }}>
                   <MetaItem label="생성일" value={fmtDate(club.created_at)} />
-                  {club.updated_at && (
-                    <MetaItem label="수정일" value={fmtDate(club.updated_at)} />
-                  )}
                 </div>
               </div>
 
@@ -338,7 +335,6 @@ export function ClubDetailPageClient({ club: initial, members, audit, matchStats
                   { label: "Description", value: club.description ?? "—" },
                   { label: "ID",          value: club.id },
                   { label: "Created",     value: fmtDate(club.created_at) },
-                  ...(club.updated_at ? [{ label: "Updated", value: fmtDate(club.updated_at) }] : []),
                 ].map((row, idx, arr) => (
                   <div
                     key={row.label}
