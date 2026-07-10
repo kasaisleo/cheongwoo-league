@@ -1,0 +1,44 @@
+import type { CSSProperties, ReactNode } from "react";
+
+/**
+ * AdminClubShell — 관리자 페이지 accent 주입 + 컨텍스트 로고 wrapper.
+ *
+ * skinKey → data-admin-skin 속성:
+ *   globals.css의 [data-admin-skin="namaste"] 셀렉터로
+ *   clay-400 accent 클래스를 --club-primary로 자동 교체.
+ *   배경/surface 등 전체 스킨 미적용 (관리자 UI는 독자적 다크 테마 유지).
+ *
+ * 새 스킨 추가 시 globals.css에 [data-admin-skin="newSkin"] 블록만 추가하면 됨.
+ */
+interface AdminClubShellProps {
+  children: ReactNode;
+  /** --club-primary + --club-primary-dark CSS var (accent 색상만) */
+  accentVars?: CSSProperties;
+  /** 클럽 로고 이미지 경로 */
+  logoSrc?: string | null;
+  /** 클럽 이름 */
+  clubName?: string | null;
+  /** 스킨 키 — data-admin-skin 속성값 */
+  skinKey?: string;
+}
+
+export function AdminClubShell({ children, accentVars, logoSrc, clubName, skinKey }: AdminClubShellProps) {
+  return (
+    <div
+      className="font-body"
+      style={accentVars}
+      data-admin-skin={skinKey ?? undefined}
+    >
+      {logoSrc && clubName && (
+        <div
+          className="flex items-center gap-2 px-4 pt-3"
+          aria-label={`${clubName} 관리`}
+        >
+          <img src={logoSrc} alt={clubName} className="h-6 w-auto opacity-60" />
+          <span className="text-[10px] font-semibold text-line-400">{clubName}</span>
+        </div>
+      )}
+      {children}
+    </div>
+  );
+}

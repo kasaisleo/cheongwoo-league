@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { requirePublicClubBySlug } from "@/lib/public-club";
 import { RankMovement } from "@/components/ui/RankMovement";
 import { applyRankingQuery } from "@/lib/ranking-query";
+import { PublicShell, ClubPageHeader } from "@/components/shell";
 import type { MemberWithStats } from "@/lib/supabase/database.types";
 
 export const dynamic = "force-dynamic";
@@ -17,22 +18,21 @@ export default async function ClubRankingPage({ params }: { params: { slug: stri
   const [first, second, third, ...rest] = members;
 
   return (
-    <main className="px-4 pt-6 pb-28">
-      <header className="mb-6 flex items-center justify-between">
-        <div>
-          <p className="eyebrow-en text-clay-400">Ranking</p>
-          <h1 className="headline-kr text-4xl text-line-900">랭킹</h1>
-          <p className="mt-1 max-w-[240px] break-keep text-xs leading-relaxed text-line-500">
-            {club.name} 리그 순위와 기록을 확인합니다.
-          </p>
-        </div>
-        <Link
-          href={`/c/${slug}`}
-          className="flex-shrink-0 whitespace-nowrap rounded-sm border border-line-200/40 px-2.5 py-1.5 text-xs font-semibold text-line-500 hover:text-line-700"
-        >
-          ← {club.name}
-        </Link>
-      </header>
+    <PublicShell>
+      <ClubPageHeader
+        eyebrow="Ranking"
+        title="랭킹"
+        subtitle={`${club.name} 리그 순위와 기록을 확인합니다.`}
+        className="mb-6"
+        rightSlot={
+          <Link
+            href={`/c/${slug}`}
+            className="flex-shrink-0 whitespace-nowrap rounded-sm border border-line-200/40 px-2.5 py-1.5 text-xs font-semibold text-line-500 hover:text-line-700"
+          >
+            ← {club.name}
+          </Link>
+        }
+      />
 
       {members.length === 0 ? (
         <div className="rounded-[14px] border border-line-200/40 bg-line-50 p-8 text-center">
@@ -141,6 +141,6 @@ export default async function ClubRankingPage({ params }: { params: { slug: stri
           )}
         </div>
       )}
-    </main>
+    </PublicShell>
   );
 }

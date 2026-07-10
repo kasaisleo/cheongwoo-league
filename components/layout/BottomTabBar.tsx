@@ -5,18 +5,12 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 /**
- * BottomTabBar v5 — slug-aware + last_club_slug tracking.
+ * ClubBottomNav (BottomTabBar) v6 — CSS var 직접 사용.
  *
- * HOME href 정책:
- *   1. /c/[slug]/* : /c/[slug]
- *   2. /admin/*    : /admin
- *   3. legacy 전역 페이지 (/matches, /attendance, /mypage …):
- *      localStorage에 저장된 last_club_slug → /c/{slug}
- *      저장된 값 없으면 / (플랫폼 홈)으로 이동 — 특정 클럽 hardcode 금지
- *   4. / 플랫폼 랜딩: PlatformLandingClient 오버레이가 BottomTabBar를 가리므로
- *      HOME="/"를 제거해도 실제 문제 없음.
- *
- * SUPER MATCH 브랜드 링크(BrandHeader)는 여전히 href="/" 유지.
+ * 모든 색상을 --club-primary / --club-muted / --club-bg / --club-border 변수로.
+ * :root 기본값(청우회 라임/네이비)과 :root:has([data-club-skin="namaste"])(퍼플/크림)
+ * 양쪽에서 자동으로 올바른 색상이 적용됨.
+ * 새 스킨 추가 시 이 컴포넌트를 수정할 필요 없다.
  */
 
 const LAST_CLUB_SLUG_KEY = "last_club_slug";
@@ -27,8 +21,7 @@ function extractSlugFromPath(pathname: string): string | null {
 }
 
 const GLOBAL_TABS = [
-  // HOME은 사용처마다 다르게 계산하므로 placeholder로 "" 사용
-  { href: "__HOME__", label: "홈",  icon: HomeIcon },
+  { href: "__HOME__",    label: "홈",  icon: HomeIcon },
   { href: "/attendance", label: "매치", icon: CalendarIcon },
   { href: "/matches",    label: "기록", icon: ListIcon },
   { href: "/members",    label: "회원", icon: UsersIcon },
@@ -40,7 +33,6 @@ export function BottomTabBar() {
   const slug = extractSlugFromPath(pathname);
   const isAdminPage = pathname.startsWith("/admin");
 
-  // last_club_slug 추적 — /c/[slug] 방문 시 저장, legacy 페이지에서 복원
   const [lastClubSlug, setLastClubSlug] = useState<string | null>(null);
 
   useEffect(() => {
@@ -55,7 +47,6 @@ export function BottomTabBar() {
     }
   }, [slug]);
 
-  // HOME href 결정
   const homeHref = slug
     ? `/c/${slug}`
     : isAdminPage
@@ -75,8 +66,17 @@ export function BottomTabBar() {
     : GLOBAL_TABS.map((t) => (t.href === "__HOME__" ? { ...t, href: homeHref } : t));
 
   return (
-    <nav className="club-bottom-nav fixed bottom-0 left-0 right-0 z-40 bg-line-25 pb-[env(safe-area-inset-bottom)]">
-      <div className="club-nav-sep h-px bg-gradient-to-r from-transparent via-clay-400/30 to-transparent" />
+    <nav
+      className="club-bottom-nav fixed bottom-0 left-0 right-0 z-40 pb-[env(safe-area-inset-bottom)]"
+      style={{ backgroundColor: "var(--club-bg)" }}
+    >
+      {/* 구분선 — skin border 색상 */}
+      <div
+        className="h-px"
+        style={{
+          background: "linear-gradient(to right, transparent, var(--club-border), transparent)",
+        }}
+      />
 
       <div className="flex items-stretch">
         {tabs.map((tab) => {
@@ -87,36 +87,27 @@ export function BottomTabBar() {
                 ? pathname === `/c/${slug}`
                 : pathname.startsWith(tab.href);
           } else {
-            // non-slug 페이지: pathname이 tab.href로 시작하면 active
-            // homeHref가 /c/... 형태이므로 legacy 페이지에서는 HOME이 active되지 않음
-            isActive = tab.href !== "" && pathname.startsWith(tab.href);
+            isActive = tab.href !== "" && tab.href !== homeHref && pathname.startsWith(tab.href);
           }
           const Icon = tab.icon;
+          const color = isActive ? "var(--club-primary)" : "var(--club-muted)";
 
           return (
             <Link
               key={tab.href}
               href={tab.href}
               className="relative flex flex-1 flex-col items-center pt-2 pb-2 gap-1"
+              style={{ color }}
             >
               {isActive && (
                 <span
-                  className="absolute top-0 left-1/2 h-0.5 w-8 -translate-x-1/2 rounded-full bg-clay-400"
+                  className="absolute top-0 left-1/2 h-0.5 w-8 -translate-x-1/2 rounded-full"
+                  style={{ backgroundColor: "var(--club-primary)" }}
                   aria-hidden="true"
                 />
               )}
-              <Icon
-                className={`h-[22px] w-[22px] transition-colors ${
-                  isActive ? "text-clay-400" : "text-line-500"
-                }`}
-              />
-              <span
-                className={`nav-label-kr transition-colors ${
-                  isActive ? "text-clay-400" : "text-line-500"
-                }`}
-              >
-                {tab.label}
-              </span>
+              <Icon className="h-[22px] w-[22px] transition-colors" />
+              <span className="nav-label-kr transition-colors">{tab.label}</span>
             </Link>
           );
         })}

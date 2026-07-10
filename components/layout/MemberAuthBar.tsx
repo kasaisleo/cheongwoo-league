@@ -22,61 +22,44 @@ interface MemberInfo {
 const KAKAO_ADMIN_ROLES: PermissionRole[] = ["manager", "admin", "master"];
 
 /**
- * MemberAuthBar v3 — slug-aware.
+ * TopUtilityBar (MemberAuthBar) v4 — skin-aware, CSS var 직접 사용.
  *
- * /c/[slug] context 감지:
- *   - "카카오 로그인" 링크에 returnUrl 포함 (현재 경로로 복귀)
- *   - 로그아웃 후 /c/[slug]로 이동 (/ 플랫폼 랜딩으로 가지 않음)
- *   - 회원 쿼리도 slug로 resolve한 club_id 기준으로 동작
- *     (나마스테 회원은 /c/namaste에서 자신의 정보를 볼 수 있음)
+ * 색상: --club-primary / --club-muted / --club-surface / --club-border
+ *   → :root 기본값: 라임/navy (청우회)
+ *   → :root:has([data-club-skin="namaste"]): 퍼플/크림 (나마스테)
+ *   → 공개 slug 컨텍스트 밖에서는 :root 기본값 유지
  *
- * 클럽 context 없는 페이지(/matches 등)에서는 기존 동작 유지.
+ * 구조: [관리자 링크] ─────── [이름 · 마이 · 로그아웃] or [카카오 로그인]
  */
 export function MemberAuthBar({ currentClubId }: MemberAuthBarProps) {
   const router = useRouter();
   const pathname = usePathname();
 
-  // /c/[slug] 감지
   const slugMatch = pathname.match(/^\/c\/([^/]+)/);
   const currentSlug = slugMatch ? slugMatch[1] : null;
 
-  // 마지막으로 방문한 slug 기억 — /admin, /mypage 등 non-slug 페이지에서 로그아웃 시 fallback
   const [lastSlug, setLastSlug] = useState<string | null>(currentSlug);
   useEffect(() => {
     if (currentSlug) setLastSlug(currentSlug);
   }, [currentSlug]);
 
-  // slug로 resolve한 club ID (slug context에서 회원 쿼리 기준)
   const [resolvedClubId, setResolvedClubId] = useState<string>(currentClubId);
 
-  // 우측: 카카오 회원 상태
   const [authUser, setAuthUser] = useState<User | null>(null);
   const [member, setMember] = useState<MemberInfo | null>(null);
   const [signingOut, setSigningOut] = useState(false);
   const [initialized, setInitialized] = useState(false);
-
-  // 좌측: 관리자 상태
   const [cookieRole, setCookieRole] = useState<AdminRole | null>(null);
 
-  // slug → club_id resolve
   useEffect(() => {
-    if (!currentSlug) {
-      setResolvedClubId(currentClubId);
-      return;
-    }
+    if (!currentSlug) { setResolvedClubId(currentClubId); return; }
     const supabase = createClient();
     supabase
-      .from("clubs")
-      .select("id")
-      .eq("slug", currentSlug)
-      .eq("status", "active")
-      .maybeSingle()
-      .then(({ data }) => {
-        setResolvedClubId(data?.id ?? currentClubId);
-      });
+      .from("clubs").select("id")
+      .eq("slug", currentSlug).eq("status", "active").maybeSingle()
+      .then(({ data }) => { setResolvedClubId(data?.id ?? currentClubId); });
   }, [currentSlug, currentClubId]);
 
-  // 쿠키 세션 확인 (httpOnly → API 경유)
   useEffect(() => {
     fetch("/api/auth/status")
       .then((r) => r.json())
@@ -84,7 +67,6 @@ export function MemberAuthBar({ currentClubId }: MemberAuthBarProps) {
       .catch(() => setCookieRole(null));
   }, []);
 
-  // 카카오 세션 감지
   useEffect(() => {
     const supabase = createClient();
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -99,36 +81,25 @@ export function MemberAuthBar({ currentClubId }: MemberAuthBarProps) {
     return () => subscription.unsubscribe();
   }, []);
 
-  // 카카오 회원 정보 조회 — resolvedClubId 기준
   useEffect(() => {
     if (!authUser) { setMember(null); return; }
     const supabase = createClient();
     void (async () => {
       try {
         const { data } = await supabase
-          .from("members")
-          .select("id, nickname, name, permission_role")
-          .eq("auth_user_id", authUser.id)
-          .eq("club_id", resolvedClubId)
-          .maybeSingle();
+          .from("members").select("id, nickname, name, permission_role")
+          .eq("auth_user_id", authUser.id).eq("club_id", resolvedClubId).maybeSingle();
         setMember(data ?? null);
-      } catch {
-        setMember(null);
-      }
+      } catch { setMember(null); }
     })();
   }, [authUser, resolvedClubId]);
 
   async function handleSignOut() {
     setSigningOut(true);
-    try {
-      await fetch("/api/auth/logout", { method: "POST" });
-    } catch (e) {
-      console.error("admin session logout failed", e);
-    }
+    try { await fetch("/api/auth/logout", { method: "POST" }); } catch (e) { console.error("logout failed", e); }
     const supabase = createClient();
     await supabase.auth.signOut();
     setCookieRole(null);
-    // 클럽 context 있으면 해당 클럽 홈으로, 없으면 플랫폼 랜딩으로
     const slug = currentSlug ?? lastSlug;
     router.push(slug ? `/c/${slug}` : "/");
     router.refresh();
@@ -139,79 +110,92 @@ export function MemberAuthBar({ currentClubId }: MemberAuthBarProps) {
   const isKakaoAdmin = member !== null && (KAKAO_ADMIN_ROLES as string[]).includes(member.permission_role);
   const isAdminMode = cookieRole !== null || isKakaoAdmin;
 
+  const rawMeta = authUser?.user_metadata as Record<string, unknown> | undefined;
+  const trim = (v: unknown) => typeof v === "string" ? v.trim() : "";
+  const kakaoName = trim(rawMeta?.name) || trim(rawMeta?.full_name) || trim(rawMeta?.preferred_username) || trim(rawMeta?.user_name);
+
   const memberNickname = member?.nickname?.trim() || "";
   const memberName = member?.name?.trim() || "";
-  const rawUserMetadata = authUser?.user_metadata as Record<string, unknown> | undefined;
-  const asTrimmedString = (value: unknown): string =>
-    typeof value === "string" ? value.trim() : "";
-  const kakaoDisplayName =
-    asTrimmedString(rawUserMetadata?.name) ||
-    asTrimmedString(rawUserMetadata?.full_name) ||
-    asTrimmedString(rawUserMetadata?.preferred_username) ||
-    asTrimmedString(rawUserMetadata?.user_name);
-
-  const primaryDisplayName =
-    memberNickname && memberNickname !== memberName
-      ? memberNickname
-      : kakaoDisplayName || memberName;
-
+  const primaryDisplayName = memberNickname && memberNickname !== memberName ? memberNickname : kakaoName || memberName;
   const shouldShowRealName = memberName !== "" && primaryDisplayName !== memberName;
 
-  // 로그인 링크에 현재 경로를 returnUrl로 포함 (클럽 내부에서 로그인하면 돌아올 수 있게)
-  const loginHref =
-    pathname && pathname !== "/" && pathname !== "/login"
-      ? `/login?returnUrl=${encodeURIComponent(pathname)}`
-      : "/login";
+  const loginHref = pathname && pathname !== "/" && pathname !== "/login"
+    ? `/login?returnUrl=${encodeURIComponent(pathname)}`
+    : "/login";
+
+  const adminHref = currentSlug ? `/api/admin/enter?club=${currentSlug}` : "/admin";
+  const mypageHref = currentSlug ? `/c/${currentSlug}/mypage` : "/mypage";
 
   return (
-    <div className="border-b border-line-200/40 bg-line-25">
+    <div
+      className="border-b"
+      style={{
+        backgroundColor: "var(--club-bg)",
+        borderBottomColor: "var(--club-border)",
+      }}
+    >
       <div className="mx-auto flex max-w-md items-center justify-between px-4 py-2">
 
-        {/* ── 좌측: 관리자 영역 ─────────────────────── */}
+        {/* 좌측: 관리자 */}
         <div className="flex items-center">
-          {/* /c/[slug] context가 있으면 enter route로 club context 전달, 없으면 /admin 직접 */}
           {isAdminMode ? (
             <Link
-              href={currentSlug ? `/api/admin/enter?club=${currentSlug}` : "/admin"}
-              className="inline-flex items-center justify-center gap-1 rounded-sm border border-gold/40 bg-gold/10 px-2 py-0 leading-none text-[10px] font-bold uppercase tracking-wider text-gold transition-colors hover:bg-gold/20 h-[22px] whitespace-nowrap"
+              href={adminHref}
+              className="inline-flex items-center gap-1.5 rounded border border-gold/30 bg-gold/10 px-2 py-0.5 text-[10px] font-semibold text-gold whitespace-nowrap"
             >
-              <span className="inline-block h-1.5 w-1.5 flex-shrink-0 rounded-full bg-gold" />
+              <span className="h-1.5 w-1.5 rounded-full bg-gold flex-shrink-0" />
               관리자 모드
             </Link>
           ) : (
             <Link
-              href={currentSlug ? `/api/admin/enter?club=${currentSlug}` : "/admin"}
-              className="inline-flex items-center h-[22px] text-[10px] font-semibold text-line-500 transition-colors hover:text-line-700 whitespace-nowrap"
+              href={adminHref}
+              className="text-[10px] font-medium whitespace-nowrap transition-opacity hover:opacity-80"
+              style={{ color: "var(--club-muted)" }}
             >
               관리자
             </Link>
           )}
         </div>
 
-        {/* ── 우측: 카카오 회원 영역 ───────────────── */}
-        <div className="flex items-center">
+        {/* 우측: 회원 상태 */}
+        <div className="flex items-center gap-2.5">
           {authUser && member ? (
-            <div className="flex items-center gap-3">
-              <span className="text-xs font-medium text-line-900 whitespace-nowrap">
+            <>
+              <span
+                className="text-xs font-medium whitespace-nowrap"
+                style={{ color: "var(--club-text)" }}
+              >
                 {primaryDisplayName}
                 {shouldShowRealName && (
-                  <span className="ml-1 font-normal text-line-400">({memberName})</span>
+                  <span className="ml-1 font-normal" style={{ color: "var(--club-muted)" }}>
+                    ({memberName})
+                  </span>
                 )}
               </span>
-              <Link href={currentSlug ? `/c/${currentSlug}/mypage` : "/mypage"} className="inline-flex items-center text-xs font-semibold text-clay-400 whitespace-nowrap">
-                마이페이지
+              <span style={{ color: "var(--club-border)" }} aria-hidden>·</span>
+              <Link
+                href={mypageHref}
+                className="text-xs font-semibold whitespace-nowrap transition-opacity hover:opacity-80"
+                style={{ color: "var(--club-primary)" }}
+              >
+                마이
               </Link>
               <button
                 type="button"
                 disabled={signingOut}
                 onClick={handleSignOut}
-                className="inline-flex items-center text-xs text-line-400 disabled:opacity-50 whitespace-nowrap"
+                className="text-xs whitespace-nowrap disabled:opacity-40 transition-opacity hover:opacity-70"
+                style={{ color: "var(--club-muted)" }}
               >
-                {signingOut ? "로그아웃 중..." : "로그아웃"}
+                {signingOut ? "…" : "로그아웃"}
               </button>
-            </div>
+            </>
           ) : (
-            <Link href={loginHref} className="inline-flex items-center text-xs font-semibold text-clay-400 whitespace-nowrap">
+            <Link
+              href={loginHref}
+              className="text-xs font-semibold whitespace-nowrap transition-opacity hover:opacity-80"
+              style={{ color: "var(--club-primary)" }}
+            >
               카카오 로그인
             </Link>
           )}

@@ -10,8 +10,8 @@ import { RankingTeaserCard } from "@/components/ranking/RankingTeaserCard";
 import { SectionHeader, EmptyState } from "@/components/ui/SectionHeader";
 import { applyRankingQuery } from "@/lib/ranking-query";
 import { isAdminSession } from "@/lib/admin-auth";
-import { formatClubEyebrow } from "@/lib/club-display";
 import { getClubSkin } from "@/lib/club-skin";
+import { ClubBrandHeader, PublicShell } from "@/components/shell";
 import type { AttendanceSession, MemberWithStats } from "@/lib/supabase/database.types";
 
 export const dynamic = "force-dynamic";
@@ -107,31 +107,12 @@ export default async function ClubHomePage({
   const skin = getClubSkin(club.skin_key);
 
   return (
-    <main className="px-4 pt-6 pb-28">
-      <header className="mb-6">
-        {skin.logos ? (
-          /* 로고가 있는 스킨: 이미지 로고 표시 */
-          <div className="mb-3">
-            <img
-              src={skin.logos.primary}
-              alt={club.name}
-              className="club-brand-logo"
-              width={104}
-              height={104}
-            />
-          </div>
-        ) : (
-          /* 로고 없는 스킨: 텍스트 eyebrow 표시 */
-          <div className="mb-1.5 inline-flex items-center gap-2">
-            <span className="h-1.5 w-1.5 rounded-full bg-clay-400" />
-            <p className="eyebrow-en text-clay-400">{formatClubEyebrow(club.slug)}</p>
-          </div>
-        )}
-        <h1 className="headline-kr text-4xl text-line-900">{club.name} 리그</h1>
-        <p className="mt-1 max-w-[240px] break-keep text-xs leading-relaxed text-line-500">
-          복식 테니스 리그 · 정기 매치 · 기록 관리
-        </p>
-      </header>
+    <PublicShell>
+      <ClubBrandHeader
+        club={club}
+        skin={skin}
+        subtitle="복식 테니스 리그 · 정기 매치 · 기록 관리"
+      />
 
       <HomeAttendanceSection currentClubId={clubId} />
 
@@ -216,6 +197,6 @@ export default async function ClubHomePage({
           </div>
         </section>
       )}
-    </main>
+    </PublicShell>
   );
 }

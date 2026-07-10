@@ -5,6 +5,7 @@ import { MatchCard } from "@/components/match/MatchCard";
 import { MATCH_SELECT_WITH_PLAYERS, toDisplayMatches } from "@/lib/match-display";
 import { MATCH_SESSION_DAY_FILTERS, MATCH_SESSION_DAY_LABEL } from "@/lib/match-session-label";
 import { EmptyState } from "@/components/ui/SectionHeader";
+import { PublicShell, ClubPageHeader } from "@/components/shell";
 import type { Member, SessionDay } from "@/lib/supabase/database.types";
 
 export const dynamic = "force-dynamic";
@@ -74,10 +75,10 @@ export default async function ClubMatchesPage({ params, searchParams }: MatchesP
   if (sessionIdsForType !== null) {
     if (sessionIdsForType.length === 0) {
       return (
-        <main className="px-4 pt-6 pb-28">
-          <ClubMatchesHeader slug={slug} clubName={club.name} />
+        <PublicShell>
+          <MatchesHeader slug={slug} clubName={club.name} />
           <EmptyState message="해당 세션 유형의 경기 기록이 없어요." />
-        </main>
+        </PublicShell>
       );
     }
     matchesQuery = matchesQuery.in("session_id", sessionIdsForType);
@@ -91,8 +92,8 @@ export default async function ClubMatchesPage({ params, searchParams }: MatchesP
     : undefined;
 
   return (
-    <main className="px-4 pt-6 pb-28">
-      <ClubMatchesHeader slug={slug} clubName={club.name} />
+    <PublicShell>
+      <MatchesHeader slug={slug} clubName={club.name} />
 
       {/* 세션 타입 필터 */}
       <div className="mb-3 flex flex-wrap gap-1.5">
@@ -167,23 +168,21 @@ export default async function ClubMatchesPage({ params, searchParams }: MatchesP
           ))}
         </div>
       )}
-    </main>
+    </PublicShell>
   );
 }
 
-function ClubMatchesHeader({ slug, clubName }: { slug: string; clubName: string }) {
+function MatchesHeader({ slug, clubName }: { slug: string; clubName: string }) {
   return (
-    <header className="mb-5">
-      <div className="mb-1 inline-flex items-center gap-2">
-        <span className="h-1.5 w-1.5 rounded-full bg-clay-400" />
-        <p className="eyebrow-en text-clay-400 text-[10px]">{clubName} · Match Results</p>
-      </div>
-      <h1 className="headline-kr text-4xl text-line-900">경기 기록</h1>
-      <div className="mt-2">
-        <Link href={`/c/${slug}`} className="text-xs text-line-400 hover:text-line-600 transition-colors">
+    <ClubPageHeader
+      eyebrow={`${clubName} · Match Results`}
+      title="경기 기록"
+      showDot
+      rightSlot={
+        <Link href={`/c/${slug}`} className="text-xs text-line-400 hover:text-line-600 transition-colors mt-1">
           ← {clubName}
         </Link>
-      </div>
-    </header>
+      }
+    />
   );
 }

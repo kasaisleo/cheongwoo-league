@@ -1,11 +1,12 @@
 import TennisBallLoader from "@/components/common/TennisBallLoader";
 
 /**
- * /c/[slug]/* 로딩 UI.
+ * /c/[slug]/* 공통 로딩 UI.
  *
- * layout.tsx가 먼저 렌더링되어 [data-club-skin] wrapper + CSS 변수를 주입한다.
- * 이 컴포넌트는 layout wrapper 안에서 렌더링되므로
- * var(--club-bg) 등 스킨 변수를 params 없이도 올바르게 상속받는다.
+ * layout.tsx가 먼저 렌더링되어 [data-club-skin] wrapper + CSS 변수를 주입.
+ * TennisBallLoader의 .cw-tennis-ball과 .cw-loader-eyebrow는
+ * var(--club-primary)를 직접 참조하므로 스킨 색상이 자동 적용됨.
+ * 청우회 → 라임 볼, 나마스테 → 퍼플 볼.
  */
 export default function ClubLoading() {
   return (

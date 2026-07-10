@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { MATCH_SESSION_DAY_LABEL } from "@/lib/match-session-label";
 import { EmptyState } from "@/components/ui/SectionHeader";
+import { PublicShell } from "@/components/shell";
 import type { Member } from "@/lib/supabase/database.types";
 
 export const dynamic = "force-dynamic";
@@ -81,7 +82,7 @@ export default async function ClubPointHistoryPage({ params, searchParams }: Poi
   const baseHref = `/c/${slug}/point-history`;
 
   return (
-    <main className="px-4 pt-6">
+    <PublicShell>
       <header className="mb-5 flex items-center justify-between">
         <div>
           <div className="mb-1 inline-flex items-center gap-2">
@@ -167,6 +168,6 @@ export default async function ClubPointHistoryPage({ params, searchParams }: Poi
           })}
         </div>
       )}
-    </main>
+    </PublicShell>
   );
 }
