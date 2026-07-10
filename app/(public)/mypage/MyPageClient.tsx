@@ -3,22 +3,29 @@
 import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/Badge";
 import { ResultBadge } from "@/components/ui/ResultBadge";
+import { ClubMemberLoginGate } from "@/components/member/ClubMemberLoginGate";
 import { createClient } from "@/lib/supabase/client";
 import { MATCH_SELECT_WITH_PLAYERS, toDisplayMatches, type DisplayMatch } from "@/lib/match-display";
 import type { User } from "@supabase/supabase-js";
 import type { MemberWithStats } from "@/lib/supabase/database.types";
 
 /**
- * 마이페이지 v6 — club skin 로그인 게이트 + slug-aware returnUrl.
+ * 마이페이지 v7 — 단일 ClubMemberLoginGate + checking state.
  *
- * 비로그인 시 /login으로 redirect하지 않는다.
- * 대신 [data-club-skin] wrapper 안에서 login gate를 렌더링한다.
- * 서버 redirect는 DOM에서 [data-club-skin]을 제거해 BrandHeader/BottomTabBar
- * skin을 무력화하는 문제가 있었으므로, 서버/클라이언트 양쪽에서 redirect 금지.
+ * 상태 흐름:
+ *   authState=checking → ClubMemberLoginGate(checking) — auth 확인 중
+ *   authState=unauth   → ClubMemberLoginGate(loginHref) — 비로그인
+ *   authState=authed   → data fetch → content 렌더
+ *
+ * - checking/unauth 모두 동일한 min-height/position → layout shift 없음
+ * - public /login redirect 없음
+ * - unauthenticated 상태에서 member/match/attendance API 호출 없음
+ * - club skin CSS token 사용 (ClubMemberLoginGate 내부)
  */
 
 const RECENT_ATTENDANCE_LIMIT = 5;
 
+type AuthState = "checking" | "unauth" | "authed";
 type DisplayAttendStatus = "attending" | "undecided" | "absent" | "no_response";
 
 const STATUS_LABEL: Record<DisplayAttendStatus, string> = {
@@ -52,40 +59,43 @@ export default function MyPageClient({
   currentClubId: string;
   slug?: string;
 }) {
-  const [initialized, setInitialized] = useState(false);
+  const [authState, setAuthState] = useState<AuthState>("checking");
   const [authUser, setAuthUser] = useState<User | null>(null);
   const [member, setMember] = useState<MemberWithStats | null>(null);
+  const [dataLoading, setDataLoading] = useState(false);
   const [recentMatches, setRecentMatches] = useState<DisplayMatch[]>([]);
-  const [loading, setLoading] = useState(true);
-
   const [attendingCount, setAttendingCount] = useState(0);
   const [completedCount, setCompletedCount] = useState(0);
   const [recentAttendance, setRecentAttendance] = useState<
     { sessionId: string; sessionDate: string; sessionTitle: string; status: DisplayAttendStatus }[]
   >([]);
 
+  // ── 1. auth 확인 ──────────────────────────────────────────
   useEffect(() => {
     const supabase = createClient();
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session) {
+        setAuthState("unauth");
+      } else {
+        setAuthUser(session.user);
+        setAuthState("authed");
+      }
+    });
+  }, []);
+
+  // ── 2. 인증 후 데이터 fetch (authState=authed일 때만) ─────
+  useEffect(() => {
+    if (authState !== "authed" || !authUser) return;
+
+    const supabase = createClient();
+    setDataLoading(true);
 
     void (async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-
-        if (!session) {
-          // 비로그인 — redirect 대신 login gate 렌더링
-          setAuthUser(null);
-          setInitialized(true);
-          return;
-        }
-
-        const user = session.user;
-        setAuthUser(user);
-        setInitialized(true);
-
         const { data: memberData } = await supabase
           .from("member_stats")
           .select("*")
-          .eq("auth_user_id", user.id)
+          .eq("auth_user_id", authUser.id)
           .eq("club_id", currentClubId)
           .maybeSingle();
 
@@ -119,71 +129,54 @@ export default function MyPageClient({
           const attendMap = new Map(
             (attendRows ?? []).map((r) => [r.session_id, r.status as "attending" | "undecided" | "absent"])
           );
-
           const aCount = [...attendMap.values()].filter((s) => s === "attending").length;
           setAttendingCount(aCount);
 
           const recent = sessions.slice(0, RECENT_ATTENDANCE_LIMIT).map((s) => {
             const dbStatus = attendMap.get(s.id);
             const status: DisplayAttendStatus = dbStatus ?? "no_response";
-            return {
-              sessionId: s.id,
-              sessionDate: s.session_date,
-              sessionTitle: s.title,
-              status,
-            };
+            return { sessionId: s.id, sessionDate: s.session_date, sessionTitle: s.title, status };
           });
           setRecentAttendance(recent);
 
-          const [{ data: matchRows }] = await Promise.all([
-            supabase
-              .from("matches")
-              .select(MATCH_SELECT_WITH_PLAYERS)
-              .or(
-                `team_a_player1_member.eq.${typedMember.id},team_a_player2_member.eq.${typedMember.id},team_b_player1_member.eq.${typedMember.id},team_b_player2_member.eq.${typedMember.id}`
-              )
-              .order("played_at", { ascending: false })
-              .limit(5),
-          ]);
+          const { data: matchRows } = await supabase
+            .from("matches")
+            .select(MATCH_SELECT_WITH_PLAYERS)
+            .or(
+              `team_a_player1_member.eq.${typedMember.id},team_a_player2_member.eq.${typedMember.id},team_b_player1_member.eq.${typedMember.id},team_b_player2_member.eq.${typedMember.id}`
+            )
+            .order("played_at", { ascending: false })
+            .limit(5);
           setRecentMatches(toDisplayMatches(matchRows));
         }
       } finally {
-        setLoading(false);
+        setDataLoading(false);
       }
     })();
-  }, [currentClubId]);
+  }, [authState, authUser, currentClubId]);
 
-  if (!initialized) return null;
+  // ── 렌더 분기 ─────────────────────────────────────────────
 
-  // 비로그인 — club skin 안에서 login gate 렌더링
-  if (!authUser) {
+  if (authState === "checking") {
+    return <ClubMemberLoginGate checking />;
+  }
+
+  if (authState === "unauth") {
     const loginHref = slug
       ? `/login?returnUrl=${encodeURIComponent(`/c/${slug}/mypage`)}`
       : "/login";
-    return (
-      <main className="flex min-h-[55vh] flex-col items-center justify-center px-6 py-12">
-        <div className="w-full max-w-xs text-center">
-          <p className="eyebrow-en text-clay-400 mb-1">My Page</p>
-          <h1 className="headline-kr text-3xl text-line-900 mb-3">마이페이지</h1>
-          <p className="mb-6 text-sm text-line-500">
-            회원 정보 확인을 위해 로그인이 필요합니다.
-          </p>
-          <a
-            href={loginHref}
-            className="flex h-12 w-full items-center justify-center gap-2 bg-[#FEE500] text-sm font-bold text-[#191600] transition-opacity hover:opacity-90"
-            style={{ borderRadius: "var(--club-button-radius, 6px)" }}
-          >
-            카카오 로그인
-          </a>
-        </div>
-      </main>
-    );
+    return <ClubMemberLoginGate loginHref={loginHref} />;
   }
 
-  if (loading) {
+  // authState === "authed"
+  if (dataLoading) {
     return (
-      <main className="px-4 pt-6">
-        <p className="text-center text-sm text-line-400">불러오는 중...</p>
+      <main className="px-4 pt-6 pb-28">
+        <header className="mb-5">
+          <p className="eyebrow-en text-clay-400">My Page</p>
+          <h1 className="headline-kr text-4xl text-line-900">마이페이지</h1>
+        </header>
+        <p className="text-center text-sm text-line-400 pt-8">불러오는 중...</p>
       </main>
     );
   }
