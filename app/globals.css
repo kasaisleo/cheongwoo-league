@@ -59,8 +59,8 @@
   --club-shadow:         0 2px 8px 0 rgba(85, 34, 119, 0.08);
 }
 
-/* 나마스테 페이지 body 배경 / 텍스트 오버라이드 */
-:root:has([data-club-skin="namaste"]) body {
+/* 모든 /c/[slug] 클럽 페이지 body 배경 — skin token 기준. slug 조건문 없이 확장 가능 */
+:root:has([data-club-skin]) body {
   background-color: var(--club-bg);
   color: var(--club-text);
 }

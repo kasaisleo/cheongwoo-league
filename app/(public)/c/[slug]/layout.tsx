@@ -7,8 +7,8 @@ import { getClubSkin } from "@/lib/club-skin";
  *
  * 역할:
  *  - clubs.skin_key → ClubSkin 해석
- *  - [data-club-skin] wrapper에 CSS 변수 주입 (공개 페이지 컴포넌트 스킨 적용)
- *  - globals.css의 :root:has([data-club-skin="namaste"]) 셀렉터와 연동 →
+ *  - [data-club-skin] wrapper에 CSS 변수 주입 + viewport 배경 소유 (background/color/minHeight)
+ *  - globals.css의 :root:has([data-club-skin]) 셀렉터와 연동 →
  *    BottomTabBar 등 wrapper 밖 글로벌 컴포넌트에도 스킨 변수 전파
  *  - 로고가 있는 스킨: 옅은 워터마크 배경 표시 (pointer-events none, z-index 1)
  *
@@ -43,10 +43,15 @@ export default async function ClubSlugLayout({
         </div>
       )}
 
-      {/* 스킨 wrapper — CSS 변수 주입 + [data-club-skin] 셀렉터 기준점 */}
+      {/* 스킨 wrapper — CSS 변수 주입 + viewport 배경 소유 + [data-club-skin] 셀렉터 기준점 */}
       <div
         data-club-skin={skin.key}
-        style={skin.cssVars as CSSProperties}
+        style={{
+          ...(skin.cssVars as CSSProperties),
+          backgroundColor: "var(--club-bg)",
+          color: "var(--club-text)",
+          minHeight: "100dvh",
+        }}
       >
         {children}
       </div>
