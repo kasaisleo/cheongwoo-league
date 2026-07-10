@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import { PlatformHomeLink } from "@/components/navigation/PlatformHomeLink";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -915,7 +916,7 @@ export default function DemoPageClient() {
           {/* Actions */}
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
             <SessionTimer expiresAt={expiresAt} />
-            <Link href="/" className="d-back-link">← Platform</Link>
+            <PlatformHomeLink className="d-back-link">← Platform</PlatformHomeLink>
             <button
               type="button"
               className="d-btn-ghost d-sm"

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PlatformHomeLink } from "@/components/navigation/PlatformHomeLink";
 import { createClient } from "@/lib/supabase/server";
 import { RankMovement } from "@/components/ui/RankMovement";
 import { applyRankingQuery } from "@/lib/ranking-query";
@@ -44,10 +45,9 @@ export default async function RankingPage() {
             {currentClub.name} 리그 순위와 기록을 확인합니다.
           </p>
         </div>
-        <Link href="/"
-          className="club-back-link">
+        <PlatformHomeLink className="club-back-link">
           ← 홈으로
-        </Link>
+        </PlatformHomeLink>
       </header>
 
       {members.length === 0 ? (

@@ -4,6 +4,7 @@ import { AdminLogoutButton } from "@/components/admin/AdminLogoutButton";
 import { AdminKakaoLoginButton } from "@/components/admin/AdminKakaoLoginButton";
 import { AdminClubSelector } from "@/components/admin/AdminClubSelector";
 import Link from "next/link";
+import { PlatformHomeLink } from "@/components/navigation/PlatformHomeLink";
 
 /**
  * /admin page — 서버 컴포넌트.
@@ -189,9 +190,9 @@ export default async function AdminPage({
 
         <section>
           <div className={`${gatewayCard} p-4 text-center`}>
-            <Link href="/" className="text-xs text-white/30 hover:text-white/50 transition-colors">
+            <PlatformHomeLink className="text-xs text-white/30 hover:text-white/50 transition-colors">
               플랫폼 홈으로 돌아가기
-            </Link>
+            </PlatformHomeLink>
           </div>
         </section>
       </main>
