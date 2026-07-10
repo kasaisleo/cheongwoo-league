@@ -6,8 +6,8 @@ create table if not exists public.platform_audit_logs (
   id                uuid         primary key default gen_random_uuid(),
   -- actor snapshot (admin이 이후 삭제돼도 기록 유지)
   platform_admin_id uuid         references public.platform_admins(id) on delete set null,
-  admin_username    text         not null,
-  admin_role        text         not null,
+  platform_admin_username text         not null,
+  platform_admin_role     text         not null,
   -- action / target
   action            text         not null,   -- e.g. 'club.create', 'club.operator_role_change'
   target_type       text         not null,   -- 'club' | 'platform_admin' | 'club_member'

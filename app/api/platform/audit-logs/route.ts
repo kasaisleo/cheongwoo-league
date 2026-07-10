@@ -21,8 +21,8 @@ export async function GET(req: NextRequest) {
   let query = supabase
     .from("platform_audit_logs")
     .select(
-      "id, admin_username, admin_role, action, target_type, target_id, " +
-      "target_label, club_id, metadata, created_at"
+      "id, platform_admin_id, platform_admin_username, platform_admin_role, " +
+      "action, target_type, target_id, target_label, club_id, metadata, created_at"
     )
     .order("created_at", { ascending: false })
     .limit(limit);

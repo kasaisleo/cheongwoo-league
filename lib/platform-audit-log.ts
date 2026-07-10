@@ -61,8 +61,8 @@ export async function recordPlatformAuditLog(
 
     const row = {
       platform_admin_id: session.adminId,
-      admin_username:    session.username,
-      admin_role:        session.role,
+      platform_admin_username: session.username,
+      platform_admin_role:     session.role,
       action:            entry.action,
       target_type:       entry.targetType,
       target_id:         entry.targetId  ?? null,

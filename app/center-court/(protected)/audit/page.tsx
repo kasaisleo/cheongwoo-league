@@ -5,8 +5,8 @@ export const dynamic = "force-dynamic";
 
 export interface AuditLogRow {
   id: string;
-  admin_username: string;
-  admin_role: string;
+  platform_admin_username: string;
+  platform_admin_role: string;
   action: string;
   target_type: string;
   target_id: string | null;
@@ -22,8 +22,8 @@ async function getInitialLogs(): Promise<{ rows: AuditLogRow[]; dbError: string 
     const { data, error } = await supabase
       .from("platform_audit_logs")
       .select(
-        "id, admin_username, admin_role, action, target_type, target_id, " +
-        "target_label, club_id, metadata, created_at"
+        "id, platform_admin_id, platform_admin_username, platform_admin_role, " +
+        "action, target_type, target_id, target_label, club_id, metadata, created_at"
       )
       .order("created_at", { ascending: false })
       .limit(50);

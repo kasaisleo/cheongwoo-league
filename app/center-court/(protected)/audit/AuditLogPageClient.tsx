@@ -277,8 +277,8 @@ export function AuditLogPageClient({ initialLogs, dbError }: { initialLogs: Audi
                     </div>
                     <div style={{ display: "flex", gap: 10, marginTop: 3, flexWrap: "wrap" }}>
                       <span style={{ color: C.muted, fontSize: 10 }}>
-                        by <strong style={{ color: "rgba(196,181,253,0.7)" }}>{log.admin_username}</strong>
-                        {" "}<span style={{ color: C.dim, fontSize: 9 }}>({log.admin_role})</span>
+                        by <strong style={{ color: "rgba(196,181,253,0.7)" }}>{log.platform_admin_username}</strong>
+                        {" "}<span style={{ color: C.dim, fontSize: 9 }}>({log.platform_admin_role})</span>
                       </span>
                     </div>
                   </div>
@@ -312,7 +312,7 @@ export function AuditLogPageClient({ initialLogs, dbError }: { initialLogs: Audi
                       {log.target_id    && <DetailRow label="Target ID"    value={log.target_id} />}
                       {log.target_label && <DetailRow label="Target"       value={log.target_label} />}
                       {log.club_id      && <DetailRow label="Club ID"      value={log.club_id} />}
-                      <DetailRow label="Actor"       value={`${log.admin_username} (${log.admin_role})`} />
+                      <DetailRow label="Actor"       value={`${log.platform_admin_username} (${log.platform_admin_role})`} />
                       <DetailRow label="Timestamp"   value={fmtTime(log.created_at)} />
                     </div>
                     {Object.keys(log.metadata).length > 0 && (
