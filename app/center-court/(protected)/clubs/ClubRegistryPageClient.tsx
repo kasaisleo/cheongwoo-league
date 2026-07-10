@@ -347,25 +347,19 @@ export function ClubRegistryPageClient({ clubs: initial, isOwner }: Props) {
         <CourtPanel>
           {clubs.map((club, idx) => (
             <div key={club.id} className="cr-row" style={{
-              padding: "13px 18px",
               borderBottom: idx < clubs.length - 1 ? `1px solid ${C.border}` : "none",
-              display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12,
             }}>
-              <div style={{ minWidth: 0, flex: 1 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3 }}>
-                  <span style={{ color: "#f0ebe0", fontSize: 13, fontWeight: 600 }}>{club.name}</span>
+              <div className="cr-row-info">
+                <div className="cr-row-header">
+                  <span className="cr-row-name">{club.name}</span>
                   <StatusPill status={club.status} />
                 </div>
                 {club.description && (
-                  <p style={{ color: C.muted, fontSize: 10.5, marginBottom: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 240 }}>
-                    {club.description}
-                  </p>
+                  <p className="cr-row-desc">{club.description}</p>
                 )}
-                <p style={{ color: C.dim, fontSize: 9, fontWeight: 700, letterSpacing: "0.08em" }}>
-                  /c/{club.slug}
-                </p>
+                <p className="cr-row-meta">/c/{club.slug}</p>
               </div>
-              <div style={{ display: "flex", gap: 6, flexShrink: 0, flexWrap: "wrap", justifyContent: "flex-end" }}>
+              <div className="cr-row-actions">
                 <Link
                   href={`/center-court/clubs/${club.id}`}
                   style={{ textDecoration: "none" }}
@@ -898,8 +892,40 @@ function GlobalStyles() {
         background: rgba(109,40,217,0.22); border-color: rgba(139,92,246,0.45);
         color: #c4b5fd;
       }
-      .cr-row { transition: background 0.12s; }
+      .cr-row {
+        display: flex; flex-direction: column; gap: 10px;
+        padding: 13px 18px; transition: background 0.12s;
+      }
       .cr-row:hover { background: rgba(245,240,232,0.03); }
+      .cr-row-info { min-width: 0; }
+      .cr-row-header {
+        display: flex; align-items: center; justify-content: space-between;
+        gap: 8px; min-width: 0;
+      }
+      .cr-row-name {
+        color: #f0ebe0; font-size: 13px; font-weight: 600;
+        min-width: 0; flex: 1 1 auto;
+        word-break: keep-all; overflow-wrap: normal; white-space: normal;
+      }
+      .cr-row-desc {
+        color: rgba(245,240,232,0.38); font-size: 10.5px; margin-top: 4px;
+        overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%;
+      }
+      .cr-row-meta {
+        color: rgba(245,240,232,0.45); font-size: 10px; font-weight: 700;
+        letter-spacing: 0.06em; margin-top: 4px;
+      }
+      .cr-row-actions {
+        display: flex; gap: 6px; flex-wrap: wrap;
+      }
+      .cr-row-actions button { min-height: 28px; }
+      @media (min-width: 640px) {
+        .cr-row {
+          flex-direction: row; align-items: center; justify-content: space-between; gap: 12px;
+        }
+        .cr-row-info { flex: 1; }
+        .cr-row-actions { flex-shrink: 0; justify-content: flex-end; }
+      }
       .cr-overlay {
         position: fixed; inset: 0; z-index: 100;
         background: rgba(0,6,3,0.72); backdrop-filter: blur(4px);
