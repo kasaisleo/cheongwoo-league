@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { MatchCard } from "@/components/match/MatchCard";
 import { MATCH_SELECT_WITH_PLAYERS, toDisplayMatches } from "@/lib/match-display";
 import { MATCH_SESSION_DAY_FILTERS, MATCH_SESSION_DAY_LABEL } from "@/lib/match-session-label";
-import { isAdminSession } from "@/lib/admin-auth";
+import { getAdminAccessServer } from "@/lib/admin-permissions";
 import { EmptyState } from "@/components/ui/SectionHeader";
 import type { Member, SessionDay } from "@/lib/supabase/database.types";
 import { getCurrentClubId } from "@/lib/current-club";
@@ -44,7 +44,7 @@ export default async function MatchesPage({ searchParams }: MatchesPageProps) {
   // ?showPlayers=1 일 때 회원 필터 펼침
   const showPlayers = searchParams.showPlayers === "1";
 
-  const isAdmin = isAdminSession();
+  const { isAdmin } = await getAdminAccessServer();
 
   // 세션 타입 필터가 걸려있으면 해당 세션 id 목록 먼저 조회
   let sessionIdsForType: string[] | null = null;

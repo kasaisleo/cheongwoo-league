@@ -9,7 +9,6 @@ import { HomeAttendanceSection } from "@/components/attendance/HomeAttendanceSec
 import { RankingTeaserCard } from "@/components/ranking/RankingTeaserCard";
 import { SectionHeader, EmptyState } from "@/components/ui/SectionHeader";
 import { applyRankingQuery } from "@/lib/ranking-query";
-import { isAdminSession } from "@/lib/admin-auth";
 import { getClubSkin } from "@/lib/club-skin";
 import { ClubBrandHeader, PublicShell } from "@/components/shell";
 import type { AttendanceSession, MemberWithStats } from "@/lib/supabase/database.types";
@@ -103,7 +102,8 @@ export default async function ClubHomePage({
   const recentMatches = toDisplayMatches(recentMatchRows);
   const guestsThisWeek = weeklyGuests ?? [];
   const topRanked = (topRankRows ?? []) as MemberWithStats[];
-  const isAdmin = isAdminSession();
+  const { getAdminAccessServer } = await import("@/lib/admin-permissions");
+  const { isAdmin } = await getAdminAccessServer();
   const skin = getClubSkin(club.skin_key);
 
   return (

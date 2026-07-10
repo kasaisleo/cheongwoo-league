@@ -66,9 +66,11 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   }
 
   displayName = memberResult.data?.name ?? null;
-  const roleForDisplay = access.cookieRole ?? access.kakaoRole ?? null;
-  if (!displayName && access.cookieRole) {
-    displayName = access.cookieRole === "owner" ? "Owner" : "Manager";
+  const roleForDisplay = access.kakaoRole ?? null;
+  if (!displayName && access.isOwner) {
+    displayName = "Owner";
+  } else if (!displayName && access.isAdmin) {
+    displayName = "Manager";
   }
 
   return (

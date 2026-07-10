@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
-import { getAdminRole, ADMIN_CLUB_SLUG_COOKIE } from "@/lib/admin-auth";
+import { ADMIN_CLUB_SLUG_COOKIE } from "@/lib/admin-auth";
 import { getAdminAccessServer } from "@/lib/admin-permissions";
 
 const KAKAO_ADMIN_ROLES = ["manager", "admin", "master"] as const;
@@ -24,11 +24,7 @@ export async function GET(request: NextRequest) {
   // 현재 admin_club_slug 쿠키
   const adminClubSlugCookie = cookieStore.get(ADMIN_CLUB_SLUG_COOKIE)?.value ?? null;
 
-  // 1. cw_admin_session 쿠키
-  let cookieRole: string | null = null;
-  try { cookieRole = getAdminRole(); } catch { /* 없음 */ }
-
-  // 2. Supabase Auth user
+  // 1. Supabase Auth user
   let hasUser = false;
   let userIdPrefix: string | null = null;
   try {
@@ -156,7 +152,6 @@ export async function GET(request: NextRequest) {
     // 유저 상태
     hasUser,
     userIdPrefix,
-    cookieRole,
 
     // admin_club_slug 쿠키 현황
     adminClubSlugCookie,

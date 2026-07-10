@@ -5,7 +5,6 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import type { User } from "@supabase/supabase-js";
-import type { AdminRole } from "@/lib/admin-auth";
 import type { PermissionRole } from "@/lib/supabase/database.types";
 
 interface MemberAuthBarProps {
@@ -49,7 +48,6 @@ export function MemberAuthBar({ currentClubId }: MemberAuthBarProps) {
   const [member, setMember] = useState<MemberInfo | null>(null);
   const [signingOut, setSigningOut] = useState(false);
   const [initialized, setInitialized] = useState(false);
-  const [cookieRole, setCookieRole] = useState<AdminRole | null>(null);
 
   useEffect(() => {
     if (!currentSlug) { setResolvedClubId(currentClubId); return; }
@@ -59,13 +57,6 @@ export function MemberAuthBar({ currentClubId }: MemberAuthBarProps) {
       .eq("slug", currentSlug).eq("status", "active").maybeSingle()
       .then(({ data }) => { setResolvedClubId(data?.id ?? currentClubId); });
   }, [currentSlug, currentClubId]);
-
-  useEffect(() => {
-    fetch("/api/auth/status")
-      .then((r) => r.json())
-      .then((body) => setCookieRole(body?.role ?? null))
-      .catch(() => setCookieRole(null));
-  }, []);
 
   useEffect(() => {
     const supabase = createClient();
@@ -99,7 +90,6 @@ export function MemberAuthBar({ currentClubId }: MemberAuthBarProps) {
     try { await fetch("/api/auth/logout", { method: "POST" }); } catch (e) { console.error("logout failed", e); }
     const supabase = createClient();
     await supabase.auth.signOut();
-    setCookieRole(null);
     const slug = currentSlug ?? lastSlug;
     router.push(slug ? `/c/${slug}` : "/");
     router.refresh();
@@ -108,7 +98,7 @@ export function MemberAuthBar({ currentClubId }: MemberAuthBarProps) {
   if (!initialized) return null;
 
   const isKakaoAdmin = member !== null && (KAKAO_ADMIN_ROLES as string[]).includes(member.permission_role);
-  const isAdminMode = cookieRole !== null || isKakaoAdmin;
+  const isAdminMode = isKakaoAdmin;
 
   const rawMeta = authUser?.user_metadata as Record<string, unknown> | undefined;
   const trim = (v: unknown) => typeof v === "string" ? v.trim() : "";

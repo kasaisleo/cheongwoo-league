@@ -1,17 +1,90 @@
 import { NextResponse } from "next/server";
-import { getAdminRole } from "@/lib/admin-auth";
+import { cookies } from "next/headers";
+import { createClient, createServiceClient } from "@/lib/supabase/server";
+import { ADMIN_CLUB_SLUG_COOKIE, type AdminRole } from "@/lib/admin-auth";
+
+const KAKAO_ADMIN_ROLES = ["manager", "admin", "master"] as const;
 
 /**
- * 클라이언트 컴포넌트는 쿠키 기반 운영진 세션을 직접 확인할 수 없으므로,
- * 이 API를 통해 "현재 운영진으로 로그인되어 있는지"와 "어떤 역할인지"를
- * 가볍게 조회한다. isAdmin은 Step 8-3 이전부터 있던 필드라 그대로 유지하고
- * (useIsAdmin() 등 기존 클라이언트 코드가 이 필드만 본다), role은 신규로
- * 추가한 필드다(owner 전용 UI 분기에 사용 — useAdminRole() 참고).
+ * GET /api/auth/status
  *
- * 카카오 로그인 + permission_role이 도입되면, role의 출처만 쿠키 검증에서
- * DB의 permission_role 조회로 바뀌고 이 응답 형식은 그대로 유지될 수 있다.
+ * 클라이언트 컴포넌트에서 현재 운영진 세션을 확인할 때 사용.
+ * cw_admin_session 쿠키 제거 후, Supabase Kakao 세션 기반으로 재작성.
+ *
+ * 응답: { isAdmin: boolean, role: "owner" | "manager" | null }
+ *   role 매핑: "master" → "owner", "admin"|"manager" → "manager"
+ *   isAdmin = role !== null
+ *
+ * 클럽 컨텍스트:
+ *   admin_club_slug 쿠키 있음 → 해당 club에서 permission_role 조회
+ *   없음 → user의 전체 admin 멤버십 중 최고 role 반환
  */
 export async function GET() {
-  const role = getAdminRole();
-  return NextResponse.json({ isAdmin: role !== null, role });
+  try {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      return NextResponse.json({ isAdmin: false, role: null });
+    }
+
+    const cookieStore = cookies();
+    const adminSlug = cookieStore.get(ADMIN_CLUB_SLUG_COOKIE)?.value ?? null;
+
+    let permissionRole: string | null = null;
+
+    if (adminSlug) {
+      // 선택된 클럽에서만 조회
+      const { data: club } = await supabase
+        .from("clubs")
+        .select("id")
+        .eq("slug", adminSlug)
+        .eq("status", "active")
+        .maybeSingle();
+
+      if (club) {
+        const { data: member } = await supabase
+          .from("members")
+          .select("permission_role")
+          .eq("auth_user_id", user.id)
+          .eq("club_id", club.id)
+          .eq("is_active", true)
+          .maybeSingle();
+
+        if (member && (KAKAO_ADMIN_ROLES as readonly string[]).includes(member.permission_role)) {
+          permissionRole = member.permission_role;
+        }
+      }
+    } else {
+      // 전체 클럽에서 최고 role 확인
+      const supabaseAdmin = createServiceClient();
+      const { data: members } = await supabaseAdmin
+        .from("members")
+        .select("permission_role")
+        .eq("auth_user_id", user.id)
+        .eq("is_active", true)
+        .in("permission_role", KAKAO_ADMIN_ROLES);
+
+      if (members && members.length > 0) {
+        // master > admin > manager 우선순위
+        if (members.some((m) => m.permission_role === "master")) {
+          permissionRole = "master";
+        } else if (members.some((m) => m.permission_role === "admin")) {
+          permissionRole = "admin";
+        } else {
+          permissionRole = "manager";
+        }
+      }
+    }
+
+    // DB role → AdminRole 매핑
+    const role: AdminRole | null =
+      permissionRole === "master" ? "owner" :
+      permissionRole === "admin" || permissionRole === "manager" ? "manager" :
+      null;
+
+    return NextResponse.json({ isAdmin: role !== null, role });
+  } catch {
+    return NextResponse.json({ isAdmin: false, role: null });
+  }
 }

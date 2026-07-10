@@ -24,7 +24,6 @@ interface SearchMember {
 }
 
 interface AuthState {
-  cookieRole: "owner" | "manager" | null;
   kakaoPermission: string | null;
   kakaoName: string | null;
   memberId: string | null;
@@ -51,8 +50,7 @@ export default function SettingsPageClient({ currentClubId }: SettingsPageClient
   const adminAccess = useAdminAccess(currentClubId);
 
   const [auth, setAuth] = useState<AuthState>({
-    cookieRole: null, kakaoPermission: null,
-    kakaoName: null, memberId: null, loading: true,
+    kakaoPermission: null, kakaoName: null, memberId: null, loading: true,
   });
   const [adminMembers, setAdminMembers] = useState<AdminMember[]>([]);
   const [loadingAdmins, setLoadingAdmins] = useState(false);
@@ -74,7 +72,6 @@ export default function SettingsPageClient({ currentClubId }: SettingsPageClient
         kakaoName = member?.name ?? null;
       }
       setAuth({
-        cookieRole: adminAccess!.cookieRole,
         kakaoPermission: adminAccess!.kakaoRole,
         kakaoName,
         memberId: adminAccess!.memberId,
@@ -129,7 +126,6 @@ export default function SettingsPageClient({ currentClubId }: SettingsPageClient
     );
   }
 
-  const isCookieOwner = auth.cookieRole === "owner";
   const isKakaoMaster = auth.kakaoPermission === "master";
 
   return (
@@ -150,18 +146,6 @@ export default function SettingsPageClient({ currentClubId }: SettingsPageClient
       <section className="mb-5">
         <p className="mb-2 font-display text-[10px] font-bold uppercase tracking-widest text-line-500">Current Status</p>
         <div className="overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50">
-          <div className="flex items-center justify-between border-b border-line-200/30 px-4 py-3">
-            <div>
-              <p className="text-sm font-semibold text-line-900">Owner Session</p>
-              <p className="text-[10px] text-line-500">cw_admin_session 쿠키 기반</p>
-            </div>
-            <span className={`rounded-sm border px-2.5 py-1 text-xs font-semibold ${
-              isCookieOwner ? "border-gold/40 bg-gold/10 text-gold"
-              : auth.cookieRole === "manager" ? "border-clay-400/40 bg-clay-400/10 text-clay-400"
-              : "border-line-200/40 bg-line-100 text-line-500"}`}>
-              {isCookieOwner ? "Owner" : auth.cookieRole === "manager" ? "Manager" : "없음"}
-            </span>
-          </div>
           <div className="flex items-center justify-between px-4 py-3">
             <div>
               <p className="text-sm font-semibold text-line-900">Kakao Account</p>

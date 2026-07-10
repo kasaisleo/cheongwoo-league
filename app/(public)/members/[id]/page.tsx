@@ -9,7 +9,6 @@ import { MemberTimelineSection } from "@/components/member/MemberTimelineSection
 import { MemberStatusSection } from "@/components/member/MemberStatusSection";
 import { MemberHighlightCareer } from "@/components/member/MemberHighlightCareer";
 import { MemberCareerProvider } from "@/components/member/MemberCareerProvider";
-import { isAdminSession } from "@/lib/admin-auth";
 import { MATCH_SESSION_DAY_LABEL } from "@/lib/match-session-label";
 import { playerBackgroundLabel } from "@/lib/constants/member-timeline";
 import {

@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { isAdminSession } from "@/lib/admin-auth";
 import { Button } from "@/components/ui/Button";
 import { GuestList } from "@/components/guest/GuestList";
 
@@ -9,8 +8,6 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 export default async function GuestsPage() {
-  const isAdmin = isAdminSession();
-
   return (
     <main className="px-4 pt-6">
       <header className="mb-5 flex items-center justify-between">
