@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useCallback, type ReactNode, type CSSProperties } from "react";
-import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
 
 interface Props {
@@ -13,19 +12,22 @@ interface Props {
 /**
  * PlatformHomeLink — href="/" 전용 transition-aware 링크.
  *
- * Next.js client navigation 시 RSC payload 도착 전까지 이전 route DOM이
- * 잔류하는 문제를 해결.
- * 클릭 즉시 fixed inset-0 platform overlay를 document.body에 portal로 mount,
- * (platform)/loading.tsx 발화 전 공백 구간을 완전히 차단.
+ * 문제: router.push("/")는 `/c/[slug]`와 `/`가 공유하는 (public)/layout.tsx 안에서
+ * PlatformHomeLink를 unmount하지 않으므로 pending=true 영구 잔류.
  *
- * - portal(document.body): DemoLayout(isolation: isolate) 등 stacking context 우회
+ * 해결: window.location.assign("/") — full navigation.
+ * 현재 document 전체를 교체하므로 React tree가 완전히 파괴되고
+ * overlay는 document와 함께 사라진다. shared layout 잔류 문제 없음.
+ *
  * - modified click(ctrl/cmd/새탭): 기본 <a> 동작 유지
- * - pageshow persisted: bfcache 복귀 시 overlay 자동 해제
+ * - 이미 `/`: overlay 없이 reload만 (PlatformLandingClient가 이미 화면을 덮음)
+ * - bfcache 복귀: pageshow persisted → pending reset
+ * - 10초 timeout: navigation 실패 시 pending 해제 (복구)
+ * - portal(document.body): DemoLayout(isolation: isolate) stacking context 우회
  */
 export function PlatformHomeLink({ children, className, style }: Props) {
   const [pending, setPending] = useState(false);
   const [mounted, setMounted] = useState(false);
-  const router = useRouter();
 
   useEffect(() => {
     setMounted(true);
@@ -41,16 +43,30 @@ export function PlatformHomeLink({ children, className, style }: Props) {
     return () => window.removeEventListener("pageshow", onPageshow);
   }, [pending]);
 
+  // 10초 후에도 pathname이 "/" 아니면 navigation 실패로 간주 → pending 해제
+  useEffect(() => {
+    if (!pending) return;
+    const id = setTimeout(() => {
+      if (window.location.pathname !== "/") setPending(false);
+    }, 10000);
+    return () => clearTimeout(id);
+  }, [pending]);
+
   const handleClick = useCallback(
     (e: React.MouseEvent<HTMLAnchorElement>) => {
       // modified click → 기본 동작 유지 (새 탭, 우클릭 등)
       if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
       e.preventDefault();
       if (pending) return;
+      // 이미 `/`이면 overlay 없이 reload (PlatformLandingClient가 화면을 이미 덮음)
+      if (window.location.pathname === "/") {
+        window.location.assign("/");
+        return;
+      }
       setPending(true);
-      router.push("/");
+      window.location.assign("/");
     },
-    [pending, router],
+    [pending],
   );
 
   return (
