@@ -1,9 +1,12 @@
-import type React from "react";
 import { createClient } from "@/lib/supabase/server";
 import { getAdminAccessServer } from "@/lib/admin-permissions";
 import { AdminLogoutButton } from "@/components/admin/AdminLogoutButton";
 import { AdminKakaoLoginButton } from "@/components/admin/AdminKakaoLoginButton";
 import { AdminClubSelector } from "@/components/admin/AdminClubSelector";
+import { AdminSectionHeader } from "@/components/admin/AdminSectionHeader";
+import { AdminMetricCard } from "@/components/admin/AdminMetricCard";
+import { AdminQuickAction } from "@/components/admin/AdminQuickAction";
+import { AdminActivityList, type AdminActivityItem } from "@/components/admin/AdminActivityList";
 import Link from "next/link";
 import { PlatformHomeLink } from "@/components/navigation/PlatformHomeLink";
 
@@ -23,37 +26,114 @@ import { PlatformHomeLink } from "@/components/navigation/PlatformHomeLink";
  * Owner 비밀번호 로그인 완전 제거. 카카오 단일 인증.
  * 클럽 선택은 AdminClubSelector — loading overlay 포함.
  */
+function daysAgoIso(days: number) {
+  return new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+}
+
 async function getAdminDashboardData(currentClubId: string) {
   const supabase = createClient();
   const today = new Date().toISOString().slice(0, 10);
 
   const [
     { count: totalMembers },
-    { count: adminMembers },
+    { count: activeMembers },
+    { data: adminRoleMembers },
+    { count: ongoingSessions },
+    { data: recentSessions },
     { data: recentMatches },
-    { data: todaySessions },
+    { data: recentMembers },
+    { count: newMembersCount },
+    { count: unlinkedAdminCount },
+    { count: pendingLinkCount },
+    { data: clubRow },
+    { count: recentGamesCount },
   ] = await Promise.all([
+    supabase.from("members").select("*", { count: "exact", head: true }).eq("is_active", true).eq("club_id", currentClubId),
     supabase.from("members").select("*", { count: "exact", head: true }).eq("is_active", true).eq("is_dormant", false).eq("club_id", currentClubId),
-    supabase.from("members").select("*", { count: "exact", head: true }).in("permission_role", ["manager", "admin", "master"]).eq("club_id", currentClubId),
-    supabase.from("matches").select("played_at, winner_team, score_a, score_b").eq("club_id", currentClubId).order("played_at", { ascending: false }).limit(3),
-    supabase.from("attendance_sessions").select("id, title, session_day").eq("club_id", currentClubId).in("status", ["open", "closed"]).eq("session_date", today),
+    // adminMembers/masterMembers count 2개를 role만 읽는 쿼리 1개로 통합 (row 수가 적어 head count보다 저렴)
+    supabase.from("members").select("permission_role").in("permission_role", ["manager", "admin", "master"]).eq("club_id", currentClubId),
+    supabase.from("attendance_sessions").select("*", { count: "exact", head: true }).eq("club_id", currentClubId).eq("status", "open"),
+    // 오늘 세션(todaySessions)과 출석 변화 scoping용 세션(recentSessionsForAttendance)을
+    // 별도 쿼리 2개 대신, 최근 세션 목록 1개로 통합해 양쪽 용도로 파생한다.
+    supabase.from("attendance_sessions").select("id, title, session_day, session_date, status").eq("club_id", currentClubId).neq("status", "archived").order("session_date", { ascending: false }).limit(20),
+    supabase.from("matches").select("id, played_at, winner_team, score_a, score_b").eq("club_id", currentClubId).order("played_at", { ascending: false }).limit(5),
+    supabase.from("members").select("id, name, created_at").eq("club_id", currentClubId).eq("is_active", true).order("created_at", { ascending: false }).limit(5),
+    supabase.from("members").select("*", { count: "exact", head: true }).eq("club_id", currentClubId).eq("is_active", true).gte("created_at", daysAgoIso(7)),
+    supabase.from("members").select("*", { count: "exact", head: true }).eq("club_id", currentClubId).eq("is_active", true).in("permission_role", ["manager", "admin", "master"]).is("auth_user_id", null),
+    supabase.from("pending_link_requests").select("*", { count: "exact", head: true }).eq("club_id", currentClubId),
+    supabase.from("clubs").select("status, skin_key").eq("id", currentClubId).maybeSingle(),
+    supabase.from("matches").select("*", { count: "exact", head: true }).eq("club_id", currentClubId).gte("played_at", daysAgoIso(7)),
   ]);
 
-  let todayAttending = 0;
-  if (todaySessions && todaySessions.length > 0) {
-    const sessionIds = todaySessions.map((s) => s.id);
-    const { data: att } = await supabase
-      .from("attendance").select("status")
-      .in("session_id", sessionIds).eq("status", "attending");
-    todayAttending = att?.length ?? 0;
+  const adminMembers = (adminRoleMembers ?? []).length;
+  const masterMembers = (adminRoleMembers ?? []).filter((m) => m.permission_role === "master").length;
+
+  const todaySessionIds = (recentSessions ?? [])
+    .filter((s) => s.session_date === today && (s.status === "open" || s.status === "closed"))
+    .map((s) => s.id);
+  const recentSessionIds = (recentSessions ?? []).slice(0, 15).map((s) => s.id);
+
+  const [
+    { data: todayAttendanceRows },
+    { count: todayMatchCount },
+    { data: recentAttendanceRows },
+  ] = await Promise.all([
+    todaySessionIds.length > 0
+      ? supabase.from("attendance").select("status").in("session_id", todaySessionIds).eq("status", "attending")
+      : Promise.resolve({ data: [] as { status: string }[] }),
+    todaySessionIds.length > 0
+      ? supabase.from("matches").select("*", { count: "exact", head: true }).in("session_id", todaySessionIds)
+      : Promise.resolve({ count: 0 }),
+    recentSessionIds.length > 0
+      ? supabase.from("attendance").select("member_id, status, session_id, updated_at").in("session_id", recentSessionIds).order("updated_at", { ascending: false }).limit(5)
+      : Promise.resolve({ data: [] as { member_id: string; status: string; session_id: string; updated_at: string }[] }),
+  ]);
+
+  // pending_link_requests count는 이미 연결 완료된 계정을 포함할 수 있어 (연결 후 row 정리 실패 케이스) 0건이 아닐 때만 정밀 대조
+  let pendingLinkActualCount = pendingLinkCount ?? 0;
+  const attendanceMemberIds = [...new Set((recentAttendanceRows ?? []).map((r) => r.member_id))];
+
+  const [{ data: pendingRows }, { data: linkedMembers }, { data: attendanceMembers }] = await Promise.all([
+    pendingLinkActualCount > 0
+      ? supabase.from("pending_link_requests").select("auth_user_id").eq("club_id", currentClubId).limit(50)
+      : Promise.resolve({ data: [] as { auth_user_id: string }[] }),
+    pendingLinkActualCount > 0
+      ? supabase.from("members").select("auth_user_id").not("auth_user_id", "is", null).eq("club_id", currentClubId)
+      : Promise.resolve({ data: [] as { auth_user_id: string | null }[] }),
+    attendanceMemberIds.length > 0
+      ? supabase.from("members").select("id, name").in("id", attendanceMemberIds)
+      : Promise.resolve({ data: [] as { id: string; name: string }[] }),
+  ]);
+
+  if (pendingLinkActualCount > 0) {
+    const linkedIds = new Set((linkedMembers ?? []).map((m) => m.auth_user_id));
+    pendingLinkActualCount = (pendingRows ?? []).filter((r) => !linkedIds.has(r.auth_user_id)).length;
   }
+  const attendanceMemberNameMap = new Map((attendanceMembers ?? []).map((m) => [m.id, m.name]));
 
   return {
     totalMembers: totalMembers ?? 0,
+    activeMembers: activeMembers ?? 0,
     adminMembers: adminMembers ?? 0,
+    hasOwner: (masterMembers ?? 0) > 0,
+    ongoingSessions: ongoingSessions ?? 0,
+    hasTodaySession: todaySessionIds.length > 0,
+    todayAttending: (todayAttendanceRows ?? []).length,
+    todayMatchCount: todayMatchCount ?? 0,
     recentMatches: recentMatches ?? [],
-    todayAttending,
-    hasTodaySession: (todaySessions?.length ?? 0) > 0,
+    recentMembers: recentMembers ?? [],
+    newMembersCount: newMembersCount ?? 0,
+    unlinkedAdminCount: unlinkedAdminCount ?? 0,
+    pendingLinkCount: pendingLinkActualCount,
+    recentAttendanceChanges: (recentAttendanceRows ?? []).map((r) => ({
+      memberName: attendanceMemberNameMap.get(r.member_id) ?? "알 수 없음",
+      status: r.status,
+      updatedAt: r.updated_at,
+    })),
+    hasMatchRecords: (recentMatches ?? []).length > 0,
+    clubStatus: clubRow?.status ?? null,
+    clubSkinCustomized: (clubRow?.skin_key ?? "default") !== "default",
+    recentGamesCount: recentGamesCount ?? 0,
   };
 }
 
@@ -235,44 +315,104 @@ export default async function AdminPage({
   // ── E. 인증됨 + 클럽 선택 완료: 대시보드 ──────────────
   const data = await getAdminDashboardData(access.clubId ?? "");
 
-  // 카드 공통 스타일 (CSS 변수 기반 — skin 자동 적용)
-  const cardSurface: React.CSSProperties = {
-    background: "var(--admin-surface)",
-    border: "1px solid var(--admin-border)",
-  };
-  const cardDivider: React.CSSProperties = {
-    borderColor: "var(--admin-border)",
-  };
-
-  const quickActions = [
-    { href: "/admin/matches/create",          label: "매치 생성",     variant: "primary"    },
-    { href: "/admin/matches",                 label: "경기 관리",     variant: "emphasized" },
-    { href: "/admin/attendance",              label: "출석 관리",     variant: "emphasized" },
-    { href: "/admin/records",                 label: "기록 대시보드", variant: "standard"   },
-    { href: "/admin/members/new?type=member", label: "회원 등록",     variant: "standard"   },
-    { href: "/admin/guests",                  label: "게스트 관리",   variant: "standard"   },
-  ] as const;
-
-  function actionCardStyle(variant: "primary" | "emphasized" | "standard"): React.CSSProperties {
-    if (variant === "primary") {
-      return {
-        background: "var(--admin-accent-soft, rgba(212,255,61,0.08))",
-        border: "1px solid var(--admin-accent)",
-      };
-    }
-    if (variant === "emphasized") {
-      return {
-        background: "var(--admin-surface)",
-        border: "1px solid var(--admin-border)",
-        borderLeftWidth: "3px",
-        borderLeftColor: "var(--admin-accent)",
-      };
-    }
-    return {
-      background: "var(--admin-surface)",
-      border: "1px solid var(--admin-border)",
-    };
+  // ── Today / Attention ────────────────────────────────
+  const attentionItems: AdminActivityItem[] = [];
+  if (data.hasTodaySession) {
+    attentionItems.push({
+      id: "today-attend",
+      title: "오늘 출석",
+      meta: "출석 응답 현황",
+      trailing: `${data.todayAttending}명`,
+      href: "/admin/attendance",
+    });
+    attentionItems.push({
+      id: "today-match",
+      title: "오늘 경기",
+      meta: "오늘 세션에 기록된 경기",
+      trailing: `${data.todayMatchCount}경기`,
+      href: "/admin/matches",
+    });
   }
+  if (data.pendingLinkCount > 0) {
+    attentionItems.push({
+      id: "pending-link",
+      title: "카카오 연결 대기",
+      meta: "로그인은 했지만 회원 연결이 안 된 계정",
+      trailing: `${data.pendingLinkCount}명`,
+      href: "/admin/auth-link",
+      tone: "alert",
+    });
+  }
+  if (data.unlinkedAdminCount > 0) {
+    attentionItems.push({
+      id: "unlinked-admin",
+      title: "운영진 카카오 미연결",
+      meta: "권한은 있지만 카카오 로그인 연결이 안 된 운영진",
+      trailing: `${data.unlinkedAdminCount}명`,
+      href: "/admin/settings",
+      tone: "alert",
+    });
+  }
+  if (data.newMembersCount > 0) {
+    attentionItems.push({
+      id: "new-members",
+      title: "신규 회원 (최근 7일)",
+      meta: "최근 등록된 회원",
+      trailing: `${data.newMembersCount}명`,
+      tone: "achievement",
+    });
+  }
+
+  // ── Recent Activity ──────────────────────────────────
+  const recentMatchItems: AdminActivityItem[] = data.recentMatches.slice(0, 4).map((m) => ({
+    id: m.id,
+    title: `${m.winner_team}팀 승리`,
+    meta: m.played_at,
+    trailing: `${m.score_a}:${m.score_b}`,
+  }));
+
+  const recentMemberItems: AdminActivityItem[] = data.recentMembers.slice(0, 4).map((m) => ({
+    id: m.id,
+    title: m.name,
+    meta: `가입 · ${m.created_at.slice(0, 10)}`,
+  }));
+
+  const attendanceStatusLabel: Record<string, string> = { attending: "출석", absent: "불참", undecided: "미정" };
+  const recentAttendanceItems: AdminActivityItem[] = data.recentAttendanceChanges.slice(0, 4).map((a, idx) => ({
+    id: `${a.memberName}-${idx}`,
+    title: a.memberName,
+    meta: a.updatedAt.slice(0, 10),
+    trailing: attendanceStatusLabel[a.status] ?? a.status,
+  }));
+
+  // ── Club Status ───────────────────────────────────────
+  const clubStatusItems: AdminActivityItem[] = [
+    {
+      id: "club-status",
+      title: "클럽 운영 상태",
+      trailing: data.clubStatus === "active" ? "운영중" : (data.clubStatus ?? "확인 필요"),
+      tone: data.clubStatus === "active" ? "achievement" : "alert",
+    },
+    {
+      id: "owner-status",
+      title: "관리자 권한 상태",
+      trailing: data.hasOwner ? "Owner 등록됨" : "Owner 없음",
+      href: "/admin/settings",
+      tone: data.hasOwner ? "default" : "alert",
+    },
+    {
+      id: "skin-status",
+      title: "스킨 설정",
+      trailing: data.clubSkinCustomized ? "커스터마이즈됨" : "기본 스킨",
+    },
+    {
+      id: "records-status",
+      title: "랭킹/기록 활성 상태",
+      trailing: data.hasMatchRecords ? "기록 있음" : "기록 없음",
+      href: "/admin/records",
+      tone: data.hasMatchRecords ? "achievement" : "default",
+    },
+  ];
 
   return (
     <main className="px-4 pt-6 pb-10">
@@ -294,75 +434,74 @@ export default async function AdminPage({
         </section>
       )}
 
-      {/* ── 현황 ─────────────────────────────────────────────── */}
+      {/* ── A. 오늘 / 확인 필요 ──────────────────────────────── */}
       <section className="mb-5">
-        <p className="mb-2 text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--admin-muted)" }}>현황</p>
-        <div
-          className="overflow-hidden rounded-[var(--admin-card-radius,14px)]"
-          style={cardSurface}
-        >
-          <div className="grid grid-cols-2">
-            {/* 오늘 매치 */}
-            <div className="px-4 py-3.5" style={{ borderBottom: "1px solid var(--admin-border)", borderRight: "1px solid var(--admin-border)" }}>
-              <p className="font-score text-3xl font-bold tabular-nums" style={{ color: "var(--admin-achievement, #c9a84c)" }}>
-                {data.hasTodaySession ? data.todayAttending : "—"}
-              </p>
-              <p className="mt-0.5 text-[10px] font-semibold" style={{ color: "var(--admin-muted)" }}>오늘 출석</p>
-              {!data.hasTodaySession && (
-                <p className="text-[10px]" style={{ color: "var(--admin-muted)", opacity: 0.6 }}>세션 없음</p>
-              )}
-            </div>
-            {/* 최근 경기 */}
-            <div className="px-4 py-3.5" style={{ borderBottom: "1px solid var(--admin-border)" }}>
-              <p className="font-score text-3xl font-bold tabular-nums" style={{ color: "var(--admin-accent)" }}>
-                {data.recentMatches.length}
-              </p>
-              <p className="mt-0.5 text-[10px] font-semibold" style={{ color: "var(--admin-muted)" }}>최근 경기</p>
-              {data.recentMatches[0] && (
-                <p className="text-[10px]" style={{ color: "var(--admin-muted)", opacity: 0.6 }}>{data.recentMatches[0].played_at}</p>
-              )}
-            </div>
-            {/* 활동 회원 */}
-            <div className="px-4 py-3.5" style={{ borderRight: "1px solid var(--admin-border)" }}>
-              <p className="font-score text-3xl font-bold tabular-nums" style={{ color: "var(--admin-text)" }}>
-                {data.totalMembers}
-              </p>
-              <p className="mt-0.5 text-[10px] font-semibold" style={{ color: "var(--admin-muted)" }}>활동 회원</p>
-            </div>
-            {/* 운영진 */}
-            <div className="px-4 py-3.5">
-              <p className="font-score text-3xl font-bold tabular-nums" style={{ color: "var(--admin-text)", opacity: 0.65 }}>
-                {data.adminMembers}
-              </p>
-              <p className="mt-0.5 text-[10px] font-semibold" style={{ color: "var(--admin-muted)" }}>운영진</p>
-            </div>
-          </div>
-        </div>
+        <AdminSectionHeader title="오늘 · 확인 필요" />
+        <AdminActivityList items={attentionItems} emptyLabel="오늘 처리할 항목이 없어요." />
       </section>
 
-      {/* ── 빠른 실행 ─────────────────────────────────────────── */}
+      {/* ── B. 주요 지표 ─────────────────────────────────────── */}
       <section className="mb-5">
-        <p className="mb-2 text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--admin-muted)" }}>빠른 실행</p>
+        <AdminSectionHeader title="주요 지표" />
         <div className="grid grid-cols-2 gap-2">
-          {quickActions.map((item) => (
-            <Link key={item.href} href={item.href}>
-              <div
-                className="min-h-[44px] overflow-hidden rounded-[var(--admin-card-radius,14px)] px-4 py-3 transition-opacity hover:opacity-80"
-                style={actionCardStyle(item.variant)}
-              >
-                <p className="text-sm font-semibold" style={{ color: "var(--admin-text)" }}>{item.label}</p>
-              </div>
-            </Link>
-          ))}
+          <AdminMetricCard label="전체 회원" value={data.totalMembers} variant="default" href="/admin/records/players" />
+          <AdminMetricCard label="활성 회원" value={data.activeMembers} sub="휴면 제외" variant="emphasized" />
+          <AdminMetricCard
+            label="진행 중 경기"
+            value={data.ongoingSessions}
+            variant={data.ongoingSessions > 0 ? "actionable" : "default"}
+            href="/admin/attendance"
+          />
+          <AdminMetricCard
+            label="최근 7일 경기"
+            value={data.recentGamesCount}
+            variant={data.recentGamesCount > 0 ? "achievement" : "default"}
+            href="/admin/records"
+          />
         </div>
       </section>
 
-      {/* ── 관리 ─────────────────────────────────────────────── */}
+      {/* ── C. 빠른 실행 ─────────────────────────────────────── */}
+      <section className="mb-5">
+        <AdminSectionHeader title="빠른 실행" />
+        <div className="grid grid-cols-2 gap-2">
+          <AdminQuickAction href="/admin/members/new?type=member" label="회원 등록" variant="actionable" />
+          <AdminQuickAction href="/admin/matches/create" label="경기 생성" variant="actionable" />
+          <AdminQuickAction href="/admin/attendance" label="출석 관리" variant="emphasized" />
+          {isOwner && <AdminQuickAction href="/members/import" label="회원명단 가져오기" variant="emphasized" />}
+          <AdminQuickAction href="/admin/matches" label="경기 관리" variant="default" />
+          <AdminQuickAction href="/admin/records" label="기록 대시보드" variant="default" />
+          <AdminQuickAction href="/admin/guests" label="게스트 관리" variant="default" />
+          <AdminQuickAction href="/admin/auth-link" label="회원 연결" variant="default" />
+        </div>
+      </section>
+
+      {/* ── D. 최근 활동 ─────────────────────────────────────── */}
+      <section className="mb-5">
+        <AdminSectionHeader title="최근 경기" />
+        <AdminActivityList items={recentMatchItems} emptyLabel="아직 기록된 경기가 없어요." />
+      </section>
+      <section className="mb-5">
+        <AdminSectionHeader title="최근 회원 등록" />
+        <AdminActivityList items={recentMemberItems} emptyLabel="최근 등록된 회원이 없어요." />
+      </section>
+      <section className="mb-5">
+        <AdminSectionHeader title="최근 출석 변화" />
+        <AdminActivityList items={recentAttendanceItems} emptyLabel="최근 출석 변화가 없어요." />
+      </section>
+
+      {/* ── E. 클럽 상태 ─────────────────────────────────────── */}
       <section className="mb-6">
-        <p className="mb-2 text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--admin-muted)" }}>관리</p>
+        <AdminSectionHeader title="클럽 상태" />
+        <AdminActivityList items={clubStatusItems} emptyLabel="확인할 상태가 없어요." />
+      </section>
+
+      {/* ── 관리 서브페이지 ──────────────────────────────────── */}
+      <section className="mb-6">
+        <AdminSectionHeader title="관리" />
         <div
           className="overflow-hidden rounded-[var(--admin-card-radius,14px)]"
-          style={cardSurface}
+          style={{ background: "var(--admin-surface)", border: "1px solid var(--admin-border)" }}
         >
           {[
             { href: "/admin/records/players",    label: "선수 기록 분석",     sub: "참여도 · 승률 · 출석 체크율" },

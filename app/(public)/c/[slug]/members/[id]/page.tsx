@@ -78,11 +78,11 @@ export default async function ClubMemberDetailPage({ params }: Props) {
 
   const [recentMatches, recentAttendance, attendanceRate, recentPointHistory, recentPartners] =
     await Promise.all([
-      fetchMemberRecentMatches(typedMember.id),
-      fetchMemberRecentAttendance(typedMember.id),
-      fetchMemberAttendanceRate(typedMember.id),
-      fetchMemberRecentPointHistory(typedMember.id),
-      fetchMemberRecentPartners(typedMember.id),
+      fetchMemberRecentMatches(typedMember.id, clubId),
+      fetchMemberRecentAttendance(typedMember.id, clubId),
+      fetchMemberAttendanceRate(typedMember.id, clubId),
+      fetchMemberRecentPointHistory(typedMember.id, clubId),
+      fetchMemberRecentPartners(typedMember.id, clubId),
     ]);
 
   const returnPath = `/c/${slug}/members`;

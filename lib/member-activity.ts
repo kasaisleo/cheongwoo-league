@@ -1,7 +1,42 @@
 import { createClient } from "@/lib/supabase/server";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { MATCH_SELECT_WITH_PLAYERS, toDisplayMatches, type DisplayMatch } from "@/lib/match-display";
 import { LEAGUE_POINT_WIN } from "@/lib/match-engine";
 import type { AttendanceStatus, SessionDay, SessionStatus } from "@/lib/supabase/database.types";
+
+/**
+ * 이 파일의 모든 export 함수는 clubId를 필수 파라미터로 받는다 (TS 레벨 강제).
+ * attendance/point_history 테이블에는 club_id 컬럼이 없으므로:
+ *   - attendance는 attendance_sessions(club_id 보유)를 먼저 club 범위로 조회해
+ *     session_id 집합을 얻은 뒤 그 집합으로만 scope한다.
+ *   - point_history는 club 범위 컬럼이 아예 없어, memberId가 clubId 소속인지
+ *     검증하는 것으로 scope를 대신한다.
+ * 호출자가 넘긴 clubId/memberId를 신뢰하지 않고, 매 함수 진입 시
+ * verifyMemberInClub()으로 memberId가 실제로 그 club 소속인지 재검증한다 —
+ * 검증 실패 시 빈 결과(또는 rate 0)를 반환해 다른 club 데이터가 새지 않는다.
+ */
+async function verifyMemberInClub(
+  supabase: SupabaseClient,
+  memberId: string,
+  clubId: string
+): Promise<boolean> {
+  const { data } = await supabase
+    .from("members")
+    .select("id")
+    .eq("id", memberId)
+    .eq("club_id", clubId)
+    .maybeSingle();
+  return data !== null;
+}
+
+/** clubId 소속 attendance_sessions의 id 목록. attendance는 이 집합으로만 scope한다. */
+async function fetchClubSessionIds(supabase: SupabaseClient, clubId: string): Promise<string[]> {
+  const { data } = await supabase
+    .from("attendance_sessions")
+    .select("id")
+    .eq("club_id", clubId);
+  return (data ?? []).map((s: { id: string }) => s.id);
+}
 
 const RECENT_MATCH_LIMIT = 5;
 const RECENT_ATTENDANCE_LIMIT = 5;
@@ -138,9 +173,11 @@ function summarizeMatchForMember(match: DisplayMatch, memberId: string): MemberM
  */
 export async function fetchMemberRecentMatches(
   memberId: string,
+  clubId: string,
   limit: number = RECENT_MATCH_LIMIT
 ): Promise<MemberMatchSummary[]> {
   const supabase = createClient();
+  if (!(await verifyMemberInClub(supabase, memberId, clubId))) return [];
 
   // 같은 회원이 양쪽 슬롯에 중복으로 들어간 데이터 오류 건이 필터링될 수 있으므로,
   // 요청한 개수보다 여유 있게 가져온 뒤 정확히 limit개로 자른다.
@@ -149,6 +186,7 @@ export async function fetchMemberRecentMatches(
   const { data } = await supabase
     .from("matches")
     .select(MATCH_SELECT_WITH_PLAYERS)
+    .eq("club_id", clubId)
     .or(
       `team_a_player1_member.eq.${memberId},team_a_player2_member.eq.${memberId},team_b_player1_member.eq.${memberId},team_b_player2_member.eq.${memberId}`
     )
@@ -175,18 +213,30 @@ export async function fetchMemberRecentMatches(
  */
 export async function fetchMemberRecentAttendance(
   memberId: string,
+  clubId: string,
   limit: number = RECENT_ATTENDANCE_LIMIT
 ): Promise<MemberAttendanceSummary[]> {
   const supabase = createClient();
+  if (!(await verifyMemberInClub(supabase, memberId, clubId))) return [];
+
+  // attendance에는 club_id가 없으므로, club 소속 session 메타(attendance_sessions)를
+  // 먼저 가져와 session_id 집합 + 세션 정보 맵을 만든 뒤 그 집합으로만 attendance를 조회한다.
+  const { data: sessions } = await supabase
+    .from("attendance_sessions")
+    .select("id, session_date, session_day, title, status")
+    .eq("club_id", clubId);
+  const sessionMap = new Map(
+    (sessions ?? []).map((s) => [s.id, { session_date: s.session_date, session_day: s.session_day as SessionDay, title: s.title, status: s.status as SessionStatus }])
+  );
+  const clubSessionIds = [...sessionMap.keys()];
+  if (clubSessionIds.length === 0) return [];
 
   const { data } = await supabase
     .from("attendance")
-    .select(
-      `id, status, event_date,
-       session:attendance_sessions!attendance_session_id_fkey(session_date, session_day, title, status)`
-    )
+    .select("id, status, event_date, session_id")
     .eq("member_id", memberId)
     .eq("status", "attending")
+    .in("session_id", clubSessionIds)
     .order("event_date", { ascending: false })
     .limit(limit);
 
@@ -194,30 +244,39 @@ export async function fetchMemberRecentAttendance(
     id: string;
     status: AttendanceStatus;
     event_date: string;
-    session: { session_date: string; session_day: SessionDay; title: string; status: SessionStatus } | null;
+    session_id: string | null;
   };
 
-  return ((data ?? []) as unknown as RawRow[]).map((row) => ({
-    id: row.id,
-    sessionDate: row.session?.session_date ?? row.event_date,
-    sessionDay: row.session?.session_day ?? null,
-    sessionTitle: row.session?.title ?? null,
-    sessionStatus: row.session?.status ?? null,
-    status: row.status,
-  }));
+  return ((data ?? []) as RawRow[]).map((row) => {
+    const session = row.session_id ? sessionMap.get(row.session_id) : undefined;
+    return {
+      id: row.id,
+      sessionDate: session?.session_date ?? row.event_date,
+      sessionDay: session?.session_day ?? null,
+      sessionTitle: session?.title ?? null,
+      sessionStatus: session?.status ?? null,
+      status: row.status,
+    };
+  });
 }
 
 /**
  * 전체 출석률과 최근 N회 출석률을 계산한다. attendance 테이블 기준으로,
  * status='attending'인 비율을 사용한다(미정/불참은 출석으로 치지 않음).
  */
-export async function fetchMemberAttendanceRate(memberId: string): Promise<AttendanceRateSummary> {
+export async function fetchMemberAttendanceRate(memberId: string, clubId: string): Promise<AttendanceRateSummary> {
   const supabase = createClient();
+  const empty: AttendanceRateSummary = { overallRate: null, recentRate: null, overallCount: 0, recentSampleSize: 0 };
+  if (!(await verifyMemberInClub(supabase, memberId, clubId))) return empty;
+
+  const clubSessionIds = await fetchClubSessionIds(supabase, clubId);
+  if (clubSessionIds.length === 0) return empty;
 
   const { data } = await supabase
     .from("attendance")
     .select("status, event_date")
     .eq("member_id", memberId)
+    .in("session_id", clubSessionIds)
     .order("event_date", { ascending: false });
 
   const rows = data ?? [];
@@ -236,9 +295,12 @@ export async function fetchMemberAttendanceRate(memberId: string): Promise<Atten
 /** 회원의 최근 LP 변동 내역 N건. */
 export async function fetchMemberRecentPointHistory(
   memberId: string,
+  clubId: string,
   limit: number = RECENT_POINT_HISTORY_LIMIT
 ): Promise<MemberPointHistoryEntry[]> {
   const supabase = createClient();
+  // point_history에는 club 범위 컬럼이 없어, memberId가 clubId 소속인지 검증하는 것으로 scope한다.
+  if (!(await verifyMemberInClub(supabase, memberId, clubId))) return [];
 
   const { data } = await supabase
     .from("point_history")
@@ -263,9 +325,10 @@ export async function fetchMemberRecentPointHistory(
  */
 export async function fetchMemberRecentPartners(
   memberId: string,
+  clubId: string,
   limit: number = RECENT_PARTNER_LIMIT
 ): Promise<MemberPartnerSummary[]> {
-  const recentMatches = await fetchMemberRecentMatches(memberId, PARTNER_AGGREGATION_MATCH_LIMIT);
+  const recentMatches = await fetchMemberRecentMatches(memberId, clubId, PARTNER_AGGREGATION_MATCH_LIMIT);
 
   const countByPartner = new Map<string, MemberPartnerSummary>();
 

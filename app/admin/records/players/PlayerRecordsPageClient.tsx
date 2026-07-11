@@ -180,13 +180,22 @@ export default function PlayerRecordsPageClient({ currentClubId }: { currentClub
   useEffect(() => {
     async function load() {
       const today = new Date().toISOString().slice(0, 10);
+
+      // attendance_sessions가 club_id를 가진 부모 리소스이므로, attendance(club_id 없음)는
+      // 이 club 소속 session_id 집합으로만 scope한다 — 타 club row가 섞이지 않도록 한다.
+      const { data: sessions } = await supabase
+        .from("attendance_sessions").select("id, session_date, status")
+        .eq("club_id", currentClubId).neq("status", "archived");
+      const clubSessionIds = (sessions ?? []).map((s) => s.id);
+
       const [
-        { data: sessions }, { data: matches },
+        { data: matches },
         { data: attendanceRows }, { data: members }, { data: guests },
       ] = await Promise.all([
-        supabase.from("attendance_sessions").select("id, session_date, status").eq("club_id", currentClubId).neq("status", "archived"),
         supabase.from("matches").select("*").eq("club_id", currentClubId),
-        supabase.from("attendance").select("session_id, member_id, status"),
+        clubSessionIds.length > 0
+          ? supabase.from("attendance").select("session_id, member_id, status").in("session_id", clubSessionIds)
+          : Promise.resolve({ data: [] as { session_id: string | null; member_id: string; status: string }[] }),
         supabase.from("members").select("id, name, member_type, league_point").eq("is_active", true).eq("club_id", currentClubId),
         supabase.from("guests").select("id, name").eq("is_active", true).eq("club_id", currentClubId).is("converted_to_member_id", null),
       ]);

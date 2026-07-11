@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { getAdminAccessServer } from "@/lib/admin-permissions";
 import type { AttendanceStatus } from "@/lib/supabase/database.types";
-import { getCurrentClubId } from "@/lib/current-club";
 
 interface AdminUpdateAttendanceBody {
   memberId: string;
@@ -27,6 +26,11 @@ export async function POST(request: NextRequest) {
   const access = await getAdminAccessServer();
   if (!access.kakaoIsAdmin) return Response.json({ error: "관리자 권한이 필요합니다." }, { status: 403 });
 
+  const currentClubId = access.clubId;
+  if (!currentClubId) {
+    return NextResponse.json({ error: "관리 클럽 context가 없습니다. /admin에서 클럽을 선택해주세요." }, { status: 400 });
+  }
+
   const body = (await request.json()) as AdminUpdateAttendanceBody;
   const { memberId, sessionId, status } = body;
 
@@ -38,7 +42,19 @@ export async function POST(request: NextRequest) {
   }
 
   const supabase = createServiceClient();
-  const currentClubId = await getCurrentClubId();
+
+  // service role은 RLS를 우회하므로, session이 access.clubId 소속인지 명시적으로 검증한다.
+  // memberId도 같은 club 소속인지 함께 확인해 cross-club upsert를 차단한다.
+  const { data: member, error: memberError } = await supabase
+    .from("members")
+    .select("id")
+    .eq("id", memberId)
+    .eq("club_id", currentClubId)
+    .maybeSingle();
+
+  if (memberError || !member) {
+    return NextResponse.json({ error: "회원을 찾을 수 없습니다." }, { status: 404 });
+  }
 
   const { data: session, error: sessionError } = await supabase
     .from("attendance_sessions")
