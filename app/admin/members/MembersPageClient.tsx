@@ -3,9 +3,10 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
+import { deriveMemberStatus, type AdminMemberStatus } from "@/lib/admin-member-status";
 import type { AdminMemberRow } from "./page";
 
-type ActiveFilter = "all" | "active" | "inactive";
+type ActiveFilter = "all" | "active" | "dormant" | "withdrawn";
 type KakaoFilter = "all" | "linked" | "unlinked";
 type RoleFilter = "all" | "master" | "admin" | "manager" | "member" | "scorer";
 type SortOption = "name" | "created_asc" | "created_desc";
@@ -14,7 +15,7 @@ const ROLE_LABEL: Record<string, string> = {
   master: "Master", admin: "Admin", manager: "Manager", member: "Member", scorer: "Scorer",
 };
 
-const FILTER_LABEL_ACTIVE: Record<ActiveFilter, string> = { all: "전체", active: "활성", inactive: "비활성" };
+const FILTER_LABEL_ACTIVE: Record<ActiveFilter, string> = { all: "전체", active: "활동", dormant: "휴면", withdrawn: "탈퇴" };
 const FILTER_LABEL_KAKAO: Record<KakaoFilter, string> = { all: "전체", linked: "연결됨", unlinked: "미연결" };
 // created_at은 row 생성 시각일 뿐 별도 "가입일" 컬럼이 없어 문구를 등록 기준으로 명확히 한다.
 const SORT_LABEL: Record<SortOption, string> = { name: "이름순", created_asc: "오래된 등록순", created_desc: "최근등록순" };
@@ -23,15 +24,6 @@ function chipStyle(active: boolean): React.CSSProperties {
   return active
     ? { background: "var(--admin-accent-soft)", border: "1px solid var(--admin-accent)", color: "var(--admin-accent)" }
     : { background: "var(--admin-surface)", border: "1px solid var(--admin-border)", color: "var(--admin-muted)" };
-}
-
-/**
- * 실제 데이터 감사(2026-07) 결과 is_active=false인데 deleted_at=null인 row가 존재한다
- * (반대 조합은 없었음). 두 값이 불일치해도 항상 "비활성" 쪽으로 안전하게 처리한다 —
- * is_active만 보고 활성으로 잘못 표시하지 않기 위함.
- */
-function isEffectivelyActive(member: AdminMemberRow): boolean {
-  return member.is_active && !member.deleted_at;
 }
 
 export function MembersPageClient({ members }: { members: AdminMemberRow[] }) {
@@ -48,7 +40,7 @@ export function MembersPageClient({ members }: { members: AdminMemberRow[] }) {
         m.name.toLowerCase().includes(q) ||
         m.nickname.toLowerCase().includes(q) ||
         (m.phone ?? "").includes(q);
-      const matchesActive = activeFilter === "all" || (activeFilter === "active" ? isEffectivelyActive(m) : !isEffectivelyActive(m));
+      const matchesActive = activeFilter === "all" || deriveMemberStatus(m.is_active, m.deleted_at) === activeFilter;
       // auth_user_id를 source of truth로 쓴다 — is_kakao_linked는 실제 데이터에서 auth_user_id와
       // 어긋나는 row가 있어(연결은 됐는데 플래그만 false) 신뢰하지 않는다.
       const matchesKakao = kakaoFilter === "all" || (kakaoFilter === "linked" ? !!m.auth_user_id : !m.auth_user_id);
@@ -151,14 +143,16 @@ export function MembersPageClient({ members }: { members: AdminMemberRow[] }) {
   );
 }
 
+const STATUS_BADGE_LABEL: Record<AdminMemberStatus, string> = { active: "활동", dormant: "휴면", withdrawn: "탈퇴" };
+
 function MemberRow({ member, isLast }: { member: AdminMemberRow; isLast: boolean }) {
   const isLinked = !!member.auth_user_id;
-  const isActive = isEffectivelyActive(member);
+  const status = deriveMemberStatus(member.is_active, member.deleted_at);
   const isElevatedRole = !!member.permission_role && member.permission_role !== "member";
   const createdDate = member.created_at.slice(0, 10);
 
   return (
-    <Link href={`/admin/records/players/member/${member.id}`}>
+    <Link href={`/admin/members/${member.id}`}>
       <div
         className="flex items-center justify-between gap-3 px-4 py-3 transition-colors hover:bg-[color:var(--admin-surface-raised,var(--admin-surface))]"
         style={isLast ? undefined : { borderBottom: "1px solid var(--admin-border)" }}
@@ -199,13 +193,13 @@ function MemberRow({ member, isLast }: { member: AdminMemberRow; isLast: boolean
                 카카오 미연결
               </span>
             )}
-            {!isActive && (
+            {status !== "active" && (
               <span className="rounded-sm px-1.5 py-0.5 text-[9px] font-semibold" style={{
                 background: "var(--admin-alert-soft)",
                 border: "1px solid var(--admin-alert)",
                 color: "var(--admin-alert)",
               }}>
-                비활성
+                {STATUS_BADGE_LABEL[status]}
               </span>
             )}
             {member.is_dormant && (

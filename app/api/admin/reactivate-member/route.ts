@@ -5,9 +5,13 @@ import { getAdminAccessServer } from "@/lib/admin-permissions";
 /**
  * POST /api/admin/reactivate-member
  *
- * 비활성화(is_active=false 또는 deleted_at 설정)된 회원을 활동 상태로 되돌린다.
- * members.is_active = true, deleted_at = null 로만 업데이트한다 —
- * 카카오 연결(auth_user_id)·경기·출석·포인트 기록은 건드리지 않는다.
+ * 휴면 회원(is_active=false, deleted_at=null)만 활동 상태로 되돌린다.
+ * members.is_active = true 로만 업데이트한다 — deleted_at은 이 API에서 절대
+ * 건드리지 않는다(애초에 null인 휴면 회원만 대상이라 만질 필요가 없다).
+ * 카카오 연결(auth_user_id)·경기·출석·포인트 기록도 건드리지 않는다.
+ *
+ * 탈퇴 회원(deleted_at IS NOT NULL)은 이 API로 복구할 수 없다 — 휴면과 탈퇴는
+ * 서로 다른 상태이며, 탈퇴 회원의 deleted_at을 이 API가 null로 되돌리지 않는다.
  *
  * 보안:
  *   - request body의 club_id는 절대 신뢰하지 않는다. access.clubId만 사용.
@@ -42,15 +46,23 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "회원을 찾을 수 없습니다." }, { status: 404 });
   }
 
-  if (member.is_active && !member.deleted_at) {
+  // 탈퇴 회원은 이 API의 대상이 아니다 — 휴면과 탈퇴는 다른 상태다.
+  if (member.deleted_at) {
+    return NextResponse.json({ error: "탈퇴 처리된 회원은 이 기능으로 복구할 수 없습니다." }, { status: 409 });
+  }
+
+  if (member.is_active) {
     return NextResponse.json({ error: "이미 활동 중인 회원입니다." }, { status: 400 });
   }
 
   const { error: updateError } = await supabase
     .from("members")
-    .update({ is_active: true, deleted_at: null })
+    .update({ is_active: true })
     .eq("id", memberId)
-    .eq("club_id", clubId);
+    .eq("club_id", clubId)
+    // 동시성 방어: 업데이트 시점에 다시 한 번 deleted_at IS NULL을 강제해
+    // 탈퇴 회원 row가 어떤 경로로도 이 API로 되살아나지 않게 한다.
+    .is("deleted_at", null);
 
   if (updateError) {
     return NextResponse.json({ error: "복구에 실패했습니다." }, { status: 500 });
