@@ -368,6 +368,18 @@ export function ClubRegistryPageClient({ clubs: initial, isOwner }: Props) {
                     Detail
                   </button>
                 </Link>
+                {club.status === "active" && (
+                  <a
+                    href={`/c/${club.slug}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ textDecoration: "none" }}
+                  >
+                    <button className="cr-btn-ghost" style={{ color: "rgba(134,239,172,0.7)", borderColor: "rgba(134,239,172,0.22)" }}>
+                      CLUB HOME ↗
+                    </button>
+                  </a>
+                )}
                 <button className="cr-btn-ops" onClick={() => openOperators(club)} disabled={busy}>
                   Operators
                 </button>

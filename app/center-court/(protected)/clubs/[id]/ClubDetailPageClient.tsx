@@ -123,6 +123,9 @@ export function ClubDetailPageClient({ club: initial, members, audit, matchStats
     if (ok) {
       showToast("클럽 정보가 수정되었습니다.", true);
       setEditing(false);
+      // Recent Activity(audit) 위젯은 서버 컴포넌트 prop이라 router.refresh()로
+      // 다시 렌더해야 새 로그가 새로고침 없이 보인다 — handleStatusChange와 동일 패턴.
+      router.refresh();
     }
   }
 

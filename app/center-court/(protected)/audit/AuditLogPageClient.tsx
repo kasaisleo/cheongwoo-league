@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import type { AuditLogRow } from "./page";
 
 /* ── design tokens ─────────────────────────────────────── */
@@ -71,11 +71,13 @@ export function AuditLogPageClient({ initialLogs, dbError }: { initialLogs: Audi
   const [hasMore, setHasMore]   = useState(initialLogs.length === 50);
   const [filterAction, setFilterAction] = useState<string>("");
   const [expandedId, setExpandedId]     = useState<string | null>(null);
+  const [fetchError, setFetchError]     = useState<string | null>(null);
 
   /* ── load more ─────────────────────────────────────── */
   const loadMore = useCallback(async () => {
     if (loading || !hasMore) return;
     setLoading(true);
+    setFetchError(null);
     const last = logs[logs.length - 1];
     const url = new URL("/api/platform/audit-logs", window.location.origin);
     url.searchParams.set("limit", "50");
@@ -88,7 +90,11 @@ export function AuditLogPageClient({ initialLogs, dbError }: { initialLogs: Audi
         const next: AuditLogRow[] = json.logs ?? [];
         setLogs(prev => [...prev, ...next]);
         setHasMore(next.length === 50);
+      } else {
+        setFetchError("추가 로그를 불러오지 못했습니다.");
       }
+    } catch {
+      setFetchError("추가 로그를 불러오지 못했습니다.");
     } finally { setLoading(false); }
   }, [loading, hasMore, logs, filterAction]);
 
@@ -96,6 +102,7 @@ export function AuditLogPageClient({ initialLogs, dbError }: { initialLogs: Audi
   const applyFilter = useCallback(async (action: string) => {
     setFilterAction(action);
     setLoading(true);
+    setFetchError(null);
     setExpandedId(null);
     const url = new URL("/api/platform/audit-logs", window.location.origin);
     url.searchParams.set("limit", "50");
@@ -107,13 +114,18 @@ export function AuditLogPageClient({ initialLogs, dbError }: { initialLogs: Audi
         const next: AuditLogRow[] = json.logs ?? [];
         setLogs(next);
         setHasMore(next.length === 50);
+      } else {
+        setFetchError("감사 로그를 불러오지 못했습니다.");
       }
+    } catch {
+      setFetchError("감사 로그를 불러오지 못했습니다.");
     } finally { setLoading(false); }
   }, []);
 
   /* ── refresh ────────────────────────────────────────── */
   const refresh = useCallback(async () => {
     setLoading(true);
+    setFetchError(null);
     setExpandedId(null);
     const url = new URL("/api/platform/audit-logs", window.location.origin);
     url.searchParams.set("limit", "50");
@@ -124,14 +136,35 @@ export function AuditLogPageClient({ initialLogs, dbError }: { initialLogs: Audi
         const json = await res.json();
         setLogs(json.logs ?? []);
         setHasMore((json.logs ?? []).length === 50);
+      } else {
+        setFetchError("감사 로그를 불러오지 못했습니다.");
       }
+    } catch {
+      setFetchError("감사 로그를 불러오지 못했습니다.");
     } finally { setLoading(false); }
   }, [filterAction]);
+
+  /* ── mount-time refresh ────────────────────────────────
+   * initialLogs는 서버 렌더 시점 스냅샷이다. 이 페이지를 다시 방문했을 때
+   * (다른 화면에서 mutation을 하고 돌아온 경우 포함) 새로고침 없이 항상
+   * 최신 상태를 보장하기 위해 마운트 시 한 번 더 조회한다. 필터가 없는
+   * 상태에서만 동작 — 최초 진입은 항상 "All" 탭이므로 안전하다. */
+  const didMountRefresh = useRef(false);
+  useEffect(() => {
+    if (didMountRefresh.current) return;
+    didMountRefresh.current = true;
+    void refresh();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <>
       <style>{`
-        .al-row { transition: background 0.10s; }
+        @keyframes al-row-in {
+          from { opacity: 0; transform: translateY(-4px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        .al-row { transition: background 0.10s; animation: al-row-in 0.18s ease-out; }
         .al-row:hover { background: rgba(245,240,232,0.025); }
         .al-filter-btn {
           padding: 3px 10px; border-radius: 5px; font-size: 9px;
@@ -161,7 +194,7 @@ export function AuditLogPageClient({ initialLogs, dbError }: { initialLogs: Audi
         .al-refresh-btn:hover:not(:disabled) { background: rgba(245,240,232,0.06); color: #f0ebe0; }
         .al-refresh-btn:disabled { opacity: 0.3; cursor: not-allowed; }
         @media (prefers-reduced-motion: reduce) {
-          .al-row { transition: none !important; }
+          .al-row { transition: none !important; animation: none !important; }
           .al-filter-btn, .al-load-btn, .al-refresh-btn { transition: none !important; }
         }
       `}</style>
@@ -181,6 +214,17 @@ export function AuditLogPageClient({ initialLogs, dbError }: { initialLogs: Audi
           <span style={{ color: "rgba(252,165,165,0.55)", fontSize: 9.5 }}>
             Vercel 로그에서 <code>[audit-page] getInitialLogs</code> 키워드로 상세 오류를 확인하세요.
           </span>
+        </div>
+      )}
+
+      {/* ── live fetch error banner (refresh/filter/loadMore 실패) ── */}
+      {fetchError && !dbError && (
+        <div style={{
+          borderRadius: 10, border: "1px solid rgba(252,165,165,0.30)",
+          background: "rgba(50,10,10,0.85)", padding: "10px 16px",
+          marginBottom: 20, color: C.red, fontSize: 11, lineHeight: 1.5,
+        }}>
+          {fetchError}
         </div>
       )}
 
