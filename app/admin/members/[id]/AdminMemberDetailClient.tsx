@@ -164,6 +164,10 @@ export function AdminMemberDetailClient({ member, isOwner }: Props) {
             { label: "직책", value: member.role ?? "—" },
             { label: "메모", value: member.memo ?? "—" },
             { label: "등록일", value: member.created_at.slice(0, 10) },
+            // is_dormant — 회원 상태(활동/휴면/탈퇴)와는 다른 축이라 "휴면"이라는 말을
+            // 쓰지 않는다("Admin Members 활동 제외 라벨 정리" 정책). 기본정보에 두어
+            // 상태 섹션의 활동/휴면/탈퇴와 시각적으로 분리한다.
+            { label: "활동 제외", value: member.is_dormant ? "예" : "아니오" },
           ].map((row, idx, arr) => (
             <div key={row.label} className="flex items-center justify-between gap-3 px-4 py-2.5"
               style={idx < arr.length - 1 ? { borderBottom: "1px solid var(--admin-border)" } : undefined}>
@@ -171,6 +175,11 @@ export function AdminMemberDetailClient({ member, isOwner }: Props) {
               <span className="text-sm" style={{ color: "var(--admin-text)" }}>{row.value}</span>
             </div>
           ))}
+          {member.is_dormant && (
+            <p className="px-4 pb-3 text-[11px]" style={{ color: "var(--admin-muted)" }}>
+              회원 자격과 기록은 유지하되 신규 활동 대상에서 제외됩니다.
+            </p>
+          )}
           <div className="px-4 py-3" style={{ borderTop: "1px solid var(--admin-border)" }}>
             <button type="button" onClick={() => setEditing(true)}
               className="h-9 w-full rounded-[var(--admin-button-radius,6px)] text-xs font-semibold transition-colors"

@@ -26,7 +26,7 @@ export type MemberDormantFilter = "all" | "active" | "dormant";
 export const MEMBER_DORMANT_FILTER_OPTIONS: { value: MemberDormantFilter; label: string }[] = [
   { value: "all", label: "전체" },
   { value: "active", label: "활동" },
-  { value: "dormant", label: "휴면" },
+  { value: "dormant", label: "활동 제외" },
 ];
 
 /**

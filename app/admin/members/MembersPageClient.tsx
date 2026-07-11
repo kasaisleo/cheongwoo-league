@@ -208,7 +208,7 @@ function MemberRow({ member, isLast }: { member: AdminMemberRow; isLast: boolean
                 border: "1px solid var(--admin-border)",
                 color: "var(--admin-muted)",
               }}>
-                휴면
+                활동 제외
               </span>
             )}
           </div>

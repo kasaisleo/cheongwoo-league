@@ -217,7 +217,7 @@ export function MemberList({ members, slug }: MemberListProps) {
                       )}
                       {member.is_dormant && (
                         <span className="shrink-0 rounded-sm bg-line-200 px-1.5 py-0.5 text-[9px] font-semibold text-line-500">
-                          휴면
+                          활동 제외
                         </span>
                       )}
                     </div>

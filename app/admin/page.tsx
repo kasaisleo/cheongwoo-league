@@ -446,7 +446,7 @@ export default async function AdminPage({
         <AdminSectionHeader title="주요 지표" />
         <div className="grid grid-cols-2 gap-2">
           <AdminMetricCard label="전체 회원" value={data.totalMembers} variant="default" href="/admin/records/players" />
-          <AdminMetricCard label="활성 회원" value={data.activeMembers} sub="휴면 제외" variant="emphasized" />
+          <AdminMetricCard label="활성 회원" value={data.activeMembers} sub="활동 제외 회원 미포함" variant="emphasized" />
           <AdminMetricCard
             label="진행 중 경기"
             value={data.ongoingSessions}

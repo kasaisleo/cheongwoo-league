@@ -242,14 +242,16 @@ export function MemberForm({
         </div>
       )}
 
-      {/* ── 회원 상태 (edit만) ───────────────────────────── */}
+      {/* ── 활동 제외 여부 (edit만) ─────────────────────────
+          is_dormant — 회원 상태(활동/휴면/탈퇴)와는 다른 축이라 "휴면"이라는
+          말을 쓰지 않는다("Admin Members 활동 제외 라벨 정리" 정책). */}
       {mode === "edit" && showStatus && (
         <div>
-          <label className={labelCls}>회원 상태</label>
+          <label className={labelCls}>활동 제외 여부</label>
           <div className="flex gap-2">
             {[
               { val: false, label: "활동" },
-              { val: true,  label: "휴면" },
+              { val: true,  label: "활동 제외" },
             ].map(({ val, label }) => (
               <button
                 key={label}
@@ -266,7 +268,7 @@ export function MemberForm({
             ))}
           </div>
           <p className="mt-1 text-[11px] text-line-400">
-            휴면회원은 목록·랭킹에는 남지만 출석 체크·경기 등록 대상에서 제외됩니다.
+            회원 자격과 기록은 유지하되 신규 활동 대상에서 제외됩니다.
           </p>
         </div>
       )}

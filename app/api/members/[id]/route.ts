@@ -191,7 +191,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
   if (isDormant !== undefined) {
     if (typeof isDormant !== "boolean") {
-      return NextResponse.json({ error: "휴면 여부가 올바르지 않습니다." }, { status: 400 });
+      return NextResponse.json({ error: "활동 제외 여부가 올바르지 않습니다." }, { status: 400 });
     }
     updates.is_dormant = isDormant;
   }

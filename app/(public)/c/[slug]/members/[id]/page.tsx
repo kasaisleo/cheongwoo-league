@@ -136,7 +136,7 @@ export default async function ClubMemberDetailPage({ params }: Props) {
               )}
               {typedMember.is_dormant && (
                 <span className="rounded-full bg-line-200 px-2 py-0.5 text-[11px] font-semibold text-line-600">
-                  휴면
+                  활동 제외
                 </span>
               )}
             </div>
