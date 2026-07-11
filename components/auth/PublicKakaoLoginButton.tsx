@@ -1,24 +1,29 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type CSSProperties, type ReactNode } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { startPublicKakaoLogin } from "@/lib/auth/public-kakao-login";
 
 interface Props {
-  /** 로그인 완료 후 복귀할 내부 경로 (e.g. /c/namaste/mypage) */
-  returnUrl: string;
-  /** --club-button-radius CSS var 기반 radius */
-  style?: React.CSSProperties;
+  /** 로그인을 시작하는 클럽의 slug. 필수. */
+  clubSlug: string;
+  /** 로그인 완료 후 복귀할 내부 경로. 생략 시 `/c/${clubSlug}/mypage`. */
+  returnPath?: string;
+  style?: CSSProperties;
   className?: string;
+  /** 버튼 라벨. 생략 시 기본 문구("카카오로 로그인" / 로딩 중 "이동 중..."). */
+  children?: ReactNode;
 }
 
 /**
- * PublicKakaoLoginButton — 공개 회원 전용 직접 OAuth 버튼.
+ * PublicKakaoLoginButton — public 회원 전용 Kakao OAuth 시작 공통 컴포넌트.
  *
- * /login 중간 페이지를 거치지 않고 signInWithOAuth를 바로 호출한다.
- * callback은 기존 public /auth/callback을 사용.
- * admin /auth/admin-callback과 완전히 분리.
+ * 모든 public 로그인 진입점(헤더, mypage 게이트, /login, 출석 guest CTA)이
+ * 이 컴포넌트 하나만 쓴다. 클릭 즉시 signInWithOAuth를 호출한다 —
+ * 중간 페이지를 거치지 않는다. callback은 공통 public `/auth/callback` 고정.
+ * admin `/auth/admin-callback`과 완전히 분리.
  */
-export function PublicKakaoLoginButton({ returnUrl, style, className }: Props) {
+export function PublicKakaoLoginButton({ clubSlug, returnPath, style, className, children }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -28,19 +33,11 @@ export function PublicKakaoLoginButton({ returnUrl, style, className }: Props) {
     setError(null);
 
     const supabase = createClient();
-    const callbackUrl = `${window.location.origin}/auth/callback?returnUrl=${encodeURIComponent(returnUrl)}`;
+    const result = await startPublicKakaoLogin(supabase, { clubSlug, returnPath });
 
-    const { error: oauthError } = await supabase.auth.signInWithOAuth({
-      provider: "kakao",
-      options: {
-        redirectTo: callbackUrl,
-        scopes: "profile_nickname profile_image",
-      },
-    });
-
-    if (oauthError) {
+    if (result.error) {
       setLoading(false);
-      setError("카카오 로그인을 시작할 수 없습니다. 잠시 후 다시 시도해주세요.");
+      setError(result.error);
     }
     // 성공 시 카카오로 redirect되므로 loading은 자연히 유지됨
   }
@@ -57,7 +54,7 @@ export function PublicKakaoLoginButton({ returnUrl, style, className }: Props) {
         }
         style={style}
       >
-        {loading ? "이동 중..." : "카카오로 로그인"}
+        {children ?? (loading ? "이동 중..." : "카카오로 로그인")}
       </button>
       {error && <p className="mt-2 text-center text-xs text-fault-400">{error}</p>}
     </div>

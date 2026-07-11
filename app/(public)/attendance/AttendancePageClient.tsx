@@ -14,6 +14,7 @@ import { MemberAttendanceCard } from "@/components/attendance/MemberAttendanceCa
 import { getDisambiguatedName } from "@/lib/member-display";
 import { MATCH_SESSION_DAY_LABEL, fetchActiveSessions } from "@/lib/match-session-label";
 import { useAdminRole } from "@/lib/hooks/useAdminRole";
+import { PublicKakaoLoginButton } from "@/components/auth/PublicKakaoLoginButton";
 import type { AttendanceStatus, AttendanceSession, Member } from "@/lib/supabase/database.types";
 
 const MIN_REQUIRED_PLAYERS = 4;
@@ -28,7 +29,7 @@ interface MemberAttendance {
   attendanceId: string | null;
 }
 
-function AttendancePageInner({ currentClubId }: { currentClubId: string }) {
+function AttendancePageInner({ currentClubId, clubSlug }: { currentClubId: string; clubSlug: string }) {
   const searchParams = useSearchParams();
   const initialSessionId = searchParams.get("session_id");
   const supabase = useMemo(() => createClient(), []);
@@ -613,12 +614,11 @@ function AttendancePageInner({ currentClubId }: { currentClubId: string }) {
               <p className="text-sm text-line-600">
                 로그인하면 출석 신청과 명단 확인이 가능합니다.
               </p>
-              <a
-                href="/login"
-                className="mt-3 inline-block rounded-lg bg-[#FEE500] px-5 py-2 text-sm font-bold text-[#191600]"
-              >
-                카카오 로그인
-              </a>
+              <PublicKakaoLoginButton
+                clubSlug={clubSlug}
+                returnPath={`/c/${clubSlug}/attendance`}
+                className="mt-3 inline-flex items-center justify-center rounded-lg bg-[#FEE500] px-5 py-2 text-sm font-bold text-[#191600] transition-opacity hover:opacity-90 disabled:opacity-50"
+              />
             </Card>
           )}
 
@@ -746,10 +746,10 @@ function AttendancePageInner({ currentClubId }: { currentClubId: string }) {
   );
 }
 
-export default function AttendancePageClient({ currentClubId }: { currentClubId: string }) {
+export default function AttendancePageClient({ currentClubId, clubSlug }: { currentClubId: string; clubSlug: string }) {
   return (
     <Suspense fallback={null}>
-      <AttendancePageInner currentClubId={currentClubId} />
+      <AttendancePageInner currentClubId={currentClubId} clubSlug={clubSlug} />
     </Suspense>
   );
 }

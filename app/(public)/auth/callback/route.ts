@@ -37,16 +37,24 @@ function extractClubSlugFromPath(path: string): string | null {
   return match?.[1] ?? null;
 }
 
+// public 로그인 콜백은 이 prefix로 절대 리다이렉트하지 않는다 — admin/center-court/demo는
+// 각자 자기 콜백/세션 체계를 쓴다. helper(startPublicKakaoLogin)가 이미 막지만,
+// returnUrl은 공개 GET 파라미터라 클라이언트를 거치지 않고 직접 조작될 수 있으므로
+// 콜백 자체에서도 한 번 더 방어한다.
+const BLOCKED_RETURN_PREFIXES = ["/admin", "/center-court", "/demo"];
+
+function isSafeReturnPath(path: string): boolean {
+  if (!path.startsWith("/") || path.startsWith("//")) return false;
+  return !BLOCKED_RETURN_PREFIXES.some((prefix) => path === prefix || path.startsWith(`${prefix}/`));
+}
+
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url);
   const code = requestUrl.searchParams.get("code");
 
-  // returnUrl 추출 + 보안 검증 (내부 경로만)
+  // returnUrl 추출 + 보안 검증 (내부 경로만, admin/center-court/demo 거부)
   const rawReturn = requestUrl.searchParams.get("returnUrl") ?? "";
-  const returnUrl =
-    rawReturn.startsWith("/") && !rawReturn.startsWith("//")
-      ? rawReturn
-      : "/";
+  const returnUrl = isSafeReturnPath(rawReturn) ? rawReturn : "/";
 
   if (!code) {
     return NextResponse.redirect(new URL("/login", requestUrl.origin));

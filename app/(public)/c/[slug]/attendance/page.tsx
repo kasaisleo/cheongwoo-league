@@ -9,7 +9,7 @@ export default async function ClubAttendancePage({ params }: { params: { slug: s
 
   return (
     <Suspense>
-      <AttendancePageClient currentClubId={club.id} />
+      <AttendancePageClient currentClubId={club.id} clubSlug={club.slug} />
     </Suspense>
   );
 }

@@ -8,6 +8,7 @@ import type { User } from "@supabase/supabase-js";
 import type { PermissionRole } from "@/lib/supabase/database.types";
 import { ShellHeader } from "@/components/shell/ShellHeader";
 import { useShellTransition } from "@/components/shell/ShellTransition";
+import { PublicKakaoLoginButton } from "@/components/auth/PublicKakaoLoginButton";
 
 interface MemberAuthBarProps {
   currentClubId: string;
@@ -168,7 +169,17 @@ export function MemberAuthBar({ currentClubId }: MemberAuthBarProps) {
         {signingOut ? "…" : "로그아웃"}
       </button>
     </>
+  ) : currentSlug ? (
+    // slug가 확정된 페이지 — 중간 게이트 없이 클릭 즉시 Kakao OAuth 시작
+    <PublicKakaoLoginButton
+      clubSlug={currentSlug}
+      className="whitespace-nowrap bg-transparent p-0 font-semibold transition-opacity hover:opacity-70 disabled:opacity-40"
+      style={{ fontSize: "var(--shell-user-size)", color: "var(--club-primary)" }}
+    >
+      카카오 로그인
+    </PublicKakaoLoginButton>
   ) : (
+    // slug 없는 페이지(플랫폼 홈 등) — club context를 임의로 추정하지 않고 /login으로 위임
     <Link
       href={loginHref}
       className="whitespace-nowrap font-semibold transition-opacity hover:opacity-70"
