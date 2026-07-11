@@ -49,6 +49,7 @@ const ADMIN_SKIN_VARS: Record<string, Record<string, string>> = {
     "--admin-button-radius":  "6px",
     "--admin-card-radius":    "10px",
     "--admin-focus-ring":     "rgba(212,255,61,0.45)",
+    "--admin-page-bg":        "#111827",
     "--shell-brand-color":    "var(--admin-muted)",
     "--shell-row-border":     "var(--admin-border)",
     "--shell-row1-bg":        "var(--admin-bar-bg)",
@@ -99,6 +100,7 @@ const ADMIN_SKIN_VARS: Record<string, Record<string, string>> = {
     "--admin-button-radius":  "13px",
     "--admin-card-radius":    "16px",
     "--admin-focus-ring":     "rgba(176,127,216,0.45)",
+    "--admin-page-bg":        "#1e1232",
     "--shell-brand-color":    "var(--admin-muted)",
     "--shell-row-border":     "var(--admin-border)",
     "--shell-row1-bg":        "var(--admin-bar-bg)",
@@ -112,9 +114,10 @@ export function AdminClubShell({ children, accentVars, skinKey }: AdminClubShell
 
   return (
     <div
-      className="mx-auto min-h-screen max-w-md font-body"
+      className="mx-auto max-w-md font-body"
       style={{
-        background: "var(--admin-bg)",
+        minHeight: "100dvh",
+        background: "var(--admin-page-bg)",
         color: "var(--admin-text)",
         ...mergedVars,
       }}

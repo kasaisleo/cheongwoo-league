@@ -42,6 +42,13 @@
   --club-achievement:      var(--club-primary);
   --club-achievement-soft: var(--club-primary-soft);
 
+  /* ── Admin viewport 배경 토큰 (AdminClubShell의 --admin-bg와 동일 값) ──
+   * [data-admin-skin] wrapper 안쪽(max-w-md)뿐 아니라 그 바깥 viewport
+   * 여백(body)까지 같은 색을 쓰기 위해 :root 레벨에 별도로 둔다.
+   * :root:has([data-admin-skin="namaste"])로 나마스테 활성 시 오버라이드됨.
+   * ─────────────────────────────────────────────────────────────────── */
+  --admin-page-bg: #111827;
+
   /* ── Shell geometry tokens — Public + Admin 공유 ───────────────────
    * 두 모드에서 동일한 값. 별도 컴포넌트에서 임의 px 선언 금지.
    * ─────────────────────────────────────────────────────────────────── */
@@ -104,6 +111,20 @@
 /* date input은 나마스테 라이트 배경에서 light color-scheme 사용 */
 :root:has([data-club-skin="namaste"]) input[type="date"] {
   color-scheme: light;
+}
+
+/* ── 나마스테 admin 스킨 활성 시 --admin-page-bg 오버라이드 ──────────
+ * AdminClubShell이 [data-admin-skin="namaste"]를 렌더링할 때만 적용.
+ * default/cheongwoo는 :root 기본값(#111827)을 그대로 쓴다.
+ * ─────────────────────────────────────────────────────────────────── */
+:root:has([data-admin-skin="namaste"]) {
+  --admin-page-bg: #1e1232;
+}
+
+/* /admin (club 선택 완료) viewport 전체 배경 — max-w wrapper 바깥 여백까지
+ * admin skin을 따르게 한다. skin_key 조건 JSX 없이 CSS 변수로만 처리. */
+:root:has([data-admin-skin]) body {
+  background-color: var(--admin-page-bg);
 }
 
 html {
