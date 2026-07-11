@@ -77,6 +77,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
     <AdminClubShell
       accentVars={accentVars}
       skinKey={skinKey ?? undefined}
+      isOwner={access.isOwner}
     >
       <AdminAccountBar
         clubName={clubName}
@@ -84,7 +85,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
         displayName={displayName}
         role={roleForDisplay}
       />
-      <div className="pb-20">
+      <div className="pb-20 lg:pb-0">
         {children}
       </div>
       <AdminBottomNav isOwner={access.isOwner} />

@@ -90,6 +90,9 @@
   --content-max-w-compact:      640px;
   --content-max-w-standard:     960px;
   --content-max-w-wide:         1280px;
+  /* Main Column 상단 헤더(ShellHeader)의 정렬 상한 — 콘텐츠 width variant와
+   * 무관하게 항상 동일 폭. Sidebar 옆 Main Column을 가로지르지 않는다. */
+  --shell-header-max-w:         var(--content-max-w-standard);
 
   /* DesktopSidebar 색상 — AdminClubShell에서 --admin-* 기준으로 오버라이드됨.
    * (--shell-row1-bg 등과 동일한 "Public 기본값 / Admin override" 패턴.) */

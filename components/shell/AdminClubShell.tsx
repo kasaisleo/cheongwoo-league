@@ -1,4 +1,5 @@
 import type { CSSProperties, ReactNode } from "react";
+import { AdminDesktopSidebar } from "@/components/admin/AdminDesktopSidebar";
 
 /**
  * AdminClubShell — 관리자 페이지 accent 주입 + 컨텍스트 로고 wrapper.
@@ -14,6 +15,11 @@ import type { CSSProperties, ReactNode } from "react";
  *
  * 배경/surface 등은 --admin-* 토큰 기준.
  * accent(clay-400 클래스 오버라이드)는 기존 [data-admin-skin] CSS selector 유지.
+ *
+ * Foundation-2: <1024px(Tailwind `lg` 미만)는 max-w-md 세로 스택 그대로,
+ * >=1024px는 AdminDesktopSidebar + Main Column(flex-1) 가로 배치로 전환.
+ * children(AdminAccountBar + content + AdminBottomNav, app/admin/layout.tsx가
+ * 조립)은 항상 Main Column 안에 들어간다.
  */
 
 interface AdminClubShellProps {
@@ -26,6 +32,8 @@ interface AdminClubShellProps {
   clubName?: string | null;
   /** 스킨 키 — data-admin-skin 속성값 및 admin token 분기 기준 */
   skinKey?: string;
+  /** Desktop Sidebar의 owner 전용 항목(설정) 노출 여부 */
+  isOwner?: boolean;
 }
 
 const ADMIN_SKIN_VARS: Record<string, Record<string, string>> = {
@@ -123,13 +131,13 @@ const ADMIN_SKIN_VARS: Record<string, Record<string, string>> = {
   },
 };
 
-export function AdminClubShell({ children, accentVars, skinKey }: AdminClubShellProps) {
+export function AdminClubShell({ children, accentVars, skinKey, isOwner }: AdminClubShellProps) {
   const skinTokens = ADMIN_SKIN_VARS[skinKey ?? "default"] ?? ADMIN_SKIN_VARS.default;
   const mergedVars = { ...skinTokens, ...accentVars } as CSSProperties;
 
   return (
     <div
-      className="mx-auto max-w-md font-body"
+      className="font-body lg:flex"
       style={{
         minHeight: "100dvh",
         background: "var(--admin-page-bg)",
@@ -138,7 +146,10 @@ export function AdminClubShell({ children, accentVars, skinKey }: AdminClubShell
       }}
       data-admin-skin={skinKey ?? undefined}
     >
-      {children}
+      <AdminDesktopSidebar isOwner={!!isOwner} />
+      <div className="mx-auto min-w-0 max-w-md flex-1 lg:max-w-none">
+        {children}
+      </div>
     </div>
   );
 }

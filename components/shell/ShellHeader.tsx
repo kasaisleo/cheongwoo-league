@@ -50,8 +50,9 @@ export function ShellHeader({
         }}
       >
         <div
-          className="mx-auto flex max-w-md items-center justify-between"
+          className="mx-auto flex items-center justify-between"
           style={{
+            maxWidth: "var(--shell-header-max-w)",
             minHeight: "var(--shell-row1-h)",
             paddingInline: "var(--shell-px)",
             gap: "var(--shell-gap)",
@@ -89,8 +90,9 @@ export function ShellHeader({
           }}
         >
           <div
-            className="mx-auto flex max-w-md items-center justify-between"
+            className="mx-auto flex items-center justify-between"
             style={{
+              maxWidth: "var(--shell-header-max-w)",
               minHeight: "var(--shell-row2-h)",
               paddingInline: "var(--shell-px)",
               gap: "var(--shell-gap)",

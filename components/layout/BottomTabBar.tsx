@@ -68,7 +68,7 @@ export function BottomTabBar() {
   return (
     <nav
       aria-label="주요 메뉴"
-      className="club-bottom-nav fixed bottom-0 left-0 right-0 z-40 pb-[env(safe-area-inset-bottom)]"
+      className="club-bottom-nav fixed bottom-0 left-0 right-0 z-40 pb-[env(safe-area-inset-bottom)] lg:hidden"
       style={{ backgroundColor: "var(--club-bg)" }}
     >
       {/* 구분선 — skin border 색상 */}

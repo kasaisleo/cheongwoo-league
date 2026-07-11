@@ -92,7 +92,7 @@ export function AdminBottomNav({ isOwner }: AdminBottomNavProps) {
   return (
     <nav
       aria-label="관리자 메뉴"
-      className="fixed bottom-0 left-0 right-0 z-40 mx-auto max-w-md pb-[env(safe-area-inset-bottom)]"
+      className="fixed bottom-0 left-0 right-0 z-40 mx-auto max-w-md pb-[env(safe-area-inset-bottom)] lg:hidden"
       style={{
         background: "var(--admin-bg, #0f1523)",
         borderTop: "1px solid var(--admin-border, rgba(255,255,255,0.06))",
