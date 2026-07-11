@@ -48,7 +48,7 @@ export function AdminActivityList({ items, emptyLabel }: AdminActivityListProps)
       {items.map((item, idx) => {
         const row = (
           <div
-            className={`flex items-center justify-between gap-3 px-4 py-3 ${item.href ? "transition-opacity hover:opacity-80" : ""}`}
+            className={`flex items-center justify-between gap-3 px-4 py-3 ${item.href ? "transition-colors hover:bg-[color:var(--admin-surface-raised,var(--admin-surface))]" : ""}`}
             style={idx < items.length - 1 ? rowBorder : undefined}
           >
             <div className="min-w-0 flex-1">

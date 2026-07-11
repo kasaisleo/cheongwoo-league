@@ -7,6 +7,7 @@ import { AdminSectionHeader } from "@/components/admin/AdminSectionHeader";
 import { AdminMetricCard } from "@/components/admin/AdminMetricCard";
 import { AdminQuickAction } from "@/components/admin/AdminQuickAction";
 import { AdminActivityList, type AdminActivityItem } from "@/components/admin/AdminActivityList";
+import { AdminRecentActivityCard } from "@/components/admin/AdminRecentActivityCard";
 import Link from "next/link";
 import { PlatformHomeLink } from "@/components/navigation/PlatformHomeLink";
 
@@ -461,7 +462,7 @@ export default async function AdminPage({
         </div>
       </section>
 
-      {/* ── C. 빠른 실행 ─────────────────────────────────────── */}
+      {/* ── C. 빠른 실행 (가장 자주 쓰는 4개만) ──────────────── */}
       <section className="mb-5">
         <AdminSectionHeader title="빠른 실행" />
         <div className="grid grid-cols-2 gap-2">
@@ -469,51 +470,63 @@ export default async function AdminPage({
           <AdminQuickAction href="/admin/matches/create" label="경기 생성" variant="actionable" />
           <AdminQuickAction href="/admin/attendance" label="출석 관리" variant="emphasized" />
           {isOwner && <AdminQuickAction href="/members/import" label="회원명단 가져오기" variant="emphasized" />}
-          <AdminQuickAction href="/admin/matches" label="경기 관리" variant="default" />
-          <AdminQuickAction href="/admin/records" label="기록 대시보드" variant="default" />
-          <AdminQuickAction href="/admin/guests" label="게스트 관리" variant="default" />
-          <AdminQuickAction href="/admin/auth-link" label="회원 연결" variant="default" />
         </div>
       </section>
 
-      {/* ── D. 최근 활동 ─────────────────────────────────────── */}
+      {/* ── D. 최근 활동 (탭 1개짜리 카드로 압축) ────────────── */}
       <section className="mb-5">
-        <AdminSectionHeader title="최근 경기" />
-        <AdminActivityList items={recentMatchItems} emptyLabel="아직 기록된 경기가 없어요." />
-      </section>
-      <section className="mb-5">
-        <AdminSectionHeader title="최근 회원 등록" />
-        <AdminActivityList items={recentMemberItems} emptyLabel="최근 등록된 회원이 없어요." />
-      </section>
-      <section className="mb-5">
-        <AdminSectionHeader title="최근 출석 변화" />
-        <AdminActivityList items={recentAttendanceItems} emptyLabel="최근 출석 변화가 없어요." />
+        <AdminSectionHeader title="최근 활동" />
+        <AdminRecentActivityCard
+          matches={recentMatchItems}
+          members={recentMemberItems}
+          attendance={recentAttendanceItems}
+        />
       </section>
 
-      {/* ── E. 클럽 상태 ─────────────────────────────────────── */}
+      {/* ── E. 클럽 상태 (2×2 compact grid) ──────────────────── */}
       <section className="mb-6">
         <AdminSectionHeader title="클럽 상태" />
-        <AdminActivityList items={clubStatusItems} emptyLabel="확인할 상태가 없어요." />
+        <div className="grid grid-cols-2 gap-2">
+          {clubStatusItems.map((item) => {
+            const tileColor = item.tone === "alert" ? "var(--admin-alert)" : item.tone === "achievement" ? "var(--admin-achievement)" : "var(--admin-text)";
+            const tile = (
+              <div
+                className={`overflow-hidden rounded-[var(--admin-card-radius,14px)] px-3.5 py-3 transition-colors ${item.href ? "group-hover:border-[color:var(--admin-border-strong,var(--admin-border))]" : ""}`}
+                style={{ background: "var(--admin-surface)", border: "1px solid var(--admin-border)" }}
+              >
+                <p className="text-[9px] font-semibold uppercase tracking-wide" style={{ color: "var(--admin-muted)" }}>{item.title}</p>
+                <p className="mt-1 text-sm font-bold" style={{ color: tileColor }}>{item.trailing}</p>
+              </div>
+            );
+            return item.href ? (
+              <Link key={item.id} href={item.href} className="group block rounded-[var(--admin-card-radius,14px)]">
+                {tile}
+              </Link>
+            ) : (
+              <div key={item.id}>{tile}</div>
+            );
+          })}
+        </div>
       </section>
 
-      {/* ── 관리 서브페이지 ──────────────────────────────────── */}
+      {/* ── 관리 도구: 운영 액션(빠른 실행)과 분리된 점검/설정 메뉴 ── */}
       <section className="mb-6">
-        <AdminSectionHeader title="관리" />
+        <AdminSectionHeader title="관리 도구" />
         <div
           className="overflow-hidden rounded-[var(--admin-card-radius,14px)]"
           style={{ background: "var(--admin-surface)", border: "1px solid var(--admin-border)" }}
         >
           {[
-            { href: "/admin/records/players",    label: "선수 기록 분석",     sub: "참여도 · 승률 · 출석 체크율" },
-            { href: "/admin/records/matches",    label: "경기 검수",           sub: "기록 누락 · 상태 확인" },
-            { href: "/admin/records/attendance", label: "출석 체크 검수",      sub: "응답 현황 · 출석 후 미참여" },
-            { href: "/admin/auth-link",          label: "회원 연결",           sub: "카카오 로그인 연결 대기자" },
-            ...(isOwner ? [{ href: "/admin/settings",  label: "시스템 설정",        sub: "권한 · 계정 관리" }] : []),
-            ...(isOwner ? [{ href: "/members/import",  label: "회원 명단 가져오기", sub: "CSV/XLSX 일괄 등록" }] : []),
+            { href: "/admin/records/players",    label: "기록 검수",   sub: "참여도 · 승률 · 출석 체크율" },
+            { href: "/admin/records/matches",    label: "경기 검수",   sub: "기록 누락 · 상태 확인" },
+            { href: "/admin/records/attendance", label: "출석 검수",   sub: "응답 현황 · 출석 후 미참여" },
+            { href: "/admin/auth-link",          label: "회원 연결",   sub: "카카오 로그인 연결 대기자" },
+            { href: "/admin/guests",             label: "게스트 관리", sub: "게스트 등록 · 전적" },
+            ...(isOwner ? [{ href: "/admin/settings", label: "시스템 설정", sub: "권한 · 계정 관리" }] : []),
           ].map((item, idx, arr) => (
             <Link key={item.href} href={item.href}>
               <div
-                className="flex items-center justify-between px-4 py-3 transition-opacity hover:opacity-80"
+                className="flex items-center justify-between px-4 py-3 transition-colors hover:bg-[color:var(--admin-surface-raised,var(--admin-surface))]"
                 style={idx < arr.length - 1 ? { borderBottom: "1px solid var(--admin-border)" } : undefined}
               >
                 <div>

@@ -36,7 +36,7 @@ export function AdminQuickAction({ href, label, variant = "default" }: AdminQuic
   return (
     <Link href={href}>
       <div
-        className="flex min-h-[44px] items-center overflow-hidden rounded-[var(--admin-card-radius,14px)] px-4 py-3 transition-opacity hover:opacity-85"
+        className="flex min-h-[44px] items-center overflow-hidden rounded-[var(--admin-card-radius,14px)] px-4 py-3 transition-colors hover:border-[color:var(--admin-border-strong,var(--admin-border))]"
         style={variantStyle(variant)}
       >
         <p className="text-sm font-semibold" style={{ color: textColor }}>{label}</p>

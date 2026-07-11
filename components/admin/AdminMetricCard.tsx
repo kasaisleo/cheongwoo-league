@@ -72,7 +72,7 @@ export function AdminMetricCard({ label, value, sub, variant = "default", href }
 
   const content = (
     <div
-      className="overflow-hidden rounded-[var(--admin-card-radius,14px)] px-4 py-3.5"
+      className={`overflow-hidden rounded-[var(--admin-card-radius,14px)] px-4 py-3.5 transition-colors ${href ? "group-hover:border-[color:var(--admin-border-strong,var(--admin-border))]" : ""}`}
       style={card}
     >
       <p className="font-score text-3xl font-bold tabular-nums" style={valueStyle}>
@@ -91,7 +91,7 @@ export function AdminMetricCard({ label, value, sub, variant = "default", href }
 
   if (href) {
     return (
-      <Link href={href} className="block transition-opacity hover:opacity-85">
+      <Link href={href} className="group block">
         {content}
       </Link>
     );
