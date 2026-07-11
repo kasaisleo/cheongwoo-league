@@ -91,6 +91,7 @@ export function AdminBottomNav({ isOwner }: AdminBottomNavProps) {
 
   return (
     <nav
+      aria-label="관리자 메뉴"
       className="fixed bottom-0 left-0 right-0 z-40 mx-auto max-w-md pb-[env(safe-area-inset-bottom)]"
       style={{
         background: "var(--admin-bg, #0f1523)",
@@ -111,6 +112,7 @@ export function AdminBottomNav({ isOwner }: AdminBottomNavProps) {
             <Link
               key={item.href}
               href={item.href}
+              aria-current={active ? "page" : undefined}
               className="relative shell-bottom-tab transition-colors"
               style={{ color }}
             >

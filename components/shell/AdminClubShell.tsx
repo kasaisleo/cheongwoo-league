@@ -54,6 +54,11 @@ const ADMIN_SKIN_VARS: Record<string, Record<string, string>> = {
     "--shell-row-border":     "var(--admin-border)",
     "--shell-row1-bg":        "var(--admin-bar-bg)",
     "--shell-row2-bg":        "var(--admin-surface)",
+    "--shell-sidebar-bg":          "var(--admin-bar-bg)",
+    "--shell-sidebar-border":      "var(--admin-border)",
+    "--shell-sidebar-muted":       "var(--admin-muted)",
+    "--shell-sidebar-active-bg":   "var(--admin-accent-soft)",
+    "--shell-sidebar-active-text": "var(--admin-accent)",
   },
   cheongwoo: {
     "--admin-bg":             "#111827",
@@ -79,6 +84,11 @@ const ADMIN_SKIN_VARS: Record<string, Record<string, string>> = {
     "--shell-row-border":     "var(--admin-border)",
     "--shell-row1-bg":        "var(--admin-bar-bg)",
     "--shell-row2-bg":        "var(--admin-surface)",
+    "--shell-sidebar-bg":          "var(--admin-bar-bg)",
+    "--shell-sidebar-border":      "var(--admin-border)",
+    "--shell-sidebar-muted":       "var(--admin-muted)",
+    "--shell-sidebar-active-bg":   "var(--admin-accent-soft)",
+    "--shell-sidebar-active-text": "var(--admin-accent)",
   },
   namaste: {
     "--admin-bg":             "#1e1232",
@@ -105,6 +115,11 @@ const ADMIN_SKIN_VARS: Record<string, Record<string, string>> = {
     "--shell-row-border":     "var(--admin-border)",
     "--shell-row1-bg":        "var(--admin-bar-bg)",
     "--shell-row2-bg":        "var(--admin-surface)",
+    "--shell-sidebar-bg":          "var(--admin-bar-bg)",
+    "--shell-sidebar-border":      "var(--admin-border)",
+    "--shell-sidebar-muted":       "var(--admin-muted)",
+    "--shell-sidebar-active-bg":   "var(--admin-accent-soft)",
+    "--shell-sidebar-active-text": "var(--admin-accent)",
   },
 };
 

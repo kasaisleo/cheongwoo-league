@@ -67,6 +67,7 @@ export function BottomTabBar() {
 
   return (
     <nav
+      aria-label="주요 메뉴"
       className="club-bottom-nav fixed bottom-0 left-0 right-0 z-40 pb-[env(safe-area-inset-bottom)]"
       style={{ backgroundColor: "var(--club-bg)" }}
     >
@@ -96,6 +97,7 @@ export function BottomTabBar() {
             <Link
               key={tab.href}
               href={tab.href}
+              aria-current={isActive ? "page" : undefined}
               className="relative flex-1 shell-bottom-tab"
               style={{ color }}
             >

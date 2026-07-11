@@ -78,6 +78,26 @@
   --shell-bottom-pb:          8px;
   --shell-bottom-indicator-h: 2px;
   --shell-bottom-indicator-w: 32px;
+
+  /* ── Platform Responsive Foundation-1 — 신규 토큰 ──────────────────
+   * Desktop 전환 기준은 Tailwind `lg`(1024px, 코드상 min-width:1024px과
+   * 동일값) — CSS custom property는 @media 조건 안에 쓸 수 없으므로 별도
+   * --layout-breakpoint 변수는 두지 않고 Tailwind `lg:`/CSS `min-width:1024px`
+   * 리터럴을 그대로 source of truth로 삼는다.
+   * ─────────────────────────────────────────────────────────────────── */
+  --sidebar-width:              224px;
+  --desktop-gutter:             32px;
+  --content-max-w-compact:      640px;
+  --content-max-w-standard:     960px;
+  --content-max-w-wide:         1280px;
+
+  /* DesktopSidebar 색상 — AdminClubShell에서 --admin-* 기준으로 오버라이드됨.
+   * (--shell-row1-bg 등과 동일한 "Public 기본값 / Admin override" 패턴.) */
+  --shell-sidebar-bg:          var(--club-bg);
+  --shell-sidebar-border:      var(--club-border);
+  --shell-sidebar-muted:       var(--club-muted);
+  --shell-sidebar-active-bg:   var(--club-primary-soft);
+  --shell-sidebar-active-text: var(--club-primary);
 }
 
 /* ── 나마스테 스킨 활성 시 :root 오버라이드 ─────────────────────────
@@ -572,6 +592,43 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   height:           var(--shell-bottom-indicator-h);
   width:            var(--shell-bottom-indicator-w);
   border-radius:    9999px;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+ * Platform Responsive Foundation-1 — ShellContent width variant
+ *
+ * <1024px(Tailwind `lg` 미만): variant와 무관하게 항상 100% 폭.
+ *   px-4(16px)는 ShellContent 컴포넌트의 Tailwind 클래스가 이미 담당.
+ * >=1024px: variant별 max-width + desktop gutter(32px) 적용.
+ *   이 규칙은 @tailwind utilities 뒤에 선언되어 있어 동일 특이도(단일
+ *   클래스)의 px-4와 충돌 시 이 파일의 마지막 선언이 우선한다(기존
+ *   :root:has() skin override 패턴과 동일한 캐스케이드 근거).
+ *
+ * ⚠ Foundation-1 시점에는 Public `(public)/layout.tsx`와 Admin
+ *   `AdminClubShell`이 여전히 max-w-md로 바깥을 감싸고 있어, 아래 규칙은
+ *   아직 어떤 화면에도 시각적 영향을 주지 않는다(상위 wrapper가 항상 더
+ *   좁음). max-w-md 제거는 Foundation-2에서 진행한다.
+ * ══════════════════════════════════════════════════════════════════ */
+.shell-content {
+  width: 100%;
+  margin-inline: auto;
+}
+@media (min-width: 1024px) {
+  .shell-content {
+    padding-inline: var(--desktop-gutter);
+  }
+  .shell-content[data-content-width="compact"]  { max-width: var(--content-max-w-compact); }
+  .shell-content[data-content-width="standard"] { max-width: var(--content-max-w-standard); }
+  .shell-content[data-content-width="wide"]     { max-width: var(--content-max-w-wide); }
+  .shell-content[data-content-width="full"]     { max-width: none; }
+}
+
+/* ── DesktopSidebar link 상태 ─────────────────────────────────────── */
+.desktop-sidebar-link:hover {
+  background: var(--shell-sidebar-active-bg);
+}
+@media (prefers-reduced-motion: reduce) {
+  .desktop-sidebar-link { transition: none !important; }
 }
 
 /* ── 숫자/한글 혼합 텍스트 분리 유틸 ──────────────────────────────
