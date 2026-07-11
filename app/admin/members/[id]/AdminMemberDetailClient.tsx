@@ -18,12 +18,15 @@ const ROLE_LABEL: Record<string, string> = {
   master: "Master", admin: "Admin", manager: "Manager", member: "Member", scorer: "Scorer",
 };
 
+const ASSIGNABLE_ROLES = ["member", "manager", "admin"] as const;
+
 interface Props {
   member: AdminMemberDetail;
   isOwner: boolean;
+  isSelf: boolean;
 }
 
-export function AdminMemberDetailClient({ member, isOwner }: Props) {
+export function AdminMemberDetailClient({ member, isOwner, isSelf }: Props) {
   const router = useRouter();
 
   const [editing, setEditing] = useState(false);
@@ -52,10 +55,31 @@ export function AdminMemberDetailClient({ member, isOwner }: Props) {
   const [unlinkConfirming, setUnlinkConfirming] = useState(false);
   const [deactivating, setDeactivating] = useState(false);
   const [deactivateConfirming, setDeactivateConfirming] = useState(false);
+  const [roleEditing, setRoleEditing] = useState(false);
+  const [pendingRole, setPendingRole] = useState<string>(member.permission_role);
+  const [roleConfirming, setRoleConfirming] = useState(false);
+  const [roleActing, setRoleActing] = useState(false);
 
   const status = deriveMemberStatus(member.is_active, member.deleted_at);
   const isLinked = !!member.auth_user_id;
   const isMaster = member.permission_role === "master";
+
+  // 권한 변경 가능 조건 — 서버(RPC)가 최종 source of truth이며, 여기 계산은
+  // 사유 안내/UI 노출용 보조 판정일 뿐이다.
+  const roleBlockReason: string | null = isSelf
+    ? "자기 자신의 권한은 변경할 수 없습니다."
+    : isMaster
+      ? "Master 권한은 CENTER COURT에서만 변경 가능합니다."
+      : status === "withdrawn"
+        ? "탈퇴 회원입니다."
+        : status === "dormant"
+          ? "휴면 회원입니다."
+          : member.is_dormant
+            ? "활동 제외 회원입니다."
+            : !isLinked
+              ? "카카오 연결이 필요합니다."
+              : null;
+  const canChangeRole = isOwner && roleBlockReason === null;
 
   const surfaceStyle: React.CSSProperties = { background: "var(--admin-surface)", border: "1px solid var(--admin-border)" };
 
@@ -114,6 +138,22 @@ export function AdminMemberDetailClient({ member, isOwner }: Props) {
     setReactivating(false);
     if (!res.ok) { toast.error(body?.error ?? "복구에 실패했습니다."); return; }
     toast.success(body?.message ?? "복구했습니다.");
+    router.refresh();
+  }
+
+  async function handleChangeRole() {
+    setRoleActing(true);
+    setRoleConfirming(false);
+    const res = await fetch("/api/admin/update-member-role", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ memberId: member.id, newRole: pendingRole }),
+    });
+    const body = await res.json().catch(() => null);
+    setRoleActing(false);
+    if (!res.ok) { toast.error(body?.error ?? "권한 변경에 실패했습니다."); return; }
+    toast.success(body?.message ?? "권한이 변경되었습니다.");
+    setRoleEditing(false);
     router.refresh();
   }
 
@@ -242,12 +282,73 @@ export function AdminMemberDetailClient({ member, isOwner }: Props) {
             )}
           </div>
 
-          {/* 권한 (읽기 전용 — 변경은 /admin/settings에서만) */}
+          {/* 권한 — master만 변경 가능. 실제 변경은 이 페이지에서만 수행한다(/admin/settings는 조회 전용). */}
           <div className="flex items-center justify-between gap-3 px-4 py-3" style={{ borderBottom: "1px solid var(--admin-border)" }}>
             <span className="text-sm font-semibold" style={{ color: "var(--admin-text)" }}>권한</span>
-            <span className="rounded-sm px-2 py-0.5 text-[10px] font-semibold" style={{ background: "var(--admin-surface-raised, var(--admin-surface))", border: "1px solid var(--admin-border)", color: "var(--admin-muted)" }}>
-              {ROLE_LABEL[member.permission_role] ?? member.permission_role}
-            </span>
+            <div className="flex flex-col items-end gap-1">
+              <span className="rounded-sm px-2 py-0.5 text-[10px] font-semibold" style={{ background: "var(--admin-surface-raised, var(--admin-surface))", border: "1px solid var(--admin-border)", color: "var(--admin-muted)" }}>
+                {ROLE_LABEL[member.permission_role] ?? member.permission_role}
+              </span>
+
+              {isOwner && roleBlockReason && (
+                <span className="text-[10px]" style={{ color: "var(--admin-muted)" }}>{roleBlockReason}</span>
+              )}
+
+              {canChangeRole && (
+                roleEditing ? (
+                  roleConfirming ? (
+                    <div className="flex items-center gap-1">
+                      <span className="text-[10px]" style={{ color: "var(--admin-text)" }}>
+                        {ROLE_LABEL[pendingRole] ?? pendingRole}(으)로 변경할까요?
+                      </span>
+                      <button type="button" disabled={roleActing} onClick={handleChangeRole}
+                        className="rounded-sm px-1.5 py-0.5 text-[9px] font-semibold disabled:opacity-40"
+                        style={{ background: "var(--admin-accent-soft)", border: "1px solid var(--admin-accent)", color: "var(--admin-accent)" }}>
+                        {roleActing ? "..." : "확인"}
+                      </button>
+                      <button type="button" onClick={() => setRoleConfirming(false)}
+                        className="rounded-sm px-1.5 py-0.5 text-[9px] font-semibold"
+                        style={{ border: "1px solid var(--admin-border)", color: "var(--admin-muted)" }}>
+                        취소
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-1">
+                      <select
+                        value={pendingRole}
+                        onChange={(e) => setPendingRole(e.target.value)}
+                        className="h-6 rounded-sm border px-1.5 text-[10px]"
+                        style={{ borderColor: "var(--admin-border)", background: "var(--admin-surface-raised, var(--admin-surface))", color: "var(--admin-text)" }}
+                      >
+                        {ASSIGNABLE_ROLES.map((r) => (
+                          <option key={r} value={r}>{ROLE_LABEL[r]}</option>
+                        ))}
+                      </select>
+                      <button
+                        type="button"
+                        disabled={pendingRole === member.permission_role}
+                        onClick={() => setRoleConfirming(true)}
+                        className="rounded-sm px-2 py-0.5 text-[9px] font-semibold disabled:opacity-40"
+                        style={{ border: "1px solid var(--admin-accent)", background: "var(--admin-accent-soft)", color: "var(--admin-accent)" }}
+                      >
+                        적용
+                      </button>
+                      <button type="button" onClick={() => { setRoleEditing(false); setPendingRole(member.permission_role); }}
+                        className="rounded-sm px-2 py-0.5 text-[9px] font-semibold"
+                        style={{ border: "1px solid var(--admin-border)", color: "var(--admin-muted)" }}>
+                        취소
+                      </button>
+                    </div>
+                  )
+                ) : (
+                  <button type="button" onClick={() => { setRoleEditing(true); setPendingRole(member.permission_role); }}
+                    className="rounded-sm px-2 py-0.5 text-[10px] font-semibold transition-colors"
+                    style={{ border: "1px solid var(--admin-border)", color: "var(--admin-muted)" }}>
+                    권한 변경
+                  </button>
+                )
+              )}
+            </div>
           </div>
 
           {/* 카카오 연결 */}

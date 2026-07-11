@@ -1,26 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createServiceClient } from "@/lib/supabase/server";
 import { getAdminAccessServer } from "@/lib/admin-permissions";
+import { assignMemberPermissionRole } from "@/lib/club-admin-audit-log";
 import type { PermissionRole } from "@/lib/supabase/database.types";
 
 /**
  * POST /api/admin/update-member-role
- * permission_role 변경.
+ * permission_role 변경. 실제 mutation + audit insert는 assign_member_permission_role
+ * RPC(DB 함수)가 단일 트랜잭션으로 처리한다 — 이 route는 인증 확인, 입력 검증,
+ * RPC 호출, 에러 매핑만 담당한다.
  *
- * 지정: member/scorer → manager 또는 admin
- * 해제: manager/admin → member
- *
- * 보호 규칙:
- *   - master 지정 금지 (promote-owner API 전용)
- *   - master 해제 금지
- *   - 본인 권한 변경 금지
+ * 허용 역할: member, manager, admin. master/scorer 요청은 400.
+ * 보호 규칙(actor 재검증 포함 전부 RPC 내부에서 재확인됨):
+ *   - master 대상/지정 금지, 본인 권한 변경 금지
+ *   - 휴면·탈퇴·활동 제외·카카오 미연결 대상 금지
+ *   - cross-club 접근은 club_id scope로 member_not_found(404) 처리
  */
-const ASSIGNABLE_ROLES: PermissionRole[] = ["manager", "admin"];
-const DEMOTABLE_ROLES: PermissionRole[] = ["manager", "admin"];
+const ALLOWED_ROLES: PermissionRole[] = ["member", "manager", "admin"];
 
 export async function POST(request: NextRequest) {
   const access = await getAdminAccessServer();
-  if (!access.kakaoIsOwner) {
+  if (!access.kakaoIsOwner || !access.clubId || !access.userId) {
     return NextResponse.json({ error: "Owner 또는 master 권한이 필요합니다." }, { status: 403 });
   }
 
@@ -32,66 +31,32 @@ export async function POST(request: NextRequest) {
   if (!memberId) {
     return NextResponse.json({ error: "memberId가 필요합니다." }, { status: 400 });
   }
-  if (!newRole) {
-    return NextResponse.json({ error: "newRole이 필요합니다." }, { status: 400 });
-  }
-
-  // 허용 역할 검증
-  const allowedRoles: string[] = [...ASSIGNABLE_ROLES, "member"];
-  if (!allowedRoles.includes(newRole)) {
+  if (!newRole || !(ALLOWED_ROLES as string[]).includes(newRole)) {
     return NextResponse.json(
-      { error: `허용되지 않는 역할입니다. (${allowedRoles.join(", ")} 중 선택)` },
+      { error: `허용되지 않는 역할입니다. (${ALLOWED_ROLES.join(", ")} 중 선택)` },
       { status: 400 }
     );
   }
 
-  const supabaseAdmin = createServiceClient();
-  const clubId = access.clubId ?? "";
+  const result = await assignMemberPermissionRole({
+    clubId: access.clubId,
+    actorAuthUserId: access.userId,
+    targetMemberId: memberId,
+    newRole: newRole as PermissionRole,
+  });
 
-  // 대상 member 조회: service role (RLS 우회 — auth_user_id 정확히 읽음)
-  const { data: member, error: memberError } = await supabaseAdmin
-    .from("members")
-    .select("id, name, permission_role, auth_user_id")
-    .eq("id", memberId)
-    .eq("club_id", clubId)
-    .maybeSingle();
-
-  if (memberError || !member) {
-    return NextResponse.json({ error: "회원을 찾을 수 없습니다." }, { status: 404 });
+  if (!result.ok) {
+    return NextResponse.json({ error: result.error.message }, { status: result.error.status });
   }
 
-  // master 해제/변경 금지
-  if (member.permission_role === "master") {
-    return NextResponse.json({ error: "master 권한은 변경할 수 없습니다." }, { status: 403 });
-  }
+  const actionLabel: Record<string, string> = {
+    role_assign: "지정",
+    role_change: "변경",
+    role_revoke: "해제",
+  };
 
-  // 본인 권한 변경 금지
-  if (member.auth_user_id && member.auth_user_id === access.userId) {
-    return NextResponse.json({ error: "본인 권한은 변경할 수 없습니다." }, { status: 403 });
-  }
-
-  // 이미 동일 역할
-  if (member.permission_role === newRole) {
-    return NextResponse.json(
-      { error: `이미 ${newRole} 역할입니다.` },
-      { status: 400 }
-    );
-  }
-
-  const admin = createServiceClient();
-  const { error: updateError } = await admin
-    .from("members")
-    .update({ permission_role: newRole as PermissionRole })
-    .eq("id", memberId)
-    .eq("club_id", clubId);
-
-  if (updateError) {
-    return NextResponse.json({ error: "권한 변경에 실패했습니다." }, { status: 500 });
-  }
-
-  const action = (ASSIGNABLE_ROLES as string[]).includes(newRole) ? "지정" : "해제";
   return NextResponse.json({
     ok: true,
-    message: `${member.name}의 권한이 ${newRole}로 변경되었습니다. (${action})`,
+    message: `${result.data.name}의 권한이 ${result.data.new_role}로 변경되었습니다. (${actionLabel[result.data.action] ?? "변경"})`,
   });
 }

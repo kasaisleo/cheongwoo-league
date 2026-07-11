@@ -51,10 +51,13 @@ export default async function AdminMemberDetailPage({ params }: { params: { id: 
 
   if (!member) notFound();
 
+  const isSelf = !!access.userId && access.userId === member.auth_user_id;
+
   return (
     <AdminMemberDetailClient
       member={member as AdminMemberDetail}
       isOwner={access.isOwner}
+      isSelf={isSelf}
     />
   );
 }
