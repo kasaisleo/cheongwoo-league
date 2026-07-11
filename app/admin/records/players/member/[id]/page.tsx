@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { notFound } from "next/navigation";
 import { pct, fmtPct } from "@/lib/records/dashboardUtils";
 import { createClient } from "@/lib/supabase/server";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
@@ -36,12 +36,9 @@ export default async function MemberRecordPage({ params }: { params: { id: strin
   ]);
 
   if (!member) {
-    return (
-      <main className="px-4 pt-6">
-        <p className="text-sm" style={{ color: "var(--admin-muted)" }}>회원을 찾을 수 없어요.</p>
-        <Link href="/admin/records/players" className="mt-2 block text-xs" style={{ color: "var(--admin-accent)" }}>← 선수 기록 분석</Link>
-      </main>
-    );
+    // memberId가 존재하지 않거나 다른 club 소속이면(위 쿼리가 club_id로 이미 scope됨)
+    // 진짜 404를 반환한다 — 커스텀 200 안내 화면으로 존재 여부를 흘리지 않는다.
+    notFound();
   }
 
   // ── 완료 매치 집합 ────────────────────────────────────────────

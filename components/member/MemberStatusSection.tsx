@@ -57,11 +57,34 @@ export function MemberStatusSection({
   const [isKakaoLinked, setIsKakaoLinked] = useState(Boolean(authUserId));
   const [unlinking, setUnlinking] = useState(false);
   const [confirming, setConfirming] = useState(false);
+  const [reactivating, setReactivating] = useState(false);
+  const [reactivateConfirming, setReactivateConfirming] = useState(false);
 
   // 로딩 중이거나 관리자가 아니면 미노출
   if (!adminAccess?.isAdmin) return null;
 
   const isOwner = adminAccess.isOwner;
+  // is_active/deleted_at 불일치 row가 실제로 있어 둘 중 하나라도 비활성 신호면 비활성으로 본다.
+  const isEffectivelyActive = isActive && !deletedAt;
+
+  async function handleReactivate() {
+    setReactivating(true);
+    setReactivateConfirming(false);
+    const res = await fetch("/api/admin/reactivate-member", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ memberId }),
+    });
+    const body = await res.json().catch(() => null);
+    setReactivating(false);
+
+    if (!res.ok) {
+      toast.error(body?.error ?? "복구에 실패했습니다.");
+      return;
+    }
+    toast.success(body?.message ?? `${memberName} 님을 복구했습니다.`);
+    router.refresh();
+  }
 
   async function handleUnlink() {
     setUnlinking(true);
@@ -97,17 +120,47 @@ export function MemberStatusSection({
         {/* 회원 상태 */}
         <div className="flex items-center justify-between px-4 py-3">
           <p className="text-sm font-semibold text-line-900">회원 상태</p>
-          {isActive ? (
+          {isEffectivelyActive ? (
             <span className="rounded-sm border border-line-200/40 bg-line-100 px-2 py-0.5 text-[10px] font-semibold text-line-600">
               활동중
             </span>
           ) : (
-            <div className="flex flex-col items-end gap-0.5">
-              <span className="rounded-sm border border-fault-400/30 bg-fault-400/5 px-2 py-0.5 text-[10px] font-semibold text-fault-400">
-                탈퇴 처리됨
-              </span>
-              {deletedDate && (
-                <p className="text-[9px] text-line-400">{deletedDate}</p>
+            <div className="flex flex-col items-end gap-1">
+              <div className="flex flex-col items-end gap-0.5">
+                <span className="rounded-sm border border-fault-400/30 bg-fault-400/5 px-2 py-0.5 text-[10px] font-semibold text-fault-400">
+                  탈퇴 처리됨
+                </span>
+                {deletedDate && (
+                  <p className="text-[9px] text-line-400">{deletedDate}</p>
+                )}
+              </div>
+              {reactivateConfirming ? (
+                <div className="flex items-center gap-1">
+                  <span className="text-[10px] text-line-500">복구할까요?</span>
+                  <button
+                    type="button"
+                    disabled={reactivating}
+                    onClick={handleReactivate}
+                    className="rounded-sm border border-clay-400/60 bg-clay-400/10 px-1.5 py-0.5 text-[9px] font-semibold text-clay-400 disabled:opacity-40"
+                  >
+                    {reactivating ? "..." : "확인"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setReactivateConfirming(false)}
+                    className="rounded-sm border border-line-200/40 px-1.5 py-0.5 text-[9px] font-semibold text-line-500"
+                  >
+                    취소
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setReactivateConfirming(true)}
+                  className="rounded-sm border border-line-200/40 px-2 py-0.5 text-[10px] font-semibold text-line-400 hover:border-clay-400/60 hover:text-clay-400"
+                >
+                  활동 상태로 복구
+                </button>
               )}
             </div>
           )}

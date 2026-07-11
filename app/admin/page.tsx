@@ -517,6 +517,7 @@ export default async function AdminPage({
           style={{ background: "var(--admin-surface)", border: "1px solid var(--admin-border)" }}
         >
           {[
+            { href: "/admin/members",            label: "회원 관리",   sub: "검색 · 상태 · 카카오 연결" },
             { href: "/admin/records/players",    label: "기록 검수",   sub: "참여도 · 승률 · 출석 체크율" },
             { href: "/admin/records/matches",    label: "경기 검수",   sub: "기록 누락 · 상태 확인" },
             { href: "/admin/records/attendance", label: "출석 검수",   sub: "응답 현황 · 출석 후 미참여" },
