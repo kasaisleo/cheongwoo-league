@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
+import { ShellContent } from "@/components/shell/ShellContent";
 import { deriveMemberStatus, type AdminMemberStatus } from "@/lib/admin-member-status";
 import type { AdminMemberRow } from "./page";
 
@@ -62,63 +63,64 @@ export function MembersPageClient({ members }: { members: AdminMemberRow[] }) {
   const surfaceStyle: React.CSSProperties = { background: "var(--admin-surface)", border: "1px solid var(--admin-border)" };
 
   return (
-    <main className="px-4 pt-6 pb-28">
+    <ShellContent width="wide">
       <AdminPageHeader
         eyebrow="MEMBERS"
         title="회원 관리"
         description="이름·닉네임·전화번호로 검색하고 상태별로 필터링합니다."
       />
 
-      {/* ── 검색 ─────────────────────────────────────────── */}
-      <section className="mb-3">
-        <input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="이름 · 닉네임 · 전화번호 검색"
-          className="h-10 w-full rounded-[var(--admin-button-radius,6px)] border px-3 text-sm placeholder:[color:var(--admin-muted)]"
-          style={{ background: "var(--admin-surface)", borderColor: "var(--admin-border)", color: "var(--admin-text)" }}
-        />
-      </section>
-
-      {/* ── 필터 ─────────────────────────────────────────── */}
-      <section className="mb-4 space-y-2">
-        <div className="flex flex-wrap gap-1.5">
-          {(Object.keys(FILTER_LABEL_ACTIVE) as ActiveFilter[]).map((f) => (
-            <button key={f} type="button" onClick={() => setActiveFilter(f)}
-              className="rounded-[var(--admin-button-radius,6px)] px-2.5 py-1 text-xs font-semibold transition-colors"
-              style={chipStyle(activeFilter === f)}>
-              {FILTER_LABEL_ACTIVE[f]}
-            </button>
-          ))}
-          <span className="mx-1 self-center text-xs" style={{ color: "var(--admin-border)" }}>|</span>
-          {(Object.keys(FILTER_LABEL_KAKAO) as KakaoFilter[]).map((f) => (
-            <button key={f} type="button" onClick={() => setKakaoFilter(f)}
-              className="rounded-[var(--admin-button-radius,6px)] px-2.5 py-1 text-xs font-semibold transition-colors"
-              style={chipStyle(kakaoFilter === f)}>
-              {FILTER_LABEL_KAKAO[f]}
-            </button>
-          ))}
-        </div>
-        <div className="flex flex-wrap items-center gap-1.5">
-          {(["all", "master", "admin", "manager", "member", "scorer"] as RoleFilter[]).map((f) => (
-            <button key={f} type="button" onClick={() => setRoleFilter(f)}
-              className="rounded-[var(--admin-button-radius,6px)] px-2.5 py-1 text-xs font-semibold transition-colors"
-              style={chipStyle(roleFilter === f)}>
-              {f === "all" ? "역할 전체" : ROLE_LABEL[f]}
-            </button>
-          ))}
-          <select
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value as SortOption)}
-            className="ml-auto h-8 rounded-[var(--admin-button-radius,6px)] border px-2 text-xs font-semibold"
+      {/* ── 검색 + 필터 ──────────────────────────────────── */}
+      <div className="lg:flex lg:items-start lg:gap-4">
+        <section className="mb-3 lg:mb-4 lg:w-72 lg:flex-shrink-0">
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="이름 · 닉네임 · 전화번호 검색"
+            className="h-10 w-full rounded-[var(--admin-button-radius,6px)] border px-3 text-sm placeholder:[color:var(--admin-muted)]"
             style={{ background: "var(--admin-surface)", borderColor: "var(--admin-border)", color: "var(--admin-text)" }}
-          >
-            {(Object.keys(SORT_LABEL) as SortOption[]).map((s) => (
-              <option key={s} value={s}>{SORT_LABEL[s]}</option>
+          />
+        </section>
+
+        <section className="mb-4 min-w-0 flex-1 space-y-2">
+          <div className="flex flex-wrap gap-1.5">
+            {(Object.keys(FILTER_LABEL_ACTIVE) as ActiveFilter[]).map((f) => (
+              <button key={f} type="button" onClick={() => setActiveFilter(f)}
+                className="rounded-[var(--admin-button-radius,6px)] px-2.5 py-1 text-xs font-semibold transition-colors"
+                style={chipStyle(activeFilter === f)}>
+                {FILTER_LABEL_ACTIVE[f]}
+              </button>
             ))}
-          </select>
-        </div>
-      </section>
+            <span className="mx-1 self-center text-xs" style={{ color: "var(--admin-border)" }}>|</span>
+            {(Object.keys(FILTER_LABEL_KAKAO) as KakaoFilter[]).map((f) => (
+              <button key={f} type="button" onClick={() => setKakaoFilter(f)}
+                className="rounded-[var(--admin-button-radius,6px)] px-2.5 py-1 text-xs font-semibold transition-colors"
+                style={chipStyle(kakaoFilter === f)}>
+                {FILTER_LABEL_KAKAO[f]}
+              </button>
+            ))}
+          </div>
+          <div className="flex flex-wrap items-center gap-1.5">
+            {(["all", "master", "admin", "manager", "member", "scorer"] as RoleFilter[]).map((f) => (
+              <button key={f} type="button" onClick={() => setRoleFilter(f)}
+                className="rounded-[var(--admin-button-radius,6px)] px-2.5 py-1 text-xs font-semibold transition-colors"
+                style={chipStyle(roleFilter === f)}>
+                {f === "all" ? "역할 전체" : ROLE_LABEL[f]}
+              </button>
+            ))}
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as SortOption)}
+              className="ml-auto h-8 rounded-[var(--admin-button-radius,6px)] border px-2 text-xs font-semibold"
+              style={{ background: "var(--admin-surface)", borderColor: "var(--admin-border)", color: "var(--admin-text)" }}
+            >
+              {(Object.keys(SORT_LABEL) as SortOption[]).map((s) => (
+                <option key={s} value={s}>{SORT_LABEL[s]}</option>
+              ))}
+            </select>
+          </div>
+        </section>
+      </div>
 
       {/* ── 결과 수 ──────────────────────────────────────── */}
       <div className="mb-2 text-[11px] font-semibold" style={{ color: "var(--admin-muted)" }}>
@@ -134,27 +136,60 @@ export function MembersPageClient({ members }: { members: AdminMemberRow[] }) {
         </div>
       ) : (
         <div className="overflow-hidden rounded-[var(--admin-card-radius,14px)]" style={surfaceStyle}>
+          <MemberRowHeader />
           {filtered.map((m, idx) => (
             <MemberRow key={m.id} member={m} isLast={idx === filtered.length - 1} />
           ))}
         </div>
       )}
-    </main>
+    </ShellContent>
   );
 }
 
 const STATUS_BADGE_LABEL: Record<AdminMemberStatus, string> = { active: "활동", dormant: "휴면", withdrawn: "탈퇴" };
+
+function MemberRowHeader() {
+  const headerCellStyle: React.CSSProperties = { color: "var(--admin-muted)" };
+  return (
+    <div
+      className="admin-member-row-grid hidden px-4 py-2 text-[10px] font-semibold uppercase tracking-wide lg:grid"
+      style={{ borderBottom: "1px solid var(--admin-border)" }}
+    >
+      <span style={headerCellStyle}>이름</span>
+      <span style={headerCellStyle}>닉네임</span>
+      <span style={headerCellStyle}>회원구분</span>
+      <span style={headerCellStyle}>권한</span>
+      <span style={headerCellStyle}>카카오 연결</span>
+      <span style={headerCellStyle}>상태</span>
+      <span style={headerCellStyle}>활동 제외</span>
+      <span style={headerCellStyle}>등록일</span>
+      <span aria-hidden="true" />
+    </div>
+  );
+}
 
 function MemberRow({ member, isLast }: { member: AdminMemberRow; isLast: boolean }) {
   const isLinked = !!member.auth_user_id;
   const status = deriveMemberStatus(member.is_active, member.deleted_at);
   const isElevatedRole = !!member.permission_role && member.permission_role !== "member";
   const createdDate = member.created_at.slice(0, 10);
+  const mutedCellStyle: React.CSSProperties = { color: "var(--admin-muted)" };
+  const alertBadgeStyle: React.CSSProperties = {
+    background: "var(--admin-alert-soft)",
+    border: "1px solid var(--admin-alert)",
+    color: "var(--admin-alert)",
+  };
+  const neutralBadgeStyle: React.CSSProperties = {
+    background: "var(--admin-surface-raised, var(--admin-surface))",
+    border: "1px solid var(--admin-border)",
+    color: "var(--admin-muted)",
+  };
 
   return (
     <Link href={`/admin/members/${member.id}`}>
+      {/* ── 모바일/태블릿(<1024px): 카드형 stacked row ─────────── */}
       <div
-        className="flex items-center justify-between gap-3 px-4 py-3 transition-colors hover:bg-[color:var(--admin-surface-raised,var(--admin-surface))]"
+        className="flex items-center justify-between gap-3 px-4 py-3 transition-colors hover:bg-[color:var(--admin-surface-raised,var(--admin-surface))] lg:hidden"
         style={isLast ? undefined : { borderBottom: "1px solid var(--admin-border)" }}
       >
         <div className="min-w-0 flex-1">
@@ -168,11 +203,7 @@ function MemberRow({ member, isLast }: { member: AdminMemberRow; isLast: boolean
 
           {/* 2순위: 상태 배지 — 정상 상태는 표시하지 않고 이상 신호만 강조 */}
           <div className="mt-1 flex flex-wrap items-center gap-1.5">
-            <span className="rounded-sm px-1.5 py-0.5 text-[9px] font-semibold" style={{
-              background: "var(--admin-surface-raised, var(--admin-surface))",
-              border: "1px solid var(--admin-border)",
-              color: "var(--admin-muted)",
-            }}>
+            <span className="rounded-sm px-1.5 py-0.5 text-[9px] font-semibold" style={neutralBadgeStyle}>
               {member.member_type}
             </span>
             {isElevatedRole && (
@@ -185,29 +216,17 @@ function MemberRow({ member, isLast }: { member: AdminMemberRow; isLast: boolean
               </span>
             )}
             {!isLinked && (
-              <span className="rounded-sm px-1.5 py-0.5 text-[9px] font-semibold" style={{
-                background: "var(--admin-alert-soft)",
-                border: "1px solid var(--admin-alert)",
-                color: "var(--admin-alert)",
-              }}>
+              <span className="rounded-sm px-1.5 py-0.5 text-[9px] font-semibold" style={alertBadgeStyle}>
                 카카오 미연결
               </span>
             )}
             {status !== "active" && (
-              <span className="rounded-sm px-1.5 py-0.5 text-[9px] font-semibold" style={{
-                background: "var(--admin-alert-soft)",
-                border: "1px solid var(--admin-alert)",
-                color: "var(--admin-alert)",
-              }}>
+              <span className="rounded-sm px-1.5 py-0.5 text-[9px] font-semibold" style={alertBadgeStyle}>
                 {STATUS_BADGE_LABEL[status]}
               </span>
             )}
             {member.is_dormant && (
-              <span className="rounded-sm px-1.5 py-0.5 text-[9px] font-semibold" style={{
-                background: "var(--admin-surface-raised, var(--admin-surface))",
-                border: "1px solid var(--admin-border)",
-                color: "var(--admin-muted)",
-              }}>
+              <span className="rounded-sm px-1.5 py-0.5 text-[9px] font-semibold" style={neutralBadgeStyle}>
                 활동 제외
               </span>
             )}
@@ -220,6 +239,58 @@ function MemberRow({ member, isLast }: { member: AdminMemberRow; isLast: boolean
         </div>
 
         <span className="flex-shrink-0 text-xs" style={{ color: "var(--admin-muted)" }}>→</span>
+      </div>
+
+      {/* ── 데스크톱(>=1024px): table-like row ──────────────────── */}
+      <div
+        className="admin-member-row-grid hidden px-4 py-2.5 transition-colors hover:bg-[color:var(--admin-surface-raised,var(--admin-surface))] lg:grid"
+        style={isLast ? undefined : { borderBottom: "1px solid var(--admin-border)" }}
+      >
+        <span className="truncate text-sm font-semibold" style={{ color: "var(--admin-text)" }} title={member.name}>
+          {member.name}
+        </span>
+        <span className="truncate text-sm" style={mutedCellStyle} title={member.nickname}>
+          {member.nickname && member.nickname !== member.name ? member.nickname : "—"}
+        </span>
+        <span className="truncate text-xs" style={mutedCellStyle}>{member.member_type}</span>
+        <span className="truncate text-xs">
+          {isElevatedRole ? (
+            <span className="rounded-sm px-1.5 py-0.5 text-[10px] font-semibold" style={{
+              background: "var(--admin-accent-soft)",
+              border: "1px solid var(--admin-accent)",
+              color: "var(--admin-accent)",
+            }}>
+              {ROLE_LABEL[member.permission_role] ?? member.permission_role}
+            </span>
+          ) : (
+            <span style={mutedCellStyle}>—</span>
+          )}
+        </span>
+        <span className="text-xs">
+          {isLinked ? (
+            <span style={mutedCellStyle}>연결됨</span>
+          ) : (
+            <span className="rounded-sm px-1.5 py-0.5 text-[10px] font-semibold" style={alertBadgeStyle}>미연결</span>
+          )}
+        </span>
+        <span className="text-xs">
+          {status === "active" ? (
+            <span style={mutedCellStyle}>활동</span>
+          ) : (
+            <span className="rounded-sm px-1.5 py-0.5 text-[10px] font-semibold" style={alertBadgeStyle}>
+              {STATUS_BADGE_LABEL[status]}
+            </span>
+          )}
+        </span>
+        <span className="text-xs">
+          {member.is_dormant ? (
+            <span className="rounded-sm px-1.5 py-0.5 text-[10px] font-semibold" style={neutralBadgeStyle}>예</span>
+          ) : (
+            <span style={mutedCellStyle}>—</span>
+          )}
+        </span>
+        <span className="truncate text-xs" style={mutedCellStyle}>{createdDate}</span>
+        <span className="text-xs" style={mutedCellStyle}>→</span>
       </div>
     </Link>
   );

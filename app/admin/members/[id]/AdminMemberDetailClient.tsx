@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
+import { ShellContent } from "@/components/shell/ShellContent";
 import { toast } from "@/components/ui/Toast";
 import {
   MemberForm,
@@ -184,7 +185,7 @@ export function AdminMemberDetailClient({ member, isOwner, isSelf }: Props) {
   }
 
   return (
-    <main className="px-4 pt-6 pb-28">
+    <ShellContent width="standard">
       <AdminPageHeader
         eyebrow="MEMBER"
         title={member.name}
@@ -192,243 +193,256 @@ export function AdminMemberDetailClient({ member, isOwner, isSelf }: Props) {
         backHref="/admin/members"
       />
 
-      {/* ── 기본정보 ─────────────────────────────────────── */}
-      <section className="mb-4">
-        <p className="mb-2 text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--admin-muted)" }}>기본정보</p>
-        <div className="overflow-hidden rounded-[var(--admin-card-radius,14px)]" style={surfaceStyle}>
-          {[
-            { label: "회원구분", value: member.member_type },
-            { label: "전화번호", value: member.phone ? `${member.phone.slice(0, 3)}-****-${member.phone.slice(-4)}` : "—" },
-            { label: "나이", value: member.age?.toString() ?? "—" },
-            { label: "동네", value: member.district ?? "—" },
-            { label: "직책", value: member.role ?? "—" },
-            { label: "메모", value: member.memo ?? "—" },
-            { label: "등록일", value: member.created_at.slice(0, 10) },
-            // is_dormant — 회원 상태(활동/휴면/탈퇴)와는 다른 축이라 "휴면"이라는 말을
-            // 쓰지 않는다("Admin Members 활동 제외 라벨 정리" 정책). 기본정보에 두어
-            // 상태 섹션의 활동/휴면/탈퇴와 시각적으로 분리한다.
-            { label: "활동 제외", value: member.is_dormant ? "예" : "아니오" },
-          ].map((row, idx, arr) => (
-            <div key={row.label} className="flex items-center justify-between gap-3 px-4 py-2.5"
-              style={idx < arr.length - 1 ? { borderBottom: "1px solid var(--admin-border)" } : undefined}>
-              <span className="text-xs font-semibold" style={{ color: "var(--admin-muted)" }}>{row.label}</span>
-              <span className="text-sm" style={{ color: "var(--admin-text)" }}>{row.value}</span>
+      <div className="lg:grid lg:grid-cols-2 lg:gap-4 lg:items-start">
+        {/* ── 좌측: 기본정보 + 활동 상태 + 카카오 연결 ────────── */}
+        <div className="min-w-0">
+          {/* ── 기본정보 ─────────────────────────────────────── */}
+          <section className="mb-4">
+            <p className="mb-2 text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--admin-muted)" }}>기본정보</p>
+            <div className="overflow-hidden rounded-[var(--admin-card-radius,14px)]" style={surfaceStyle}>
+              {[
+                { label: "회원구분", value: member.member_type },
+                { label: "전화번호", value: member.phone ? `${member.phone.slice(0, 3)}-****-${member.phone.slice(-4)}` : "—" },
+                { label: "나이", value: member.age?.toString() ?? "—" },
+                { label: "동네", value: member.district ?? "—" },
+                { label: "직책", value: member.role ?? "—" },
+                { label: "메모", value: member.memo ?? "—" },
+                { label: "등록일", value: member.created_at.slice(0, 10) },
+                // is_dormant — 회원 상태(활동/휴면/탈퇴)와는 다른 축이라 "휴면"이라는 말을
+                // 쓰지 않는다("Admin Members 활동 제외 라벨 정리" 정책). 기본정보에 두어
+                // 상태 섹션의 활동/휴면/탈퇴와 시각적으로 분리한다.
+                { label: "활동 제외", value: member.is_dormant ? "예" : "아니오" },
+              ].map((row, idx, arr) => (
+                <div key={row.label} className="flex items-center justify-between gap-3 px-4 py-2.5"
+                  style={idx < arr.length - 1 ? { borderBottom: "1px solid var(--admin-border)" } : undefined}>
+                  <span className="text-xs font-semibold" style={{ color: "var(--admin-muted)" }}>{row.label}</span>
+                  <span className="text-sm" style={{ color: "var(--admin-text)" }}>{row.value}</span>
+                </div>
+              ))}
+              {member.is_dormant && (
+                <p className="px-4 pb-3 text-[11px]" style={{ color: "var(--admin-muted)" }}>
+                  회원 자격과 기록은 유지하되 신규 활동 대상에서 제외됩니다.
+                </p>
+              )}
+              <div className="px-4 py-3" style={{ borderTop: "1px solid var(--admin-border)" }}>
+                <button type="button" onClick={() => setEditing(true)}
+                  className="h-9 w-full rounded-[var(--admin-button-radius,6px)] text-xs font-semibold transition-colors"
+                  style={{ background: "var(--admin-accent-soft)", border: "1px solid var(--admin-accent)", color: "var(--admin-accent)" }}>
+                  회원 정보 수정
+                </button>
+              </div>
             </div>
-          ))}
-          {member.is_dormant && (
-            <p className="px-4 pb-3 text-[11px]" style={{ color: "var(--admin-muted)" }}>
-              회원 자격과 기록은 유지하되 신규 활동 대상에서 제외됩니다.
-            </p>
+          </section>
+
+          {/* ── 회원 상태: 활동 상태 + 카카오 연결 ──────────────── */}
+          <section className="mb-4">
+            <p className="mb-2 text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--admin-muted)" }}>회원 상태</p>
+            <div className="overflow-hidden rounded-[var(--admin-card-radius,14px)]" style={surfaceStyle}>
+              {/* 활동 상태: 활동 / 휴면(is_active=false, deleted_at=null) / 탈퇴(deleted_at 있음) */}
+              <div className="flex items-center justify-between gap-3 px-4 py-3" style={{ borderBottom: "1px solid var(--admin-border)" }}>
+                <span className="text-sm font-semibold" style={{ color: "var(--admin-text)" }}>활동 상태</span>
+                {status === "active" && (
+                  <span className="rounded-sm px-2 py-0.5 text-[10px] font-semibold" style={{ border: "1px solid var(--admin-border)", color: "var(--admin-muted)" }}>
+                    활동중
+                  </span>
+                )}
+                {status === "dormant" && (
+                  <div className="flex flex-col items-end gap-1">
+                    <span className="rounded-sm px-2 py-0.5 text-[10px] font-semibold" style={{ background: "var(--admin-alert-soft)", border: "1px solid var(--admin-alert)", color: "var(--admin-alert)" }}>
+                      휴면
+                    </span>
+                    {reactivateConfirming ? (
+                      <div className="flex items-center gap-1">
+                        <span className="text-[10px]" style={{ color: "var(--admin-muted)" }}>복구할까요?</span>
+                        <button type="button" disabled={reactivating} onClick={handleReactivate}
+                          className="rounded-sm px-1.5 py-0.5 text-[9px] font-semibold disabled:opacity-40"
+                          style={{ background: "var(--admin-accent-soft)", border: "1px solid var(--admin-accent)", color: "var(--admin-accent)" }}>
+                          {reactivating ? "..." : "확인"}
+                        </button>
+                        <button type="button" onClick={() => setReactivateConfirming(false)}
+                          className="rounded-sm px-1.5 py-0.5 text-[9px] font-semibold"
+                          style={{ border: "1px solid var(--admin-border)", color: "var(--admin-muted)" }}>
+                          취소
+                        </button>
+                      </div>
+                    ) : (
+                      <button type="button" onClick={() => setReactivateConfirming(true)}
+                        className="rounded-sm px-2 py-0.5 text-[10px] font-semibold transition-colors"
+                        style={{ border: "1px solid var(--admin-border)", color: "var(--admin-muted)" }}>
+                        활동 상태로 복구
+                      </button>
+                    )}
+                  </div>
+                )}
+                {status === "withdrawn" && (
+                  <div className="flex flex-col items-end gap-0.5">
+                    <span className="rounded-sm px-2 py-0.5 text-[10px] font-semibold" style={{ background: "var(--admin-alert-soft)", border: "1px solid var(--admin-alert)", color: "var(--admin-alert)" }}>
+                      탈퇴
+                    </span>
+                    {member.deleted_at && (
+                      <p className="text-[9px]" style={{ color: "var(--admin-muted)" }}>{member.deleted_at.slice(0, 10)}</p>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* 카카오 연결 */}
+              <div className="flex items-center justify-between gap-3 px-4 py-3">
+                <span className="text-sm font-semibold" style={{ color: "var(--admin-text)" }}>카카오 연결</span>
+                <div className="flex items-center gap-2">
+                  <span className="rounded-sm px-2 py-0.5 text-[10px] font-semibold" style={
+                    isLinked
+                      ? { border: "1px solid var(--admin-border)", color: "var(--admin-muted)" }
+                      : { background: "var(--admin-alert-soft)", border: "1px solid var(--admin-alert)", color: "var(--admin-alert)" }
+                  }>
+                    {isLinked ? "연결됨" : "미연결"}
+                  </span>
+                  {isOwner && isLinked && !isMaster && (
+                    unlinkConfirming ? (
+                      <div className="flex items-center gap-1">
+                        <span className="text-[10px]" style={{ color: "var(--admin-muted)" }}>해제할까요?</span>
+                        <button type="button" disabled={unlinking} onClick={handleUnlink}
+                          className="rounded-sm px-1.5 py-0.5 text-[9px] font-semibold disabled:opacity-40"
+                          style={{ background: "var(--admin-alert-soft)", border: "1px solid var(--admin-alert)", color: "var(--admin-alert)" }}>
+                          {unlinking ? "..." : "확인"}
+                        </button>
+                        <button type="button" onClick={() => setUnlinkConfirming(false)}
+                          className="rounded-sm px-1.5 py-0.5 text-[9px] font-semibold"
+                          style={{ border: "1px solid var(--admin-border)", color: "var(--admin-muted)" }}>
+                          취소
+                        </button>
+                      </div>
+                    ) : (
+                      <button type="button" onClick={() => setUnlinkConfirming(true)}
+                        className="rounded-sm px-2 py-0.5 text-[10px] font-semibold transition-colors"
+                        style={{ border: "1px solid var(--admin-border)", color: "var(--admin-muted)" }}>
+                        연결 해제
+                      </button>
+                    )
+                  )}
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        {/* ── 우측: 권한 + 기록 링크 + 위험 구역 ──────────────── */}
+        <div className="min-w-0">
+          {/* ── 권한 — master만 변경 가능. 실제 변경은 이 페이지에서만 수행한다(/admin/settings는 조회 전용). ── */}
+          <section className="mb-4">
+            <p className="mb-2 text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--admin-muted)" }}>권한</p>
+            <div className="overflow-hidden rounded-[var(--admin-card-radius,14px)]" style={surfaceStyle}>
+              <div className="flex items-center justify-between gap-3 px-4 py-3">
+                <span className="text-sm font-semibold" style={{ color: "var(--admin-text)" }}>권한</span>
+                <div className="flex flex-col items-end gap-1">
+                  <span className="rounded-sm px-2 py-0.5 text-[10px] font-semibold" style={{ background: "var(--admin-surface-raised, var(--admin-surface))", border: "1px solid var(--admin-border)", color: "var(--admin-muted)" }}>
+                    {ROLE_LABEL[member.permission_role] ?? member.permission_role}
+                  </span>
+
+                  {isOwner && roleBlockReason && (
+                    <span className="text-[10px]" style={{ color: "var(--admin-muted)" }}>{roleBlockReason}</span>
+                  )}
+
+                  {canChangeRole && (
+                    roleEditing ? (
+                      roleConfirming ? (
+                        <div className="flex items-center gap-1">
+                          <span className="text-[10px]" style={{ color: "var(--admin-text)" }}>
+                            {ROLE_LABEL[pendingRole] ?? pendingRole}(으)로 변경할까요?
+                          </span>
+                          <button type="button" disabled={roleActing} onClick={handleChangeRole}
+                            className="rounded-sm px-1.5 py-0.5 text-[9px] font-semibold disabled:opacity-40"
+                            style={{ background: "var(--admin-accent-soft)", border: "1px solid var(--admin-accent)", color: "var(--admin-accent)" }}>
+                            {roleActing ? "..." : "확인"}
+                          </button>
+                          <button type="button" onClick={() => setRoleConfirming(false)}
+                            className="rounded-sm px-1.5 py-0.5 text-[9px] font-semibold"
+                            style={{ border: "1px solid var(--admin-border)", color: "var(--admin-muted)" }}>
+                            취소
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1">
+                          <select
+                            value={pendingRole}
+                            onChange={(e) => setPendingRole(e.target.value)}
+                            className="h-6 rounded-sm border px-1.5 text-[10px]"
+                            style={{ borderColor: "var(--admin-border)", background: "var(--admin-surface-raised, var(--admin-surface))", color: "var(--admin-text)" }}
+                          >
+                            {ASSIGNABLE_ROLES.map((r) => (
+                              <option key={r} value={r}>{ROLE_LABEL[r]}</option>
+                            ))}
+                          </select>
+                          <button
+                            type="button"
+                            disabled={pendingRole === member.permission_role}
+                            onClick={() => setRoleConfirming(true)}
+                            className="rounded-sm px-2 py-0.5 text-[9px] font-semibold disabled:opacity-40"
+                            style={{ border: "1px solid var(--admin-accent)", background: "var(--admin-accent-soft)", color: "var(--admin-accent)" }}
+                          >
+                            적용
+                          </button>
+                          <button type="button" onClick={() => { setRoleEditing(false); setPendingRole(member.permission_role); }}
+                            className="rounded-sm px-2 py-0.5 text-[9px] font-semibold"
+                            style={{ border: "1px solid var(--admin-border)", color: "var(--admin-muted)" }}>
+                            취소
+                          </button>
+                        </div>
+                      )
+                    ) : (
+                      <button type="button" onClick={() => { setRoleEditing(true); setPendingRole(member.permission_role); }}
+                        className="rounded-sm px-2 py-0.5 text-[10px] font-semibold transition-colors"
+                        style={{ border: "1px solid var(--admin-border)", color: "var(--admin-muted)" }}>
+                        권한 변경
+                      </button>
+                    )
+                  )}
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* ── 기록 링크 ────────────────────────────────────── */}
+          <section className="mb-4">
+            <Link href={`/admin/records/players/member/${member.id}`}
+              className="flex items-center justify-between rounded-[var(--admin-card-radius,14px)] px-4 py-3 transition-colors"
+              style={surfaceStyle}>
+              <span className="text-sm font-semibold" style={{ color: "var(--admin-text)" }}>경기 · 출석 · 포인트 기록 보기</span>
+              <span className="text-xs" style={{ color: "var(--admin-muted)" }}>→</span>
+            </Link>
+          </section>
+
+          {/* ── 위험 구역 ────────────────────────────────────── */}
+          {isOwner && status === "active" && (
+            <section className="mb-4">
+              <p className="mb-2 text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--admin-alert)" }}>위험 구역</p>
+              <div className="rounded-[var(--admin-card-radius,14px)] p-4" style={{ background: "var(--admin-alert-soft)", border: "1px solid var(--admin-alert)" }}>
+                {deactivateConfirming ? (
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs" style={{ color: "var(--admin-text)" }}>탈퇴 처리할까요? 기록은 유지됩니다.</span>
+                    <button type="button" disabled={deactivating} onClick={handleDeactivate}
+                      className="ml-auto rounded-sm px-2.5 py-1 text-[11px] font-semibold disabled:opacity-40"
+                      style={{ background: "var(--admin-alert)", color: "var(--admin-bg)" }}>
+                      {deactivating ? "..." : "확인"}
+                    </button>
+                    <button type="button" onClick={() => setDeactivateConfirming(false)}
+                      className="rounded-sm px-2.5 py-1 text-[11px] font-semibold"
+                      style={{ border: "1px solid var(--admin-border)", color: "var(--admin-muted)" }}>
+                      취소
+                    </button>
+                  </div>
+                ) : (
+                  <button type="button" onClick={() => setDeactivateConfirming(true)}
+                    className="h-10 w-full rounded-[var(--admin-button-radius,6px)] text-xs font-semibold"
+                    style={{ border: "1px solid var(--admin-alert)", color: "var(--admin-alert)" }}>
+                    탈퇴 처리
+                  </button>
+                )}
+              </div>
+            </section>
           )}
-          <div className="px-4 py-3" style={{ borderTop: "1px solid var(--admin-border)" }}>
-            <button type="button" onClick={() => setEditing(true)}
-              className="h-9 w-full rounded-[var(--admin-button-radius,6px)] text-xs font-semibold transition-colors"
-              style={{ background: "var(--admin-accent-soft)", border: "1px solid var(--admin-accent)", color: "var(--admin-accent)" }}>
-              회원 정보 수정
-            </button>
-          </div>
         </div>
-      </section>
-
-      {/* ── 상태 ─────────────────────────────────────────── */}
-      <section className="mb-4">
-        <p className="mb-2 text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--admin-muted)" }}>상태</p>
-        <div className="overflow-hidden rounded-[var(--admin-card-radius,14px)]" style={surfaceStyle}>
-          {/* 활동 상태: 활동 / 휴면(is_active=false, deleted_at=null) / 탈퇴(deleted_at 있음) */}
-          <div className="flex items-center justify-between gap-3 px-4 py-3" style={{ borderBottom: "1px solid var(--admin-border)" }}>
-            <span className="text-sm font-semibold" style={{ color: "var(--admin-text)" }}>활동 상태</span>
-            {status === "active" && (
-              <span className="rounded-sm px-2 py-0.5 text-[10px] font-semibold" style={{ border: "1px solid var(--admin-border)", color: "var(--admin-muted)" }}>
-                활동중
-              </span>
-            )}
-            {status === "dormant" && (
-              <div className="flex flex-col items-end gap-1">
-                <span className="rounded-sm px-2 py-0.5 text-[10px] font-semibold" style={{ background: "var(--admin-alert-soft)", border: "1px solid var(--admin-alert)", color: "var(--admin-alert)" }}>
-                  휴면
-                </span>
-                {reactivateConfirming ? (
-                  <div className="flex items-center gap-1">
-                    <span className="text-[10px]" style={{ color: "var(--admin-muted)" }}>복구할까요?</span>
-                    <button type="button" disabled={reactivating} onClick={handleReactivate}
-                      className="rounded-sm px-1.5 py-0.5 text-[9px] font-semibold disabled:opacity-40"
-                      style={{ background: "var(--admin-accent-soft)", border: "1px solid var(--admin-accent)", color: "var(--admin-accent)" }}>
-                      {reactivating ? "..." : "확인"}
-                    </button>
-                    <button type="button" onClick={() => setReactivateConfirming(false)}
-                      className="rounded-sm px-1.5 py-0.5 text-[9px] font-semibold"
-                      style={{ border: "1px solid var(--admin-border)", color: "var(--admin-muted)" }}>
-                      취소
-                    </button>
-                  </div>
-                ) : (
-                  <button type="button" onClick={() => setReactivateConfirming(true)}
-                    className="rounded-sm px-2 py-0.5 text-[10px] font-semibold transition-colors"
-                    style={{ border: "1px solid var(--admin-border)", color: "var(--admin-muted)" }}>
-                    활동 상태로 복구
-                  </button>
-                )}
-              </div>
-            )}
-            {status === "withdrawn" && (
-              <div className="flex flex-col items-end gap-0.5">
-                <span className="rounded-sm px-2 py-0.5 text-[10px] font-semibold" style={{ background: "var(--admin-alert-soft)", border: "1px solid var(--admin-alert)", color: "var(--admin-alert)" }}>
-                  탈퇴
-                </span>
-                {member.deleted_at && (
-                  <p className="text-[9px]" style={{ color: "var(--admin-muted)" }}>{member.deleted_at.slice(0, 10)}</p>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* 권한 — master만 변경 가능. 실제 변경은 이 페이지에서만 수행한다(/admin/settings는 조회 전용). */}
-          <div className="flex items-center justify-between gap-3 px-4 py-3" style={{ borderBottom: "1px solid var(--admin-border)" }}>
-            <span className="text-sm font-semibold" style={{ color: "var(--admin-text)" }}>권한</span>
-            <div className="flex flex-col items-end gap-1">
-              <span className="rounded-sm px-2 py-0.5 text-[10px] font-semibold" style={{ background: "var(--admin-surface-raised, var(--admin-surface))", border: "1px solid var(--admin-border)", color: "var(--admin-muted)" }}>
-                {ROLE_LABEL[member.permission_role] ?? member.permission_role}
-              </span>
-
-              {isOwner && roleBlockReason && (
-                <span className="text-[10px]" style={{ color: "var(--admin-muted)" }}>{roleBlockReason}</span>
-              )}
-
-              {canChangeRole && (
-                roleEditing ? (
-                  roleConfirming ? (
-                    <div className="flex items-center gap-1">
-                      <span className="text-[10px]" style={{ color: "var(--admin-text)" }}>
-                        {ROLE_LABEL[pendingRole] ?? pendingRole}(으)로 변경할까요?
-                      </span>
-                      <button type="button" disabled={roleActing} onClick={handleChangeRole}
-                        className="rounded-sm px-1.5 py-0.5 text-[9px] font-semibold disabled:opacity-40"
-                        style={{ background: "var(--admin-accent-soft)", border: "1px solid var(--admin-accent)", color: "var(--admin-accent)" }}>
-                        {roleActing ? "..." : "확인"}
-                      </button>
-                      <button type="button" onClick={() => setRoleConfirming(false)}
-                        className="rounded-sm px-1.5 py-0.5 text-[9px] font-semibold"
-                        style={{ border: "1px solid var(--admin-border)", color: "var(--admin-muted)" }}>
-                        취소
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-1">
-                      <select
-                        value={pendingRole}
-                        onChange={(e) => setPendingRole(e.target.value)}
-                        className="h-6 rounded-sm border px-1.5 text-[10px]"
-                        style={{ borderColor: "var(--admin-border)", background: "var(--admin-surface-raised, var(--admin-surface))", color: "var(--admin-text)" }}
-                      >
-                        {ASSIGNABLE_ROLES.map((r) => (
-                          <option key={r} value={r}>{ROLE_LABEL[r]}</option>
-                        ))}
-                      </select>
-                      <button
-                        type="button"
-                        disabled={pendingRole === member.permission_role}
-                        onClick={() => setRoleConfirming(true)}
-                        className="rounded-sm px-2 py-0.5 text-[9px] font-semibold disabled:opacity-40"
-                        style={{ border: "1px solid var(--admin-accent)", background: "var(--admin-accent-soft)", color: "var(--admin-accent)" }}
-                      >
-                        적용
-                      </button>
-                      <button type="button" onClick={() => { setRoleEditing(false); setPendingRole(member.permission_role); }}
-                        className="rounded-sm px-2 py-0.5 text-[9px] font-semibold"
-                        style={{ border: "1px solid var(--admin-border)", color: "var(--admin-muted)" }}>
-                        취소
-                      </button>
-                    </div>
-                  )
-                ) : (
-                  <button type="button" onClick={() => { setRoleEditing(true); setPendingRole(member.permission_role); }}
-                    className="rounded-sm px-2 py-0.5 text-[10px] font-semibold transition-colors"
-                    style={{ border: "1px solid var(--admin-border)", color: "var(--admin-muted)" }}>
-                    권한 변경
-                  </button>
-                )
-              )}
-            </div>
-          </div>
-
-          {/* 카카오 연결 */}
-          <div className="flex items-center justify-between gap-3 px-4 py-3">
-            <span className="text-sm font-semibold" style={{ color: "var(--admin-text)" }}>카카오 연결</span>
-            <div className="flex items-center gap-2">
-              <span className="rounded-sm px-2 py-0.5 text-[10px] font-semibold" style={
-                isLinked
-                  ? { border: "1px solid var(--admin-border)", color: "var(--admin-muted)" }
-                  : { background: "var(--admin-alert-soft)", border: "1px solid var(--admin-alert)", color: "var(--admin-alert)" }
-              }>
-                {isLinked ? "연결됨" : "미연결"}
-              </span>
-              {isOwner && isLinked && !isMaster && (
-                unlinkConfirming ? (
-                  <div className="flex items-center gap-1">
-                    <span className="text-[10px]" style={{ color: "var(--admin-muted)" }}>해제할까요?</span>
-                    <button type="button" disabled={unlinking} onClick={handleUnlink}
-                      className="rounded-sm px-1.5 py-0.5 text-[9px] font-semibold disabled:opacity-40"
-                      style={{ background: "var(--admin-alert-soft)", border: "1px solid var(--admin-alert)", color: "var(--admin-alert)" }}>
-                      {unlinking ? "..." : "확인"}
-                    </button>
-                    <button type="button" onClick={() => setUnlinkConfirming(false)}
-                      className="rounded-sm px-1.5 py-0.5 text-[9px] font-semibold"
-                      style={{ border: "1px solid var(--admin-border)", color: "var(--admin-muted)" }}>
-                      취소
-                    </button>
-                  </div>
-                ) : (
-                  <button type="button" onClick={() => setUnlinkConfirming(true)}
-                    className="rounded-sm px-2 py-0.5 text-[10px] font-semibold transition-colors"
-                    style={{ border: "1px solid var(--admin-border)", color: "var(--admin-muted)" }}>
-                    연결 해제
-                  </button>
-                )
-              )}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ── 기록 링크 ────────────────────────────────────── */}
-      <section className="mb-4">
-        <Link href={`/admin/records/players/member/${member.id}`}
-          className="flex items-center justify-between rounded-[var(--admin-card-radius,14px)] px-4 py-3 transition-colors"
-          style={surfaceStyle}>
-          <span className="text-sm font-semibold" style={{ color: "var(--admin-text)" }}>경기 · 출석 · 포인트 기록 보기</span>
-          <span className="text-xs" style={{ color: "var(--admin-muted)" }}>→</span>
-        </Link>
-      </section>
-
-      {/* ── 위험 구역 ────────────────────────────────────── */}
-      {isOwner && status === "active" && (
-        <section className="mb-4">
-          <p className="mb-2 text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--admin-alert)" }}>위험 구역</p>
-          <div className="rounded-[var(--admin-card-radius,14px)] p-4" style={{ background: "var(--admin-alert-soft)", border: "1px solid var(--admin-alert)" }}>
-            {deactivateConfirming ? (
-              <div className="flex items-center gap-2">
-                <span className="text-xs" style={{ color: "var(--admin-text)" }}>탈퇴 처리할까요? 기록은 유지됩니다.</span>
-                <button type="button" disabled={deactivating} onClick={handleDeactivate}
-                  className="ml-auto rounded-sm px-2.5 py-1 text-[11px] font-semibold disabled:opacity-40"
-                  style={{ background: "var(--admin-alert)", color: "var(--admin-bg)" }}>
-                  {deactivating ? "..." : "확인"}
-                </button>
-                <button type="button" onClick={() => setDeactivateConfirming(false)}
-                  className="rounded-sm px-2.5 py-1 text-[11px] font-semibold"
-                  style={{ border: "1px solid var(--admin-border)", color: "var(--admin-muted)" }}>
-                  취소
-                </button>
-              </div>
-            ) : (
-              <button type="button" onClick={() => setDeactivateConfirming(true)}
-                className="h-10 w-full rounded-[var(--admin-button-radius,6px)] text-xs font-semibold"
-                style={{ border: "1px solid var(--admin-alert)", color: "var(--admin-alert)" }}>
-                탈퇴 처리
-              </button>
-            )}
-          </div>
-        </section>
-      )}
+      </div>
 
       {/* ── 수정 모달 ────────────────────────────────────── */}
       {editing && (
@@ -457,6 +471,6 @@ export function AdminMemberDetailClient({ member, isOwner, isSelf }: Props) {
           </div>
         </div>
       )}
-    </main>
+    </ShellContent>
   );
 }

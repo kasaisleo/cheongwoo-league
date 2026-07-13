@@ -10,6 +10,7 @@ import { AdminActivityList, type AdminActivityItem } from "@/components/admin/Ad
 import { AdminRecentActivityCard } from "@/components/admin/AdminRecentActivityCard";
 import Link from "next/link";
 import { PlatformHomeLink } from "@/components/navigation/PlatformHomeLink";
+import { ShellContent } from "@/components/shell/ShellContent";
 
 /**
  * /admin page — 서버 컴포넌트.
@@ -416,7 +417,7 @@ export default async function AdminPage({
   ];
 
   return (
-    <main className="px-4 pt-6 pb-10">
+    <ShellContent width="standard">
       <header className="mb-5">
         <p className="eyebrow-en" style={{ color: "var(--admin-muted)", fontSize: "9px" }}>Admin</p>
         <h1 className="headline-kr text-4xl" style={{ color: "var(--admin-text)" }}>관리자</h1>
@@ -444,7 +445,7 @@ export default async function AdminPage({
       {/* ── B. 주요 지표 ─────────────────────────────────────── */}
       <section className="mb-5">
         <AdminSectionHeader title="주요 지표" />
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
           <AdminMetricCard label="전체 회원" value={data.totalMembers} variant="default" href="/admin/records/players" />
           <AdminMetricCard label="활성 회원" value={data.activeMembers} sub="활동 제외 회원 미포함" variant="emphasized" />
           <AdminMetricCard
@@ -465,7 +466,7 @@ export default async function AdminPage({
       {/* ── C. 빠른 실행 (가장 자주 쓰는 4개만) ──────────────── */}
       <section className="mb-5">
         <AdminSectionHeader title="빠른 실행" />
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
           <AdminQuickAction href="/admin/members/new?type=member" label="회원 등록" variant="actionable" />
           <AdminQuickAction href="/admin/matches/create" label="경기 생성" variant="actionable" />
           <AdminQuickAction href="/admin/attendance" label="출석 관리" variant="emphasized" />
@@ -473,20 +474,20 @@ export default async function AdminPage({
         </div>
       </section>
 
-      {/* ── D. 최근 활동 (탭 1개짜리 카드로 압축) ────────────── */}
-      <section className="mb-5">
-        <AdminSectionHeader title="최근 활동" />
-        <AdminRecentActivityCard
-          matches={recentMatchItems}
-          members={recentMemberItems}
-          attendance={recentAttendanceItems}
-        />
-      </section>
+      {/* ── D. 최근 활동 + E. 클럽 상태 (desktop: 2fr/1fr 배치) ── */}
+      <div className="lg:grid lg:grid-cols-3 lg:gap-4 lg:items-start">
+        <section className="mb-5 min-w-0 lg:col-span-2">
+          <AdminSectionHeader title="최근 활동" />
+          <AdminRecentActivityCard
+            matches={recentMatchItems}
+            members={recentMemberItems}
+            attendance={recentAttendanceItems}
+          />
+        </section>
 
-      {/* ── E. 클럽 상태 (2×2 compact grid) ──────────────────── */}
-      <section className="mb-6">
-        <AdminSectionHeader title="클럽 상태" />
-        <div className="grid grid-cols-2 gap-2">
+        <section className="mb-6 min-w-0 lg:col-span-1">
+          <AdminSectionHeader title="클럽 상태" />
+          <div className="grid grid-cols-2 gap-2 lg:grid-cols-1">
           {clubStatusItems.map((item) => {
             const tileColor = item.tone === "alert" ? "var(--admin-alert)" : item.tone === "achievement" ? "var(--admin-achievement)" : "var(--admin-text)";
             const tile = (
@@ -506,8 +507,9 @@ export default async function AdminPage({
               <div key={item.id}>{tile}</div>
             );
           })}
-        </div>
-      </section>
+          </div>
+        </section>
+      </div>
 
       {/* ── 관리 도구: 운영 액션(빠른 실행)과 분리된 점검/설정 메뉴 ── */}
       <section className="mb-6">
@@ -540,6 +542,6 @@ export default async function AdminPage({
           ))}
         </div>
       </section>
-    </main>
+    </ShellContent>
   );
 }

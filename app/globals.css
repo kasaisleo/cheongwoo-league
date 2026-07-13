@@ -1089,3 +1089,13 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   background-color: var(--admin-accent-soft);
 }
 .admin-button-ghost:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* ── Admin member list: desktop table-like row ────────────────────
+ * 헤더 row와 데이터 row가 동일 컬럼 비율을 공유해야 정렬이 맞는다.
+ * 이름 | 닉네임 | 회원구분 | 권한 | 카카오연결 | 상태 | 활동제외 | 등록일 | 이동 */
+.admin-member-row-grid {
+  display: grid;
+  grid-template-columns: 1.3fr 1fr 0.8fr 0.8fr 0.9fr 0.8fr 0.8fr 0.9fr 32px;
+  gap: 0.5rem;
+  align-items: center;
+}
