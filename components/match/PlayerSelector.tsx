@@ -84,19 +84,38 @@ export function PlayerSelector({
     const isTaken = excludeKeys.includes(key) && !isSelected;
     const displayLabel = getMemberDisplayLabel(member);
 
+    // Tailwind의 `[color:var(--x)]/N` opacity modifier는 CSS 변수(hex 문자열) 기반
+    // arbitrary color에는 적용되지 않아(빌드타임에 채널을 분해 못 해 조용히 깨짐)
+    // 투명도가 섞이는 조합은 style의 color-mix()로 계산한다. gold는 Tailwind
+    // theme 색이라 opacity modifier가 정상 동작해 className 그대로 둔다.
     let cls: string;
+    let style: React.CSSProperties | undefined;
     if (isTaken) {
-      cls = "cursor-not-allowed border-[color:var(--control-muted-bg)] bg-[color:var(--control-bg)] text-[color:var(--control-placeholder)] opacity-30";
+      cls = "cursor-not-allowed opacity-30";
+      style = { borderColor: "var(--control-muted-bg)", backgroundColor: "var(--control-bg)", color: "var(--control-placeholder)" };
     } else if (isSelected) {
-      cls = variant === "attending"
-        ? "border-gold bg-gold/15 text-gold"
-        : "border-[color:var(--control-border-focus)] bg-[color:var(--control-border-focus)]/10 text-[color:var(--control-border-focus)]";
+      if (variant === "attending") {
+        cls = "border-gold bg-gold/15 text-gold";
+      } else {
+        cls = "";
+        style = {
+          borderColor: "var(--control-border-focus)",
+          backgroundColor: "color-mix(in srgb, var(--control-border-focus) 10%, transparent)",
+          color: "var(--control-border-focus)",
+        };
+      }
     } else if (variant === "attending") {
       cls = "border-gold/30 bg-gold/5 text-line-800 hover:border-gold/60";
     } else if (variant === "undecided") {
-      cls = "border-[color:var(--control-border-focus)]/30 bg-[color:var(--control-border-focus)]/5 text-[color:var(--control-text)] hover:border-[color:var(--control-border-focus)]/50";
+      cls = "";
+      style = {
+        borderColor: "color-mix(in srgb, var(--control-border-focus) 30%, transparent)",
+        backgroundColor: "color-mix(in srgb, var(--control-border-focus) 5%, transparent)",
+        color: "var(--control-text)",
+      };
     } else {
-      cls = "border-[color:var(--control-border)] bg-[color:var(--control-bg)] text-[color:var(--control-placeholder)] hover:border-[color:var(--control-border-hover)]";
+      cls = "hover:border-[color:var(--control-border-hover)]";
+      style = { borderColor: "var(--control-border)", backgroundColor: "var(--control-bg)", color: "var(--control-placeholder)" };
     }
 
     return (
@@ -104,6 +123,7 @@ export function PlayerSelector({
         type="button"
         disabled={isTaken}
         onClick={() => onChange({ id: member.id, name: displayLabel, isGuest: false })}
+        style={style}
         className={clsx(
           "inline-flex items-center rounded-sm border px-2.5 py-1 text-xs font-semibold transition-colors",
           cls
@@ -128,12 +148,16 @@ export function PlayerSelector({
           <button
             type="button"
             onClick={() => setTab("member")}
-            className={clsx(
-              "rounded-sm border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider transition-colors",
+            className="rounded-sm border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider transition-colors"
+            style={
               tab === "member"
-                ? "border-[color:var(--control-border-focus)]/60 bg-[color:var(--control-border-focus)]/10 text-[color:var(--control-border-focus)]"
-                : "border-[color:var(--control-border)] text-[color:var(--control-placeholder)]"
-            )}
+                ? {
+                    borderColor: "color-mix(in srgb, var(--control-border-focus) 60%, transparent)",
+                    backgroundColor: "color-mix(in srgb, var(--control-border-focus) 10%, transparent)",
+                    color: "var(--control-border-focus)",
+                  }
+                : { borderColor: "var(--control-border)", color: "var(--control-placeholder)" }
+            }
           >
             회원
           </button>

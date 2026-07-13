@@ -94,13 +94,34 @@ export function MemberForm({
 }: MemberFormProps) {
   const set = (patch: Partial<MemberFormValues>) => onChange(patch);
 
-  // 입력 공통 클래스 — 색상은 --control-* 시맨틱 토큰(club/admin skin이 값만 오버라이드)
+  // 입력 공통 클래스 — 색상은 --control-* 시맨틱 토큰(club/admin skin이 값만 오버라이드).
+  // 투명도가 섞인 색(예: 60%/10%)은 Tailwind의 `[color:var(--x)]/N` modifier가
+  // CSS 변수(hex 문자열) 기반 arbitrary color에는 적용되지 않아(빌드타임에 채널을
+  // 분해할 수 없음 — 조용히 무시되어 기본값/투명으로 깨진다) style의 color-mix()로 계산한다.
   const inputCls = (err?: string) =>
     `h-11 w-full rounded-sm border px-3 text-sm text-[color:var(--control-text)] placeholder:text-[color:var(--control-placeholder)] focus:outline-none focus:ring-2 focus:ring-[color:var(--control-focus-ring)] ${
-      err
-        ? "border-[color:var(--control-danger-border)]/60 bg-[color:var(--control-danger-border)]/5"
-        : "border-[color:var(--control-border)] bg-[color:var(--control-bg)] focus:border-[color:var(--control-border-focus)]"
+      err ? "" : "border-[color:var(--control-border)] bg-[color:var(--control-bg)] focus:border-[color:var(--control-border-focus)]"
     }`;
+
+  const inputStyle = (err?: string): React.CSSProperties | undefined =>
+    err
+      ? {
+          borderColor: "color-mix(in srgb, var(--control-danger-border) 60%, transparent)",
+          backgroundColor: "color-mix(in srgb, var(--control-danger-border) 5%, transparent)",
+        }
+      : undefined;
+
+  // 연한 틴트 "선택됨" 스타일(지역점수 이외의 토글) — accent 색(--control-border-focus)의
+  // 60%/10% 투명도 버전을 색 자체(color-mix)로 계산한다(같은 이유로 Tailwind opacity
+  // modifier 대신 사용).
+  const softSelectedStyle = (selected: boolean): React.CSSProperties =>
+    selected
+      ? {
+          borderColor: "color-mix(in srgb, var(--control-border-focus) 60%, transparent)",
+          backgroundColor: "color-mix(in srgb, var(--control-border-focus) 10%, transparent)",
+          color: "var(--control-border-focus)",
+        }
+      : { borderColor: "var(--control-border)", color: "var(--control-placeholder)" };
 
   const labelCls = "mb-1 block text-xs font-semibold text-line-600";
 
@@ -117,6 +138,7 @@ export function MemberForm({
           onChange={(e) => set({ name: e.target.value })}
           placeholder="실명"
           className={inputCls(errors.name)}
+          style={inputStyle(errors.name)}
         />
         {errors.name && <p className="mt-1 text-[11px] text-fault-400">{errors.name}</p>}
       </div>
@@ -149,6 +171,7 @@ export function MemberForm({
           maxLength={13}
           placeholder="010-0000-0000"
           className={inputCls(errors.phoneDigits)}
+          style={inputStyle(errors.phoneDigits)}
         />
         {errors.phoneDigits && (
           <p className="mt-1 text-[11px] text-fault-400">{errors.phoneDigits}</p>
@@ -166,6 +189,7 @@ export function MemberForm({
             onChange={(e) => set({ age: e.target.value })}
             placeholder="예: 35"
             className={inputCls(errors.age)}
+            style={inputStyle(errors.age)}
           />
           {errors.age && <p className="mt-1 text-[11px] text-fault-400">{errors.age}</p>}
         </div>
@@ -257,11 +281,8 @@ export function MemberForm({
                 key={label}
                 type="button"
                 onClick={() => set({ isDormant: val })}
-                className={`flex-1 rounded-sm border py-2 text-sm font-semibold transition-colors ${
-                  values.isDormant === val
-                    ? "border-[color:var(--control-border-focus)]/60 bg-[color:var(--control-border-focus)]/10 text-[color:var(--control-border-focus)]"
-                    : "border-[color:var(--control-border)] text-[color:var(--control-placeholder)]"
-                }`}
+                className="flex-1 rounded-sm border py-2 text-sm font-semibold transition-colors"
+                style={softSelectedStyle(values.isDormant === val)}
               >
                 {label}
               </button>
@@ -285,11 +306,8 @@ export function MemberForm({
               key={label}
               type="button"
               onClick={() => set({ isPlayerOrigin: val })}
-              className={`flex-1 rounded-sm border py-2 text-sm font-semibold transition-colors ${
-                values.isPlayerOrigin === val
-                  ? "border-[color:var(--control-border-focus)]/60 bg-[color:var(--control-border-focus)]/10 text-[color:var(--control-border-focus)]"
-                  : "border-[color:var(--control-border)] text-[color:var(--control-placeholder)]"
-              }`}
+              className="flex-1 rounded-sm border py-2 text-sm font-semibold transition-colors"
+              style={softSelectedStyle(values.isPlayerOrigin === val)}
             >
               {label}
             </button>
@@ -303,11 +321,8 @@ export function MemberForm({
                 key={opt.value}
                 type="button"
                 onClick={() => set({ playerBackgroundDetail: opt.value })}
-                className={`rounded-sm border px-3 py-1.5 text-xs font-semibold transition-colors ${
-                  values.playerBackgroundDetail === opt.value
-                    ? "border-[color:var(--control-border-focus)]/60 bg-[color:var(--control-border-focus)]/10 text-[color:var(--control-border-focus)]"
-                    : "border-[color:var(--control-border)] text-[color:var(--control-placeholder)]"
-                }`}
+                className="rounded-sm border px-3 py-1.5 text-xs font-semibold transition-colors"
+                style={softSelectedStyle(values.playerBackgroundDetail === opt.value)}
               >
                 {opt.label}
               </button>
