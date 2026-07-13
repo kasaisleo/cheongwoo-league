@@ -135,7 +135,7 @@ function GuestEditModal({
   const [submitting, setSubmitting]       = useState(false);
   const [error, setError]                 = useState<string | null>(null);
 
-  const inputCls = "h-10 w-full rounded-sm border border-line-200/40 bg-line-50 px-3 text-sm text-line-900 placeholder:text-line-400";
+  const inputCls = "h-10 w-full rounded-sm border border-[color:var(--control-border)] bg-[color:var(--control-bg)] px-3 text-sm text-[color:var(--control-text)] placeholder:text-[color:var(--control-placeholder)] focus:outline-none focus:border-[color:var(--control-border-focus)] focus:ring-2 focus:ring-[color:var(--control-focus-ring)]";
   const labelCls = "mb-1 block text-xs font-semibold text-line-600";
 
   async function handleSave() {
@@ -197,7 +197,7 @@ function GuestEditModal({
           <div>
             <label className={labelCls}>메모</label>
             <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3}
-              className="w-full resize-none rounded-sm border border-line-200/40 bg-line-50 px-3 py-2 text-sm text-line-900 placeholder:text-line-400" />
+              className="w-full resize-none rounded-sm border border-[color:var(--control-border)] bg-[color:var(--control-bg)] px-3 py-2 text-sm text-[color:var(--control-text)] placeholder:text-[color:var(--control-placeholder)] focus:outline-none focus:border-[color:var(--control-border-focus)] focus:ring-2 focus:ring-[color:var(--control-focus-ring)]" />
           </div>
         </div>
 

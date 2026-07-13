@@ -145,7 +145,7 @@ export default function NewMemberPageClient({ currentClubId }: { currentClubId: 
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="예: 김철수"
-              className="h-11 w-full rounded-lg border border-line-200 bg-line-25 px-3 text-sm text-line-900 placeholder:text-line-400"
+              className="h-11 w-full rounded-lg border border-[color:var(--control-border)] bg-[color:var(--control-bg)] px-3 text-sm text-[color:var(--control-text)] placeholder:text-[color:var(--control-placeholder)] focus:outline-none focus:border-[color:var(--control-border-focus)] focus:ring-2 focus:ring-[color:var(--control-focus-ring)]"
             />
           </div>
 
@@ -155,7 +155,7 @@ export default function NewMemberPageClient({ currentClubId }: { currentClubId: 
               value={nickname}
               onChange={(e) => setNickname(e.target.value)}
               placeholder="예: 철수 (비워두면 이름으로 등록)"
-              className="h-11 w-full rounded-lg border border-line-200 bg-line-25 px-3 text-sm text-line-900 placeholder:text-line-400"
+              className="h-11 w-full rounded-lg border border-[color:var(--control-border)] bg-[color:var(--control-bg)] px-3 text-sm text-[color:var(--control-text)] placeholder:text-[color:var(--control-placeholder)] focus:outline-none focus:border-[color:var(--control-border-focus)] focus:ring-2 focus:ring-[color:var(--control-focus-ring)]"
             />
           </div>
 
@@ -168,7 +168,7 @@ export default function NewMemberPageClient({ currentClubId }: { currentClubId: 
               onChange={(e) => handlePhoneChange(e.target.value)}
               placeholder="010-0000-0000"
               maxLength={13}
-              className="h-11 w-full rounded-lg border border-line-200 bg-line-25 px-3 text-sm text-line-900 placeholder:text-line-400"
+              className="h-11 w-full rounded-lg border border-[color:var(--control-border)] bg-[color:var(--control-bg)] px-3 text-sm text-[color:var(--control-text)] placeholder:text-[color:var(--control-placeholder)] focus:outline-none focus:border-[color:var(--control-border-focus)] focus:ring-2 focus:ring-[color:var(--control-focus-ring)]"
             />
           </div>
 
@@ -182,8 +182,8 @@ export default function NewMemberPageClient({ currentClubId }: { currentClubId: 
                   onClick={() => setMemberType(t)}
                   className={`flex-1 rounded-lg border py-2 text-sm font-semibold ${
                     memberType === t
-                      ? "border-clay-400 bg-clay-400 text-line-25"
-                      : "border-line-200 text-line-600"
+                      ? "border-[color:var(--control-selected-bg)] bg-[color:var(--control-selected-bg)] text-[color:var(--control-selected-text)]"
+                      : "border-[color:var(--control-border)] text-[color:var(--control-placeholder)]"
                   }`}
                 >
                   {t}
@@ -198,10 +198,10 @@ export default function NewMemberPageClient({ currentClubId }: { currentClubId: 
               value={role}
               onChange={(e) => setRole(e.target.value)}
               disabled={!isOwner}
-              className={`h-11 w-full rounded-lg border px-3 text-sm ${
+              className={`h-11 w-full rounded-lg border px-3 text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--control-focus-ring)] ${
                 isOwner
-                  ? "border-line-200 bg-line-25 text-line-900"
-                  : "border-line-200 bg-line-200/40 text-line-500"
+                  ? "border-[color:var(--control-border)] bg-[color:var(--control-bg)] text-[color:var(--control-text)] focus:border-[color:var(--control-border-focus)]"
+                  : "border-[color:var(--control-border)] bg-[color:var(--control-bg-disabled)] text-[color:var(--control-placeholder)]"
               }`}
             >
               <option value={NO_ROLE}>직책 없음</option>
@@ -228,8 +228,8 @@ export default function NewMemberPageClient({ currentClubId }: { currentClubId: 
                   onClick={() => setMapoScore(mapoScore === score ? null : score)}
                   className={`flex h-9 w-9 items-center justify-center rounded-full border text-sm font-semibold ${
                     mapoScore === score
-                      ? "border-court-400 bg-court-400 text-line-25"
-                      : "border-line-200 text-line-600"
+                      ? "border-[color:var(--control-selected-bg)] bg-[color:var(--control-selected-bg)] text-[color:var(--control-selected-text)]"
+                      : "border-[color:var(--control-border)] text-[color:var(--control-placeholder)]"
                   }`}
                 >
                   {score}

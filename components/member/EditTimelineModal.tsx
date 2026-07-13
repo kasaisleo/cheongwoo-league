@@ -247,8 +247,8 @@ export function EditTimelineModal({ memberId, existing, onClose, onSaved, onDele
                   onClick={() => handleTimelineTypeChange(option.value)}
                   className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${
                     timelineType === option.value
-                      ? "border-clay-400 bg-clay-400 text-line-25"
-                      : "border-line-200 text-line-600"
+                      ? "border-[color:var(--control-selected-bg)] bg-[color:var(--control-selected-bg)] text-[color:var(--control-selected-text)]"
+                      : "border-[color:var(--control-border)] text-[color:var(--control-placeholder)]"
                   }`}
                 >
                   {option.label}
@@ -275,6 +275,8 @@ export function EditTimelineModal({ memberId, existing, onClose, onSaved, onDele
               type="checkbox"
               checked={values.isHighlight}
               onChange={(e) => updateValues({ isHighlight: e.target.checked })}
+              style={{ accentColor: "var(--control-selected-bg)" }}
+              className="focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--control-focus-ring)]"
             />
             대표 커리어로 표시
           </label>

@@ -118,7 +118,7 @@ export default function NewGuestPageClient({ currentClubId }: { currentClubId: s
                 value={age}
                 onChange={(e) => setAge(e.target.value)}
                 placeholder="예: 35"
-                className="h-11 w-full rounded-lg border border-line-200 bg-line-25 px-3 text-sm text-line-900 placeholder:text-line-400"
+                className="h-11 w-full rounded-lg border border-[color:var(--control-border)] bg-[color:var(--control-bg)] px-3 text-sm text-[color:var(--control-text)] placeholder:text-[color:var(--control-placeholder)] focus:outline-none focus:border-[color:var(--control-border-focus)] focus:ring-2 focus:ring-[color:var(--control-focus-ring)]"
               />
             </div>
             <div>
@@ -130,7 +130,7 @@ export default function NewGuestPageClient({ currentClubId }: { currentClubId: s
                 value={yearsPlaying}
                 onChange={(e) => setYearsPlaying(e.target.value)}
                 placeholder="예: 2"
-                className="h-11 w-full rounded-lg border border-line-200 bg-line-25 px-3 text-sm text-line-900 placeholder:text-line-400"
+                className="h-11 w-full rounded-lg border border-[color:var(--control-border)] bg-[color:var(--control-bg)] px-3 text-sm text-[color:var(--control-text)] placeholder:text-[color:var(--control-placeholder)] focus:outline-none focus:border-[color:var(--control-border-focus)] focus:ring-2 focus:ring-[color:var(--control-focus-ring)]"
               />
             </div>
           </div>
@@ -153,7 +153,7 @@ export default function NewGuestPageClient({ currentClubId }: { currentClubId: s
               type="date"
               value={visitDate}
               onChange={(e) => setVisitDate(e.target.value)}
-              className="box-border block h-11 w-full min-w-0 max-w-full rounded-lg border border-line-200 bg-line-25 px-3 text-sm text-line-900"
+              className="box-border block h-11 w-full min-w-0 max-w-full rounded-lg border border-[color:var(--control-border)] bg-[color:var(--control-bg)] px-3 text-sm text-[color:var(--control-text)] focus:outline-none focus:border-[color:var(--control-border-focus)] focus:ring-2 focus:ring-[color:var(--control-focus-ring)]"
             />
           </div>
         </Card>
@@ -173,7 +173,7 @@ export default function NewGuestPageClient({ currentClubId }: { currentClubId: s
               <select
                 value={referredBy}
                 onChange={(e) => setReferredBy(e.target.value)}
-                className="h-11 w-full rounded-lg border border-line-200 bg-line-25 px-3 text-sm text-line-900"
+                className="h-11 w-full rounded-lg border border-[color:var(--control-border)] bg-[color:var(--control-bg)] px-3 text-sm text-[color:var(--control-text)] focus:outline-none focus:border-[color:var(--control-border-focus)] focus:ring-2 focus:ring-[color:var(--control-focus-ring)]"
               >
                 <option value="">선택 안 함</option>
                 {members.map((m) => (
@@ -194,8 +194,8 @@ export default function NewGuestPageClient({ currentClubId }: { currentClubId: s
                     onClick={() => setSkillGrade(skillGrade === g ? "" : g)}
                     className={`flex-1 rounded-lg border py-2 text-sm font-semibold ${
                       skillGrade === g
-                        ? "border-clay-400 bg-clay-400 text-line-25"
-                        : "border-line-200 text-line-600"
+                        ? "border-[color:var(--control-selected-bg)] bg-[color:var(--control-selected-bg)] text-[color:var(--control-selected-text)]"
+                        : "border-[color:var(--control-border)] text-[color:var(--control-placeholder)]"
                     }`}
                   >
                     {g}급
@@ -215,7 +215,7 @@ export default function NewGuestPageClient({ currentClubId }: { currentClubId: s
                     className={`flex-1 rounded-lg border py-2 text-sm font-semibold ${
                       mannerScore === score
                         ? "border-amber-400 bg-amber-400 text-line-25"
-                        : "border-line-200 text-line-600"
+                        : "border-[color:var(--control-border)] text-[color:var(--control-placeholder)]"
                     }`}
                   >
                     {score}
@@ -233,7 +233,7 @@ export default function NewGuestPageClient({ currentClubId }: { currentClubId: s
                   className={`flex-1 rounded-lg border py-2 text-sm font-semibold ${
                     reinvite === true
                       ? "border-court-400 bg-court-400 text-line-25"
-                      : "border-line-200 text-line-600"
+                      : "border-[color:var(--control-border)] text-[color:var(--control-placeholder)]"
                   }`}
                 >
                   재초청 희망
@@ -244,7 +244,7 @@ export default function NewGuestPageClient({ currentClubId }: { currentClubId: s
                   className={`flex-1 rounded-lg border py-2 text-sm font-semibold ${
                     reinvite === false
                       ? "border-fault-400 bg-fault-400 text-line-25"
-                      : "border-line-200 text-line-600"
+                      : "border-[color:var(--control-border)] text-[color:var(--control-placeholder)]"
                   }`}
                 >
                   보류
@@ -259,7 +259,7 @@ export default function NewGuestPageClient({ currentClubId }: { currentClubId: s
                 onChange={(e) => setNotes(e.target.value)}
                 rows={3}
                 placeholder="특이사항을 적어주세요"
-                className="w-full rounded-lg border border-line-200 bg-line-25 px-3 py-2 text-sm text-line-900 placeholder:text-line-400"
+                className="w-full rounded-lg border border-[color:var(--control-border)] bg-[color:var(--control-bg)] px-3 py-2 text-sm text-[color:var(--control-text)] placeholder:text-[color:var(--control-placeholder)] focus:outline-none focus:border-[color:var(--control-border-focus)] focus:ring-2 focus:ring-[color:var(--control-focus-ring)]"
               />
             </div>
           </Card>

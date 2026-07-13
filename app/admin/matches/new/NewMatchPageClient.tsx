@@ -380,21 +380,18 @@ export function NewMatchPageClient({ currentClubId }: { currentClubId: string })
                 </label>
                 <input value={newSessionTitle} onChange={(e) => setNewSessionTitle(e.target.value)}
                   placeholder="예: 6월 토요정기매치"
-                  className="h-10 w-full rounded-[var(--admin-button-radius,6px)] border px-3 text-sm"
-                  style={{ borderColor: "var(--admin-border)", background: "var(--admin-surface)", color: "var(--admin-text)" }} />
+                  className="h-10 w-full rounded-[var(--admin-button-radius,6px)] border border-[color:var(--control-border)] bg-[color:var(--control-bg)] px-3 text-sm text-[color:var(--control-text)] focus:outline-none focus:border-[color:var(--control-border-focus)] focus:ring-2 focus:ring-[color:var(--control-focus-ring)]" />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="mb-1 block text-xs font-semibold" style={{ color: "var(--admin-muted)" }}>날짜 <span style={{ color: "var(--admin-alert)" }}>*</span></label>
                   <input type="date" value={newSessionDate} onChange={(e) => setNewSessionDate(e.target.value)}
-                    className="h-10 w-full rounded-[var(--admin-button-radius,6px)] border px-3 text-sm"
-                    style={{ borderColor: "var(--admin-border)", background: "var(--admin-surface)", color: "var(--admin-text)" }} />
+                    className="h-10 w-full rounded-[var(--admin-button-radius,6px)] border border-[color:var(--control-border)] bg-[color:var(--control-bg)] px-3 text-sm text-[color:var(--control-text)] focus:outline-none focus:border-[color:var(--control-border-focus)] focus:ring-2 focus:ring-[color:var(--control-focus-ring)]" />
                 </div>
                 <div>
                   <label className="mb-1 block text-xs font-semibold" style={{ color: "var(--admin-muted)" }}>매치 타입</label>
                   <select value={newSessionDay} onChange={(e) => setNewSessionDay(e.target.value as SessionDay)}
-                    className="h-10 w-full rounded-[var(--admin-button-radius,6px)] border px-3 text-sm"
-                    style={{ borderColor: "var(--admin-border)", background: "var(--admin-surface)", color: "var(--admin-text)" }}>
+                    className="h-10 w-full rounded-[var(--admin-button-radius,6px)] border border-[color:var(--control-border)] bg-[color:var(--control-bg)] px-3 text-sm text-[color:var(--control-text)] focus:outline-none focus:border-[color:var(--control-border-focus)] focus:ring-2 focus:ring-[color:var(--control-focus-ring)]">
                     <option value="saturday">토요정기매치</option>
                     <option value="sunday">일요정기매치</option>
                     <option value="holiday">휴일매치</option>
@@ -418,13 +415,13 @@ export function NewMatchPageClient({ currentClubId }: { currentClubId: string })
             <p className="text-sm" style={{ color: "var(--admin-muted)" }}>등록된 매치가 없어요. 출석 관리 화면에서 먼저 매치를 생성해주세요.</p>
           ) : (
             <Dropdown align="left"
-              triggerClassName="flex w-full items-center justify-between rounded-[var(--admin-button-radius,6px)] border border-[color:var(--admin-border)] bg-[color:var(--admin-surface-raised,var(--admin-surface))] px-3 py-2.5 text-left transition-colors hover:border-[color:var(--admin-border-strong)]"
+              triggerClassName="flex w-full items-center justify-between rounded-[var(--admin-button-radius,6px)] border border-[color:var(--control-border)] bg-[color:var(--control-bg)] px-3 py-2.5 text-left transition-colors hover:border-[color:var(--control-border-hover)]"
               trigger={
                 <>
-                  <span className="text-sm font-semibold text-[color:var(--admin-text)]">
+                  <span className="text-sm font-semibold text-[color:var(--control-text)]">
                     {selectedSessionLabel ?? "매치를 선택해주세요"}
                   </span>
-                  <span className="text-xs text-[color:var(--admin-muted)]">▼</span>
+                  <span className="text-xs text-[color:var(--control-placeholder)]">▼</span>
                 </>
               }>
               {(close) => (
@@ -433,7 +430,7 @@ export function NewMatchPageClient({ currentClubId }: { currentClubId: string })
                     const isCustom = session.session_day === "holiday" || session.session_day === "custom";
                     return (
                       <DropdownItem key={session.id} onClick={() => { handleSessionSelect(session.id); close(); }}>
-                        <span className={selectedSessionId === session.id ? "text-[color:var(--admin-accent)]" : ""}>
+                        <span className={selectedSessionId === session.id ? "text-[color:var(--control-border-focus)]" : ""}>
                           {MATCH_SESSION_DAY_LABEL[session.session_day]}
                           {isCustom && ` · ${session.title}`} ({session.session_date})
                         </span>

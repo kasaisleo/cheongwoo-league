@@ -94,12 +94,12 @@ export function MemberForm({
 }: MemberFormProps) {
   const set = (patch: Partial<MemberFormValues>) => onChange(patch);
 
-  // 입력 공통 클래스
+  // 입력 공통 클래스 — 색상은 --control-* 시맨틱 토큰(club/admin skin이 값만 오버라이드)
   const inputCls = (err?: string) =>
-    `h-11 w-full rounded-sm border px-3 text-sm text-line-900 placeholder:text-line-400 ${
+    `h-11 w-full rounded-sm border px-3 text-sm text-[color:var(--control-text)] placeholder:text-[color:var(--control-placeholder)] focus:outline-none focus:ring-2 focus:ring-[color:var(--control-focus-ring)] ${
       err
-        ? "border-fault-400/60 bg-fault-400/5"
-        : "border-line-200/40 bg-line-50"
+        ? "border-[color:var(--control-danger-border)]/60 bg-[color:var(--control-danger-border)]/5"
+        : "border-[color:var(--control-border)] bg-[color:var(--control-bg)] focus:border-[color:var(--control-border-focus)]"
     }`;
 
   const labelCls = "mb-1 block text-xs font-semibold text-line-600";
@@ -207,8 +207,8 @@ export function MemberForm({
               onClick={() => set({ mapoScore: values.mapoScore === score ? null : score })}
               className={`flex h-9 w-9 items-center justify-center rounded-sm border text-sm font-semibold transition-colors ${
                 values.mapoScore === score
-                  ? "border-clay-400/60 bg-clay-400/10 text-clay-400"
-                  : "border-line-200/40 bg-line-50 text-line-600"
+                  ? "border-[color:var(--control-selected-bg)] bg-[color:var(--control-selected-bg)] text-[color:var(--control-selected-text)]"
+                  : "border-[color:var(--control-border)] bg-[color:var(--control-bg)] text-[color:var(--control-placeholder)]"
               }`}
             >
               {score}
@@ -225,10 +225,10 @@ export function MemberForm({
             value={values.role}
             onChange={(e) => set({ role: e.target.value })}
             disabled={!isOwner}
-            className={`h-11 w-full rounded-sm border px-3 text-sm ${
+            className={`h-11 w-full rounded-sm border px-3 text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--control-focus-ring)] ${
               isOwner
-                ? "border-line-200/40 bg-line-50 text-line-900"
-                : "border-line-200/40 bg-line-200/40 text-line-500"
+                ? "border-[color:var(--control-border)] bg-[color:var(--control-bg)] text-[color:var(--control-text)] focus:border-[color:var(--control-border-focus)]"
+                : "border-[color:var(--control-border)] bg-[color:var(--control-bg-disabled)] text-[color:var(--control-placeholder)]"
             }`}
           >
             <option value={NO_ROLE}>직책 없음</option>
@@ -259,8 +259,8 @@ export function MemberForm({
                 onClick={() => set({ isDormant: val })}
                 className={`flex-1 rounded-sm border py-2 text-sm font-semibold transition-colors ${
                   values.isDormant === val
-                    ? "border-clay-400/60 bg-clay-400/10 text-clay-400"
-                    : "border-line-200/40 text-line-600"
+                    ? "border-[color:var(--control-border-focus)]/60 bg-[color:var(--control-border-focus)]/10 text-[color:var(--control-border-focus)]"
+                    : "border-[color:var(--control-border)] text-[color:var(--control-placeholder)]"
                 }`}
               >
                 {label}
@@ -287,8 +287,8 @@ export function MemberForm({
               onClick={() => set({ isPlayerOrigin: val })}
               className={`flex-1 rounded-sm border py-2 text-sm font-semibold transition-colors ${
                 values.isPlayerOrigin === val
-                  ? "border-clay-400/60 bg-clay-400/10 text-clay-400"
-                  : "border-line-200/40 text-line-600"
+                  ? "border-[color:var(--control-border-focus)]/60 bg-[color:var(--control-border-focus)]/10 text-[color:var(--control-border-focus)]"
+                  : "border-[color:var(--control-border)] text-[color:var(--control-placeholder)]"
               }`}
             >
               {label}
@@ -305,8 +305,8 @@ export function MemberForm({
                 onClick={() => set({ playerBackgroundDetail: opt.value })}
                 className={`rounded-sm border px-3 py-1.5 text-xs font-semibold transition-colors ${
                   values.playerBackgroundDetail === opt.value
-                    ? "border-clay-400/60 bg-clay-400/10 text-clay-400"
-                    : "border-line-200/40 text-line-600"
+                    ? "border-[color:var(--control-border-focus)]/60 bg-[color:var(--control-border-focus)]/10 text-[color:var(--control-border-focus)]"
+                    : "border-[color:var(--control-border)] text-[color:var(--control-placeholder)]"
                 }`}
               >
                 {opt.label}
@@ -323,7 +323,7 @@ export function MemberForm({
           value={values.memo}
           onChange={(e) => set({ memo: e.target.value })}
           rows={3}
-          className="w-full resize-none rounded-sm border border-line-200/40 bg-line-50 px-3 py-2 text-sm text-line-900 placeholder:text-line-400"
+          className="w-full resize-none rounded-sm border border-[color:var(--control-border)] bg-[color:var(--control-bg)] px-3 py-2 text-sm text-[color:var(--control-text)] placeholder:text-[color:var(--control-placeholder)] focus:outline-none focus:border-[color:var(--control-border-focus)] focus:ring-2 focus:ring-[color:var(--control-focus-ring)]"
         />
       </div>
     </div>

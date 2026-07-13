@@ -29,8 +29,8 @@ interface TimelineFieldRendererProps {
 }
 
 const inputClass =
-  "box-border block h-11 w-full min-w-0 max-w-full rounded-lg border border-line-200 bg-line-25 px-3 text-sm text-line-900 placeholder:text-line-400";
-const selectClass = "h-11 w-full rounded-lg border border-line-200 bg-line-25 px-3 text-sm text-line-900";
+  "box-border block h-11 w-full min-w-0 max-w-full rounded-lg border border-[color:var(--control-border)] bg-[color:var(--control-bg)] px-3 text-sm text-[color:var(--control-text)] placeholder:text-[color:var(--control-placeholder)] focus:outline-none focus:border-[color:var(--control-border-focus)] focus:ring-2 focus:ring-[color:var(--control-focus-ring)]";
+const selectClass = "h-11 w-full rounded-lg border border-[color:var(--control-border)] bg-[color:var(--control-bg)] px-3 text-sm text-[color:var(--control-text)] focus:outline-none focus:border-[color:var(--control-border-focus)] focus:ring-2 focus:ring-[color:var(--control-focus-ring)]";
 const labelClass = "mb-1 block text-xs font-semibold text-line-600";
 
 /**
@@ -136,7 +136,7 @@ export function TimelineFieldRenderer({
               <button
                 type="button"
                 onClick={onSwitchToManualTitle}
-                className="text-xs font-semibold text-clay-400"
+                className="text-xs font-semibold text-[color:var(--control-border-focus)]"
               >
                 직접 수정
               </button>
@@ -152,7 +152,7 @@ export function TimelineFieldRenderer({
               onChange({ title: e.target.value });
             }}
             placeholder={titlePlaceholder}
-            className={`${inputClass} ${!isManual ? "cursor-default bg-line-200/40 text-line-500" : ""}`}
+            className={`${inputClass} ${!isManual ? "cursor-default bg-[color:var(--control-bg-disabled)] text-[color:var(--control-placeholder)]" : ""}`}
           />
           {!isManual && (
             <p className="mt-1 text-xs text-line-400">
@@ -271,7 +271,7 @@ export function TimelineFieldRenderer({
             onChange={(e) => onChange({ memo: e.target.value })}
             rows={2}
             placeholder="예: 복식, 파트너 홍길동"
-            className="box-border block w-full min-w-0 max-w-full resize-none rounded-lg border border-line-200 bg-line-25 px-3 py-2 text-sm text-line-900 placeholder:text-line-400"
+            className="box-border block w-full min-w-0 max-w-full resize-none rounded-lg border border-[color:var(--control-border)] bg-[color:var(--control-bg)] px-3 py-2 text-sm text-[color:var(--control-text)] placeholder:text-[color:var(--control-placeholder)] focus:outline-none focus:border-[color:var(--control-border-focus)] focus:ring-2 focus:ring-[color:var(--control-focus-ring)]"
           />
         </div>
       );

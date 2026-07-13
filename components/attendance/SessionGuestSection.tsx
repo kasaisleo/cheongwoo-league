@@ -190,7 +190,7 @@ function AddGuestPanel({
     setSearchResults((prev) => prev.filter((g) => g.id !== guest.id));
   }
 
-  const inputCls = "h-9 flex-1 rounded-sm border border-line-200/40 bg-line-100 px-3 text-sm text-line-900 placeholder:text-line-400";
+  const inputCls = "h-9 flex-1 rounded-sm border border-[color:var(--control-border)] bg-[color:var(--control-bg)] px-3 text-sm text-[color:var(--control-text)] placeholder:text-[color:var(--control-placeholder)] focus:outline-none focus:border-[color:var(--control-border-focus)] focus:ring-2 focus:ring-[color:var(--control-focus-ring)]";
 
   return (
     <div className="border-t border-line-200/30 bg-line-50 px-4 pb-4 pt-3">

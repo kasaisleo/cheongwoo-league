@@ -56,6 +56,21 @@ const SKINS: Record<SkinKey, ClubSkin> = {
       "--club-card-radius":    "14px",
       "--club-button-radius":  "6px",
       "--club-shadow":         "0 1px 2px 0 rgba(0,0,0,0.4)",
+      // ── Form Control 시맨틱 토큰 (A-1) ──────────────────────────
+      // 값은 기존 line-*/clay-* Tailwind 클래스가 실제로 렌더링하던 hex/rgba를
+      // 그대로 이식했다 — 픽셀 변화 없이 색상 소스만 CSS 변수로 교체하기 위함.
+      "--control-bg":             "#0E1F33",              // line-50
+      "--control-bg-disabled":    "rgba(30,58,92,0.4)",   // line-200/40 (기존 disabled select와 동일)
+      "--control-text":           "#FFFFFF",              // line-900
+      "--control-placeholder":    "#5C7596",              // line-400
+      "--control-border":         "rgba(30,58,92,0.4)",   // line-200/40
+      "--control-border-hover":   "rgba(30,58,92,0.6)",
+      "--control-border-focus":   "#D4FF3D",              // clay-400
+      "--control-focus-ring":     "rgba(212,255,61,0.35)",
+      "--control-selected-bg":    "#D4FF3D",              // clay-400 (solid)
+      "--control-selected-text":  "#0B1929",              // line-25
+      "--control-muted-bg":       "rgba(30,58,92,0.3)",   // line-200/30
+      "--control-danger-border":  "#FF5C72",              // fault-400 (스킨 무관 고정)
     },
   },
 
@@ -75,6 +90,18 @@ const SKINS: Record<SkinKey, ClubSkin> = {
       "--club-card-radius":    "14px",
       "--club-button-radius":  "6px",
       "--club-shadow":         "0 1px 2px 0 rgba(0,0,0,0.4)",
+      "--control-bg":             "#0E1F33",
+      "--control-bg-disabled":    "rgba(30,58,92,0.4)",
+      "--control-text":           "#FFFFFF",
+      "--control-placeholder":    "#5C7596",
+      "--control-border":         "rgba(30,58,92,0.4)",
+      "--control-border-hover":   "rgba(30,58,92,0.6)",
+      "--control-border-focus":   "#D4FF3D",
+      "--control-focus-ring":     "rgba(212,255,61,0.35)",
+      "--control-selected-bg":    "#D4FF3D",
+      "--control-selected-text":  "#0B1929",
+      "--control-muted-bg":       "rgba(30,58,92,0.3)",
+      "--control-danger-border":  "#FF5C72",
     },
   },
 
@@ -98,6 +125,19 @@ const SKINS: Record<SkinKey, ClubSkin> = {
       "--club-card-radius":    "22px",
       "--club-button-radius":  "9999px",
       "--club-shadow":         "0 2px 8px 0 rgba(101,37,143,0.08)",
+      // ── Form Control 시맨틱 토큰 (A-1) — warm ivory / deep plum / muted lavender / violet
+      "--control-bg":             "#FFFDF8",              // warm ivory
+      "--control-bg-disabled":    "#F0EADE",
+      "--control-text":           "#281B2F",              // deep plum
+      "--control-placeholder":    "#766C78",
+      "--control-border":         "#D9C8E3",              // muted lavender
+      "--control-border-hover":   "rgba(101,37,143,0.4)",
+      "--control-border-focus":   "#65258F",              // violet
+      "--control-focus-ring":     "rgba(101,37,143,0.35)",
+      "--control-selected-bg":    "#65258F",              // plum (solid)
+      "--control-selected-text":  "#FFFDF8",              // ivory
+      "--control-muted-bg":       "#F0EADE",
+      "--control-danger-border":  "#FF5C72",
     },
   },
 };

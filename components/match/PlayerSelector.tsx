@@ -86,17 +86,17 @@ export function PlayerSelector({
 
     let cls: string;
     if (isTaken) {
-      cls = "cursor-not-allowed border-line-200/30 bg-line-50 text-line-500 opacity-30";
+      cls = "cursor-not-allowed border-[color:var(--control-muted-bg)] bg-[color:var(--control-bg)] text-[color:var(--control-placeholder)] opacity-30";
     } else if (isSelected) {
       cls = variant === "attending"
         ? "border-gold bg-gold/15 text-gold"
-        : "border-clay-400 bg-clay-400/10 text-clay-400";
+        : "border-[color:var(--control-border-focus)] bg-[color:var(--control-border-focus)]/10 text-[color:var(--control-border-focus)]";
     } else if (variant === "attending") {
       cls = "border-gold/30 bg-gold/5 text-line-800 hover:border-gold/60";
     } else if (variant === "undecided") {
-      cls = "border-clay-400/30 bg-clay-400/5 text-line-700 hover:border-clay-400/50";
+      cls = "border-[color:var(--control-border-focus)]/30 bg-[color:var(--control-border-focus)]/5 text-[color:var(--control-text)] hover:border-[color:var(--control-border-focus)]/50";
     } else {
-      cls = "border-line-200/40 bg-line-50 text-line-600 hover:border-line-300";
+      cls = "border-[color:var(--control-border)] bg-[color:var(--control-bg)] text-[color:var(--control-placeholder)] hover:border-[color:var(--control-border-hover)]";
     }
 
     return (
@@ -121,7 +121,7 @@ export function PlayerSelector({
         <div className="flex items-center gap-1.5">
           <p className="text-[10px] font-semibold text-line-500">{label}</p>
           {value && (
-            <span className="text-[13px] font-semibold tracking-normal text-clay-400">{value.name}</span>
+            <span className="text-[13px] font-semibold tracking-normal text-[color:var(--control-border-focus)]">{value.name}</span>
           )}
         </div>
         <div className="flex gap-1">
@@ -131,8 +131,8 @@ export function PlayerSelector({
             className={clsx(
               "rounded-sm border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider transition-colors",
               tab === "member"
-                ? "border-clay-400/60 bg-clay-400/10 text-clay-400"
-                : "border-line-200/40 text-line-500"
+                ? "border-[color:var(--control-border-focus)]/60 bg-[color:var(--control-border-focus)]/10 text-[color:var(--control-border-focus)]"
+                : "border-[color:var(--control-border)] text-[color:var(--control-placeholder)]"
             )}
           >
             회원
@@ -143,8 +143,8 @@ export function PlayerSelector({
             className={clsx(
               "rounded-sm border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider transition-colors",
               tab === "guest"
-                ? "border-line-400 bg-line-200 text-line-700"
-                : "border-line-200/40 text-line-500"
+                ? "border-[color:var(--control-border-hover)] bg-[color:var(--control-muted-bg)] text-[color:var(--control-text)]"
+                : "border-[color:var(--control-border)] text-[color:var(--control-placeholder)]"
             )}
           >
             게스트
@@ -206,7 +206,7 @@ export function PlayerSelector({
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="전체 회원 검색..."
-              className="box-border block h-8 w-full rounded-sm border border-line-200/40 bg-line-50 px-2.5 text-xs text-line-900 placeholder:text-line-500"
+              className="box-border block h-8 w-full rounded-sm border border-[color:var(--control-border)] bg-[color:var(--control-bg)] px-2.5 text-xs text-[color:var(--control-text)] placeholder:text-[color:var(--control-placeholder)] focus:outline-none focus:border-[color:var(--control-border-focus)] focus:ring-2 focus:ring-[color:var(--control-focus-ring)]"
             />
             {searchResults !== null && (
               <div className="mt-1.5">
@@ -240,21 +240,21 @@ export function PlayerSelector({
                 className={clsx(
                   "inline-flex items-center gap-1 rounded-sm border px-2.5 py-1 text-xs font-semibold transition-colors",
                   isSelected
-                    ? "border-line-400 bg-line-200 text-line-800"
+                    ? "border-[color:var(--control-border-hover)] bg-[color:var(--control-muted-bg)] text-[color:var(--control-text)]"
                     : isTaken
-                    ? "cursor-not-allowed border-line-200/40 text-line-500 opacity-30"
-                    : "border-line-200/40 bg-line-50 text-line-700 hover:border-line-300"
+                    ? "cursor-not-allowed border-[color:var(--control-border)] text-[color:var(--control-placeholder)] opacity-30"
+                    : "border-[color:var(--control-border)] bg-[color:var(--control-bg)] text-[color:var(--control-text)] hover:border-[color:var(--control-border-hover)]"
                 )}
               >
                 {guest.name}
-                <span className="text-[9px] text-line-500">G</span>
+                <span className="text-[9px] text-[color:var(--control-placeholder)]">G</span>
               </button>
             );
           })}
           <button
             type="button"
             onClick={onRequestAddGuest}
-            className="rounded-sm border border-dashed border-line-300 px-2.5 py-1 text-xs font-semibold text-line-500 hover:border-line-400"
+            className="rounded-sm border border-dashed border-[color:var(--control-border-hover)] px-2.5 py-1 text-xs font-semibold text-[color:var(--control-placeholder)] hover:border-[color:var(--control-border-focus)]"
           >
             + 게스트 등록
           </button>

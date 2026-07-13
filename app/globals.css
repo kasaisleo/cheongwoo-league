@@ -42,6 +42,22 @@
   --club-achievement:      var(--club-primary);
   --club-achievement-soft: var(--club-primary-soft);
 
+  /* ── Form Control 시맨틱 토큰 (A-1) — [data-club-skin] wrapper가 없는
+   * 레거시 bare 라우트(예: /matches, /guests)를 위한 fallback. 값은 기존
+   * line 계열/clay 계열 Tailwind 클래스가 렌더링하던 hex/rgba를 그대로 이식했다. */
+  --control-bg:             var(--club-surface);
+  --control-bg-disabled:    rgba(30, 58, 92, 0.4);
+  --control-text:           var(--club-text);
+  --control-placeholder:    #5C7596;
+  --control-border:         rgba(30, 58, 92, 0.4);
+  --control-border-hover:   rgba(30, 58, 92, 0.6);
+  --control-border-focus:   var(--club-primary);
+  --control-focus-ring:     rgba(212, 255, 61, 0.35);
+  --control-selected-bg:    var(--club-primary);
+  --control-selected-text:  #0B1929;
+  --control-muted-bg:       rgba(30, 58, 92, 0.3);
+  --control-danger-border:  #FF5C72;
+
   /* ── Admin viewport 배경 토큰 (AdminClubShell의 --admin-bg와 동일 값) ──
    * [data-admin-skin] wrapper 안쪽(max-w-md)뿐 아니라 그 바깥 viewport
    * 여백(body)까지 같은 색을 쓰기 위해 :root 레벨에 별도로 둔다.
@@ -111,18 +127,37 @@
   --club-bg:             #F7F2E8;
   --club-surface:        #FFFDF8;
   --club-surface-strong: #F0EADE;
-  --club-primary:        #552277;
+  /* --club-primary/--club-border — A-1 control-token fallback(아래)이 이 값을
+   * var()로 참조하므로, lib/club-skin.ts registry의 실제 namaste 값과 맞춘다
+   * (기존 #552277/#D8C9DE는 registry #65258F/#D9C8E3와 어긋나 있던 값이었다).
+   * 이 두 값 외 나머지(--club-bg/--club-primary-dark/--club-primary-soft/
+   * --club-shadow)는 control 토큰이 참조하지 않아 이번 범위에서 건드리지 않는다. */
+  --club-primary:        #65258F;
   --club-primary-dark:   #351346;
   --club-primary-soft:   #E9DDF0;
   --club-text:           #281B2F;
   --club-muted:          #766C78;
-  --club-border:         #D8C9DE;
+  --club-border:         #D9C8E3;
   --club-card-radius:    22px;
   --club-button-radius:  9999px;
   --club-shadow:         0 2px 8px 0 rgba(85, 34, 119, 0.08);
   /* namaste: 관리자 모드 배지 = pale gold (admin achievement와 동일) */
   --club-achievement:      #c9a84c;
   --club-achievement-soft: rgba(201, 168, 76, 0.12);
+
+  /* ── Form Control 시맨틱 토큰 (A-1) — warm ivory / deep plum / muted lavender */
+  --control-bg:             var(--club-surface);
+  --control-bg-disabled:    var(--club-surface-strong);
+  --control-text:           var(--club-text);
+  --control-placeholder:    var(--club-muted);
+  --control-border:         var(--club-border);
+  --control-border-hover:   rgba(101, 37, 143, 0.4);
+  --control-border-focus:   var(--club-primary);
+  --control-focus-ring:     rgba(101, 37, 143, 0.35);
+  --control-selected-bg:    var(--club-primary);
+  --control-selected-text:  #FFFDF8;
+  --control-muted-bg:       var(--club-surface-strong);
+  --control-danger-border:  #FF5C72;
 }
 
 /* 모든 /c/[slug] 클럽 페이지 body 배경 — skin token 기준. slug 조건문 없이 확장 가능 */

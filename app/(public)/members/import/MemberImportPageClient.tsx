@@ -170,7 +170,8 @@ export default function MemberImportPageClient() {
                       checked={selectedIds.has(row.id)}
                       onChange={() => toggleSelect(row.id)}
                       disabled={!canSelect}
-                      className="mt-1"
+                      style={{ accentColor: "var(--control-selected-bg)" }}
+                      className="mt-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--control-focus-ring)]"
                     />
                     <div>
                       <p className="text-sm font-semibold text-line-900">
