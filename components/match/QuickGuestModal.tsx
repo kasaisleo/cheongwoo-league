@@ -58,9 +58,12 @@ export function QuickGuestModal({ onClose, onCreated }: QuickGuestModalProps) {
     }
   }
 
+  const inputCls =
+    "h-11 w-full rounded-lg border border-[color:var(--control-border)] bg-[color:var(--control-bg)] px-3 text-sm text-[color:var(--control-text)] placeholder:text-[color:var(--control-placeholder)] focus:outline-none focus:border-[color:var(--control-border-focus)] focus:ring-2 focus:ring-[color:var(--control-focus-ring)]";
+
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 px-4 pb-4 sm:items-center">
-      <div className="w-full max-w-sm rounded-[var(--club-card-radius,14px)] border border-line-200 bg-line-100 p-4 shadow-card">
+      <div className="w-full max-w-sm rounded-[var(--club-card-radius,14px)] border border-[color:var(--surface-border)] bg-[color:var(--surface-bg-raised)] p-4 shadow-card">
         <p className="mb-3 text-sm font-bold uppercase tracking-wide text-clay-400">게스트 등록</p>
 
         <div className="space-y-3 overflow-hidden">
@@ -69,7 +72,7 @@ export function QuickGuestModal({ onClose, onCreated }: QuickGuestModalProps) {
             onChange={(e) => setName(e.target.value)}
             placeholder="이름"
             autoFocus
-            className="h-11 w-full rounded-lg border border-line-200 bg-line-25 px-3 text-sm text-line-900 placeholder:text-line-400"
+            className={inputCls}
           />
 
           <div className="grid grid-cols-2 gap-2">
@@ -79,7 +82,7 @@ export function QuickGuestModal({ onClose, onCreated }: QuickGuestModalProps) {
               value={age}
               onChange={(e) => setAge(e.target.value)}
               placeholder="나이"
-              className="h-11 w-full rounded-lg border border-line-200 bg-line-25 px-3 text-sm text-line-900 placeholder:text-line-400"
+              className={inputCls}
             />
             <input
               type="number"
@@ -88,7 +91,7 @@ export function QuickGuestModal({ onClose, onCreated }: QuickGuestModalProps) {
               value={yearsPlaying}
               onChange={(e) => setYearsPlaying(e.target.value)}
               placeholder="구력(년)"
-              className="h-11 w-full rounded-lg border border-line-200 bg-line-25 px-3 text-sm text-line-900 placeholder:text-line-400"
+              className={inputCls}
             />
           </div>
 
@@ -98,14 +101,14 @@ export function QuickGuestModal({ onClose, onCreated }: QuickGuestModalProps) {
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
             placeholder="휴대폰 번호"
-            className="h-11 w-full rounded-lg border border-line-200 bg-line-25 px-3 text-sm text-line-900 placeholder:text-line-400"
+            className={inputCls}
           />
 
           <input
             type="date"
             value={visitDate}
             onChange={(e) => setVisitDate(e.target.value)}
-            className="box-border block h-11 w-full min-w-0 max-w-full rounded-lg border border-line-200 bg-line-25 px-3 text-sm text-line-900"
+            className={`box-border block min-w-0 max-w-full ${inputCls}`}
           />
         </div>
 

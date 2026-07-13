@@ -123,12 +123,12 @@ export function EditMemberModal({ member, onClose, onSaved, onDeleted, currentCl
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 px-4 pb-4 sm:items-center">
-      <div className="max-h-[85vh] w-full max-w-sm overflow-y-auto rounded-[14px] border border-line-200/40 bg-line-50 p-4 shadow-card">
+      <div className="max-h-[85vh] w-full max-w-sm overflow-y-auto rounded-[14px] border border-[color:var(--surface-border)] bg-[color:var(--surface-bg)] p-4 shadow-card">
         {/* 헤더 */}
         <div className="mb-4 flex items-center justify-between">
           <p className="text-sm font-bold text-clay-400">회원 정보 수정</p>
           <button type="button" onClick={onClose}
-            className="text-xs font-semibold text-line-500 hover:text-line-700">
+            className="text-xs font-semibold text-[color:var(--surface-muted)] hover:text-[color:var(--surface-text)]">
             닫기
           </button>
         </div>
@@ -157,8 +157,8 @@ export function EditMemberModal({ member, onClose, onSaved, onDeleted, currentCl
 
         {/* 탈퇴 처리 — owner/master만 */}
         {isOwner && (
-          <div className="mt-6 border-t border-line-200/40 pt-4">
-            <p className="mb-2 text-center text-[11px] font-semibold text-line-400">
+          <div className="mt-6 border-t border-[color:var(--surface-border)] pt-4">
+            <p className="mb-2 text-center text-[11px] font-semibold text-[color:var(--surface-muted)]">
               위험 구역
             </p>
             <button

@@ -176,29 +176,29 @@ export function EditMatchModal({ match, onClose, onSaved, currentClubId }: EditM
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 px-4 pb-4 sm:items-center">
-      <div className="max-h-[85vh] w-full max-w-sm overflow-y-auto rounded-[var(--club-card-radius,14px)] border border-line-200 bg-line-100 p-4 shadow-card">
+      <div className="max-h-[85vh] w-full max-w-sm overflow-y-auto rounded-[var(--club-card-radius,14px)] border border-[color:var(--surface-border)] bg-[color:var(--surface-bg-raised)] p-4 shadow-card">
         <div className="mb-3 flex items-center justify-between">
           <p className="text-sm font-bold uppercase tracking-wide text-clay-400">경기 수정</p>
-          <button type="button" onClick={onClose} className="text-xs font-semibold text-line-500">
+          <button type="button" onClick={onClose} className="text-xs font-semibold text-[color:var(--surface-muted)]">
             닫기
           </button>
         </div>
 
         {loading ? (
-          <p className="py-8 text-center text-sm text-line-400">불러오는 중...</p>
+          <p className="py-8 text-center text-sm text-[color:var(--surface-muted)]">불러오는 중...</p>
         ) : (
           <>
-            <div className="mb-3 rounded-lg border border-line-200 p-3">
-              <p className="mb-2 text-xs font-bold uppercase tracking-widest text-line-600">세션 *</p>
+            <div className="mb-3 rounded-lg border border-[color:var(--surface-border)] p-3">
+              <p className="mb-2 text-xs font-bold uppercase tracking-widest text-[color:var(--surface-muted)]">세션 *</p>
               <Dropdown
                 align="left"
-                triggerClassName="flex w-full items-center justify-between rounded-lg border border-line-200 bg-line-25 px-3 py-2.5 text-left"
+                triggerClassName="flex w-full items-center justify-between rounded-lg border border-[color:var(--control-border)] bg-[color:var(--control-bg)] px-3 py-2.5 text-left"
                 trigger={
                   <>
-                    <span className="text-sm font-semibold text-line-900">
+                    <span className="text-sm font-semibold text-[color:var(--control-text)]">
                       {selectedSessionLabel ?? "세션을 선택해주세요"}
                     </span>
-                    <span className="text-line-500">▼</span>
+                    <span className="text-[color:var(--control-placeholder)]">▼</span>
                   </>
                 }
               >
@@ -227,7 +227,7 @@ export function EditMatchModal({ match, onClose, onSaved, currentClubId }: EditM
               </Dropdown>
             </div>
 
-            <div className="mb-3 rounded-lg border border-line-200 p-3">
+            <div className="mb-3 rounded-lg border border-[color:var(--surface-border)] p-3">
               <p className="mb-2 text-xs font-bold uppercase tracking-wide text-clay-400">청팀</p>
               <div className="space-y-2">
                 <PlayerSelector
@@ -253,7 +253,7 @@ export function EditMatchModal({ match, onClose, onSaved, currentClubId }: EditM
               </div>
             </div>
 
-            <div className="mb-3 rounded-lg border border-line-200 p-3">
+            <div className="mb-3 rounded-lg border border-[color:var(--surface-border)] p-3">
               <p className="mb-2 text-xs font-bold uppercase tracking-wide text-court-400">우팀</p>
               <div className="space-y-2">
                 <PlayerSelector
@@ -279,24 +279,24 @@ export function EditMatchModal({ match, onClose, onSaved, currentClubId }: EditM
               </div>
             </div>
 
-            <div className="mb-3 rounded-lg border border-line-200 p-3">
-              <p className="mb-2 text-center text-xs font-bold uppercase tracking-widest text-line-600">
+            <div className="mb-3 rounded-lg border border-[color:var(--surface-border)] p-3">
+              <p className="mb-2 text-center text-xs font-bold uppercase tracking-widest text-[color:var(--surface-muted)]">
                 스코어
               </p>
               <div className="flex items-center justify-center gap-6">
                 <ScoreStepper label="청팀" value={scoreA} onChange={setScoreA} highlight={winnerTeam === "A"} max={7} />
-                <span className="text-line-400">vs</span>
+                <span className="text-[color:var(--surface-muted)]">vs</span>
                 <ScoreStepper label="우팀" value={scoreB} onChange={setScoreB} highlight={winnerTeam === "B"} max={7} />
               </div>
 
               {isTiebreakSet && (
-                <div className="mt-3 border-t border-line-200 pt-3">
+                <div className="mt-3 border-t border-[color:var(--surface-border)] pt-3">
                   <p className="mb-2 text-center text-[11px] font-semibold uppercase tracking-widest text-amber-400">
                     타이브레이크
                   </p>
                   <div className="flex items-center justify-center gap-4">
                     <ScoreStepper label="청팀" value={tiebreakA} onChange={setTiebreakA} compact />
-                    <span className="text-xs text-line-400">:</span>
+                    <span className="text-xs text-[color:var(--surface-muted)]">:</span>
                     <ScoreStepper label="우팀" value={tiebreakB} onChange={setTiebreakB} compact />
                   </div>
                   {tiebreakA === tiebreakB && (
@@ -314,7 +314,7 @@ export function EditMatchModal({ match, onClose, onSaved, currentClubId }: EditM
                   className={`flex-1 rounded-lg border py-2 text-sm font-semibold ${
                     winnerTeam === "A"
                       ? "border-clay-400 bg-clay-400 text-line-25"
-                      : "border-line-200 text-line-600"
+                      : "border-[color:var(--surface-border)] text-[color:var(--surface-muted)]"
                   }`}
                 >
                   청팀 승리
@@ -325,7 +325,7 @@ export function EditMatchModal({ match, onClose, onSaved, currentClubId }: EditM
                   className={`flex-1 rounded-lg border py-2 text-sm font-semibold ${
                     winnerTeam === "B"
                       ? "border-court-400 bg-court-400 text-line-25"
-                      : "border-line-200 text-line-600"
+                      : "border-[color:var(--surface-border)] text-[color:var(--surface-muted)]"
                   }`}
                 >
                   우팀 승리

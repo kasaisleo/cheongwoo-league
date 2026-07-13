@@ -136,7 +136,7 @@ function GuestEditModal({
   const [error, setError]                 = useState<string | null>(null);
 
   const inputCls = "h-10 w-full rounded-sm border border-[color:var(--control-border)] bg-[color:var(--control-bg)] px-3 text-sm text-[color:var(--control-text)] placeholder:text-[color:var(--control-placeholder)] focus:outline-none focus:border-[color:var(--control-border-focus)] focus:ring-2 focus:ring-[color:var(--control-focus-ring)]";
-  const labelCls = "mb-1 block text-xs font-semibold text-line-600";
+  const labelCls = "mb-1 block text-xs font-semibold text-[color:var(--surface-muted)]";
 
   async function handleSave() {
     const normalized = name.replace(/\s+/g, "").trim();
@@ -164,11 +164,11 @@ function GuestEditModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 px-4 pb-4 sm:items-center">
-      <div className="max-h-[85vh] w-full max-w-sm overflow-y-auto rounded-[14px] border border-line-200/40 bg-line-50 p-4">
+      <div className="max-h-[85vh] w-full max-w-sm overflow-y-auto rounded-[14px] border border-[color:var(--surface-border)] bg-[color:var(--surface-bg)] p-4">
         <div className="mb-4 flex items-center justify-between">
           <p className="text-sm font-bold text-clay-400">게스트 수정</p>
           <button type="button" onClick={onClose}
-            className="text-xs font-semibold text-line-500 hover:text-line-700">닫기</button>
+            className="text-xs font-semibold text-[color:var(--surface-muted)] hover:text-[color:var(--surface-text)]">닫기</button>
         </div>
 
         <div className="space-y-3">

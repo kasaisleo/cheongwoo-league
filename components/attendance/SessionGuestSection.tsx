@@ -64,8 +64,8 @@ export function SessionGuestSection({ sessionId, editable = false }: SessionGues
 
   if (loading) {
     return (
-      <div className="overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50 px-4 py-3">
-        <p className="text-[11px] text-line-400">게스트 참석자 불러오는 중...</p>
+      <div className="overflow-hidden rounded-[14px] border border-[color:var(--surface-border)] bg-[color:var(--surface-bg)] px-4 py-3">
+        <p className="text-[11px] text-[color:var(--surface-muted)]">게스트 참석자 불러오는 중...</p>
       </div>
     );
   }
@@ -73,13 +73,13 @@ export function SessionGuestSection({ sessionId, editable = false }: SessionGues
   const addedIds = new Set(sessionGuests.map((sg) => sg.guest_id));
 
   return (
-    <div className="overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50">
+    <div className="overflow-hidden rounded-[14px] border border-[color:var(--surface-border)] bg-[color:var(--surface-bg)]">
       {/* 헤더 */}
-      <div className="flex items-center justify-between border-b border-line-200/30 px-4 py-2.5">
-        <p className="text-[11px] font-semibold text-line-500">
+      <div className="flex items-center justify-between border-b border-[color:var(--surface-border)] px-4 py-2.5">
+        <p className="text-[11px] font-semibold text-[color:var(--surface-muted)]">
           게스트 참석자
           {sessionGuests.length > 0 && (
-            <span className="ml-1.5 text-line-400">({sessionGuests.length})</span>
+            <span className="ml-1.5 text-[color:var(--surface-muted)]">({sessionGuests.length})</span>
           )}
         </p>
         {editable && !showAddPanel && (
@@ -95,7 +95,7 @@ export function SessionGuestSection({ sessionId, editable = false }: SessionGues
           <button
             type="button"
             onClick={() => setShowAddPanel(false)}
-            className="rounded-sm border border-line-200/40 px-2.5 py-1 text-[10px] font-semibold text-line-500"
+            className="rounded-sm border border-[color:var(--surface-border)] px-2.5 py-1 text-[10px] font-semibold text-[color:var(--surface-muted)]"
           >
             닫기
           </button>
@@ -105,17 +105,17 @@ export function SessionGuestSection({ sessionId, editable = false }: SessionGues
       {/* 현재 지정된 게스트 목록 */}
       {sessionGuests.length === 0 ? (
         <div className="px-4 py-3">
-          <p className="text-sm text-line-400">지정된 게스트가 없습니다.</p>
+          <p className="text-sm text-[color:var(--surface-muted)]">지정된 게스트가 없습니다.</p>
         </div>
       ) : (
-        <div className="divide-y divide-line-200/30">
+        <div className="divide-y divide-[color:var(--surface-border)]">
           {sessionGuests.map((sg) => {
             const name = sg.guests?.name ?? "알 수 없음";
             return (
               <div key={sg.id} className="flex items-center justify-between px-4 py-2.5">
                 <div className="flex items-center gap-2">
-                  <p className="text-[15px] font-semibold leading-snug text-line-900">{name}</p>
-                  <span className="rounded-sm border border-line-200/40 bg-line-100 px-1.5 py-0.5 text-[9px] font-semibold text-line-500">
+                  <p className="text-[15px] font-semibold leading-snug text-[color:var(--surface-text)]">{name}</p>
+                  <span className="rounded-sm border border-[color:var(--surface-border)] bg-[color:var(--surface-bg-raised)] px-1.5 py-0.5 text-[9px] font-semibold text-[color:var(--surface-muted)]">
                     게스트
                   </span>
                 </div>
@@ -124,7 +124,7 @@ export function SessionGuestSection({ sessionId, editable = false }: SessionGues
                     type="button"
                     disabled={removingId === sg.id}
                     onClick={() => handleRemove(sg.id, name)}
-                    className="rounded-sm border border-line-200/40 px-2 py-0.5 text-[10px] font-semibold text-line-400 hover:border-fault-400/60 hover:text-fault-400 disabled:opacity-40"
+                    className="rounded-sm border border-[color:var(--surface-border)] px-2 py-0.5 text-[10px] font-semibold text-[color:var(--surface-muted)] hover:border-fault-400/60 hover:text-fault-400 disabled:opacity-40"
                   >
                     {removingId === sg.id ? "..." : "제거"}
                   </button>
@@ -193,28 +193,28 @@ function AddGuestPanel({
   const inputCls = "h-9 flex-1 rounded-sm border border-[color:var(--control-border)] bg-[color:var(--control-bg)] px-3 text-sm text-[color:var(--control-text)] placeholder:text-[color:var(--control-placeholder)] focus:outline-none focus:border-[color:var(--control-border-focus)] focus:ring-2 focus:ring-[color:var(--control-focus-ring)]";
 
   return (
-    <div className="border-t border-line-200/30 bg-line-50 px-4 pb-4 pt-3">
+    <div className="border-t border-[color:var(--surface-border)] bg-[color:var(--surface-bg)] px-4 pb-4 pt-3">
       {/* 최근 등록 게스트 */}
-      <p className="mb-2 text-[10px] font-semibold text-line-500">최근 등록 게스트</p>
+      <p className="mb-2 text-[10px] font-semibold text-[color:var(--surface-muted)]">최근 등록 게스트</p>
       {loadingRecent ? (
-        <p className="mb-3 text-xs text-line-400">불러오는 중...</p>
+        <p className="mb-3 text-xs text-[color:var(--surface-muted)]">불러오는 중...</p>
       ) : recentGuests.length === 0 ? (
-        <p className="mb-3 text-xs text-line-400">등록된 게스트가 없습니다.</p>
+        <p className="mb-3 text-xs text-[color:var(--surface-muted)]">등록된 게스트가 없습니다.</p>
       ) : (
         <div className="mb-3 space-y-1">
           {recentGuests.map((g) => {
             const alreadyAdded = addedIds.has(g.id);
             return (
               <div key={g.id}
-                className="flex items-center justify-between rounded-sm border border-line-200/40 bg-line-50 px-3 py-2">
+                className="flex items-center justify-between rounded-sm border border-[color:var(--surface-border)] bg-[color:var(--surface-bg)] px-3 py-2">
                 <div className="min-w-0">
-                  <span className="text-[15px] font-semibold leading-snug text-line-900">{g.name}</span>
+                  <span className="text-[15px] font-semibold leading-snug text-[color:var(--surface-text)]">{g.name}</span>
                   {g.years_playing != null && (
-                    <span className="ml-1.5 text-[11px] text-line-400">구력 {g.years_playing}년</span>
+                    <span className="ml-1.5 text-[11px] text-[color:var(--surface-muted)]">구력 {g.years_playing}년</span>
                   )}
                 </div>
                 {alreadyAdded ? (
-                  <span className="rounded-sm border border-line-200/40 px-2 py-0.5 text-[10px] font-semibold text-line-400">
+                  <span className="rounded-sm border border-[color:var(--surface-border)] px-2 py-0.5 text-[10px] font-semibold text-[color:var(--surface-muted)]">
                     추가됨
                   </span>
                 ) : (
@@ -234,7 +234,7 @@ function AddGuestPanel({
       )}
 
       {/* 이름 검색 */}
-      <p className="mb-2 text-[10px] font-semibold text-line-500">이름 검색</p>
+      <p className="mb-2 text-[10px] font-semibold text-[color:var(--surface-muted)]">이름 검색</p>
       <div className="flex gap-2">
         <input
           value={query}
@@ -247,7 +247,7 @@ function AddGuestPanel({
           type="button"
           onClick={handleSearch}
           disabled={searching}
-          className="rounded-sm border border-line-200/40 px-3 text-xs font-semibold text-line-600 disabled:opacity-40"
+          className="rounded-sm border border-[color:var(--surface-border)] px-3 text-xs font-semibold text-[color:var(--surface-muted)] disabled:opacity-40"
         >
           {searching ? "..." : "검색"}
         </button>
@@ -259,13 +259,13 @@ function AddGuestPanel({
             const alreadyAdded = addedIds.has(g.id);
             return (
               <div key={g.id}
-                className="flex items-center justify-between rounded-sm border border-line-200/40 bg-line-50 px-3 py-2">
+                className="flex items-center justify-between rounded-sm border border-[color:var(--surface-border)] bg-[color:var(--surface-bg)] px-3 py-2">
                 <div>
-                  <span className="text-[15px] font-semibold leading-snug text-line-900">{g.name}</span>
-                  {g.phone && <span className="ml-2 text-xs text-line-400">{g.phone}</span>}
+                  <span className="text-[15px] font-semibold leading-snug text-[color:var(--surface-text)]">{g.name}</span>
+                  {g.phone && <span className="ml-2 text-xs text-[color:var(--surface-muted)]">{g.phone}</span>}
                 </div>
                 {alreadyAdded ? (
-                  <span className="rounded-sm border border-line-200/40 px-2 py-0.5 text-[10px] font-semibold text-line-400">
+                  <span className="rounded-sm border border-[color:var(--surface-border)] px-2 py-0.5 text-[10px] font-semibold text-[color:var(--surface-muted)]">
                     추가됨
                   </span>
                 ) : (

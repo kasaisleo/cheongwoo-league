@@ -58,6 +58,14 @@
   --control-muted-bg:       rgba(30, 58, 92, 0.3);
   --control-danger-border:  #FF5C72;
 
+  /* ── Form Container 시맨틱 토큰 (Task 2) — [data-club-skin] wrapper가 없는
+   * 레거시 bare 라우트를 위한 fallback. --control-* fallback과 동일한 이유. */
+  --surface-bg:             var(--club-surface);
+  --surface-bg-raised:      var(--club-surface-strong);
+  --surface-border:         var(--club-border);
+  --surface-text:           var(--club-text);
+  --surface-muted:          var(--club-muted);
+
   /* ── Admin viewport 배경 토큰 (AdminClubShell의 --admin-bg와 동일 값) ──
    * [data-admin-skin] wrapper 안쪽(max-w-md)뿐 아니라 그 바깥 viewport
    * 여백(body)까지 같은 색을 쓰기 위해 :root 레벨에 별도로 둔다.
@@ -158,6 +166,13 @@
   --control-selected-text:  #FFFDF8;
   --control-muted-bg:       var(--club-surface-strong);
   --control-danger-border:  #FF5C72;
+
+  /* ── Form Container 시맨틱 토큰 (Task 2) — warm ivory / deep plum / muted lavender */
+  --surface-bg:             var(--club-surface);
+  --surface-bg-raised:      var(--club-surface-strong);
+  --surface-border:         var(--club-border);
+  --surface-text:           var(--club-text);
+  --surface-muted:          var(--club-muted);
 }
 
 /* 모든 /c/[slug] 클럽 페이지 body 배경 — skin token 기준. slug 조건문 없이 확장 가능 */

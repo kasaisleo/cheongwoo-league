@@ -80,6 +80,12 @@ const ADMIN_SKIN_VARS: Record<string, Record<string, string>> = {
     "--control-selected-text":  "var(--admin-bg)",
     "--control-muted-bg":       "rgba(255,255,255,0.04)",
     "--control-danger-border":  "var(--admin-alert)",
+    // ── Form Container 시맨틱 토큰 (Task 2) — 기존 --admin-* 값을 그대로 파생 ──
+    "--surface-bg":             "var(--admin-surface)",
+    "--surface-bg-raised":      "var(--admin-surface-raised)",
+    "--surface-border":         "var(--admin-border)",
+    "--surface-text":           "var(--admin-text)",
+    "--surface-muted":          "var(--admin-muted)",
   },
   cheongwoo: {
     "--admin-bg":             "#111827",
@@ -122,6 +128,11 @@ const ADMIN_SKIN_VARS: Record<string, Record<string, string>> = {
     "--control-selected-text":  "var(--admin-bg)",
     "--control-muted-bg":       "rgba(255,255,255,0.04)",
     "--control-danger-border":  "var(--admin-alert)",
+    "--surface-bg":             "var(--admin-surface)",
+    "--surface-bg-raised":      "var(--admin-surface-raised)",
+    "--surface-border":         "var(--admin-border)",
+    "--surface-text":           "var(--admin-text)",
+    "--surface-muted":          "var(--admin-muted)",
   },
   namaste: {
     "--admin-bg":             "#1e1232",
@@ -166,6 +177,11 @@ const ADMIN_SKIN_VARS: Record<string, Record<string, string>> = {
     "--control-selected-text":  "var(--admin-bg)",
     "--control-muted-bg":       "var(--admin-surface-raised)",
     "--control-danger-border":  "var(--admin-alert)",
+    "--surface-bg":             "var(--admin-surface)",
+    "--surface-bg-raised":      "var(--admin-surface-raised)",
+    "--surface-border":         "var(--admin-border)",
+    "--surface-text":           "var(--admin-text)",
+    "--surface-muted":          "var(--admin-muted)",
   },
 };
 

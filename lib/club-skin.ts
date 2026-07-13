@@ -71,6 +71,12 @@ const SKINS: Record<SkinKey, ClubSkin> = {
       "--control-selected-text":  "#0B1929",              // line-25
       "--control-muted-bg":       "rgba(30,58,92,0.3)",   // line-200/30
       "--control-danger-border":  "#FF5C72",              // fault-400 (스킨 무관 고정)
+      // ── Form Container 시맨틱 토큰 (Task 2) — 기존 --club-* 값을 그대로 파생 ──
+      "--surface-bg":             "var(--club-surface)",
+      "--surface-bg-raised":      "var(--club-surface-strong)",
+      "--surface-border":         "var(--club-border)",
+      "--surface-text":           "var(--club-text)",
+      "--surface-muted":          "var(--club-muted)",
     },
   },
 
@@ -102,6 +108,11 @@ const SKINS: Record<SkinKey, ClubSkin> = {
       "--control-selected-text":  "#0B1929",
       "--control-muted-bg":       "rgba(30,58,92,0.3)",
       "--control-danger-border":  "#FF5C72",
+      "--surface-bg":             "var(--club-surface)",
+      "--surface-bg-raised":      "var(--club-surface-strong)",
+      "--surface-border":         "var(--club-border)",
+      "--surface-text":           "var(--club-text)",
+      "--surface-muted":          "var(--club-muted)",
     },
   },
 
@@ -138,6 +149,11 @@ const SKINS: Record<SkinKey, ClubSkin> = {
       "--control-selected-text":  "#FFFDF8",              // ivory
       "--control-muted-bg":       "#F0EADE",
       "--control-danger-border":  "#FF5C72",
+      "--surface-bg":             "var(--club-surface)",
+      "--surface-bg-raised":      "var(--club-surface-strong)",
+      "--surface-border":         "var(--club-border)",
+      "--surface-text":           "var(--club-text)",
+      "--surface-muted":          "var(--club-muted)",
     },
   },
 };

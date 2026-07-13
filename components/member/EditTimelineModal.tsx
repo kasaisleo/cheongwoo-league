@@ -220,21 +220,21 @@ export function EditTimelineModal({ memberId, existing, onClose, onSaved, onDele
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 px-4 pb-4 sm:items-center">
-      <div className="max-h-[85vh] w-full max-w-sm overflow-y-auto rounded-xl border border-line-200 bg-line-100 p-4 shadow-card">
+      <div className="max-h-[85vh] w-full max-w-sm overflow-y-auto rounded-xl border border-[color:var(--surface-border)] bg-[color:var(--surface-bg-raised)] p-4 shadow-card">
         <div className="mb-3 flex items-center justify-between">
           <p className="text-sm font-bold uppercase tracking-wide text-clay-400">
             {existing ? "타임라인 수정" : "타임라인 추가"}
           </p>
-          <button type="button" onClick={onClose} className="text-xs font-semibold text-line-500">
+          <button type="button" onClick={onClose} className="text-xs font-semibold text-[color:var(--surface-muted)]">
             닫기
           </button>
         </div>
 
         <div className="space-y-3">
           <div>
-            <label className="mb-1 block text-xs font-semibold text-line-600">종류</label>
+            <label className="mb-1 block text-xs font-semibold text-[color:var(--surface-muted)]">종류</label>
             {isLegacySelected && (
-              <p className="mb-1.5 text-xs text-line-500">
+              <p className="mb-1.5 text-xs text-[color:var(--surface-muted)]">
                 현재 값: <span className="font-semibold">{timelineTypeLabel(timelineType)}</span> (이전 방식으로
                 저장된 항목입니다. 아래에서 새 종류를 선택하면 변경됩니다)
               </p>
@@ -270,7 +270,7 @@ export function EditTimelineModal({ memberId, existing, onClose, onSaved, onDele
             />
           ))}
 
-          <label className="flex items-center gap-2 text-xs font-semibold text-line-600">
+          <label className="flex items-center gap-2 text-xs font-semibold text-[color:var(--surface-muted)]">
             <input
               type="checkbox"
               checked={values.isHighlight}
