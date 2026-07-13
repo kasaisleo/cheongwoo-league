@@ -117,7 +117,7 @@ export default function MemberImportPageClient() {
   const importedCount = rows.length - pendingRows.length;
 
   return (
-    <main className="px-4 pt-6">
+    <main className="px-4 pt-6 pb-28">
       <header className="mb-5">
         <p className="eyebrow-en text-clay-400">
           Member Import

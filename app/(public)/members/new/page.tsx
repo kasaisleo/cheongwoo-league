@@ -1,21 +1,30 @@
-import { requireAdminAccess } from "@/lib/admin-permissions";
-import { getCurrentClubId } from "@/lib/current-club";
-import NewMemberPageClient from "./NewMemberPageClient";
+import { redirect } from "next/navigation";
 
 /**
- * /members/new — 서버 wrapper.
+ * /members/new — 레거시 경로.
  *
- * middleware의 cw_admin_session 단독 체크를 대신해, 이 페이지에서
- * requireAdminAccess()로 직접 검증한다(Phase 3D-5B-2). 카카오 기반
- * 관리자도 정상 통과한다. 기존 폼/제출/UI 로직은 NewMemberPageClient.tsx로
- * 그대로 옮겨졌다.
- *
- * currentClubId는 selected_club_id 쿠키(httpOnly)를 클라이언트가 직접
- * 읽을 수 없으므로 서버에서 확보해 prop으로 내려준다(Phase 3D-6-2A).
+ * 이 화면도 /matches/new와 같은 사례다: 이름은 Public이지만 원래부터
+ * requireAdminAccess()로 관리자만 접근 가능했고, 실제 진입 링크는 앱 어디에도
+ * 없는 고아 라우트였다(canonical은 /admin/members/new?type=member, 이미
+ * Admin 대시보드 "회원 등록" 퀵액션에서 실제로 쓰이고 있다). 폼/로직 파일
+ * (NewMemberPageClient.tsx)과 전용 API(POST /api/members)는 사용처가 이
+ * 라우트뿐임을 확인하고 제거했다 — 이 파일은 기존 북마크·링크 호환을 위해
+ * 쿼리스트링을 보존한 채 리다이렉트만 수행한다. type이 없으면 회원 등록
+ * 기본값(member)으로 보낸다.
  */
-export default async function NewMemberPage() {
-  await requireAdminAccess();
-  const currentClubId = await getCurrentClubId();
-
-  return <NewMemberPageClient currentClubId={currentClubId} />;
+export default function NewMemberPage({
+  searchParams,
+}: {
+  searchParams: Record<string, string | string[] | undefined>;
+}) {
+  const qs = new URLSearchParams();
+  for (const [key, value] of Object.entries(searchParams)) {
+    if (Array.isArray(value)) {
+      value.forEach((v) => qs.append(key, v));
+    } else if (value !== undefined) {
+      qs.append(key, value);
+    }
+  }
+  if (!qs.has("type")) qs.set("type", "member");
+  redirect(`/admin/members/new?${qs.toString()}`);
 }

@@ -470,7 +470,7 @@ export default async function AdminPage({
           <AdminQuickAction href="/admin/members/new?type=member" label="회원 등록" variant="actionable" />
           <AdminQuickAction href="/admin/matches/create" label="경기 생성" variant="actionable" />
           <AdminQuickAction href="/admin/attendance" label="출석 관리" variant="emphasized" />
-          {isOwner && <AdminQuickAction href="/members/import" label="회원명단 가져오기" variant="emphasized" />}
+          {isOwner && <AdminQuickAction href="/admin/members/import" label="회원명단 가져오기" variant="emphasized" />}
         </div>
       </section>
 
