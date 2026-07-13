@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/Button";
 import type { Guest } from "@/lib/supabase/database.types";
 
@@ -12,10 +11,9 @@ function todayString(): string {
 interface QuickGuestModalProps {
   onClose: () => void;
   onCreated: (guest: Guest) => void;
-  currentClubId: string;
 }
 
-export function QuickGuestModal({ onClose, onCreated, currentClubId }: QuickGuestModalProps) {
+export function QuickGuestModal({ onClose, onCreated }: QuickGuestModalProps) {
   const [name, setName] = useState("");
   const [age, setAge] = useState("");
   const [yearsPlaying, setYearsPlaying] = useState("");
@@ -35,26 +33,25 @@ export function QuickGuestModal({ onClose, onCreated, currentClubId }: QuickGues
     setError(null);
 
     try {
-      const supabase = createClient();
-      const { data, error: insertError } = await supabase
-        .from("guests")
-        .insert({
+      const res = await fetch("/api/guests", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
           name: name.trim(),
-          club_id: currentClubId,
           age: age ? Number(age) : null,
           years_playing: yearsPlaying ? Number(yearsPlaying) : null,
           phone: phone.trim() || null,
           visit_date: visitDate,
-        })
-        .select()
-        .single();
+        }),
+      });
+      const body = await res.json().catch(() => null);
 
-      if (insertError || !data) {
-        setError("게스트 등록에 실패했습니다.");
+      if (!res.ok || !body?.guest) {
+        setError(body?.error ?? "게스트 등록에 실패했습니다.");
         return;
       }
 
-      onCreated(data as Guest);
+      onCreated(body.guest as Guest);
     } finally {
       submittingRef.current = false;
       setSubmitting(false);

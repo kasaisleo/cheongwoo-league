@@ -3,7 +3,6 @@ import { createServiceClient } from "@/lib/supabase/server";
 import { getAdminAccessServer } from "@/lib/admin-permissions";
 import { applyMatch } from "@/lib/match-engine";
 import type { Member, Guest } from "@/lib/supabase/database.types";
-import { getCurrentClubId } from "@/lib/current-club";
 
 interface PlayerInput {
   id: string;
@@ -36,6 +35,7 @@ function isValidPlayer(p: unknown): p is PlayerInput {
 export async function POST(request: NextRequest) {
   const access = await getAdminAccessServer();
   if (!access.kakaoIsAdmin) return Response.json({ error: "관리자 권한이 필요합니다." }, { status: 403 });
+  if (!access.clubId) return Response.json({ error: "클럽 컨텍스트가 없습니다." }, { status: 403 });
 
   const body = (await request.json()) as CreateMatchBody;
   const {
@@ -87,7 +87,7 @@ export async function POST(request: NextRequest) {
   }
 
   const supabase = createServiceClient();
-  const currentClubId = await getCurrentClubId();
+  const currentClubId = access.clubId;
 
   // 1. 회원/게스트 선수 정보 조회
   const memberIds = players.filter((p) => !p.isGuest).map((p) => p.id);

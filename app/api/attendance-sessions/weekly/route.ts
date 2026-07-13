@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { getAdminAccessServer } from "@/lib/admin-permissions";
 import type { Member } from "@/lib/supabase/database.types";
-import { getCurrentClubId } from "@/lib/current-club";
 
 /**
  * "이번 주 출석 세션 생성" 버튼이 호출하는 API.
@@ -31,9 +30,10 @@ function toDateString(d: Date): string {
 export async function POST() {
   const access = await getAdminAccessServer();
   if (!access.kakaoIsAdmin) return Response.json({ error: "관리자 권한이 필요합니다." }, { status: 403 });
+  if (!access.clubId) return Response.json({ error: "클럽 컨텍스트가 없습니다." }, { status: 403 });
 
   const supabase = createServiceClient();
-  const currentClubId = await getCurrentClubId();
+  const currentClubId = access.clubId;
   const today = new Date();
   const saturdayDate = toDateString(nextWeekday(today, 6));
   const sundayDate = toDateString(nextWeekday(today, 0));

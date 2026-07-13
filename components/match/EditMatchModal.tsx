@@ -343,7 +343,7 @@ export function EditMatchModal({ match, onClose, onSaved, currentClubId }: EditM
       </div>
 
       {guestModalTarget && (
-        <QuickGuestModal onClose={() => setGuestModalTarget(null)} onCreated={handleGuestCreated} currentClubId={currentClubId} />
+        <QuickGuestModal onClose={() => setGuestModalTarget(null)} onCreated={handleGuestCreated} />
       )}
     </div>
   );

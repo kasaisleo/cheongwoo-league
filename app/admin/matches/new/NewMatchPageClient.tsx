@@ -2,8 +2,8 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { PlayerSelector, playerKey, type SelectedPlayer } from "@/components/match/PlayerSelector";
 import { ScoreStepper } from "@/components/match/ScoreStepper";
 import { QuickGuestModal } from "@/components/match/QuickGuestModal";
@@ -62,7 +62,7 @@ function getSubmitWarnings(params: {
   return warnings;
 }
 
-export default function NewMatchPageClient({ currentClubId }: { currentClubId: string }) {
+export function NewMatchPageClient({ currentClubId }: { currentClubId: string }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const preselectedSessionId = searchParams.get("sessionId");
@@ -328,9 +328,15 @@ export default function NewMatchPageClient({ currentClubId }: { currentClubId: s
     }
   }
 
+  const sectionStyle = { borderColor: "var(--admin-border)", background: "var(--admin-surface)" } as const;
+  const dividerStyle = { borderColor: "var(--admin-border)" } as const;
+  const backHref = selectedSessionId
+    ? `/admin/attendance?session_id=${selectedSessionId}`
+    : "/admin/matches";
+
   if (loading) {
     return (
-      <main className="flex min-h-[60vh] items-center justify-center text-sm text-line-400">
+      <main className="flex min-h-[60vh] items-center justify-center text-sm" style={{ color: "var(--admin-muted)" }}>
         불러오는 중...
       </main>
     );
@@ -338,61 +344,57 @@ export default function NewMatchPageClient({ currentClubId }: { currentClubId: s
 
   return (
     <main className="px-4 pt-6 pb-28">
-      {/* ── 헤더 */}
-      <header className="mb-5">
-        {/* 상단 row: 뒤로가기 / 완료 */}
-        <div className="mb-3 flex items-center justify-between">
-          <Link
-            href={selectedSessionId
-              ? `/admin/attendance?session_id=${selectedSessionId}`
-              : "/admin/matches"}
-            className="club-back-link">
-            ← 출석 관리로
-          </Link>
+      <AdminPageHeader
+        eyebrow="MATCH"
+        title="경기 결과 입력"
+        description="연속 입력 후 완료 버튼을 눌러주세요."
+        backHref={backHref}
+        action={
           <button type="button" onClick={handleFinish} disabled={submitting || finishing}
-            className="flex-shrink-0 whitespace-nowrap rounded-sm border border-clay-400/60 bg-clay-400/10 px-3 py-1.5 text-xs font-semibold text-clay-400 hover:bg-clay-400/20 disabled:opacity-40">
+            className="flex-shrink-0 whitespace-nowrap rounded-[var(--admin-button-radius,6px)] border px-3 py-1.5 text-xs font-semibold disabled:opacity-40"
+            style={{ borderColor: "var(--admin-accent)", background: "var(--admin-accent-soft)", color: "var(--admin-accent)" }}>
             {finishing ? "이동 중..." : "입력 완료 →"}
           </button>
-        </div>
-        {/* 타이틀 */}
-        <p className="eyebrow-en text-clay-400">Match Result</p>
-        <h1 className="headline-kr text-4xl text-line-900">경기 결과 입력</h1>
-        <p className="mt-1 max-w-[240px] break-keep text-xs leading-relaxed text-line-500">연속 입력 후 완료 버튼을 눌러주세요.</p>
-      </header>
+        }
+      />
 
       {/* ── 매치 선택 */}
-      <div className="mb-6 rounded-[14px] border border-line-200/40 bg-line-50">
-        <div className="flex items-center justify-between border-b border-line-200/30 px-4 py-2.5">
-          <p className="text-[11px] font-semibold text-line-500">매치 *</p>
+      <div className="mb-6 overflow-hidden rounded-[var(--admin-card-radius,14px)] border" style={sectionStyle}>
+        <div className="flex items-center justify-between border-b px-4 py-2.5" style={dividerStyle}>
+          <p className="text-[11px] font-semibold" style={{ color: "var(--admin-muted)" }}>매치 *</p>
           <button type="button" onClick={() => setShowNewSession((v) => !v)}
-            className="rounded-sm border border-clay-400/60 bg-clay-400/10 px-2.5 py-1 text-[10px] font-semibold text-clay-400 hover:bg-clay-400/20">
+            className="rounded-[var(--admin-button-radius,6px)] border px-2.5 py-1 text-[10px] font-semibold"
+            style={{ borderColor: "var(--admin-accent)", background: "var(--admin-accent-soft)", color: "var(--admin-accent)" }}>
             {showNewSession ? "취소" : "+ 매치 직접 추가"}
           </button>
         </div>
 
         {/* 새 매치 추가 인라인 폼 */}
         {showNewSession && (
-          <div className="border-b border-line-200/30 bg-line-100/40 px-4 py-4">
-            <p className="mb-3 text-sm font-bold text-line-900">새 매치 추가 (소급 입력)</p>
+          <div className="border-b px-4 py-4" style={{ borderColor: "var(--admin-border)", background: "var(--admin-surface-raised, var(--admin-surface))" }}>
+            <p className="mb-3 text-sm font-bold" style={{ color: "var(--admin-text)" }}>새 매치 추가 (소급 입력)</p>
             <div className="space-y-3">
               <div>
-                <label className="mb-1 block text-xs font-semibold text-line-600">
-                  매치명 <span className="text-fault-400">*</span>
+                <label className="mb-1 block text-xs font-semibold" style={{ color: "var(--admin-muted)" }}>
+                  매치명 <span style={{ color: "var(--admin-alert)" }}>*</span>
                 </label>
                 <input value={newSessionTitle} onChange={(e) => setNewSessionTitle(e.target.value)}
                   placeholder="예: 6월 토요정기매치"
-                  className="h-10 w-full rounded-sm border border-line-200/40 bg-line-50 px-3 text-sm text-line-900 placeholder:text-line-400" />
+                  className="h-10 w-full rounded-[var(--admin-button-radius,6px)] border px-3 text-sm"
+                  style={{ borderColor: "var(--admin-border)", background: "var(--admin-surface)", color: "var(--admin-text)" }} />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="mb-1 block text-xs font-semibold text-line-600">날짜 <span className="text-fault-400">*</span></label>
+                  <label className="mb-1 block text-xs font-semibold" style={{ color: "var(--admin-muted)" }}>날짜 <span style={{ color: "var(--admin-alert)" }}>*</span></label>
                   <input type="date" value={newSessionDate} onChange={(e) => setNewSessionDate(e.target.value)}
-                    className="h-10 w-full rounded-sm border border-line-200/40 bg-line-50 px-3 text-sm text-line-900" />
+                    className="h-10 w-full rounded-[var(--admin-button-radius,6px)] border px-3 text-sm"
+                    style={{ borderColor: "var(--admin-border)", background: "var(--admin-surface)", color: "var(--admin-text)" }} />
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs font-semibold text-line-600">매치 타입</label>
+                  <label className="mb-1 block text-xs font-semibold" style={{ color: "var(--admin-muted)" }}>매치 타입</label>
                   <select value={newSessionDay} onChange={(e) => setNewSessionDay(e.target.value as SessionDay)}
-                    className="h-10 w-full rounded-sm border border-line-200/40 bg-line-50 px-3 text-sm text-line-900">
+                    className="h-10 w-full rounded-[var(--admin-button-radius,6px)] border px-3 text-sm"
+                    style={{ borderColor: "var(--admin-border)", background: "var(--admin-surface)", color: "var(--admin-text)" }}>
                     <option value="saturday">토요정기매치</option>
                     <option value="sunday">일요정기매치</option>
                     <option value="holiday">휴일매치</option>
@@ -400,9 +402,10 @@ export default function NewMatchPageClient({ currentClubId }: { currentClubId: s
                   </select>
                 </div>
               </div>
-              {newSessionError && <p className="text-[11px] text-fault-400">{newSessionError}</p>}
+              {newSessionError && <p className="text-[11px]" style={{ color: "var(--admin-alert)" }}>{newSessionError}</p>}
               <button type="button" disabled={creatingSession} onClick={handleCreateSession}
-                className="h-10 w-full rounded-sm bg-clay-400 text-sm font-bold text-line-25 disabled:opacity-40">
+                className="h-10 w-full rounded-[var(--admin-button-radius,6px)] text-sm font-bold disabled:opacity-40"
+                style={{ background: "var(--admin-accent)", color: "var(--admin-action-text, var(--admin-bg))" }}>
                 {creatingSession ? "추가 중..." : "매치 추가"}
               </button>
             </div>
@@ -412,16 +415,16 @@ export default function NewMatchPageClient({ currentClubId }: { currentClubId: s
         {/* 세션 드롭다운 */}
         <div className="px-4 py-3">
           {sessions.length === 0 ? (
-            <p className="text-sm text-line-500">등록된 매치가 없어요. 출석 관리 화면에서 먼저 매치를 생성해주세요.</p>
+            <p className="text-sm" style={{ color: "var(--admin-muted)" }}>등록된 매치가 없어요. 출석 관리 화면에서 먼저 매치를 생성해주세요.</p>
           ) : (
             <Dropdown align="left"
-              triggerClassName="flex w-full items-center justify-between rounded-sm border border-line-200/40 bg-line-100 px-3 py-2.5 text-left"
+              triggerClassName="flex w-full items-center justify-between rounded-[var(--admin-button-radius,6px)] border border-[color:var(--admin-border)] bg-[color:var(--admin-surface-raised,var(--admin-surface))] px-3 py-2.5 text-left transition-colors hover:border-[color:var(--admin-border-strong)]"
               trigger={
                 <>
-                  <span className="text-sm font-semibold text-line-900">
+                  <span className="text-sm font-semibold text-[color:var(--admin-text)]">
                     {selectedSessionLabel ?? "매치를 선택해주세요"}
                   </span>
-                  <span className="text-xs text-line-500">▼</span>
+                  <span className="text-xs text-[color:var(--admin-muted)]">▼</span>
                 </>
               }>
               {(close) => (
@@ -430,7 +433,7 @@ export default function NewMatchPageClient({ currentClubId }: { currentClubId: s
                     const isCustom = session.session_day === "holiday" || session.session_day === "custom";
                     return (
                       <DropdownItem key={session.id} onClick={() => { handleSessionSelect(session.id); close(); }}>
-                        <span className={selectedSessionId === session.id ? "text-clay-400" : ""}>
+                        <span className={selectedSessionId === session.id ? "text-[color:var(--admin-accent)]" : ""}>
                           {MATCH_SESSION_DAY_LABEL[session.session_day]}
                           {isCustom && ` · ${session.title}`} ({session.session_date})
                         </span>
@@ -445,17 +448,17 @@ export default function NewMatchPageClient({ currentClubId }: { currentClubId: s
 
         {/* 선택된 매치 현황 */}
         {selectedSession && sessionStats !== null && (
-          <div className="border-t border-line-200/30 px-4 py-2.5">
+          <div className="border-t px-4 py-2.5" style={dividerStyle}>
             <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[11px]">
-              <span className="text-gold">출석 {attendees.attending.length}명</span>
-              <span className="text-line-500">미정 {attendees.undecided.length}명</span>
-              <span className="text-line-600"><span className="font-score tabular-nums">{sessionStats.gameCount}</span><span className="unit-kr">경기 기록됨</span></span>
+              <span style={{ color: "var(--admin-accent)" }}>출석 {attendees.attending.length}명</span>
+              <span style={{ color: "var(--admin-muted)" }}>미정 {attendees.undecided.length}명</span>
+              <span style={{ color: "var(--admin-muted)" }}><span className="font-score tabular-nums">{sessionStats.gameCount}</span><span className="unit-kr">경기 기록됨</span></span>
               {noShowWarnings.length > 0 && (
-                <span className="text-clay-400">출석 후 미참여 {noShowWarnings.length}명</span>
+                <span style={{ color: "var(--admin-alert)" }}>출석 후 미참여 {noShowWarnings.length}명</span>
               )}
             </div>
             {noShowWarnings.length > 0 && (
-              <p className="mt-1 text-[10px] text-clay-400">
+              <p className="mt-1 text-[10px]" style={{ color: "var(--admin-alert)" }}>
                 미참여: {noShowWarnings.join(", ")}
               </p>
             )}
@@ -464,10 +467,11 @@ export default function NewMatchPageClient({ currentClubId }: { currentClubId: s
       </div>
 
       {/* ── 청팀 */}
-      <div className="relative mb-6 overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50 p-4">
-        <div className="absolute left-0 top-0 h-full w-1 bg-clay-400/50" />
-        <p className="mb-3 pl-2 text-sm font-bold text-clay-400">청팀 선수</p>
-        <div className="space-y-4">
+      <div className="mb-6 overflow-hidden rounded-[var(--admin-card-radius,14px)] border" style={sectionStyle}>
+        <div className="border-b px-4 py-3" style={dividerStyle}>
+          <p className="text-sm font-bold" style={{ color: "var(--admin-accent)" }}>청팀 선수</p>
+        </div>
+        <div className="space-y-4 px-4 py-4">
           {(["teamAPlayer1", "teamAPlayer2"] as const).map((field, i) => {
             const val = field === "teamAPlayer1" ? teamAPlayer1 : teamAPlayer2;
             const setter = field === "teamAPlayer1" ? setTeamAPlayer1 : setTeamAPlayer2;
@@ -487,10 +491,11 @@ export default function NewMatchPageClient({ currentClubId }: { currentClubId: s
       </div>
 
       {/* ── 우팀 */}
-      <div className="relative mb-6 overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50 p-4">
-        <div className="absolute left-0 top-0 h-full w-1 bg-line-300/50" />
-        <p className="mb-3 pl-2 text-sm font-bold text-line-600">우팀 선수</p>
-        <div className="space-y-4">
+      <div className="mb-6 overflow-hidden rounded-[var(--admin-card-radius,14px)] border" style={sectionStyle}>
+        <div className="border-b px-4 py-3" style={dividerStyle}>
+          <p className="text-sm font-bold" style={{ color: "var(--admin-text)" }}>우팀 선수</p>
+        </div>
+        <div className="space-y-4 px-4 py-4">
           {(["teamBPlayer1", "teamBPlayer2"] as const).map((field, i) => {
             const val = field === "teamBPlayer1" ? teamBPlayer1 : teamBPlayer2;
             const setter = field === "teamBPlayer1" ? setTeamBPlayer1 : setTeamBPlayer2;
@@ -510,44 +515,55 @@ export default function NewMatchPageClient({ currentClubId }: { currentClubId: s
       </div>
 
       {/* ── 스코어 */}
-      <div className="mb-6 rounded-[14px] border border-line-200/40 bg-line-50 p-4">
-        <p className="mb-3 text-center text-[11px] font-semibold text-line-500">스코어</p>
-        <div className="flex items-center justify-center gap-6">
-          <ScoreStepper label="청팀" value={scoreA} onChange={setScoreA} highlight={winnerTeam === "A"} max={7} />
-          <span className="text-sm text-line-400">vs</span>
-          <ScoreStepper label="우팀" value={scoreB} onChange={setScoreB} highlight={winnerTeam === "B"} max={7} />
+      <div className="mb-6 overflow-hidden rounded-[var(--admin-card-radius,14px)] border" style={sectionStyle}>
+        <div className="border-b px-4 py-3" style={dividerStyle}>
+          <p className="text-center text-[11px] font-semibold" style={{ color: "var(--admin-muted)" }}>스코어</p>
         </div>
-
-        {isTiebreakSet && (
-          <div className="mt-4 border-t border-line-200/40 pt-4">
-            <p className="mb-2 text-center text-[11px] font-semibold text-line-500">타이브레이크</p>
-            <div className="flex items-center justify-center gap-4">
-              <ScoreStepper label="청팀" value={tiebreakA} onChange={setTiebreakA} compact />
-              <span className="text-xs text-line-400">:</span>
-              <ScoreStepper label="우팀" value={tiebreakB} onChange={setTiebreakB} compact />
-            </div>
-            {tiebreakA === tiebreakB && (
-              <p className="mt-2 text-center text-xs text-fault-400">타이브레이크 점수는 동점일 수 없어요.</p>
-            )}
+        <div className="px-4 py-4">
+          <div className="flex items-center justify-center gap-6">
+            <ScoreStepper label="청팀" value={scoreA} onChange={setScoreA} highlight={winnerTeam === "A"} max={7} />
+            <span className="text-sm" style={{ color: "var(--admin-muted)" }}>vs</span>
+            <ScoreStepper label="우팀" value={scoreB} onChange={setScoreB} highlight={winnerTeam === "B"} max={7} />
           </div>
-        )}
 
-        {/* 승리팀 선택 */}
-        <div className="mt-4 flex gap-2">
-          <button type="button" onClick={() => setWinnerTeam("A")}
-            className={`flex-1 rounded-sm border py-2 text-sm font-semibold transition-colors ${
-              winnerTeam === "A" ? "border-clay-400 bg-clay-400 text-line-25" : "border-line-200/40 text-line-600"
-            }`}>청팀 승리</button>
-          <button type="button" onClick={() => setWinnerTeam("B")}
-            className={`flex-1 rounded-sm border py-2 text-sm font-semibold transition-colors ${
-              winnerTeam === "B" ? "border-gold bg-gold/15 text-gold" : "border-line-200/40 text-line-600"
-            }`}>우팀 승리</button>
+          {isTiebreakSet && (
+            <div className="mt-4 border-t pt-4" style={dividerStyle}>
+              <p className="mb-2 text-center text-[11px] font-semibold" style={{ color: "var(--admin-muted)" }}>타이브레이크</p>
+              <div className="flex items-center justify-center gap-4">
+                <ScoreStepper label="청팀" value={tiebreakA} onChange={setTiebreakA} compact />
+                <span className="text-xs" style={{ color: "var(--admin-muted)" }}>:</span>
+                <ScoreStepper label="우팀" value={tiebreakB} onChange={setTiebreakB} compact />
+              </div>
+              {tiebreakA === tiebreakB && (
+                <p className="mt-2 text-center text-xs" style={{ color: "var(--admin-alert)" }}>타이브레이크 점수는 동점일 수 없어요.</p>
+              )}
+            </div>
+          )}
+
+          {/* 승리팀 선택 */}
+          <div className="mt-4 flex gap-2">
+            {(["A", "B"] as const).map((team) => (
+              <button
+                key={team}
+                type="button"
+                onClick={() => setWinnerTeam(team)}
+                className="flex-1 rounded-[var(--admin-button-radius,6px)] border py-2 text-sm font-semibold transition-colors"
+                style={
+                  winnerTeam === team
+                    ? { borderColor: "var(--admin-achievement)", background: "rgba(201,168,76,0.1)", color: "var(--admin-achievement)" }
+                    : { borderColor: "var(--admin-border)", background: "var(--admin-surface)", color: "var(--admin-muted)" }
+                }
+              >
+                {team === "A" ? "청팀 승리" : "우팀 승리"}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
       {/* ── 저장 전 경고 */}
       {submitWarnings.length > 0 && (
-        <div className="mb-3 rounded-sm border border-line-200/40 bg-line-100/50 px-3 py-2">
+        <div className="mb-3 rounded-[var(--admin-button-radius,6px)] border px-3 py-2" style={{ borderColor: "var(--admin-border)", background: "var(--admin-surface-raised, var(--admin-surface))" }}>
           {submitWarnings
             // 아무것도 입력 안 한 상태에서는 매치/선수 미선택 경고 숨김 (UX)
             .filter((w) =>
@@ -556,21 +572,21 @@ export default function NewMatchPageClient({ currentClubId }: { currentClubId: s
               (teamAPlayer1 || teamAPlayer2 || teamBPlayer1 || teamBPlayer2 || winnerTeam)
             )
             .map((w) => (
-              <p key={w.type} className={`text-[11px] ${w.type === "duplicate_player" ? "font-semibold text-clay-400" : "text-line-500"}`}>
+              <p key={w.type} className="text-[11px]" style={{ color: w.type === "duplicate_player" ? "var(--admin-alert)" : "var(--admin-muted)", fontWeight: w.type === "duplicate_player" ? 600 : undefined }}>
                 {w.msg}
               </p>
             ))}
         </div>
       )}
 
-      {error && <p className="mb-3 text-sm text-fault-400">{error}</p>}
+      {error && <p className="mb-3 text-sm" style={{ color: "var(--admin-alert)" }}>{error}</p>}
 
       <Button size="lg" className="w-full" disabled={!isReadyToSubmit} onClick={handleSubmit}>
         {submitting ? "저장 중..." : "경기 결과 저장"}
       </Button>
 
       {guestModalTarget && (
-        <QuickGuestModal onClose={() => setGuestModalTarget(null)} onCreated={handleGuestCreated} currentClubId={currentClubId} />
+        <QuickGuestModal onClose={() => setGuestModalTarget(null)} onCreated={handleGuestCreated} />
       )}
 
       {/* ── 저장/완료 처리 중 오버레이 */}

@@ -340,7 +340,7 @@ function AdminAttendanceInner({ currentClubId }: { currentClubId: string }) {
               <div className="flex gap-1.5">
                 {selectedSession.status === "open" && (
                   <Link
-                    href={`/matches/new?sessionId=${selectedSessionId}`}
+                    href={`/admin/matches/new?sessionId=${selectedSessionId}`}
                     className="rounded-sm border px-2.5 py-1 text-[11px] font-semibold transition-opacity hover:opacity-70"
                     style={{ borderColor: "var(--admin-border)", color: "var(--admin-muted)" }}
                   >
@@ -378,7 +378,7 @@ function AdminAttendanceInner({ currentClubId }: { currentClubId: string }) {
                 )}
                 {selectedSession.status === "closed" && (
                   <Link
-                    href={`/matches/new?sessionId=${selectedSessionId}`}
+                    href={`/admin/matches/new?sessionId=${selectedSessionId}`}
                     className="rounded-sm border px-2.5 py-1 text-[11px] font-semibold transition-opacity hover:opacity-70"
                     style={{ borderColor: "var(--admin-border)", color: "var(--admin-muted)" }}
                   >

@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
       reinvite: typeof body.reinvite === "boolean" ? body.reinvite : null,
       notes: typeof body.notes === "string" ? body.notes.trim() || null : null,
     })
-    .select("id")
+    .select("*")
     .single();
 
   if (insertError || !guest) {
@@ -60,5 +60,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "게스트 등록에 실패했습니다." }, { status: 500 });
   }
 
-  return NextResponse.json({ ok: true, guestId: guest.id });
+  // guest: 매치 화면(QuickGuestModal)이 즉시 선수 목록에 추가하려면 전체 row가 필요하다
+  // (PlayerSelector/게스트 상태 목록이 Guest 타입 전체를 기대함). guestId는 기존 호출부
+  // 호환을 위해 유지한다.
+  return NextResponse.json({ ok: true, guestId: guest.id, guest });
 }

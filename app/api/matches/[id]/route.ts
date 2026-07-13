@@ -3,7 +3,6 @@ import { createServiceClient } from "@/lib/supabase/server";
 import { getAdminAccessServer } from "@/lib/admin-permissions";
 import { applyMatch, rollbackMatch } from "@/lib/match-engine";
 import type { Match, Member, Guest } from "@/lib/supabase/database.types";
-import { getCurrentClubId } from "@/lib/current-club";
 
 interface PlayerInput {
   id: string;
@@ -47,6 +46,7 @@ interface RouteParams {
 export async function PUT(request: NextRequest, { params }: RouteParams) {
   const access = await getAdminAccessServer();
   if (!access.kakaoIsAdmin) return Response.json({ error: "관리자 권한이 필요합니다." }, { status: 403 });
+  if (!access.clubId) return Response.json({ error: "클럽 컨텍스트가 없습니다." }, { status: 403 });
 
   const matchId = params.id;
   const body = (await request.json()) as UpdateMatchBody;
@@ -95,7 +95,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
   }
 
   const supabase = createServiceClient();
-  const currentClubId = await getCurrentClubId();
+  const currentClubId = access.clubId;
 
   // 0. 기존 경기 조회
   const { data: existingMatch, error: fetchError } = await supabase
@@ -216,10 +216,11 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 export async function DELETE(_request: NextRequest, { params }: RouteParams) {
   const access = await getAdminAccessServer();
   if (!access.kakaoIsOwner) return Response.json({ error: "경기 삭제는 master/owner만 가능합니다." }, { status: 403 });
+  if (!access.clubId) return Response.json({ error: "클럽 컨텍스트가 없습니다." }, { status: 403 });
 
   const matchId = params.id;
   const supabase = createServiceClient();
-  const currentClubId = await getCurrentClubId();
+  const currentClubId = access.clubId;
 
   const { data: existingMatch, error: fetchError } = await supabase
     .from("matches")

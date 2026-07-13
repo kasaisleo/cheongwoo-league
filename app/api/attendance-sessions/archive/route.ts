@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { getAdminAccessServer } from "@/lib/admin-permissions";
 import type { SessionStatus } from "@/lib/supabase/database.types";
-import { getCurrentClubId } from "@/lib/current-club";
 
 interface ArchiveSessionBody {
   sessionId: string;
@@ -13,6 +12,7 @@ interface ArchiveSessionBody {
 export async function POST(request: NextRequest) {
   const access = await getAdminAccessServer();
   if (!access.kakaoIsAdmin) return Response.json({ error: "관리자 권한이 필요합니다." }, { status: 403 });
+  if (!access.clubId) return Response.json({ error: "클럽 컨텍스트가 없습니다." }, { status: 403 });
 
   const body = (await request.json()) as ArchiveSessionBody;
   const { sessionId, targetStatus } = body;
@@ -24,7 +24,18 @@ export async function POST(request: NextRequest) {
   const nextStatus: SessionStatus = targetStatus === "closed" ? "closed" : "archived";
 
   const supabase = createServiceClient();
-  const currentClubId = await getCurrentClubId();
+  const currentClubId = access.clubId;
+
+  const { data: existingSession } = await supabase
+    .from("attendance_sessions")
+    .select("id")
+    .eq("id", sessionId)
+    .eq("club_id", currentClubId)
+    .maybeSingle();
+
+  if (!existingSession) {
+    return NextResponse.json({ error: "세션을 찾을 수 없습니다." }, { status: 404 });
+  }
 
   const { error: updateError } = await supabase
     .from("attendance_sessions")

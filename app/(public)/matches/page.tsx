@@ -124,7 +124,7 @@ export default async function MatchesPage({ searchParams }: MatchesPageProps) {
         </div>
         {isAdmin && (
           <Link
-            href="/matches/new"
+            href="/admin/matches/new"
             className="flex h-10 items-center rounded-sm bg-clay-400 px-4 text-sm font-bold text-line-25 transition-colors hover:bg-clay-300"
           >
             + 경기 입력

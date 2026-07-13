@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { getAdminAccessServer } from "@/lib/admin-permissions";
 import type { Member, SessionDay } from "@/lib/supabase/database.types";
-import { getCurrentClubId } from "@/lib/current-club";
 
 interface CreateCustomSessionBody {
   sessionDate: string;
@@ -14,6 +13,7 @@ export async function POST(request: NextRequest) {
   // manager 이상이 수행해야 하지만, 권한 시스템 도입 전 단계라 운영진 인증으로 대체.
   const access = await getAdminAccessServer();
   if (!access.kakaoIsAdmin) return Response.json({ error: "관리자 권한이 필요합니다." }, { status: 403 });
+  if (!access.clubId) return Response.json({ error: "클럽 컨텍스트가 없습니다." }, { status: 403 });
 
   const body = (await request.json()) as CreateCustomSessionBody;
   const { sessionDate, sessionDay, title } = body;
@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
   }
 
   const supabase = createServiceClient();
-  const currentClubId = await getCurrentClubId();
+  const currentClubId = access.clubId;
 
   // 같은 날짜+구분으로 이미 open 세션이 있는지 확인 (중복 생성 방지)
   const { data: existingOpen } = await supabase

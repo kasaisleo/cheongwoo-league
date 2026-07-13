@@ -1,20 +1,28 @@
-import { getCurrentClubId } from "@/lib/current-club";
-import { requireAdminAccess } from "@/lib/admin-permissions";
-import NewMatchPageClient from "./NewMatchPageClient";
+import { redirect } from "next/navigation";
 
 /**
- * /matches/new — 서버 wrapper.
+ * /matches/new — 레거시 경로.
  *
- * selected_club_id 쿠키는 httpOnly라 클라이언트에서 직접 읽을 수 없으므로,
- * 서버에서 getCurrentClubId()로 확보한 뒤 클라이언트 컴포넌트에 prop으로 전달한다.
- * 기존 폼/제출/UI 로직은 NewMatchPageClient.tsx로 그대로 옮겨졌다(Phase 3D-5).
- *
- * 권한: requireAdminAccess() — middleware의 cw_admin_session 단독 체크를
- * 대신해 이 페이지에서 직접 검증한다(Phase 3D-5B-1). 카카오 기반 관리자도
- * 정상 통과하도록 middleware의 PROTECTED_PREFIXES에서 이 경로를 제외했다.
+ * 이 화면은 애초에 Public 방문자용 기능이 아니었다(원래도 requireAdminAccess()로
+ * 관리자만 접근 가능했고, 내부 링크/API가 전부 /admin/* 기준이었다). 실제 폼/로직은
+ * app/admin/matches/new로 이전했다 — 이 파일은 기존 북마크·링크 호환을 위해
+ * 쿼리스트링을 보존한 채 리다이렉트만 수행한다. club 확정·인증은 여기서 하지 않고
+ * /admin/matches/new(및 그 상위 admin/matches/layout.tsx의 requireAdminAccess())가
+ * 전담한다.
  */
-export default async function NewMatchPage() {
-  await requireAdminAccess();
-  const currentClubId = await getCurrentClubId();
-  return <NewMatchPageClient currentClubId={currentClubId} />;
+export default function NewMatchPage({
+  searchParams,
+}: {
+  searchParams: Record<string, string | string[] | undefined>;
+}) {
+  const qs = new URLSearchParams();
+  for (const [key, value] of Object.entries(searchParams)) {
+    if (Array.isArray(value)) {
+      value.forEach((v) => qs.append(key, v));
+    } else if (value !== undefined) {
+      qs.append(key, value);
+    }
+  }
+  const query = qs.toString();
+  redirect(query ? `/admin/matches/new?${query}` : "/admin/matches/new");
 }

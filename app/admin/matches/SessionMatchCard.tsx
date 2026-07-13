@@ -130,7 +130,7 @@ export function SessionMatchCard({ group }: { group: SessionGroup }) {
           출석 관리
         </Link>
         <Link
-          href={`/matches/new?sessionId=${sessionId}`}
+          href={`/admin/matches/new?sessionId=${sessionId}`}
           className="rounded-sm border border-clay-400/60 bg-clay-400/10 px-2.5 py-1 text-[11px] font-semibold text-clay-400 hover:bg-clay-400/20"
         >
           결과 추가
