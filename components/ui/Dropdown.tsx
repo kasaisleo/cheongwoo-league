@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import { createContext, useContext, useEffect, useRef, useState, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { clsx } from "clsx";
 
@@ -12,14 +12,26 @@ interface DropdownProps {
 }
 
 /**
+ * Dropdown이 패널을 portal할 대상 DOM 노드.
+ *
+ * Admin: AdminClubShell이 스킨 CSS 변수가 적용된 자기 하위에 portal root를
+ *   두고 이 Context로 제공한다 — 패널이 AdminClubShell의 inline-style
+ *   스킨 변수를 실제 DOM 상속으로 받기 위함(admin-dropdown-portal-alignment).
+ * Public: Provider가 없으므로 null → 기존과 동일하게 document.body 사용.
+ */
+export const DropdownPortalContext = createContext<HTMLElement | null>(null);
+
+/**
  * Dropdown v2 — Portal 방식으로 z-index 버그 수정.
  *
  * 문제: absolute 패널이 parent의 stacking context(overflow-hidden + relative)에
  *       갇혀 하단 카드에 덮히는 버그.
- * 해결: createPortal로 document.body에 직접 렌더링 + position: fixed로
- *       트리거 위치에 정렬. 어떤 parent도 패널을 clipping할 수 없음.
+ * 해결: createPortal로 document.body(또는 DropdownPortalContext가 제공하는
+ *       스킨 스코프 노드)에 직접 렌더링 + position: fixed로 트리거 위치에
+ *       정렬. 어떤 parent도 패널을 clipping할 수 없음.
  */
 export function Dropdown({ trigger, children, align = "right", triggerClassName }: DropdownProps) {
+  const portalTarget = useContext(DropdownPortalContext);
   const [open, setOpen] = useState(false);
   const [coords, setCoords] = useState({ top: 0, left: 0, width: 0 });
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -86,7 +98,7 @@ export function Dropdown({ trigger, children, align = "right", triggerClassName 
         {trigger}
       </button>
       {typeof document !== "undefined" && panel
-        ? createPortal(panel, document.body)
+        ? createPortal(panel, portalTarget ?? document.body)
         : null}
     </>
   );

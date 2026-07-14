@@ -1,5 +1,8 @@
-import type { CSSProperties, ReactNode } from "react";
+"use client";
+
+import { useCallback, useState, type CSSProperties, type ReactNode } from "react";
 import { AdminDesktopSidebar } from "@/components/admin/AdminDesktopSidebar";
+import { DropdownPortalContext } from "@/components/ui/Dropdown";
 
 /**
  * AdminClubShell — 관리자 페이지 accent 주입 + 컨텍스트 로고 wrapper.
@@ -221,6 +224,14 @@ export function AdminClubShell({ children, accentVars, skinKey, isOwner }: Admin
   const skinTokens = ADMIN_SKIN_VARS[skinKey ?? "default"] ?? ADMIN_SKIN_VARS.default;
   const mergedVars = { ...skinTokens, ...accentVars } as CSSProperties;
 
+  // Dropdown portal root — useRef가 아니라 callback ref + state를 쓰는 이유:
+  // ref 변경만으로는 리렌더가 안 일어나 Context Provider가 항상 초기값(null)을
+  // 계속 내보내게 된다. state로 저장해야 노드가 붙는 순간 Provider도 갱신된다.
+  const [portalRoot, setPortalRoot] = useState<HTMLDivElement | null>(null);
+  const portalRootRef = useCallback((node: HTMLDivElement | null) => {
+    setPortalRoot(node);
+  }, []);
+
   return (
     <div
       className="font-body lg:flex"
@@ -232,10 +243,13 @@ export function AdminClubShell({ children, accentVars, skinKey, isOwner }: Admin
       }}
       data-admin-skin={skinKey ?? undefined}
     >
-      <AdminDesktopSidebar isOwner={!!isOwner} />
-      <div className="mx-auto min-w-0 max-w-md flex-1 lg:max-w-none">
-        {children}
-      </div>
+      <DropdownPortalContext.Provider value={portalRoot}>
+        <AdminDesktopSidebar isOwner={!!isOwner} />
+        <div className="mx-auto min-w-0 max-w-md flex-1 lg:max-w-none">
+          {children}
+        </div>
+        <div ref={portalRootRef} data-dropdown-portal-root />
+      </DropdownPortalContext.Provider>
     </div>
   );
 }
