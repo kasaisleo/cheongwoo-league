@@ -69,7 +69,7 @@ export function Dropdown({ trigger, children, align = "right", triggerClassName 
         minWidth: coords.width,
         zIndex: 9999,
       }}
-      className="min-w-[200px] rounded-[14px] border border-line-200/60 bg-line-100 p-1.5 shadow-card"
+      className="min-w-[200px] rounded-[14px] border border-[color:var(--surface-border)] bg-[color:var(--surface-bg-raised)] p-1.5 shadow-card"
     >
       {children(close)}
     </div>
@@ -104,7 +104,7 @@ export function DropdownItem({ onClick, disabled, children }: DropdownItemProps)
       type="button"
       disabled={disabled}
       onClick={onClick}
-      className="block w-full rounded-sm px-3 py-2 text-left text-sm font-medium text-line-800 transition-colors hover:bg-line-200 disabled:opacity-40"
+      className="block w-full rounded-sm px-3 py-2 text-left text-sm font-medium text-[color:var(--surface-text)] transition-colors hover:bg-[color:color-mix(in_srgb,var(--surface-bg-raised)_85%,white)] disabled:opacity-40"
     >
       {children}
     </button>

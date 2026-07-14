@@ -464,18 +464,18 @@ function AttendancePageInner({ currentClubId, clubSlug }: { currentClubId: strin
         <div className="mb-4">
           <Dropdown
             align="left"
-            triggerClassName="flex w-full items-center justify-between rounded-lg border border-line-200 bg-line-100 px-4 py-3 text-left"
+            triggerClassName="flex w-full items-center justify-between rounded-lg border border-[color:var(--control-border)] bg-[color:var(--control-bg)] px-4 py-3 text-left"
             trigger={
               <>
-                <span className="text-sm font-semibold text-line-900">
+                <span className="text-sm font-semibold text-[color:var(--control-text)]">
                   {selectedSession ? selectedSession.title : "세션 선택"}
                   {selectedSession && (
-                    <span className="ml-1 text-xs font-normal text-line-400">
+                    <span className="ml-1 text-xs font-normal text-[color:var(--control-placeholder)]">
                       · {MATCH_SESSION_DAY_LABEL[selectedSession.session_day]}
                     </span>
                   )}
                 </span>
-                <span className="text-line-500">▼</span>
+                <span className="text-[color:var(--control-placeholder)]">▼</span>
               </>
             }
           >
