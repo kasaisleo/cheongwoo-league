@@ -138,6 +138,7 @@ export async function applyMatch(
     await supabase.from("point_history").insert({
       match_id: match.id,
       member_id: member.id,
+      club_id: clubId,
       point_before: pointBefore,
       point_after: pointAfter,
       point_change: pointChange,
@@ -226,6 +227,7 @@ export async function rollbackMatch(
       await supabase.from("point_history").insert({
         match_id: match.id,
         member_id: member.id,
+        club_id: clubId,
         point_before: pointBefore,
         point_after: pointAfter,
         point_change: -pointChangeToUndo,

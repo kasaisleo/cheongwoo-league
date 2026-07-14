@@ -123,6 +123,7 @@ export interface PointHistory {
   id: string;
   match_id: string | null;
   member_id: string;
+  club_id: string | null;
   point_before: number;
   point_after: number;
   point_change: number;
