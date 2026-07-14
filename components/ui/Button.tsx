@@ -10,10 +10,14 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const variantClasses: Record<ButtonVariant, string> = {
-  primary: "bg-clay-400 text-line-25 hover:bg-clay-300 active:bg-clay-500",
-  secondary: "bg-line-200 text-line-800 hover:bg-line-300 active:bg-line-200 border border-line-300",
-  ghost: "bg-transparent text-line-800 hover:bg-line-200 active:bg-line-300",
-  danger: "bg-fault-400 text-line-25 hover:bg-fault-500",
+  primary:
+    "bg-[color:var(--action-primary-bg)] text-[color:var(--action-primary-text)] hover:bg-[color:var(--action-primary-hover)] active:bg-[color:color-mix(in_srgb,var(--action-primary-bg)_85%,black)]",
+  secondary:
+    "bg-[color:var(--action-secondary-bg)] text-[color:var(--action-secondary-text)] border border-[color:var(--action-secondary-border)] hover:bg-[color:color-mix(in_srgb,var(--action-secondary-bg)_90%,white)] active:bg-[color:var(--action-secondary-bg)]",
+  ghost:
+    "bg-transparent text-[color:var(--action-ghost-text)] hover:bg-[color:var(--action-secondary-bg)] active:bg-[color:color-mix(in_srgb,var(--action-secondary-bg)_85%,white)]",
+  danger:
+    "bg-[color:var(--action-danger-bg)] text-[color:var(--action-danger-text)] hover:bg-[color:color-mix(in_srgb,var(--action-danger-bg)_85%,black)]",
 };
 
 const sizeClasses: Record<ButtonSize, string> = {
@@ -32,7 +36,7 @@ export function Button({
   return (
     <button
       className={clsx(
-        "inline-flex items-center justify-center gap-2 font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-40",
+        "inline-flex items-center justify-center gap-2 font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--action-focus-ring)]",
         variantClasses[variant],
         sizeClasses[size],
         className

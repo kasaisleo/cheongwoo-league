@@ -66,6 +66,21 @@
   --surface-text:           var(--club-text);
   --surface-muted:          var(--club-muted);
 
+  /* ── Action(Button) 시맨틱 토큰 (A-2-2) — AdminClubShell wrapper가 없는
+   * 경우를 위한 fallback. default/cheongwoo admin 값과 동일한 리터럴.
+   * namaste는 AdminClubShell의 [data-admin-skin="namaste"] 주입값이 항상
+   * 우선하므로 여기서는 확장하지 않는다(Public Button 체계 아직 없음). */
+  --action-primary-bg:       #D4FF3D;
+  --action-primary-text:     #0B1929;
+  --action-primary-hover:    color-mix(in srgb, #D4FF3D 85%, white);
+  --action-secondary-bg:     #1e2f47;
+  --action-secondary-text:   #e2e8f0;
+  --action-secondary-border: rgba(255,255,255,0.22);
+  --action-ghost-text:       #e2e8f0;
+  --action-danger-bg:        #FF5C72;
+  --action-danger-text:      #0B1929;
+  --action-focus-ring:       rgba(212,255,61,0.45);
+
   /* ── Admin viewport 배경 토큰 (AdminClubShell의 --admin-bg와 동일 값) ──
    * [data-admin-skin] wrapper 안쪽(max-w-md)뿐 아니라 그 바깥 viewport
    * 여백(body)까지 같은 색을 쓰기 위해 :root 레벨에 별도로 둔다.
