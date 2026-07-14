@@ -27,12 +27,12 @@ export const toast = {
 };
 
 const toneClasses: Record<ToastTone, string> = {
-  success: "border-court-400 bg-line-100 text-line-900",
-  error: "border-fault-400 bg-line-100 text-line-900",
+  success: "border-win bg-[color:var(--surface-bg-raised)] text-[color:var(--surface-text)]",
+  error: "border-fault-400 bg-[color:var(--surface-bg-raised)] text-[color:var(--surface-text)]",
 };
 
 const dotClasses: Record<ToastTone, string> = {
-  success: "bg-court-400",
+  success: "bg-win",
   error: "bg-fault-400",
 };
 
@@ -58,7 +58,12 @@ export function ToastViewport() {
   if (!mounted) return null;
 
   return createPortal(
-    <div className="pointer-events-none fixed inset-x-0 bottom-20 z-[100] flex flex-col items-center gap-2 px-4">
+    <div
+      role="status"
+      aria-live="polite"
+      aria-atomic="true"
+      className="pointer-events-none fixed inset-x-0 bottom-20 z-[100] flex flex-col items-center gap-2 px-4"
+    >
       {toasts.map((t) => (
         <div
           key={t.id}
