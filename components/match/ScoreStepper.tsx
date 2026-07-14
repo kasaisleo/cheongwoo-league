@@ -14,7 +14,13 @@ export function ScoreStepper({ label, value, onChange, highlight, max, compact }
 
   return (
     <div className="flex flex-col items-center gap-2">
-      <p className={compact ? "text-[10px] font-semibold text-line-500" : "text-xs font-semibold text-line-600"}>
+      <p
+        className={
+          compact
+            ? "text-[10px] font-semibold text-[color:var(--surface-muted)]"
+            : "text-xs font-semibold text-[color:var(--surface-muted)]"
+        }
+      >
         {label}
       </p>
       <div className={`flex items-center ${compact ? "gap-1.5" : "gap-3"}`}>
@@ -23,8 +29,8 @@ export function ScoreStepper({ label, value, onChange, highlight, max, compact }
           onClick={() => onChange(Math.max(0, value - 1))}
           className={
             compact
-              ? "flex h-7 w-7 items-center justify-center rounded-full border border-line-200 text-sm text-line-600 active:bg-line-100"
-              : "flex h-10 w-10 items-center justify-center rounded-full border border-line-200 text-lg text-line-600 active:bg-line-100"
+              ? "flex h-7 w-7 items-center justify-center rounded-full border border-[color:var(--control-border)] text-sm text-[color:var(--surface-muted)] active:bg-[color:var(--surface-bg-raised)]"
+              : "flex h-10 w-10 items-center justify-center rounded-full border border-[color:var(--control-border)] text-lg text-[color:var(--surface-muted)] active:bg-[color:var(--surface-bg-raised)]"
           }
           aria-label={`${label} 점수 감소`}
         >
@@ -32,7 +38,7 @@ export function ScoreStepper({ label, value, onChange, highlight, max, compact }
         </button>
         <span
           className={`font-score text-center font-bold ${compact ? "w-7 text-lg" : "w-12 text-4xl"} ${
-            highlight ? "text-clay-400" : "text-line-900"
+            highlight ? "text-[color:var(--control-border-focus)]" : "text-[color:var(--control-text)]"
           }`}
         >
           {value}
@@ -43,8 +49,8 @@ export function ScoreStepper({ label, value, onChange, highlight, max, compact }
           disabled={!canIncrement}
           className={
             compact
-              ? "flex h-7 w-7 items-center justify-center rounded-full border border-line-200 text-sm text-line-600 active:bg-line-100 disabled:opacity-30"
-              : "flex h-10 w-10 items-center justify-center rounded-full border border-line-200 text-lg text-line-600 active:bg-line-100 disabled:opacity-30"
+              ? "flex h-7 w-7 items-center justify-center rounded-full border border-[color:var(--control-border)] text-sm text-[color:var(--surface-muted)] active:bg-[color:var(--surface-bg-raised)] disabled:opacity-30"
+              : "flex h-10 w-10 items-center justify-center rounded-full border border-[color:var(--control-border)] text-lg text-[color:var(--surface-muted)] active:bg-[color:var(--surface-bg-raised)] disabled:opacity-30"
           }
           aria-label={`${label} 점수 증가`}
         >
