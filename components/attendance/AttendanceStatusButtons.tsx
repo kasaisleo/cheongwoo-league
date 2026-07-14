@@ -7,10 +7,10 @@ import type { AttendanceStatus } from "@/lib/supabase/database.types";
  *
  * 변경: 신호등 언어(Green/Amber/Red) → Gold/Clay/Gray 체계
  *
- * 비활성: bg-line-100  border-line-200/60  text-line-700
- * 참석:   bg-gold/10   border-gold         text-gold
- * 미정:   bg-clay-400/10 border-clay-400   text-clay-400
- * 불참:   bg-line-200  border-line-300      text-line-500
+ * 비활성: --control-bg / --control-border / --surface-muted
+ * 참석:   bg-gold/10   border-gold/60      text-gold
+ * 미정:   --control-border-focus 기반 10%/60% tint (선택 accent)
+ * 불참:   --control-muted-bg / --control-border / --surface-muted
  *
  * 근거:
  *   참석 = gold → "이기면 챔피언에 가까워진다"는 Ranking의 W=gold 언어 연결
@@ -33,9 +33,11 @@ const STATUS_LABEL: Record<AttendanceStatus, string> = {
 };
 
 const ACTIVE_CLASS: Record<AttendanceStatus, string> = {
-  attending: "border-gold bg-gold/10 text-gold",
-  undecided: "border-clay-400 bg-clay-400/10 text-clay-400",
-  absent:    "border-line-300 bg-line-200 text-line-500",
+  attending: "border-gold/60 bg-gold/10 text-gold",
+  undecided:
+    "border-[color:color-mix(in_srgb,var(--control-border-focus)_60%,transparent)] bg-[color:color-mix(in_srgb,var(--control-border-focus)_10%,transparent)] text-[color:var(--control-border-focus)]",
+  absent:
+    "border-[color:var(--control-border)] bg-[color:var(--control-muted-bg)] text-[color:var(--surface-muted)]",
 };
 
 interface AttendanceStatusButtonsProps {
@@ -61,10 +63,10 @@ export function AttendanceStatusButtons({
           type="button"
           disabled={disabled}
           onClick={() => onSelect(s)}
-          className={`flex-1 rounded-sm border font-semibold transition-colors disabled:opacity-50 ${paddingClass} ${
+          className={`flex-1 rounded-sm border font-semibold transition-colors disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--action-focus-ring)] ${paddingClass} ${
             currentStatus === s
               ? ACTIVE_CLASS[s]
-              : "border-line-200/60 bg-line-100 text-line-700 hover:border-line-300"
+              : "border-[color:var(--control-border)] bg-[color:var(--control-bg)] text-[color:var(--surface-muted)] hover:border-[color:var(--control-border-hover)]"
           }`}
         >
           {STATUS_LABEL[s]}

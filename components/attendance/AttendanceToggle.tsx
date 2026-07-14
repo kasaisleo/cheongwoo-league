@@ -17,8 +17,10 @@ interface AttendanceToggleProps {
 
 const ACTIVE: Record<AttendanceStatus, string> = {
   attending: "border-gold/60 bg-gold/10 text-gold",
-  undecided: "border-clay-400/60 bg-clay-400/10 text-clay-400",
-  absent:    "border-line-300/40 bg-line-200 text-line-600",
+  undecided:
+    "border-[color:color-mix(in_srgb,var(--control-border-focus)_60%,transparent)] bg-[color:color-mix(in_srgb,var(--control-border-focus)_10%,transparent)] text-[color:var(--control-border-focus)]",
+  absent:
+    "border-[color:var(--control-border)] bg-[color:var(--control-muted-bg)] text-[color:var(--surface-muted)]",
 };
 
 const FULL_OPTIONS: { status: AttendanceStatus; label: string }[] = [
@@ -54,9 +56,13 @@ export function AttendanceToggle({
             type="button"
             disabled={disabled || isLoading} // 요청 중에는 모든 버튼 disabled
             onClick={() => !isSaving && onChange(opt.status)}
-            className={`relative rounded-sm border px-2.5 py-1 text-xs font-semibold transition-colors ${
+            className={`relative rounded-sm border px-2.5 py-1 text-xs font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--action-focus-ring)] ${
               disabled || isLoading ? "opacity-50" : ""
-            } ${isActive ? ACTIVE[opt.status] : "border-line-200/40 text-line-500"}`}
+            } ${
+              isActive
+                ? ACTIVE[opt.status]
+                : "border-[color:var(--control-border)] text-[color:var(--control-placeholder)] hover:border-[color:var(--control-border-hover)]"
+            }`}
           >
             {isSaving ? (
               // 저장 중인 버튼에 스피너
