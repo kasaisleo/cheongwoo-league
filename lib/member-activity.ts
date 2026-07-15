@@ -3,6 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { MATCH_SELECT_WITH_PLAYERS, toDisplayMatches, type DisplayMatch } from "@/lib/match-display";
 import { LEAGUE_POINT_WIN } from "@/lib/match-engine";
 import type { AttendanceStatus, SessionDay, SessionStatus } from "@/lib/supabase/database.types";
+import type { PointHistoryRpcRow } from "@/lib/point-history";
 
 /**
  * 이 파일의 모든 export 함수는 clubId를 필수 파라미터로 받는다 (TS 레벨 강제).
@@ -292,24 +293,32 @@ export async function fetchMemberAttendanceRate(memberId: string, clubId: string
   return { overallRate, recentRate, overallCount, recentSampleSize };
 }
 
-/** 회원의 최근 LP 변동 내역 N건. */
+/**
+ * 회원의 최근 LP 변동 내역 N건.
+ *
+ * get_public_point_history RPC(0034)를 p_include_inactive_member=true로
+ * 호출한다 — 이 프로필 위젯은 canonical 목록과 달리 활동상태(is_active)와
+ * 무관하게 그 회원의 이력을 그대로 보여주는 게 기존 의도다(탈퇴/휴면
+ * 회원의 프로필 페이지도 "탈퇴"/"활동 제외" 배지와 함께 정상 노출되는
+ * 것과 동일한 맥락). RPC 자체가 p_member_id가 없으면 이 플래그를 무시하고
+ * 항상 활동 회원만 반환하도록 잠겨 있어, 이 호출이 club 전체 비활성 회원
+ * 노출로 이어지지 않는다.
+ */
 export async function fetchMemberRecentPointHistory(
   memberId: string,
   clubId: string,
   limit: number = RECENT_POINT_HISTORY_LIMIT
 ): Promise<MemberPointHistoryEntry[]> {
   const supabase = createClient();
-  // point_history에는 club 범위 컬럼이 없어, memberId가 clubId 소속인지 검증하는 것으로 scope한다.
   if (!(await verifyMemberInClub(supabase, memberId, clubId))) return [];
 
-  const { data } = await supabase
-    .from("point_history")
-    .select("id, created_at, point_change, reason, match_id")
-    .eq("member_id", memberId)
-    .order("created_at", { ascending: false })
-    .limit(limit);
+  const { data } = await supabase.rpc("get_public_point_history", {
+    p_club_id: clubId,
+    p_member_id: memberId,
+    p_include_inactive_member: true,
+  });
 
-  return (data ?? []).map((row) => ({
+  return ((data ?? []) as PointHistoryRpcRow[]).slice(0, limit).map((row) => ({
     id: row.id,
     createdAt: row.created_at,
     pointChange: row.point_change,

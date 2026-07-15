@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { pct, fmtPct } from "@/lib/records/dashboardUtils";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { MATCH_SESSION_DAY_LABEL } from "@/lib/match-session-label";
 import { getAdminAccessServer } from "@/lib/admin-permissions";
@@ -14,6 +14,11 @@ function matchTitle(s: { session_day: string; title: string }) {
 // ── 페이지 ──────────────────────────────────────────────────────
 export default async function MemberRecordPage({ params }: { params: { id: string } }) {
   const supabase = createClient();
+  // point_history_select_all(anon 공개 SELECT) 정책 삭제 이후에도 Admin 조회가
+  // 끊기지 않도록, 이 한 쿼리만 RLS를 우회하는 service-role로 조회한다.
+  // club_id/member_id는 반드시 서버에서 도출한 access.clubId와 URL의 memberId만
+  // 쓴다 — 브라우저가 넘긴 club_id는 없고 있어도 무시한다.
+  const serviceSupabase = createServiceClient();
   const access = await getAdminAccessServer();
   const currentClubId = access.clubId ?? "";
   const memberId = params.id;
@@ -31,7 +36,12 @@ export default async function MemberRecordPage({ params }: { params: { id: strin
     supabase.from("matches").select("*").eq("club_id", currentClubId).order("played_at", { ascending: false }),
     supabase.from("attendance").select("session_id, status").eq("member_id", memberId),
     supabase.from("attendance_sessions").select("id, title, session_date, session_day, status").eq("club_id", currentClubId).neq("status", "archived"),
-    supabase.from("point_history").select("*").eq("member_id", memberId).order("created_at", { ascending: true }),
+    serviceSupabase
+      .from("point_history")
+      .select("*")
+      .eq("club_id", currentClubId)
+      .eq("member_id", memberId)
+      .order("created_at", { ascending: true }),
     supabase.from("members").select("id, name").eq("is_active", true).eq("club_id", currentClubId),
   ]);
 

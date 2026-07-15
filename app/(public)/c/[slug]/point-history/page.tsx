@@ -7,28 +7,13 @@ import { MATCH_SESSION_DAY_LABEL } from "@/lib/match-session-label";
 import { EmptyState } from "@/components/ui/SectionHeader";
 import { PublicShell } from "@/components/shell";
 import type { Member } from "@/lib/supabase/database.types";
+import type { PointHistoryRpcRow } from "@/lib/point-history";
 
 export const dynamic = "force-dynamic";
 
 interface PointHistoryPageProps {
   params: { slug: string };
   searchParams: { member?: string };
-}
-
-interface PointHistoryRow {
-  id: string;
-  match_id: string | null;
-  member_id: string;
-  point_before: number;
-  point_after: number;
-  point_change: number;
-  reason: string;
-  created_at: string;
-  member: Pick<Member, "name"> | null;
-  match: {
-    played_at: string;
-    session: { session_day: "saturday" | "sunday" | "holiday" | "custom"; title: string } | null;
-  } | null;
 }
 
 const REASON_LABEL: Record<string, string> = {
@@ -58,26 +43,13 @@ export default async function ClubPointHistoryPage({ params, searchParams }: Poi
   const memberList = (members ?? []) as Member[];
   const memberIds = memberList.map((m) => m.id);
 
-  let historyQuery: any = supabase
-    .from("point_history")
-    .select(
-      `id, match_id, member_id, point_before, point_after, point_change, reason, created_at,
-       member:members!point_history_member_id_fkey(name),
-       match:matches!point_history_match_id_fkey(played_at, session:attendance_sessions!matches_session_id_fkey(session_day, title))`
-    )
-    .order("created_at", { ascending: false })
-    .limit(200);
+  const rpcMemberId = filterMemberId && memberIds.includes(filterMemberId) ? filterMemberId : null;
 
-  if (filterMemberId && memberIds.includes(filterMemberId)) {
-    historyQuery = historyQuery.eq("member_id", filterMemberId);
-  } else if (memberIds.length > 0) {
-    historyQuery = historyQuery.in("member_id", memberIds);
-  } else {
-    historyQuery = historyQuery.in("member_id", ["__none__"]);
-  }
-
-  const { data: historyRows } = await historyQuery;
-  const history = (historyRows ?? []) as unknown as PointHistoryRow[];
+  const { data: historyRows } = await supabase.rpc("get_public_point_history", {
+    p_club_id: club.id,
+    p_member_id: rpcMemberId,
+  });
+  const history = (historyRows ?? []) as PointHistoryRpcRow[];
 
   const baseHref = `/c/${slug}/point-history`;
 
@@ -142,7 +114,7 @@ export default async function ClubPointHistoryPage({ params, searchParams }: Poi
                 </div>
                 <div className="mt-1.5 flex items-center justify-between">
                   <span className="text-sm font-semibold text-line-900">
-                    {row.member?.name ?? "알 수 없음"}
+                    {row.member_name ?? "알 수 없음"}
                   </span>
                   <span className={`font-score text-lg font-bold ${isZero ? "text-line-500" : isPositive ? "text-win" : "text-loss"}`}>
                     {isPositive ? "+" : ""}
@@ -152,13 +124,13 @@ export default async function ClubPointHistoryPage({ params, searchParams }: Poi
                 <p className="mt-1 text-xs text-line-500">
                   {row.point_before} → {row.point_after}
                 </p>
-                {row.match_id && row.match ? (
+                {row.match_id && row.match_played_at ? (
                   <p className="mt-1 text-xs text-line-400">
-                    연결된 경기: {row.match.played_at}
-                    {row.match.session && ` · ${MATCH_SESSION_DAY_LABEL[row.match.session.session_day]}`}
-                    {row.match.session &&
-                      (row.match.session.session_day === "holiday" || row.match.session.session_day === "custom") &&
-                      ` (${row.match.session.title})`}
+                    연결된 경기: {row.match_played_at}
+                    {row.session_day && ` · ${MATCH_SESSION_DAY_LABEL[row.session_day]}`}
+                    {row.session_day &&
+                      (row.session_day === "holiday" || row.session_day === "custom") &&
+                      ` (${row.session_title})`}
                   </p>
                 ) : (
                   <p className="mt-1 text-xs text-line-400">삭제/수정 보정 이력</p>
