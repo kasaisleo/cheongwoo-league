@@ -11,7 +11,8 @@ import { SectionHeader, EmptyState } from "@/components/ui/SectionHeader";
 import { applyRankingQuery } from "@/lib/ranking-query";
 import { getClubSkin } from "@/lib/club-skin";
 import { ClubBrandHeader, PublicShell } from "@/components/shell";
-import type { AttendanceSession, MemberWithStats } from "@/lib/supabase/database.types";
+import type { AttendanceSession } from "@/lib/supabase/database.types";
+import type { PublicMemberListRow } from "@/lib/public-member";
 
 export const dynamic = "force-dynamic";
 
@@ -101,7 +102,7 @@ export default async function ClubHomePage({
 
   const recentMatches = toDisplayMatches(recentMatchRows);
   const guestsThisWeek = weeklyGuests ?? [];
-  const topRanked = (topRankRows ?? []) as MemberWithStats[];
+  const topRanked = (topRankRows ?? []) as PublicMemberListRow[];
   const { getAdminAccessServer } = await import("@/lib/admin-permissions");
   const { isAdmin } = await getAdminAccessServer();
   const skin = getClubSkin(club.skin_key);

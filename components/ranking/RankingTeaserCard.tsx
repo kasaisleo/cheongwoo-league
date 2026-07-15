@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { RankMovement } from "@/components/ui/RankMovement";
-import type { MemberWithStats } from "@/lib/supabase/database.types";
+import type { PublicMemberListRow } from "@/lib/public-member";
 
 /**
  * RankingTeaserCard — 홈 화면 랭킹 상위 3명 표시.
@@ -13,7 +13,7 @@ import type { MemberWithStats } from "@/lib/supabase/database.types";
  */
 
 interface RankingTeaserCardProps {
-  members: MemberWithStats[];
+  members: PublicMemberListRow[];
   isWimbledonSeason?: boolean;
   rankingHref?: string;
 }

@@ -6,17 +6,19 @@ import type { SupabaseClient } from "@supabase/supabase-js";
  * Home RankingTeaserCard / Ranking 페이지가 동일 함수를 사용해
  * 항상 같은 정렬 기준을 유지한다.
  *
- * 정렬 기준:
+ * get_public_member_list RPC(0036) 기반 — club_id/is_active=true/
+ * deleted_at is null은 RPC가 이미 강제한다. is_dormant는 RPC가 필터링하지
+ * 않으므로(회원 목록 화면의 활동/휴면 필터 유지 목적) 여기서 추가로
+ * false만 남긴다.
+ *
+ * 정렬 기준(members P0 대응 Phase 2 — age가 Public projection에서 빠지며
+ * 기존 age DESC NULLS LAST tie-breaker를 nickname/id로 교체):
  * 1. league_point DESC
  * 2. win_rate DESC
  * 3. wins DESC
  * 4. score_diff DESC
- * 5. age DESC NULLS LAST
- *
- * 필터 기준:
- * - club_id: 호출부에서 전달한 clubId 기준으로 조회
- * - is_active: true
- * - is_dormant: false
+ * 5. nickname ASC
+ * 6. id ASC
  */
 export function applyRankingQuery(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -25,16 +27,14 @@ export function applyRankingQuery(
   limit?: number
 ) {
   let q = supabase
-    .from("member_stats")
-    .select("*")
-    .eq("club_id", clubId)
-    .eq("is_active", true)
+    .rpc("get_public_member_list", { p_club_id: clubId })
     .eq("is_dormant", false)
     .order("league_point", { ascending: false })
     .order("win_rate", { ascending: false })
     .order("wins", { ascending: false })
     .order("score_diff", { ascending: false })
-    .order("age", { ascending: false, nullsFirst: false });
+    .order("nickname", { ascending: true })
+    .order("id", { ascending: true });
 
   if (limit !== undefined) {
     q = q.limit(limit);

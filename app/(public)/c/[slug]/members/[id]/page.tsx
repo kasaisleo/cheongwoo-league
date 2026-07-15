@@ -3,11 +3,8 @@ import { createClient } from "@/lib/supabase/server";
 import { requirePublicClubBySlug } from "@/lib/public-club";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
-import { MemberDetailActions } from "@/components/member/MemberDetailActions";
 import { BackButton } from "@/components/member/BackButton";
-import { CallButton } from "@/components/member/CallButton";
 import { MemberTimelineSection } from "@/components/member/MemberTimelineSection";
-import { MemberStatusSection } from "@/components/member/MemberStatusSection";
 import { MemberHighlightCareer } from "@/components/member/MemberHighlightCareer";
 import { MemberCareerProvider } from "@/components/member/MemberCareerProvider";
 import { MATCH_SESSION_DAY_LABEL } from "@/lib/match-session-label";
@@ -21,16 +18,21 @@ import {
   pointHistoryReasonLabel,
   groupPointHistoryByMatch,
 } from "@/lib/member-activity";
-import { notFound, redirect } from "next/navigation";
-import type { MemberWithStats } from "@/lib/supabase/database.types";
+import { notFound } from "next/navigation";
+import type { PublicMemberDetailRow } from "@/lib/public-member";
 import { getAdminAccessServer } from "@/lib/admin-permissions";
 
 /**
  * /c/[slug]/members/[id] — canonical public 회원 상세.
  *
- * club context: URL slug → requirePublicClubBySlug → club.id
- * getCurrentClubId() / selected_club_id 사용 금지.
- * 다른 클럽 member id 직접 접근 시 notFound().
+ * 완전 Public 프로필 — 로그인 불필요. get_public_member_detail RPC가
+ * club_id + member_id를 동시에 강제하고 활동중(is_active=true, deleted_at
+ * is null)인 회원만 반환하므로, 탈퇴/비활성 회원이거나 다른 클럽 소속
+ * memberId면 결과가 0건이 되어 notFound()로 처리된다.
+ *
+ * 관리자 전용 정보(전화번호/메모/권한/카카오 연결/탈퇴 상태)와 회원
+ * 정보 수정은 이 페이지에서 다루지 않는다 — /admin/members/[id]에서
+ * 전담한다(members P0 대응 Phase 2).
  */
 
 interface Props {
@@ -57,98 +59,62 @@ export default async function ClubMemberDetailPage({ params }: Props) {
 
   const supabase = createClient();
 
-  // 로그인 확인 — 미로그인 시 canonical URL로 복귀
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect(`/login?returnUrl=/c/${slug}/members/${memberId}`);
-
-  const { data: member } = await supabase
-    .from("member_stats")
-    .select("*")
-    .eq("id", memberId)
-    .eq("club_id", clubId)   // URL slug = 유일한 club context. 다른 클럽 차단.
-    .single();
+  const { data } = await supabase.rpc("get_public_member_detail", {
+    p_club_id: clubId,
+    p_member_id: memberId,
+  });
+  const member = (data ?? [])[0] as PublicMemberDetailRow | undefined;
 
   if (!member) notFound();
 
-  const typedMember = member as MemberWithStats;
-  const matchesPlayed = typedMember.wins + typedMember.losses;
+  const matchesPlayed = member.wins + member.losses;
 
   const access = await getAdminAccessServer();
   const isAdmin = access.isAdmin;
 
   const [recentMatches, recentAttendance, attendanceRate, recentPointHistory, recentPartners] =
     await Promise.all([
-      fetchMemberRecentMatches(typedMember.id, clubId),
-      fetchMemberRecentAttendance(typedMember.id, clubId),
-      fetchMemberAttendanceRate(typedMember.id, clubId),
-      fetchMemberRecentPointHistory(typedMember.id, clubId),
-      fetchMemberRecentPartners(typedMember.id, clubId),
+      fetchMemberRecentMatches(member.id, clubId),
+      fetchMemberRecentAttendance(member.id, clubId),
+      fetchMemberAttendanceRate(member.id, clubId),
+      fetchMemberRecentPointHistory(member.id, clubId),
+      fetchMemberRecentPartners(member.id, clubId),
     ]);
 
-  const returnPath = `/c/${slug}/members`;
-
   return (
-    <MemberCareerProvider memberId={typedMember.id} isAdmin={isAdmin}>
+    <MemberCareerProvider memberId={member.id} isAdmin={isAdmin}>
       <main className="px-4 pt-6">
         <BackButton />
-        <MemberDetailActions
-          member={typedMember}
-          currentClubId={clubId}
-          returnPath={returnPath}
-        />
-        {isAdmin && (
-          <MemberStatusSection
-            memberId={typedMember.id}
-            memberName={typedMember.name}
-            isActive={typedMember.is_active}
-            deletedAt={(typedMember as any).deleted_at ?? null}
-            permissionRole={typedMember.permission_role}
-            authUserId={(typedMember as any).auth_user_id ?? null}
-            currentClubId={clubId}
-          />
-        )}
 
         <Card className="mb-4 overflow-hidden p-0 text-center">
           <div className="border-b-2 border-clay-400 bg-line-200/40 px-5 pb-5 pt-6">
             <div className="mb-1 flex items-center justify-center gap-1.5">
-              <div className="flex items-center gap-2">
-                <h1 className="name-kr text-line-900">{typedMember.name}</h1>
-                {!typedMember.is_active && (
-                  <span className="rounded-sm border border-line-300/40 bg-line-200 px-2 py-0.5 text-[10px] font-semibold text-line-500">
-                    탈퇴
-                  </span>
-                )}
-              </div>
+              <h1 className="name-kr text-line-900">{member.name}</h1>
             </div>
             <div className="mb-2 flex flex-wrap items-center justify-center gap-1.5">
-              {typedMember.nickname && typedMember.nickname !== typedMember.name && (
-                <p className="text-sm text-line-500">{typedMember.nickname}</p>
+              {member.nickname && member.nickname !== member.name && (
+                <p className="text-sm text-line-500">{member.nickname}</p>
               )}
-              {typedMember.role !== null && (
+              {member.role !== null && (
                 <span className="rounded-full bg-line-200 px-2 py-0.5 text-[11px] font-semibold text-line-700">
-                  {typedMember.role}
+                  {member.role}
                 </span>
               )}
-              {typedMember.player_background !== "none" && (
+              {member.player_background !== "none" && (
                 <span className="rounded-full bg-amber-400/20 px-2 py-0.5 text-[11px] font-semibold text-amber-400">
-                  {playerBackgroundLabel(typedMember.player_background)}
-                </span>
-              )}
-              {typedMember.is_dormant && (
-                <span className="rounded-full bg-line-200 px-2 py-0.5 text-[11px] font-semibold text-line-600">
-                  활동 제외
+                  {playerBackgroundLabel(member.player_background)}
                 </span>
               )}
             </div>
 
-            <p className="font-score mt-3 text-6xl font-bold leading-none text-clay-400">{typedMember.league_point}</p>
+            <p className="font-score mt-3 text-6xl font-bold leading-none text-clay-400">{member.league_point}</p>
             <p className="mt-1 text-[11px] font-semibold uppercase tracking-widest text-line-500">LP</p>
           </div>
 
           <div className="grid grid-cols-3 gap-2 px-5 py-4 text-center">
             <div>
               <p className="font-score text-xl font-bold text-clay-400">
-                {typedMember.mapo_score !== null ? typedMember.mapo_score : "—"}
+                {member.mapo_score !== null ? member.mapo_score : "—"}
               </p>
               <p className="text-xs text-line-500">지역점수</p>
             </div>
@@ -157,39 +123,21 @@ export default async function ClubMemberDetailPage({ params }: Props) {
               <p className="text-xs text-line-500">경기수</p>
             </div>
             <div>
-              <p className="font-score text-xl font-bold text-line-900">{typedMember.win_rate}%</p>
+              <p className="font-score text-xl font-bold text-line-900">{member.win_rate}%</p>
               <p className="text-xs text-line-500">승률</p>
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-2 border-t border-line-200 px-5 py-3 text-center">
             <div>
-              <p className="font-score text-lg font-bold text-gold">{typedMember.wins}</p>
+              <p className="font-score text-lg font-bold text-gold">{member.wins}</p>
               <p className="text-xs text-line-500">승</p>
             </div>
             <div>
-              <p className="font-score text-lg font-bold text-line-500">{typedMember.losses}</p>
+              <p className="font-score text-lg font-bold text-line-500">{member.losses}</p>
               <p className="text-xs text-line-500">패</p>
             </div>
           </div>
-
-          {typedMember.phone && (
-            <div className="border-t border-line-200 px-5 py-3 text-center">
-              {isAdmin ? (
-                <>
-                  <p className="text-xs text-line-500">휴대폰</p>
-                  <div className="mt-1 flex items-center justify-center gap-2">
-                    <p className="text-sm font-semibold text-line-900">{typedMember.phone}</p>
-                    <CallButton phone={typedMember.phone} />
-                  </div>
-                </>
-              ) : (
-                <div className="flex justify-center">
-                  <CallButton phone={typedMember.phone} />
-                </div>
-              )}
-            </div>
-          )}
         </Card>
 
         <MemberHighlightCareer />
@@ -198,7 +146,7 @@ export default async function ClubMemberDetailPage({ params }: Props) {
         <section className="mb-4">
           <div className="mb-2 flex items-center justify-between">
             <h2 className="text-xs font-bold uppercase tracking-widest text-line-600">최근 경기</h2>
-            <Link href={`/c/${slug}/matches?member=${typedMember.id}`} className="text-xs font-semibold text-clay-400">
+            <Link href={`/c/${slug}/matches?member=${member.id}`} className="text-xs font-semibold text-clay-400">
               전체보기 →
             </Link>
           </div>
@@ -207,7 +155,7 @@ export default async function ClubMemberDetailPage({ params }: Props) {
           ) : (
             <div className="space-y-2">
               {recentMatches.map((summary) => (
-                <Link key={summary.match.id} href={`/c/${slug}/matches?member=${typedMember.id}`}>
+                <Link key={summary.match.id} href={`/c/${slug}/matches?member=${member.id}`}>
                   <Card className="p-3">
                     <div className="flex items-center justify-between text-xs text-line-400">
                       <span>{summary.match.played_at}</span>
@@ -220,7 +168,7 @@ export default async function ClubMemberDetailPage({ params }: Props) {
                     </div>
                     <div className="mt-1.5 flex items-center justify-between text-sm">
                       <span className="text-line-700">
-                        {typedMember.name}
+                        {member.name}
                         {summary.partner && ` / ${summary.partner.name}`}
                       </span>
                       <Badge tone={summary.won ? "court" : "fault"}>{summary.won ? "승" : "패"}</Badge>
@@ -291,7 +239,7 @@ export default async function ClubMemberDetailPage({ params }: Props) {
         <section className="mb-4">
           <div className="mb-2 flex items-center justify-between">
             <h2 className="text-xs font-bold uppercase tracking-widest text-line-600">LP 이력</h2>
-            <Link href={`/c/${slug}/point-history?member=${typedMember.id}`} className="text-xs font-semibold text-clay-400">
+            <Link href={`/c/${slug}/point-history?member=${member.id}`} className="text-xs font-semibold text-clay-400">
               LP 이력 보기 →
             </Link>
           </div>
@@ -346,20 +294,6 @@ export default async function ClubMemberDetailPage({ params }: Props) {
             </div>
           )}
         </section>
-
-        {/* 회원 메모 — 운영진 전용 */}
-        {isAdmin && (
-          <section className="mb-4">
-            <h2 className="mb-2 font-display text-xs font-bold uppercase tracking-widest text-line-500">회원 메모</h2>
-            <Card className="p-4 text-sm text-line-700">
-              {typedMember.memo ? (
-                <p className="whitespace-pre-wrap">{typedMember.memo}</p>
-              ) : (
-                <p className="text-line-400">메모가 없습니다.</p>
-              )}
-            </Card>
-          </section>
-        )}
       </main>
     </MemberCareerProvider>
   );

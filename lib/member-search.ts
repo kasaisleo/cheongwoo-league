@@ -1,4 +1,5 @@
-import type { MemberType, MemberWithStats } from "@/lib/supabase/database.types";
+import type { MemberType } from "@/lib/supabase/database.types";
+import type { PublicMemberListRow } from "@/lib/public-member";
 
 export type MapoScoreFilter = "all" | "le3" | "le4" | "le5" | "none";
 
@@ -31,25 +32,26 @@ export const MEMBER_DORMANT_FILTER_OPTIONS: { value: MemberDormantFilter; label:
 
 /**
  * 검색어 하나로 회원의 핵심 식별 정보를 매칭한다.
- * 대상: 이름/닉네임/전화번호 (주소/district/LP/지역점수는 검색 대상에서 제외).
+ * 대상: 이름/닉네임 (전화번호는 Public 목록 데이터에 더 이상 포함되지 않아
+ * 검색 대상에서 제외 — members P0 감사 이후 phone은 Public projection에서 빠졌다).
  *
  * 향후 확장 예정(이번 작업 범위 아님): 선수 출신 정보, 대회 이력(연도/협회·대회구분/
  * 부서/결과/대회명/메모) 등을 검색하려면, 그 데이터를 별도로 조회해서 이 함수에
  * 추가 필드로 넘기거나, 매칭 대상 배열을 합치는 방식으로 확장할 수 있다.
  * 지금은 그 데이터 자체가 없으므로 구현하지 않는다.
  */
-export function matchesMemberSearch(member: MemberWithStats, query: string): boolean {
+export function matchesMemberSearch(member: PublicMemberListRow, query: string): boolean {
   if (!query.trim()) return true;
 
   const normalized = query.trim().toLowerCase();
 
-  const searchableFields = [member.name, member.nickname, member.phone];
+  const searchableFields = [member.name, member.nickname];
 
   return searchableFields.some((field) => field?.toLowerCase().includes(normalized));
 }
 
 /** 지역점수 필터 조건에 맞는지 확인 */
-export function matchesMapoScoreFilter(member: MemberWithStats, filter: MapoScoreFilter): boolean {
+export function matchesMapoScoreFilter(member: PublicMemberListRow, filter: MapoScoreFilter): boolean {
   if (filter === "all") return true;
   if (filter === "none") return member.mapo_score === null;
   if (member.mapo_score === null) return false;
@@ -60,7 +62,7 @@ export function matchesMapoScoreFilter(member: MemberWithStats, filter: MapoScor
 }
 
 /** 회원구분(member_type) 필터 조건에 맞는지 확인 */
-export function matchesMemberTypeFilter(member: MemberWithStats, filter: MemberTypeFilter): boolean {
+export function matchesMemberTypeFilter(member: PublicMemberListRow, filter: MemberTypeFilter): boolean {
   if (filter === "all") return true;
   return member.member_type === filter;
 }
@@ -71,7 +73,7 @@ export function matchesMemberTypeFilter(member: MemberWithStats, filter: MemberT
  * 목록에 노출되어야 하므로(Step 7-2/7-3), 이 필터는 그 노출된 목록 안에서
  * "활동 중인지/휴면인지"만 한 번 더 나눠 보는 용도다.
  */
-export function matchesDormantFilter(member: MemberWithStats, filter: MemberDormantFilter): boolean {
+export function matchesDormantFilter(member: PublicMemberListRow, filter: MemberDormantFilter): boolean {
   if (filter === "all") return true;
   if (filter === "active") return !member.is_dormant;
   return member.is_dormant;
@@ -92,7 +94,7 @@ export const MEMBER_SORT_OPTIONS: { value: MemberSortOption; label: string }[] =
  * 지역점수가 없는(null) 회원은 항상 점수 있는 회원보다 뒤로 보낸다.
  * 향후 대회 운영 화면에서도 이 정렬 함수를 그대로 재사용할 수 있다.
  */
-export function sortMembers(members: MemberWithStats[], sortBy: MemberSortOption): MemberWithStats[] {
+export function sortMembers(members: PublicMemberListRow[], sortBy: MemberSortOption): PublicMemberListRow[] {
   const sorted = [...members];
 
   switch (sortBy) {

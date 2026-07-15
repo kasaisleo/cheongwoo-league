@@ -4,7 +4,7 @@ import { requirePublicClubBySlug } from "@/lib/public-club";
 import { RankMovement } from "@/components/ui/RankMovement";
 import { applyRankingQuery } from "@/lib/ranking-query";
 import { PublicShell, ClubPageHeader } from "@/components/shell";
-import type { MemberWithStats } from "@/lib/supabase/database.types";
+import type { PublicMemberListRow } from "@/lib/public-member";
 
 export const dynamic = "force-dynamic";
 
@@ -14,7 +14,7 @@ export default async function ClubRankingPage({ params }: { params: { slug: stri
 
   const supabase = createClient();
   const { data: rankedMembers } = await applyRankingQuery(supabase, club.id, undefined);
-  const members = (rankedMembers ?? []) as MemberWithStats[];
+  const members = (rankedMembers ?? []) as PublicMemberListRow[];
   const [first, second, third, ...rest] = members;
 
   return (

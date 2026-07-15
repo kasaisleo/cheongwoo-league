@@ -3,7 +3,6 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { EmptyState } from "@/components/ui/SectionHeader";
-import { CallButton } from "@/components/member/CallButton";
 import {
   MAPO_SCORE_FILTER_OPTIONS,
   MEMBER_SORT_OPTIONS,
@@ -19,7 +18,7 @@ import {
   type MemberTypeFilter,
   type MemberDormantFilter,
 } from "@/lib/member-search";
-import type { MemberWithStats } from "@/lib/supabase/database.types";
+import type { PublicMemberListRow } from "@/lib/public-member";
 
 /**
  * MemberList v3 — Step 18 Rankingification.
@@ -38,7 +37,7 @@ import type { MemberWithStats } from "@/lib/supabase/database.types";
  */
 
 interface MemberListProps {
-  members: MemberWithStats[];
+  members: PublicMemberListRow[];
   /** 클럽 slug. 있으면 /c/[slug]/members/[id] 링크, 없으면 /members/[id] (legacy). */
   slug?: string;
 }
@@ -231,9 +230,8 @@ export function MemberList({ members, slug }: MemberListProps) {
                     </p>
                   </div>
 
-                  {/* LP + 전화 */}
+                  {/* LP */}
                   <div className="flex shrink-0 items-center gap-2">
-                    {member.phone && <CallButton phone={member.phone} />}
                     <div className="text-right">
                       <span className="font-score text-sm font-bold tabular-nums text-line-800">
                         {member.league_point}

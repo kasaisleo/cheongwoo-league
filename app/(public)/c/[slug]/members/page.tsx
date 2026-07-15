@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { requirePublicClubBySlug } from "@/lib/public-club";
 import { MemberList } from "@/components/member/MemberList";
 import { PublicShell, ClubPageHeader } from "@/components/shell";
-import type { MemberWithStats } from "@/lib/supabase/database.types";
+import type { PublicMemberListRow } from "@/lib/public-member";
 
 export const dynamic = "force-dynamic";
 
@@ -13,14 +13,11 @@ export default async function ClubMembersPage({ params }: { params: { slug: stri
 
   const supabase = createClient();
   const { data } = await supabase
-    .from("member_stats")
-    .select("*")
-    .eq("is_active", true)
-    .eq("club_id", club.id)
+    .rpc("get_public_member_list", { p_club_id: club.id })
     .order("league_point", { ascending: false })
     .order("nickname");
 
-  const members = (data ?? []) as MemberWithStats[];
+  const members = (data ?? []) as PublicMemberListRow[];
 
   return (
     <PublicShell>
