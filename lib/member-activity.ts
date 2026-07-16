@@ -182,13 +182,14 @@ export async function fetchMemberRecentMatches(
   clubId: string,
   limit: number = RECENT_MATCH_LIMIT
 ): Promise<MemberMatchSummary[]> {
-  const supabase = createClient();
   if (!(await verifyMemberInClub(memberId, clubId))) return [];
 
   // 같은 회원이 양쪽 슬롯에 중복으로 들어간 데이터 오류 건이 필터링될 수 있으므로,
   // 요청한 개수보다 여유 있게 가져온 뒤 정확히 limit개로 자른다.
   const fetchBuffer = limit * 2;
 
+  // MATCH_SELECT_WITH_PLAYERS가 members를 임베드 조회하므로 service-role 필요.
+  const supabase = createServiceClient();
   const { data } = await supabase
     .from("matches")
     .select(MATCH_SELECT_WITH_PLAYERS)
