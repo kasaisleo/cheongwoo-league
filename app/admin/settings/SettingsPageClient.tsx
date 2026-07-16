@@ -4,7 +4,6 @@ import type { CSSProperties } from "react";
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
 import { useAdminAccess } from "@/lib/hooks/useAdminAccess";
 import { toast } from "@/components/ui/Toast";
 
@@ -52,14 +51,12 @@ export default function SettingsPageClient({ currentClubId }: SettingsPageClient
     if (adminAccess === null) return;
     if (!adminAccess.isOwner) { router.replace("/admin"); return; }
     async function load() {
-      const supabase = createClient();
-      const { data: { session } } = await supabase.auth.getSession();
       let kakaoName: string | null = null;
-      if (session) {
-        const { data: member } = await supabase
-          .from("members").select("name").eq("auth_user_id", session.user.id).eq("club_id", currentClubId).maybeSingle();
-        kakaoName = member?.name ?? null;
-      }
+      try {
+        const res = await fetch("/api/auth/status");
+        const body = await res.json();
+        kakaoName = body?.memberName ?? null;
+      } catch { /* 무시 */ }
       setAuth({
         kakaoPermission: adminAccess!.kakaoRole,
         kakaoName,

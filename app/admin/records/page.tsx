@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { MATCH_SESSION_DAY_LABEL } from "@/lib/match-session-label";
 import { pct, fmtPct, buildRecordsDashboardSummary, buildManagementAlerts } from "@/lib/records/dashboardUtils";
 import type { MemberType } from "@/lib/supabase/database.types";
@@ -42,6 +42,8 @@ function MemberTypeBadge({ isGuest, memberType }: { isGuest: boolean; memberType
 
 export default async function AdminRecordsPage() {
   const supabase = createClient();
+  // members_select_all 삭제 이후에도 끊기지 않도록 members 조회만 service-role로 분리.
+  const supabaseAdmin = createServiceClient();
   const access = await getAdminAccessServer();
   const currentClubId = access.clubId ?? "";
   const today = todayStr();
@@ -61,7 +63,7 @@ export default async function AdminRecordsPage() {
     { data: allAttendance },
   ] = await Promise.all([
     supabase.from("matches").select("*").eq("club_id", currentClubId),
-    supabase.from("members").select("id, name, member_type").eq("is_active", true).eq("club_id", currentClubId),
+    supabaseAdmin.from("members").select("id, name, member_type").eq("is_active", true).eq("club_id", currentClubId),
     supabase.from("guests").select("id, name").eq("is_active", true).eq("club_id", currentClubId).is("converted_to_member_id", null),
     clubSessionIds.length > 0
       ? supabase.from("attendance").select("session_id, member_id, status").in("session_id", clubSessionIds)

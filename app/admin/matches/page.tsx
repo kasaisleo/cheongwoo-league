@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { MATCH_SELECT_WITH_PLAYERS, toDisplayMatches } from "@/lib/match-display";
 import { getAdminAccessServer } from "@/lib/admin-permissions";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
@@ -95,7 +95,8 @@ export default async function AdminMatchesPage({ searchParams }: PageProps) {
         .in("session_id", allIds)
     : { data: [] };
 
-  const { count: totalMembers } = await supabase
+  // members_select_all 삭제 이후에도 끊기지 않도록 service-role로 조회.
+  const { count: totalMembers } = await createServiceClient()
     .from("members")
     .select("id", { count: "exact", head: true })
     .eq("is_active", true)

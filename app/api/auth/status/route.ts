@@ -11,13 +11,17 @@ const KAKAO_ADMIN_ROLES = ["manager", "admin", "master"] as const;
  * 클라이언트 컴포넌트에서 현재 운영진 세션을 확인할 때 사용.
  * cw_admin_session 쿠키 제거 후, Supabase Kakao 세션 기반으로 재작성.
  *
- * 응답: { isAdmin: boolean, role: "owner" | "manager" | null }
+ * 응답: { isAdmin: boolean, role: "owner" | "manager" | null, memberId: string | null, permissionRole: string | null }
  *   role 매핑: "master" → "owner", "admin"|"manager" → "manager"
  *   isAdmin = role !== null
+ *   permissionRole은 DB 원본 값(member/scorer/manager/admin/master) —
+ *   useAdminAccess() 훅이 club_id 없이 직접 members를 조회하던 것을 대체하려고
+ *   추가함(members_select_all 삭제 대비).
  *
  * 클럽 컨텍스트:
  *   admin_club_slug 쿠키 있음 → 해당 club에서 permission_role 조회
- *   없음 → user의 전체 admin 멤버십 중 최고 role 반환
+ *   없음 → user의 전체 admin 멤버십 중 최고 role 반환 (이 경우 memberId는 null —
+ *   여러 클럽에 걸쳐 있을 수 있어 단일 memberId로 특정 불가)
  */
 export async function GET() {
   try {
@@ -25,13 +29,15 @@ export async function GET() {
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
-      return NextResponse.json({ isAdmin: false, role: null });
+      return NextResponse.json({ isAdmin: false, role: null, memberId: null, permissionRole: null });
     }
 
     const cookieStore = cookies();
     const adminSlug = cookieStore.get(ADMIN_CLUB_SLUG_COOKIE)?.value ?? null;
 
     let permissionRole: string | null = null;
+    let memberId: string | null = null;
+    let memberName: string | null = null;
 
     if (adminSlug) {
       // 선택된 클럽에서만 조회
@@ -43,9 +49,11 @@ export async function GET() {
         .maybeSingle();
 
       if (club) {
-        const { data: member } = await supabase
+        // members_select_all 삭제 이후에도 끊기지 않도록 service-role로 조회.
+        const supabaseAdmin = createServiceClient();
+        const { data: member } = await supabaseAdmin
           .from("members")
-          .select("permission_role")
+          .select("id, name, permission_role")
           .eq("auth_user_id", user.id)
           .eq("club_id", club.id)
           .eq("is_active", true)
@@ -53,6 +61,8 @@ export async function GET() {
 
         if (member && (KAKAO_ADMIN_ROLES as readonly string[]).includes(member.permission_role)) {
           permissionRole = member.permission_role;
+          memberId = member.id;
+          memberName = member.name;
         }
       }
     } else {
@@ -83,8 +93,8 @@ export async function GET() {
       permissionRole === "admin" || permissionRole === "manager" ? "manager" :
       null;
 
-    return NextResponse.json({ isAdmin: role !== null, role });
+    return NextResponse.json({ isAdmin: role !== null, role, memberId, memberName, permissionRole });
   } catch {
-    return NextResponse.json({ isAdmin: false, role: null });
+    return NextResponse.json({ isAdmin: false, role: null, memberId: null, memberName: null, permissionRole: null });
   }
 }

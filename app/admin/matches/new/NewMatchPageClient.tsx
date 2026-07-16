@@ -12,7 +12,8 @@ import { Dropdown, DropdownItem } from "@/components/ui/Dropdown";
 import { toast } from "@/components/ui/Toast";
 import { MATCH_SESSION_DAY_LABEL, fetchActiveSessions } from "@/lib/match-session-label";
 import type { SessionDay } from "@/lib/supabase/database.types";
-import type { Member, Guest, AttendanceSession } from "@/lib/supabase/database.types";
+import type { Guest, AttendanceSession } from "@/lib/supabase/database.types";
+import type { PlayerSelectorMember } from "@/components/match/PlayerSelector";
 import TennisBallLoader from "@/components/common/TennisBallLoader";
 
 type GuestModalTarget = "teamAPlayer1" | "teamAPlayer2" | "teamBPlayer1" | "teamBPlayer2";
@@ -67,7 +68,7 @@ export function NewMatchPageClient({ currentClubId }: { currentClubId: string })
   const searchParams = useSearchParams();
   const preselectedSessionId = searchParams.get("sessionId");
 
-  const [members, setMembers] = useState<Member[]>([]);
+  const [members, setMembers] = useState<PlayerSelectorMember[]>([]);
   const [guests, setGuests] = useState<Guest[]>([]);
   const [_sessionGuestIds, setSessionGuestIds] = useState<string[]>([]);  // 게스트 참석 지정용 (향후 PlayerSelector에서 우선 노출)
   const [sessions, setSessions] = useState<AttendanceSession[]>([]);
@@ -106,14 +107,8 @@ export function NewMatchPageClient({ currentClubId }: { currentClubId: string })
 
   async function loadData() {
     const supabase = createClient();
-    const [{ data: memberData }, { data: guestData }, sessionList] = await Promise.all([
-      supabase
-  .from("members")
-  .select("*")
-  .eq("club_id", currentClubId)
-  .eq("is_active", true)
-  .eq("is_dormant", false)
-  .order("name"),
+    const [memberBody, { data: guestData }, sessionList] = await Promise.all([
+      fetch("/api/admin/members-list?dormant=exclude").then((res) => res.json()).catch(() => ({ members: [] })),
       supabase
   .from("guests")
   .select("*")
@@ -123,7 +118,7 @@ export function NewMatchPageClient({ currentClubId }: { currentClubId: string })
   .order("created_at", { ascending: false }),
       fetchActiveSessions(supabase, currentClubId),
     ]);
-    setMembers(memberData ?? []);
+    setMembers(memberBody?.members ?? []);
     setGuests(guestData ?? []);
     setSessions(sessionList);
     if (preselectedSessionId) {

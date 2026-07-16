@@ -3,7 +3,6 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { Button } from "@/components/ui/Button";
 import { toast } from "@/components/ui/Toast";
-import { createClient } from "@/lib/supabase/client";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 
 /**
@@ -37,19 +36,12 @@ export default function AuthLinkPageClient({ currentClubId }: { currentClubId: s
   const [linking, setLinking] = useState<string | null>(null);
   const [memberQuery, setMemberQuery] = useState("");
 
-  const supabase = useMemo(() => createClient(), []);
-
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const [pendingRes, { data: membersData }] = await Promise.all([
+      const [pendingRes, membersRes] = await Promise.all([
         fetch("/api/auth/pending-users"),
-        supabase
-          .from("members")
-          .select("id, nickname, name")
-          .is("auth_user_id", null)
-          .eq("club_id", currentClubId)
-          .order("nickname"),
+        fetch("/api/admin/members-list?unlinked=true"),
       ]);
 
       if (!pendingRes.ok) {
@@ -59,14 +51,15 @@ export default function AuthLinkPageClient({ currentClubId }: { currentClubId: s
       }
 
       const { pendingUsers: users } = await pendingRes.json();
+      const membersBody = await membersRes.json().catch(() => null);
       setPendingUsers(users ?? []);
-      setUnlinkedMembers(membersData ?? []);
+      setUnlinkedMembers(membersBody?.members ?? []);
     } catch {
       toast.error("데이터를 불러오지 못했습니다.");
     } finally {
       setLoading(false);
     }
-  }, [supabase, currentClubId]);
+  }, [currentClubId]);
 
   useEffect(() => { loadData(); }, [loadData]);
 

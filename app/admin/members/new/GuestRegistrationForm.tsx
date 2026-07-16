@@ -14,10 +14,8 @@
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/client";
 import { toast } from "@/components/ui/Toast";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
-import type { Member } from "@/lib/supabase/database.types";
 
 function todayString(): string {
   return new Date().toISOString().slice(0, 10);
@@ -27,9 +25,15 @@ function normalizeName(raw: string): string {
   return raw.replace(/\s+/g, "").trim();
 }
 
+interface ReferrerOption {
+  id: string;
+  name: string;
+  nickname: string;
+}
+
 export function GuestRegistrationForm({ currentClubId }: { currentClubId: string }) {
   const router = useRouter();
-  const [members, setMembers] = useState<Member[]>([]);
+  const [members, setMembers] = useState<ReferrerOption[]>([]);
 
   // 필수
   const [name, setName]           = useState("");
@@ -48,15 +52,10 @@ export function GuestRegistrationForm({ currentClubId }: { currentClubId: string
 
   // 소개 회원 목록 로드
   useEffect(() => {
-    const supabase = createClient();
-    supabase
-      .from("members")
-      .select("id, name, nickname")
-      .eq("is_active", true)
-      .eq("is_dormant", false)
-      .eq("club_id", currentClubId)
-      .order("name")
-      .then(({ data }) => setMembers((data as Member[]) ?? []));
+    fetch("/api/admin/members-list?dormant=exclude")
+      .then((res) => res.json())
+      .then((body) => setMembers(body?.members ?? []))
+      .catch(() => setMembers([]));
   }, [currentClubId]);
 
   function validate(): boolean {

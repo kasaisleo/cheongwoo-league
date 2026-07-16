@@ -1,5 +1,5 @@
 import { getAdminAccessServer } from "@/lib/admin-permissions";
-import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/server";
 import { MembersPageClient } from "./MembersPageClient";
 
 export const dynamic = "force-dynamic";
@@ -32,7 +32,8 @@ export default async function AdminMembersPage() {
   const access = await getAdminAccessServer();
   const currentClubId = access.clubId ?? "";
 
-  const supabase = createClient();
+  // members_select_all 삭제 이후에도 회원 관리 목록이 끊기지 않도록 service-role로 조회.
+  const supabase = createServiceClient();
   const { data } = await supabase
     .from("members")
     .select("id, name, nickname, phone, member_type, permission_role, is_active, is_dormant, deleted_at, auth_user_id, created_at")

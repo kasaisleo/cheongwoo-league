@@ -1,11 +1,13 @@
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { MATCH_SESSION_DAY_LABEL } from "@/lib/match-session-label";
 import { getAdminAccessServer } from "@/lib/admin-permissions";
 
 export default async function GuestRecordPage({ params }: { params: { id: string } }) {
   const supabase = createClient();
+  // members_select_all 삭제 이후에도 끊기지 않도록 members 조회만 service-role로 분리.
+  const supabaseAdmin = createServiceClient();
   const access = await getAdminAccessServer();
   const currentClubId = access.clubId ?? "";
   const guestId = params.id;
@@ -14,7 +16,7 @@ export default async function GuestRecordPage({ params }: { params: { id: string
     supabase.from("guests").select("id, name").eq("id", guestId).eq("club_id", currentClubId).maybeSingle(),
     supabase.from("matches").select("*").eq("club_id", currentClubId).order("played_at", { ascending: false }),
     supabase.from("attendance_sessions").select("id, title, session_day").eq("club_id", currentClubId),
-    supabase.from("members").select("id, name").eq("is_active", true).eq("club_id", currentClubId),
+    supabaseAdmin.from("members").select("id, name").eq("is_active", true).eq("club_id", currentClubId),
   ]);
 
   if (!guest) {

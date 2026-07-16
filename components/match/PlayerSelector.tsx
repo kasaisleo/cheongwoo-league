@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { clsx } from "clsx";
 import { getMemberDisplayLabel } from "@/lib/member-display";
-import type { Member, Guest } from "@/lib/supabase/database.types";
+import type { Guest } from "@/lib/supabase/database.types";
 
 export interface SelectedPlayer {
   id: string;
@@ -11,8 +11,15 @@ export interface SelectedPlayer {
   isGuest: boolean;
 }
 
+/** PlayerSelector가 실제로 쓰는 최소 필드만 — Admin 회원 목록 API(/api/admin/members-list)의 반환 형태와 일치. */
+export interface PlayerSelectorMember {
+  id: string;
+  name: string;
+  nickname: string;
+}
+
 interface PlayerSelectorProps {
-  members: Member[];
+  members: PlayerSelectorMember[];
   guests: Guest[];
   /** 세션 참석 확정 회원 ID (attending) */
   attendingMemberIds?: string[];
@@ -76,7 +83,7 @@ export function PlayerSelector({
     member,
     variant,
   }: {
-    member: Member;
+    member: PlayerSelectorMember;
     variant: "attending" | "undecided" | "search";
   }) {
     const key = playerKey(member.id, false);

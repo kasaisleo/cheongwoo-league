@@ -12,7 +12,7 @@ import { AttendanceToggle } from "@/components/attendance/AttendanceToggle";
 import { SessionGuestSection } from "@/components/attendance/SessionGuestSection";
 import { getDisambiguatedName } from "@/lib/member-display";
 import { MATCH_SESSION_DAY_LABEL, fetchActiveSessions } from "@/lib/match-session-label";
-import type { AttendanceStatus, AttendanceSession, Member } from "@/lib/supabase/database.types";
+import type { AttendanceStatus, AttendanceSession } from "@/lib/supabase/database.types";
 import TennisBallLoader from "@/components/common/TennisBallLoader";
 
 /**
@@ -32,8 +32,17 @@ function todayString(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
+/** 출석 화면이 실제로 쓰는 최소 필드 — /api/admin/members-list 반환 형태와 일치. */
+interface AttendanceListMember {
+  id: string;
+  name: string;
+  nickname: string;
+  district: string | null;
+  role: string | null;
+}
+
 interface MemberAttendance {
-  member: Member;
+  member: AttendanceListMember;
   status: AttendanceStatus;
   attendanceId: string | null;
 }
@@ -85,13 +94,14 @@ function AdminAttendanceInner({ currentClubId }: { currentClubId: string }) {
     setLoadingRows(true);
 
     async function loadRows() {
-      const [{ data: members }, { data: attendance }] = await Promise.all([
-        supabase.from("members").select("*").eq("is_active", true).eq("is_dormant", false).eq("club_id", currentClubId).order("nickname"),
+      const [membersBody, { data: attendance }] = await Promise.all([
+        fetch("/api/admin/members-list?dormant=exclude").then((res) => res.json()).catch(() => ({ members: [] })),
         supabase.from("attendance").select("*").eq("session_id", selectedSessionId),
       ]);
       if (!isCurrent) return;
+      const members: AttendanceListMember[] = membersBody?.members ?? [];
       const attendanceByMember = new Map((attendance ?? []).map((a) => [a.member_id, a]));
-      setRows((members ?? []).map((member) => {
+      setRows(members.map((member) => {
         const existing = attendanceByMember.get(member.id);
         return { member, status: existing?.status ?? "undecided", attendanceId: existing?.id ?? null };
       }));

@@ -14,10 +14,10 @@ function matchTitle(s: { session_day: string; title: string }) {
 // ── 페이지 ──────────────────────────────────────────────────────
 export default async function MemberRecordPage({ params }: { params: { id: string } }) {
   const supabase = createClient();
-  // point_history_select_all(anon 공개 SELECT) 정책 삭제 이후에도 Admin 조회가
-  // 끊기지 않도록, 이 한 쿼리만 RLS를 우회하는 service-role로 조회한다.
-  // club_id/member_id는 반드시 서버에서 도출한 access.clubId와 URL의 memberId만
-  // 쓴다 — 브라우저가 넘긴 club_id는 없고 있어도 무시한다.
+  // point_history_select_all/members_select_all 정책 삭제 이후에도 Admin 조회가
+  // 끊기지 않도록, point_history와 members 조회는 RLS를 우회하는 service-role로
+  // 한다. club_id/member_id는 반드시 서버에서 도출한 access.clubId와 URL의
+  // memberId만 쓴다 — 브라우저가 넘긴 club_id는 없고 있어도 무시한다.
   const serviceSupabase = createServiceClient();
   const access = await getAdminAccessServer();
   const currentClubId = access.clubId ?? "";
@@ -32,7 +32,7 @@ export default async function MemberRecordPage({ params }: { params: { id: strin
     { data: pointHistory },
     { data: allMembers },
   ] = await Promise.all([
-    supabase.from("members").select("id, name, member_type, league_point").eq("id", memberId).eq("club_id", currentClubId).maybeSingle(),
+    serviceSupabase.from("members").select("id, name, member_type, league_point").eq("id", memberId).eq("club_id", currentClubId).maybeSingle(),
     supabase.from("matches").select("*").eq("club_id", currentClubId).order("played_at", { ascending: false }),
     supabase.from("attendance").select("session_id, status").eq("member_id", memberId),
     supabase.from("attendance_sessions").select("id, title, session_date, session_day, status").eq("club_id", currentClubId).neq("status", "archived"),
@@ -42,7 +42,7 @@ export default async function MemberRecordPage({ params }: { params: { id: strin
       .eq("club_id", currentClubId)
       .eq("member_id", memberId)
       .order("created_at", { ascending: true }),
-    supabase.from("members").select("id, name").eq("is_active", true).eq("club_id", currentClubId),
+    serviceSupabase.from("members").select("id, name").eq("is_active", true).eq("club_id", currentClubId),
   ]);
 
   if (!member) {

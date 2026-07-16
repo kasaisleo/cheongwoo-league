@@ -11,8 +11,10 @@ import {
 /**
  * useAdminAccess() — 클라이언트 컴포넌트 전용 통합 관리자 권한 훅.
  *
- * lib/admin-permissions.ts (서버 전용) 를 import하지 않는다.
- * Supabase client + members 테이블 조회로 Kakao permission_role을 확인한다.
+ * members_select_all 정책 삭제 이후에도 동작해야 하므로, members 조회는
+ * 브라우저에서 직접 하지 않고 서버 Route Handler(/api/auth/status,
+ * service-role)에 위임한다. 세션(userId)만 클라이언트에서 auth.getSession()으로
+ * 확인한다 — 이건 members 테이블 조회가 아니라 RLS와 무관하다.
  *
  * 반환:
  *   null       = 로딩 중
@@ -25,29 +27,28 @@ export function useAdminAccess(currentClubId: string): AdminAccess | null {
     let cancelled = false;
 
     async function check() {
-      let kakaoRole: string | null = null;
-      let userId:    string | null = null;
-      let memberId:  string | null = null;
+      let userId: string | null = null;
 
       try {
         const { createClient } = await import("@/lib/supabase/client");
         const supabase = createClient();
         const { data: { session } } = await supabase.auth.getSession();
-
-        if (session) {
-          userId = session.user.id;
-          const { data: member } = await supabase
-            .from("members")
-            .select("id, permission_role")
-            .eq("auth_user_id", session.user.id)
-            .eq("club_id", currentClubId)
-            .maybeSingle();
-          if (member) {
-            kakaoRole = member.permission_role as string;
-            memberId  = member.id;
-          }
-        }
+        if (session) userId = session.user.id;
       } catch { /* 무시 */ }
+
+      let kakaoRole: string | null = null;
+      let memberId: string | null = null;
+
+      if (userId) {
+        try {
+          const res = await fetch("/api/auth/status");
+          const body = await res.json();
+          if (body?.permissionRole) {
+            kakaoRole = body.permissionRole as string;
+            memberId = body.memberId ?? null;
+          }
+        } catch { /* 무시 */ }
+      }
 
       const kakaoIsAdmin = kakaoRole !== null &&
         (KAKAO_ADMIN_ROLES as readonly string[]).includes(kakaoRole);

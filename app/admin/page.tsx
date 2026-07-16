@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { getAdminAccessServer } from "@/lib/admin-permissions";
 import { AdminLogoutButton } from "@/components/admin/AdminLogoutButton";
 import { AdminKakaoLoginButton } from "@/components/admin/AdminKakaoLoginButton";
@@ -34,6 +34,8 @@ function daysAgoIso(days: number) {
 
 async function getAdminDashboardData(currentClubId: string) {
   const supabase = createClient();
+  // members_select_all 삭제 이후에도 끊기지 않도록, members 조회만 service-role로 분리한다.
+  const supabaseAdmin = createServiceClient();
   const today = new Date().toISOString().slice(0, 10);
 
   const [
@@ -50,18 +52,18 @@ async function getAdminDashboardData(currentClubId: string) {
     { data: clubRow },
     { count: recentGamesCount },
   ] = await Promise.all([
-    supabase.from("members").select("*", { count: "exact", head: true }).eq("is_active", true).eq("club_id", currentClubId),
-    supabase.from("members").select("*", { count: "exact", head: true }).eq("is_active", true).eq("is_dormant", false).eq("club_id", currentClubId),
+    supabaseAdmin.from("members").select("*", { count: "exact", head: true }).eq("is_active", true).eq("club_id", currentClubId),
+    supabaseAdmin.from("members").select("*", { count: "exact", head: true }).eq("is_active", true).eq("is_dormant", false).eq("club_id", currentClubId),
     // adminMembers/masterMembers count 2개를 role만 읽는 쿼리 1개로 통합 (row 수가 적어 head count보다 저렴)
-    supabase.from("members").select("permission_role").in("permission_role", ["manager", "admin", "master"]).eq("club_id", currentClubId),
+    supabaseAdmin.from("members").select("permission_role").in("permission_role", ["manager", "admin", "master"]).eq("club_id", currentClubId),
     supabase.from("attendance_sessions").select("*", { count: "exact", head: true }).eq("club_id", currentClubId).eq("status", "open"),
     // 오늘 세션(todaySessions)과 출석 변화 scoping용 세션(recentSessionsForAttendance)을
     // 별도 쿼리 2개 대신, 최근 세션 목록 1개로 통합해 양쪽 용도로 파생한다.
     supabase.from("attendance_sessions").select("id, title, session_day, session_date, status").eq("club_id", currentClubId).neq("status", "archived").order("session_date", { ascending: false }).limit(20),
     supabase.from("matches").select("id, played_at, winner_team, score_a, score_b").eq("club_id", currentClubId).order("played_at", { ascending: false }).limit(5),
-    supabase.from("members").select("id, name, created_at").eq("club_id", currentClubId).eq("is_active", true).order("created_at", { ascending: false }).limit(5),
-    supabase.from("members").select("*", { count: "exact", head: true }).eq("club_id", currentClubId).eq("is_active", true).gte("created_at", daysAgoIso(7)),
-    supabase.from("members").select("*", { count: "exact", head: true }).eq("club_id", currentClubId).eq("is_active", true).in("permission_role", ["manager", "admin", "master"]).is("auth_user_id", null),
+    supabaseAdmin.from("members").select("id, name, created_at").eq("club_id", currentClubId).eq("is_active", true).order("created_at", { ascending: false }).limit(5),
+    supabaseAdmin.from("members").select("*", { count: "exact", head: true }).eq("club_id", currentClubId).eq("is_active", true).gte("created_at", daysAgoIso(7)),
+    supabaseAdmin.from("members").select("*", { count: "exact", head: true }).eq("club_id", currentClubId).eq("is_active", true).in("permission_role", ["manager", "admin", "master"]).is("auth_user_id", null),
     supabase.from("pending_link_requests").select("*", { count: "exact", head: true }).eq("club_id", currentClubId),
     supabase.from("clubs").select("status, skin_key").eq("id", currentClubId).maybeSingle(),
     supabase.from("matches").select("*", { count: "exact", head: true }).eq("club_id", currentClubId).gte("played_at", daysAgoIso(7)),
@@ -100,10 +102,10 @@ async function getAdminDashboardData(currentClubId: string) {
       ? supabase.from("pending_link_requests").select("auth_user_id").eq("club_id", currentClubId).limit(50)
       : Promise.resolve({ data: [] as { auth_user_id: string }[] }),
     pendingLinkActualCount > 0
-      ? supabase.from("members").select("auth_user_id").not("auth_user_id", "is", null).eq("club_id", currentClubId)
+      ? supabaseAdmin.from("members").select("auth_user_id").not("auth_user_id", "is", null).eq("club_id", currentClubId)
       : Promise.resolve({ data: [] as { auth_user_id: string | null }[] }),
     attendanceMemberIds.length > 0
-      ? supabase.from("members").select("id, name").in("id", attendanceMemberIds)
+      ? supabaseAdmin.from("members").select("id, name").in("id", attendanceMemberIds)
       : Promise.resolve({ data: [] as { id: string; name: string }[] }),
   ]);
 

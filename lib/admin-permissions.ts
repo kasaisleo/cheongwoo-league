@@ -72,7 +72,11 @@ export async function getAdminAccessServer(): Promise<AdminAccess> {
       if (adminSlug) {
         // admin_club_slug 있음 → 해당 club에서만 권한 검사, fallback 없음
         if (clubId) {
-          const { data: member } = await supabase
+          // members_select_all 정책 삭제 이후에도 이 조회가 끊기지 않도록
+          // service-role로 조회한다 — auth_user_id/club_id는 서버에서 도출한
+          // 값만 쓰고, 클라이언트가 넘긴 club_id는 애초에 없다.
+          const supabaseAdmin = createServiceClient();
+          const { data: member } = await supabaseAdmin
             .from("members")
             .select("id, permission_role, club_id")
             .eq("auth_user_id", user.id)

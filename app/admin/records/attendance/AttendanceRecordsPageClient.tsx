@@ -81,18 +81,19 @@ export default function AttendanceRecordsPageClient({ currentClubId }: { current
       const [
         { data: allAttendance },
         { data: allMatches },
-        { data: members },
+        membersBody,
       ] = await Promise.all([
         clubSessionIds.length > 0
           ? supabase.from("attendance").select("session_id, member_id, status").in("session_id", clubSessionIds)
           : Promise.resolve({ data: [] as { session_id: string | null; member_id: string; status: string }[] }),
         supabase.from("matches").select("id, session_id, team_a_player1_member, team_a_player2_member, team_b_player1_member, team_b_player2_member").eq("club_id", currentClubId),
-        supabase.from("members").select("id, name").eq("is_active", true).eq("club_id", currentClubId).order("name"),
+        fetch("/api/admin/members-list").then((res) => res.json()).catch(() => ({ members: [] })),
       ]);
+      const members: { id: string; name: string }[] = membersBody?.members ?? [];
 
-      const memberCount = (members ?? []).length;
+      const memberCount = members.length;
       setTotalMembers(memberCount);
-      setAllMembersCache(members ?? []);
+      setAllMembersCache(members);
 
       const attendBySid = new Map<string, Map<string, string>>();
       for (const row of allAttendance ?? []) {

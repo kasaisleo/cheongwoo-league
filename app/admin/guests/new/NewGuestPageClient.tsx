@@ -1,20 +1,24 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { createClient } from "@/lib/supabase/client";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
-import type { Member, MemberGrade } from "@/lib/supabase/database.types";
+import type { MemberGrade } from "@/lib/supabase/database.types";
 
 const GRADES: MemberGrade[] = ["A", "B", "C", "D"];
+
+interface ReferrerOption {
+  id: string;
+  name: string;
+}
 
 function todayString(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
 export default function NewGuestPageClient({ currentClubId }: { currentClubId: string }) {
-  const [members, setMembers] = useState<Member[]>([]);
+  const [members, setMembers] = useState<ReferrerOption[]>([]);
 
   const [name, setName] = useState("");
   const [age, setAge] = useState("");
@@ -34,14 +38,10 @@ export default function NewGuestPageClient({ currentClubId }: { currentClubId: s
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const supabase = createClient();
-    supabase
-      .from("members")
-      .select("*")
-      .eq("is_active", true)
-      .eq("club_id", currentClubId)
-      .order("name")
-      .then(({ data }) => setMembers(data ?? []));
+    fetch("/api/admin/members-list")
+      .then((res) => res.json())
+      .then((body) => setMembers(body?.members ?? []))
+      .catch(() => setMembers([]));
   }, []);
 
   const isReady = name.trim().length > 0 && visitDate.length > 0 && !submitting;

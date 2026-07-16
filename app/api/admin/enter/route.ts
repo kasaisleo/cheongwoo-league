@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { ADMIN_CLUB_SLUG_COOKIE } from "@/lib/admin-auth";
 
 const KAKAO_ADMIN_ROLES = ["manager", "admin", "master"] as const;
@@ -66,7 +66,10 @@ export async function GET(request: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser();
 
     if (user) {
-      const { data: member } = await supabase
+      // members_select_all 삭제 이후에도 admin 진입 게이트가 끊기지 않도록
+      // service-role로 조회한다.
+      const supabaseAdmin = createServiceClient();
+      const { data: member } = await supabaseAdmin
         .from("members")
         .select("id, permission_role")
         .eq("auth_user_id", user.id)

@@ -76,14 +76,15 @@ export default function MatchRecordsPageClient({ currentClubId }: { currentClubI
       const [
         { data: allMatches },
         { data: allAttendance },
-        { data: members },
+        membersBody,
       ] = await Promise.all([
         supabase.from("matches").select("id, session_id, winner_team, team_a_player1_member, team_a_player2_member, team_b_player1_member, team_b_player2_member").eq("club_id", currentClubId),
         clubSessionIds.length > 0
           ? supabase.from("attendance").select("session_id, member_id, status").in("session_id", clubSessionIds)
           : Promise.resolve({ data: [] as { session_id: string | null; member_id: string; status: string }[] }),
-        supabase.from("members").select("id, name").eq("is_active", true).eq("club_id", currentClubId),
+        fetch("/api/admin/members-list").then((res) => res.json()).catch(() => ({ members: [] })),
       ]);
+      const members: { id: string; name: string }[] = membersBody?.members ?? [];
 
       const nameMap = new Map((members ?? []).map((m) => [m.id, m.name]));
       setMemberNames(nameMap);
@@ -159,11 +160,10 @@ export default function MatchRecordsPageClient({ currentClubId }: { currentClubI
 
     const { data: attendRows } = await supabase
       .from("attendance").select("member_id, status").eq("session_id", sid);
-    const { data: sessionMembers } = await supabase
-      .from("members").select("id, name").eq("is_active", true).eq("club_id", currentClubId);
+    const membersBody = await fetch("/api/admin/members-list").then((res) => res.json()).catch(() => ({ members: [] }));
 
     const respondedMap = new Map((attendRows ?? []).map((r) => [r.member_id, r.status as AttendanceStatus]));
-    const allMembers = sessionMembers ?? [];
+    const allMembers: { id: string; name: string }[] = membersBody?.members ?? [];
 
     const rows: PlayerStatusRow[] = allMembers.map((m) => {
       const attendStatus = respondedMap.get(m.id);

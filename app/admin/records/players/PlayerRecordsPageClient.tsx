@@ -190,15 +190,18 @@ export default function PlayerRecordsPageClient({ currentClubId }: { currentClub
 
       const [
         { data: matches },
-        { data: attendanceRows }, { data: members }, { data: guests },
+        { data: attendanceRows },
+        membersBody,
+        { data: guests },
       ] = await Promise.all([
         supabase.from("matches").select("*").eq("club_id", currentClubId),
         clubSessionIds.length > 0
           ? supabase.from("attendance").select("session_id, member_id, status").in("session_id", clubSessionIds)
           : Promise.resolve({ data: [] as { session_id: string | null; member_id: string; status: string }[] }),
-        supabase.from("members").select("id, name, member_type, league_point").eq("is_active", true).eq("club_id", currentClubId),
+        fetch("/api/admin/members-list").then((res) => res.json()).catch(() => ({ members: [] })),
         supabase.from("guests").select("id, name").eq("is_active", true).eq("club_id", currentClubId).is("converted_to_member_id", null),
       ]);
+      const members: { id: string; name: string; member_type: MemberType; league_point: number }[] = membersBody?.members ?? [];
 
       const completedIds = new Set(
         (sessions ?? []).filter((s) => s.status === "closed" || s.session_date < today).map((s) => s.id)

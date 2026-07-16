@@ -14,7 +14,8 @@ import { Dropdown, DropdownItem } from "@/components/ui/Dropdown";
 import { MATCH_SESSION_DAY_LABEL, fetchActiveSessions } from "@/lib/match-session-label";
 import { TEAM_LABEL, winnerLabel, scoreLabel } from "@/lib/match-team-labels";
 import type { DisplayMatch } from "@/lib/match-display";
-import type { Member, Guest, AttendanceSession } from "@/lib/supabase/database.types";
+import type { Guest, AttendanceSession } from "@/lib/supabase/database.types";
+import type { PlayerSelectorMember } from "@/components/match/PlayerSelector";
 
 type Slot = "teamAPlayer1" | "teamAPlayer2" | "teamBPlayer1" | "teamBPlayer2";
 
@@ -30,7 +31,7 @@ export function EditMatchPageClient({
   currentClubId: string;
 }) {
   const router = useRouter();
-  const [members,  setMembers]  = useState<Member[]>([]);
+  const [members,  setMembers]  = useState<PlayerSelectorMember[]>([]);
   const [guests,   setGuests]   = useState<Guest[]>([]);
   const [sessions, setSessions] = useState<AttendanceSession[]>([]);
   const [sessionId, setSessionId] = useState<string | null>(match.session_id);
@@ -53,12 +54,12 @@ export function EditMatchPageClient({
   useEffect(() => {
     async function load() {
       const supabase = createClient();
-      const [{ data: mData }, { data: gData }, activeSessions] = await Promise.all([
-        supabase.from("members").select("*").eq("is_active", true).eq("is_dormant", false).eq("club_id", currentClubId).order("nickname"),
+      const [memberBody, { data: gData }, activeSessions] = await Promise.all([
+        fetch("/api/admin/members-list?dormant=exclude").then((res) => res.json()).catch(() => ({ members: [] })),
         supabase.from("guests").select("*").eq("club_id", currentClubId).order("name"),
         fetchActiveSessions(supabase, currentClubId),
       ]);
-      setMembers(mData ?? []);
+      setMembers(memberBody?.members ?? []);
       setGuests(gData ?? []);
       setSessions(activeSessions);
       setLoading(false);
