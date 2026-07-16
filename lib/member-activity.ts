@@ -1,4 +1,5 @@
-import { createClient } from "@/lib/supabase/server";
+import "server-only";
+import { createClient, createServiceClient } from "@/lib/supabase/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { MATCH_SELECT_WITH_PLAYERS, toDisplayMatches, type DisplayMatch } from "@/lib/match-display";
 import { LEAGUE_POINT_WIN } from "@/lib/match-engine";
@@ -17,16 +18,20 @@ import type { PointHistoryRpcRow } from "@/lib/point-history";
  * 검증 실패 시 빈 결과(또는 rate 0)를 반환해 다른 club 데이터가 새지 않는다.
  */
 async function verifyMemberInClub(
-  supabase: SupabaseClient,
   memberId: string,
   clubId: string
 ): Promise<boolean> {
-  const { data } = await supabase
+  const supabase = createServiceClient();
+  const { data, error } = await supabase
     .from("members")
     .select("id")
     .eq("id", memberId)
     .eq("club_id", clubId)
     .maybeSingle();
+  if (error) {
+    console.error("[verifyMemberInClub]", error.code, error.message);
+    return false;
+  }
   return data !== null;
 }
 
@@ -178,7 +183,7 @@ export async function fetchMemberRecentMatches(
   limit: number = RECENT_MATCH_LIMIT
 ): Promise<MemberMatchSummary[]> {
   const supabase = createClient();
-  if (!(await verifyMemberInClub(supabase, memberId, clubId))) return [];
+  if (!(await verifyMemberInClub(memberId, clubId))) return [];
 
   // 같은 회원이 양쪽 슬롯에 중복으로 들어간 데이터 오류 건이 필터링될 수 있으므로,
   // 요청한 개수보다 여유 있게 가져온 뒤 정확히 limit개로 자른다.
@@ -218,7 +223,7 @@ export async function fetchMemberRecentAttendance(
   limit: number = RECENT_ATTENDANCE_LIMIT
 ): Promise<MemberAttendanceSummary[]> {
   const supabase = createClient();
-  if (!(await verifyMemberInClub(supabase, memberId, clubId))) return [];
+  if (!(await verifyMemberInClub(memberId, clubId))) return [];
 
   // attendance에는 club_id가 없으므로, club 소속 session 메타(attendance_sessions)를
   // 먼저 가져와 session_id 집합 + 세션 정보 맵을 만든 뒤 그 집합으로만 attendance를 조회한다.
@@ -268,7 +273,7 @@ export async function fetchMemberRecentAttendance(
 export async function fetchMemberAttendanceRate(memberId: string, clubId: string): Promise<AttendanceRateSummary> {
   const supabase = createClient();
   const empty: AttendanceRateSummary = { overallRate: null, recentRate: null, overallCount: 0, recentSampleSize: 0 };
-  if (!(await verifyMemberInClub(supabase, memberId, clubId))) return empty;
+  if (!(await verifyMemberInClub(memberId, clubId))) return empty;
 
   const clubSessionIds = await fetchClubSessionIds(supabase, clubId);
   if (clubSessionIds.length === 0) return empty;
@@ -310,7 +315,7 @@ export async function fetchMemberRecentPointHistory(
   limit: number = RECENT_POINT_HISTORY_LIMIT
 ): Promise<MemberPointHistoryEntry[]> {
   const supabase = createClient();
-  if (!(await verifyMemberInClub(supabase, memberId, clubId))) return [];
+  if (!(await verifyMemberInClub(memberId, clubId))) return [];
 
   const { data } = await supabase.rpc("get_public_point_history", {
     p_club_id: clubId,
