@@ -114,18 +114,23 @@ export default function MatchHistoryPageClient({ currentClubId }: { currentClubI
         .filter(Boolean).forEach((id) => guestIds.add(id!));
     }
 
-    // 이름 + member_type 조회
-    const [{ data: memberRows }, { data: guestRows }] = await Promise.all([
+    // 이름 + member_type 조회.
+    // members는 anon/authenticated GRANT가 회수되어(0037) 서버 API를 거친다.
+    const [memberRows, { data: guestRows }] = await Promise.all([
       memberIds.size > 0
-        ? supabase.from("members").select("id, name, member_type").in("id", [...memberIds])
-        : Promise.resolve({ data: [] }),
+        ? fetch(
+            `/api/matches/session-members?clubId=${encodeURIComponent(currentClubId)}&ids=${[...memberIds].map(encodeURIComponent).join(",")}`
+          )
+            .then((res) => (res.ok ? res.json() : { members: [] }))
+            .then((body) => body.members as { id: string; name: string; member_type: MemberType }[])
+        : Promise.resolve([]),
       guestIds.size > 0
         ? supabase.from("guests").select("id, name").in("id", [...guestIds])
         : Promise.resolve({ data: [] }),
     ]);
 
     const memberMap = new Map(
-      (memberRows ?? []).map((m) => [m.id, { name: m.name, memberType: m.member_type as MemberType }])
+      (memberRows ?? []).map((m) => [m.id, { name: m.name, memberType: m.member_type }])
     );
     const guestMap = new Map((guestRows ?? []).map((g) => [g.id, g.name]));
 

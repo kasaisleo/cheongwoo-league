@@ -6,8 +6,8 @@ import { Badge } from "@/components/ui/Badge";
 import { MATCH_SESSION_DAY_LABEL } from "@/lib/match-session-label";
 import { EmptyState } from "@/components/ui/SectionHeader";
 import { PublicShell } from "@/components/shell";
-import type { Member } from "@/lib/supabase/database.types";
 import type { PointHistoryRpcRow } from "@/lib/point-history";
+import type { PublicMemberListRow } from "@/lib/public-member";
 
 export const dynamic = "force-dynamic";
 
@@ -33,14 +33,13 @@ export default async function ClubPointHistoryPage({ params, searchParams }: Poi
   const supabase = createClient();
   const filterMemberId = searchParams.member;
 
+  // members는 anon/authenticated GRANT가 회수되어(0037) 직접 조회할 수 없다 —
+  // 이미 club_id/is_active/deleted_at 필터를 강제하는 공개 RPC를 재사용한다.
   const { data: members } = await supabase
-    .from("members")
-    .select("*")
-    .eq("is_active", true)
-    .eq("club_id", club.id)
+    .rpc("get_public_member_list", { p_club_id: club.id })
     .order("name");
 
-  const memberList = (members ?? []) as Member[];
+  const memberList = (members ?? []) as PublicMemberListRow[];
   const memberIds = memberList.map((m) => m.id);
 
   const rpcMemberId = filterMemberId && memberIds.includes(filterMemberId) ? filterMemberId : null;

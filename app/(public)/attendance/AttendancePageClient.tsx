@@ -23,8 +23,10 @@ function todayString(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
+type RosterMember = Pick<Member, "id" | "name" | "nickname" | "district" | "member_type">;
+
 interface MemberAttendance {
-  member: Member;
+  member: RosterMember;
   status: AttendanceStatus;
   attendanceId: string | null;
 }
@@ -85,18 +87,15 @@ function AttendancePageInner({ currentClubId, clubSlug }: { currentClubId: strin
   const [customTitle, setCustomTitle] = useState("");
   const [creatingCustom, setCreatingCustom] = useState(false);
 
-  // 0. 카카오 로그인 회원 확인 — "내 출석 신청" 영역을 위한 본인 member_id 조회
+  // 0. 카카오 로그인 회원 확인 — "내 출석 신청" 영역을 위한 본인 member_id 조회.
+  // members는 anon/authenticated GRANT가 회수되어(0037) 서버 API를 거친다.
   useEffect(() => {
     void (async () => {
       const { data: { session: authSession } } = await supabase.auth.getSession();
       if (!authSession) { setMyMemberId(null); return; }
-    const { data: member } = await supabase
-  .from("members")
-  .select("id")
-  .eq("club_id", currentClubId)
-  .eq("auth_user_id", authSession.user.id)
-  .maybeSingle();
-      setMyMemberId(member?.id ?? null);
+      const res = await fetch(`/api/member/self?clubId=${encodeURIComponent(currentClubId)}`);
+      const body = res.ok ? await res.json() : { memberId: null };
+      setMyMemberId(body.memberId ?? null);
     })();
   }, [supabase, currentClubId]);
 
@@ -156,14 +155,11 @@ function AttendancePageInner({ currentClubId, clubSlug }: { currentClubId: strin
     setLoadingRows(true);
 
     async function loadRows() {
-      const [{ data: members }, { data: attendance }] = await Promise.all([
-       supabase
-  .from("members")
-  .select("*")
-  .eq("club_id", currentClubId)
-  .eq("is_active", true)
-  .eq("is_dormant", false)
-  .order("nickname"),
+      // members는 anon/authenticated GRANT가 회수되어(0037) 서버 API를 거친다.
+      const [members, { data: attendance }] = await Promise.all([
+        fetch(`/api/attendance/roster?clubId=${encodeURIComponent(currentClubId)}`)
+          .then((res) => (res.ok ? res.json() : { members: [] }))
+          .then((body) => body.members as RosterMember[]),
         supabase.from("attendance").select("*").eq("session_id", selectedSessionId),
       ]);
 
