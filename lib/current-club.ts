@@ -25,8 +25,9 @@
  *   쿠키를 set/remove하지 않는다 — 읽기(get)만 한다.
  */
 
+import "server-only";
 import { cookies } from "next/headers";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { DEFAULT_CLUB_ID, SELECTED_CLUB_COOKIE } from "@/lib/club-constants";
 
 export async function getCurrentClubId(): Promise<string> {
@@ -60,7 +61,8 @@ export async function getCurrentClubId(): Promise<string> {
     }
 
     // 3) 그 club의 active member인지 확인
-    const { data: member } = await supabase
+    // members 테이블은 anon/authenticated GRANT가 회수되어(0037) service-role로 조회한다.
+    const { data: member } = await createServiceClient()
       .from("members")
       .select("id")
       .eq("club_id", cookieClubId)
@@ -137,7 +139,8 @@ export async function getCurrentClub(): Promise<CurrentClub> {
           return club;
         }
 
-        const { data: member } = await supabase
+        // members 테이블은 anon/authenticated GRANT가 회수되어(0037) service-role로 조회한다.
+        const { data: member } = await createServiceClient()
           .from("members")
           .select("id")
           .eq("club_id", cookieClubId)

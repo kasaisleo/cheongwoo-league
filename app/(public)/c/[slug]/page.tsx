@@ -1,6 +1,7 @@
+import "server-only";
 import Link from "next/link";
 import { requirePublicClubBySlug } from "@/lib/public-club";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { Badge } from "@/components/ui/Badge";
 import { MatchCard } from "@/components/match/MatchCard";
 import { MATCH_SELECT_WITH_PLAYERS, toDisplayMatches } from "@/lib/match-display";
@@ -58,7 +59,8 @@ export default async function ClubHomePage({
       .in("status", ["open", "closed"])
       .gte("session_date", today),
 
-    supabase
+    // MATCH_SELECT_WITH_PLAYERS가 members를 임베드 조회하므로 service-role 필요(0037).
+    createServiceClient()
       .from("matches")
       .select(MATCH_SELECT_WITH_PLAYERS)
       .eq("club_id", clubId)

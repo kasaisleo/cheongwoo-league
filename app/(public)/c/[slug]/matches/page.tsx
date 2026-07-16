@@ -1,5 +1,6 @@
+import "server-only";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { requirePublicClubBySlug } from "@/lib/public-club";
 import { MatchCard } from "@/components/match/MatchCard";
 import { MATCH_SELECT_WITH_PLAYERS, toDisplayMatches } from "@/lib/match-display";
@@ -52,14 +53,18 @@ export default async function ClubMatchesPage({ params, searchParams }: MatchesP
     sessionIdsForType = (sessionRows ?? []).map((s) => s.id);
   }
 
-  const { data: members } = await supabase
+  // members는 anon/authenticated GRANT가 회수되어(0037) service-role로 조회한다.
+  const supabaseService = createServiceClient();
+
+  const { data: members } = await supabaseService
     .from("members")
     .select("id, name")
     .eq("is_active", true)
     .eq("club_id", clubId)
     .order("name");
 
-  let matchesQuery = supabase
+  // MATCH_SELECT_WITH_PLAYERS가 members를 임베드 조회하므로 service-role 필요(0037).
+  let matchesQuery = supabaseService
     .from("matches")
     .select(MATCH_SELECT_WITH_PLAYERS)
     .eq("club_id", clubId)
