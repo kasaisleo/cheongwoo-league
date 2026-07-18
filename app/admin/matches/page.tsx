@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { MATCH_SELECT_WITH_PLAYERS, toDisplayMatches } from "@/lib/match-display";
-import { getAdminAccessServer } from "@/lib/admin-permissions";
+import { requireAdminAccess } from "@/lib/admin-permissions";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { SessionMatchCard, type SessionGroup } from "./SessionMatchCard";
 import type { SessionDay } from "@/lib/supabase/database.types";
@@ -25,7 +25,7 @@ interface PageProps {
 }
 
 export default async function AdminMatchesPage({ searchParams }: PageProps) {
-  const access = await getAdminAccessServer();
+  const access = await requireAdminAccess();
   const supabase = createClient();
   const currentClubId = access.clubId ?? "";
 
@@ -57,15 +57,22 @@ export default async function AdminMatchesPage({ searchParams }: PageProps) {
 
   const sessionIds = filteredSessions.map((s) => s.id);
 
-  const { data: rawMatches } = sessionIds.length > 0
-    ? await supabase
+  // MATCH_SELECT_WITH_PLAYERS가 members/guests를 임베드 조회하므로
+  // service-role 필요(0037 members 락다운 + guests P0).
+  const { data: rawMatches, error: matchesError } = sessionIds.length > 0
+    ? await createServiceClient()
         .from("matches")
         .select(MATCH_SELECT_WITH_PLAYERS)
         .in("session_id", sessionIds)
         .order("played_at", { ascending: true })
-    : { data: [] };
+    : { data: [], error: null };
 
-  let matchList = toDisplayMatches(rawMatches ?? []);
+  if (matchesError) {
+    // "경기 히스토리 없음"으로 위장하지 않는다 — 조회 실패는 서버에만 로그.
+    console.error("[admin/matches]", matchesError.code, matchesError.message);
+  }
+
+  let matchList = toDisplayMatches(matchesError ? [] : rawMatches ?? []);
   if (q) {
     const playerMatch = matchList.filter((m) =>
       [m.teamAPlayer1, m.teamAPlayer2, m.teamBPlayer1, m.teamBPlayer2].some((p) =>
@@ -221,6 +228,14 @@ export default async function AdminMatchesPage({ searchParams }: PageProps) {
             <span className="ml-1.5" style={{ color: "var(--admin-muted)", opacity: 0.6 }}>({groups.length})</span>
           </p>
         </div>
+
+        {matchesError && (
+          <div className="mb-3 rounded-[var(--admin-card-radius,14px)] border border-fault-400/40 bg-fault-400/5 p-4 text-center">
+            <p className="text-sm" style={{ color: "var(--admin-muted)" }}>
+              경기 기록을 불러오지 못했습니다. 세션 정보만 표시 중이며, 잠시 후 다시 시도해주세요.
+            </p>
+          </div>
+        )}
 
         {groups.length === 0 ? (
           <div
