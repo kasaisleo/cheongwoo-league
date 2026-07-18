@@ -115,18 +115,31 @@ export default function MatchHistoryPageClient({ currentClubId }: { currentClubI
     }
 
     // 이름 + member_type 조회.
-    // members는 anon/authenticated GRANT가 회수되어(0037) 서버 API를 거친다.
-    const [memberRows, { data: guestRows }] = await Promise.all([
+    // members/guests는 anon/authenticated GRANT가 회수되어(0037, guests P0)
+    // 서버 API를 거친다.
+    const [memberRows, guestRows] = await Promise.all([
       memberIds.size > 0
         ? fetch(
             `/api/matches/session-members?clubId=${encodeURIComponent(currentClubId)}&ids=${[...memberIds].map(encodeURIComponent).join(",")}`
           )
             .then((res) => (res.ok ? res.json() : { members: [] }))
             .then((body) => body.members as { id: string; name: string; member_type: MemberType }[])
+            .catch(() => {
+              console.error("[MatchHistoryPageClient] session-members 조회 실패");
+              return [];
+            })
         : Promise.resolve([]),
       guestIds.size > 0
-        ? supabase.from("guests").select("id, name").in("id", [...guestIds])
-        : Promise.resolve({ data: [] }),
+        ? fetch(
+            `/api/matches/guest-names?clubId=${encodeURIComponent(currentClubId)}&ids=${[...guestIds].map(encodeURIComponent).join(",")}`
+          )
+            .then((res) => (res.ok ? res.json() : { guests: [] }))
+            .then((body) => body.guests as { id: string; name: string }[])
+            .catch(() => {
+              console.error("[MatchHistoryPageClient] guest-names 조회 실패");
+              return [];
+            })
+        : Promise.resolve([]),
     ]);
 
     const memberMap = new Map(

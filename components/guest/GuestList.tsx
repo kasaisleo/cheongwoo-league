@@ -4,6 +4,7 @@ import { getAdminAccessServer } from "@/lib/admin-permissions";
 import { ConvertGuestButton } from "@/components/guest/ConvertGuestButton";
 import { GuestAdminActions } from "@/components/guest/GuestAdminActions";
 import type { GuestWithStats, Member } from "@/lib/supabase/database.types";
+import type { PublicGuestListRow } from "@/lib/public-guest";
 
 type GuestWithReferrer = GuestWithStats & {
   referrer: Pick<Member, "nickname"> | null;
@@ -17,12 +18,38 @@ interface GuestListProps {
 }
 
 export async function GuestList({ mode, clubId }: GuestListProps) {
-  const supabase = createClient();
-  const isAdmin = mode === "admin";
+  // Public과 Admin은 데이터 소스(RPC vs guest_stats 뷰)와 반환 컬럼이 완전히
+  // 다르므로, state/타입을 공유하지 않고 분기 자체를 완전히 분리한다.
+  if (mode === "public") {
+    return <PublicGuestListContainer clubId={clubId} />;
+  }
+  return <AdminGuestListContainer clubId={clubId} />;
+}
 
-  // 관리자 모드에서는 비활성 게스트도 표시 (상태 확인용)
-  // 공개 모드에서는 활성 게스트만 표시
-  let query = supabase
+// ── Public ───────────────────────────────────────────────────────────
+// guest_stats.*(phone/notes/referred_by 등 전체 컬럼)를 그대로 노출하던
+// 문제를 막기 위해, Public은 최소 projection만 반환하는
+// get_public_guest_list RPC(0038)만 사용한다.
+async function PublicGuestListContainer({ clubId }: { clubId: string }) {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .rpc("get_public_guest_list", { p_club_id: clubId })
+    .order("visit_date", { ascending: false });
+
+  if (error) {
+    console.error("[GuestList] get_public_guest_list RPC 조회 실패:", error.code, error.message);
+  }
+  const guests = (data ?? []) as PublicGuestListRow[];
+
+  return <PublicGuestList guests={guests} />;
+}
+
+// ── Admin ────────────────────────────────────────────────────────────
+async function AdminGuestListContainer({ clubId }: { clubId: string }) {
+  const supabase = createClient();
+
+  // 관리자 모드에서는 비활성 게스트도 표시(상태 확인용) — is_active 필터 없음.
+  const { data, error } = await supabase
     .from("guest_stats")
     .select(
       "*, referrer:members!guests_referred_by_fkey(nickname), converted_member:members!guests_converted_to_member_id_fkey(nickname)"
@@ -30,31 +57,17 @@ export async function GuestList({ mode, clubId }: GuestListProps) {
     .eq("club_id", clubId)
     .order("visit_date", { ascending: false });
 
-  // guest_stats 뷰에 is_active 컬럼이 추가되어(마지막 18번째 컬럼) 다시 필터링 가능해졌다.
-  if (!isAdmin) {
-    query = query.eq("is_active", true);
-  }
-
-  const { data, error } = await query;
   if (error) {
     // 임시 디버깅용 — 조회 실패가 빈 목록으로 위장되지 않도록 서버 콘솔에 남긴다.
     console.error("[GuestList] guest_stats 조회 실패:", error);
   }
   const guests = (data ?? []) as unknown as GuestWithReferrer[];
 
-  // 관리자 권한 확인 (액션 버튼 표시용)
-  let canEdit = false;
-  let canDeactivate = false;
-  if (isAdmin) {
-    const access = await getAdminAccessServer();
-    canEdit = access.isAdmin;
-    canDeactivate = access.isOwner;
-  }
+  const access = await getAdminAccessServer();
+  const canEdit = access.isAdmin;
+  const canDeactivate = access.isOwner;
 
-  if (mode === "admin") {
-    return <AdminGuestList guests={guests} canEdit={canEdit} canDeactivate={canDeactivate} />;
-  }
-  return <PublicGuestList guests={guests} />;
+  return <AdminGuestList guests={guests} canEdit={canEdit} canDeactivate={canDeactivate} />;
 }
 
 // ── 관리자 목록 ──────────────────────────────────────────────────────
@@ -212,7 +225,10 @@ function AdminGuestCard({
 }
 
 // ── 공개 목록 (기존 /guests 유지) ────────────────────────────────────
-function PublicGuestList({ guests }: { guests: GuestWithReferrer[] }) {
+// get_public_guest_list RPC(0038) 결과만 받는다 — phone/notes/referred_by/
+// age/years_playing/skill_grade/manner_score/소개자·전환회원 닉네임은
+// 애초에 데이터에 없으므로 렌더할 수 없다.
+function PublicGuestList({ guests }: { guests: PublicGuestListRow[] }) {
   if (guests.length === 0) {
     return (
       <div className="rounded-lg border border-line-200 bg-line-50 p-6 text-center text-sm text-line-400">
@@ -228,26 +244,14 @@ function PublicGuestList({ guests }: { guests: GuestWithReferrer[] }) {
             <span className="text-sm font-semibold text-line-900">{guest.name}</span>
             <span className="text-xs text-line-400">{guest.visit_date}</span>
           </div>
-          <p className="mt-1 text-xs text-line-500">
-            {[
-              guest.age !== null && `${guest.age}세`,
-              guest.years_playing !== null && `구력 ${guest.years_playing}년`,
-              guest.phone,
-            ].filter(Boolean).join(" · ")}
-          </p>
           {(guest.wins > 0 || guest.losses > 0) && (
             <p className="mt-1 text-xs text-line-500">
               {guest.wins}승 {guest.losses}패 · 승률 {guest.win_rate}%
             </p>
           )}
-          <div className="mt-1.5 flex items-center justify-between text-xs text-line-500">
-            <span>소개자: {guest.referrer?.nickname ?? "없음"}</span>
-            {guest.manner_score !== null && <span>매너 {guest.manner_score}/5</span>}
-          </div>
-          {guest.notes && <p className="mt-1.5 text-xs text-line-400">{guest.notes}</p>}
-          {guest.converted_to_member_id && (
+          {guest.is_converted && (
             <p className="mt-2 text-xs font-semibold text-clay-400">
-              ✓ 정회원으로 전환됨 ({guest.converted_member?.nickname ?? "회원"})
+              ✓ 정회원으로 전환됨
             </p>
           )}
         </div>

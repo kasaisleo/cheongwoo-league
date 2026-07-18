@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { clsx } from "clsx";
 import { getMemberDisplayLabel } from "@/lib/member-display";
-import type { Guest } from "@/lib/supabase/database.types";
 
 export interface SelectedPlayer {
   id: string;
@@ -18,9 +17,15 @@ export interface PlayerSelectorMember {
   nickname: string;
 }
 
+/** PlayerSelector가 실제로 쓰는 최소 필드만 — id/name만 렌더에 사용한다(phone 등 PII 없음). */
+export interface PlayerSelectorGuest {
+  id: string;
+  name: string;
+}
+
 interface PlayerSelectorProps {
   members: PlayerSelectorMember[];
-  guests: Guest[];
+  guests: PlayerSelectorGuest[];
   /** 세션 참석 확정 회원 ID (attending) */
   attendingMemberIds?: string[];
   /** 세션 미정 회원 ID (undecided) */

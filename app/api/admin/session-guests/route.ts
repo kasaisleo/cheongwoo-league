@@ -1,23 +1,43 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient, createServiceClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/server";
 import { getAdminAccessServer } from "@/lib/admin-permissions";
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
  * GET /api/admin/session-guests?sessionId=...
  * 특정 매치의 참석 게스트 목록 조회.
- * 공개 조회 가능 (공개 /attendance에서도 사용).
+ * 공개 조회 가능 (공개 /attendance에서도 사용) — 인증 없이 열어두되,
+ * guests는 anon/authenticated GRANT가 없으므로(guests P0) service-role로
+ * 조회하고, sessionId로 도출한 club_id를 guest 조회에도 강제해 다른
+ * 클럽 게스트가 섞이지 않게 한다. phone/notes/referred_by는 반환하지 않는다.
  */
 export async function GET(request: NextRequest) {
   const sessionId = request.nextUrl.searchParams.get("sessionId");
-  if (!sessionId) {
+  if (!sessionId || !UUID_RE.test(sessionId)) {
     return NextResponse.json({ error: "sessionId가 필요합니다." }, { status: 400 });
   }
 
-  const supabase = createClient();
+  const supabase = createServiceClient();
+
+  const { data: session, error: sessionError } = await supabase
+    .from("attendance_sessions")
+    .select("id, club_id")
+    .eq("id", sessionId)
+    .maybeSingle();
+
+  if (sessionError) {
+    return NextResponse.json({ error: "세션 조회 실패" }, { status: 500 });
+  }
+  if (!session) {
+    return NextResponse.json({ ok: true, sessionGuests: [] });
+  }
+
   const { data, error } = await supabase
     .from("session_guests")
-    .select("id, guest_id, guests(id, name, phone, is_active)")
-    .eq("session_id", sessionId)
+    .select("id, guest_id, guests!inner(id, name, is_active)")
+    .eq("session_id", session.id)
+    .eq("guests.club_id", session.club_id)
     .order("created_at");
 
   if (error) {

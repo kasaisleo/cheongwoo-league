@@ -7,7 +7,7 @@ import { toast } from "@/components/ui/Toast";
 interface SessionGuest {
   id: string;
   guest_id: string;
-  guests: { id: string; name: string; phone: string | null } | null;
+  guests: { id: string; name: string; is_active: boolean } | null;
 }
 
 interface GuestCandidate {

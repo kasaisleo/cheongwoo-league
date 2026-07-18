@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { PlayerSelector, playerKey, type SelectedPlayer, type PlayerSelectorMember } from "@/components/match/PlayerSelector";
+import { PlayerSelector, playerKey, type SelectedPlayer, type PlayerSelectorMember, type PlayerSelectorGuest } from "@/components/match/PlayerSelector";
 import { ScoreStepper } from "@/components/match/ScoreStepper";
 import { QuickGuestModal } from "@/components/match/QuickGuestModal";
 import { Button } from "@/components/ui/Button";
@@ -27,7 +27,7 @@ function toSelectedPlayer(p: DisplayMatch["teamAPlayer1"]): SelectedPlayer {
 
 export function EditMatchModal({ match, onClose, onSaved, currentClubId }: EditMatchModalProps) {
   const [members, setMembers] = useState<PlayerSelectorMember[]>([]);
-  const [guests, setGuests] = useState<Guest[]>([]);
+  const [guests, setGuests] = useState<PlayerSelectorGuest[]>([]);
   const [sessions, setSessions] = useState<AttendanceSession[]>([]);
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(match.session_id);
   const [loading, setLoading] = useState(true);
@@ -58,18 +58,23 @@ export function EditMatchModal({ match, onClose, onSaved, currentClubId }: EditM
   useEffect(() => {
     async function loadData() {
       const supabase = createClient();
-      const [memberRes, { data: guestData }, activeSessions] = await Promise.all([
-        fetch(`/api/matches/edit-members?clubId=${currentClubId}`).then((res) => res.json()).catch(() => ({ members: [] })),
-        supabase
-          .from("guests")
-          .select("*")
-          .eq("club_id", currentClubId)
-          .is("converted_to_member_id", null)
-          .order("created_at", { ascending: false }),
+      const [memberRes, guestRes, activeSessions] = await Promise.all([
+        fetch(`/api/matches/edit-members?clubId=${currentClubId}`)
+          .then((res) => res.json())
+          .catch(() => {
+            console.error("[EditMatchModal] edit-members 조회 실패");
+            return { members: [] };
+          }),
+        fetch(`/api/matches/edit-guests?clubId=${currentClubId}`)
+          .then((res) => res.json())
+          .catch(() => {
+            console.error("[EditMatchModal] edit-guests 조회 실패");
+            return { guests: [] };
+          }),
         fetchActiveSessions(supabase, currentClubId),
       ]);
       setMembers(memberRes?.members ?? []);
-      setGuests(guestData ?? []);
+      setGuests(guestRes?.guests ?? []);
 
       let sessionList = activeSessions;
       // 이 경기에 이미 연결된 세션이 archived라서 목록에 없으면, 선택지가 사라지지 않도록 추가한다.

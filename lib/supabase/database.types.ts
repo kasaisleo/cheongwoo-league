@@ -210,6 +210,7 @@ export interface AttendanceSession {
 export interface Guest {
   id: string;
   name: string;
+  club_id: string;
   age: number | null;
   years_playing: number | null;
   phone: string | null;
