@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -14,11 +14,13 @@ interface MemberAuthBarProps {
   currentClubId: string;
 }
 
-interface MemberInfo {
-  id: string;
-  nickname: string;
-  name: string;
-  permission_role: PermissionRole;
+interface MemberStatus {
+  authenticated: boolean;
+  linked: boolean;
+  memberId: string | null;
+  memberName: string | null;
+  nickname: string | null;
+  permissionRole: PermissionRole | null;
 }
 
 const KAKAO_ADMIN_ROLES: PermissionRole[] = ["manager", "admin", "master"];
@@ -49,7 +51,10 @@ export function MemberAuthBar({ currentClubId }: MemberAuthBarProps) {
   const [clubName, setClubName] = useState<string | null>(null);
 
   const [authUser, setAuthUser] = useState<User | null>(null);
-  const [member, setMember] = useState<MemberInfo | null>(null);
+  const [memberStatus, setMemberStatus] = useState<MemberStatus | null>(null);
+  const [statusLoading, setStatusLoading] = useState(false);
+  const [statusError, setStatusError] = useState(false);
+  const [statusRetryKey, setStatusRetryKey] = useState(0);
   const [signingOut, setSigningOut] = useState(false);
   const [initialized, setInitialized] = useState(false);
 
@@ -69,37 +74,57 @@ export function MemberAuthBar({ currentClubId }: MemberAuthBarProps) {
       });
   }, [currentSlug, currentClubId]);
 
-  // auth 상태 구독
+  // auth 상태 구독 — Supabase 세션 여부만 판정한다.
+  // 회원 연결(member) 여부는 별도 서버 API(/api/member/status)로 분리 조회한다 —
+  // 0037로 브라우저에서 public.members를 직접 조회할 수 없다(401).
   useEffect(() => {
     const supabase = createClient();
     supabase.auth.getSession().then(({ data: { session } }) => {
       setAuthUser(session?.user ?? null);
       setInitialized(true);
     });
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setAuthUser(session?.user ?? null);
-      if (!session) setMember(null);
+      if (!session) setMemberStatus(null);
       setInitialized(true);
+      if (event === "SIGNED_IN") {
+        setStatusRetryKey((k) => k + 1);
+        router.refresh();
+      }
     });
     return () => subscription.unsubscribe();
-  }, []);
+  }, [router]);
 
-  // member 정보 조회 (클럽 scope)
+  // 회원 연결 상태 조회 (클럽 scope) — authenticated와 linked를 분리해서 받는다.
   useEffect(() => {
-    if (!authUser) { setMember(null); return; }
-    const supabase = createClient();
-    void (async () => {
-      try {
-        const { data } = await supabase
-          .from("members")
-          .select("id, nickname, name, permission_role")
-          .eq("auth_user_id", authUser.id)
-          .eq("club_id", resolvedClubId)
-          .maybeSingle();
-        setMember(data ?? null);
-      } catch { setMember(null); }
-    })();
-  }, [authUser, resolvedClubId]);
+    if (!authUser) {
+      setMemberStatus(null);
+      setStatusLoading(false);
+      setStatusError(false);
+      return;
+    }
+    let cancelled = false;
+    setStatusLoading(true);
+    setStatusError(false);
+    fetch(`/api/member/status?clubId=${encodeURIComponent(resolvedClubId)}`)
+      .then((res) => {
+        if (!res.ok) throw new Error("member status fetch failed");
+        return res.json() as Promise<MemberStatus>;
+      })
+      .then((data) => {
+        if (cancelled) return;
+        setMemberStatus(data);
+      })
+      .catch(() => {
+        if (!cancelled) setStatusError(true);
+      })
+      .finally(() => {
+        if (!cancelled) setStatusLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [authUser, resolvedClubId, statusRetryKey]);
 
   async function handleSignOut() {
     setSigningOut(true);
@@ -113,7 +138,11 @@ export function MemberAuthBar({ currentClubId }: MemberAuthBarProps) {
 
   if (!initialized) return null;
 
-  const isKakaoAdmin = member !== null && (KAKAO_ADMIN_ROLES as string[]).includes(member.permission_role);
+  const isLinked = memberStatus?.linked === true;
+  const isKakaoAdmin =
+    memberStatus?.linked === true &&
+    memberStatus.permissionRole !== null &&
+    (KAKAO_ADMIN_ROLES as string[]).includes(memberStatus.permissionRole);
 
   const rawMeta = authUser?.user_metadata as Record<string, unknown> | undefined;
   const trim = (v: unknown) => typeof v === "string" ? v.trim() : "";
@@ -123,8 +152,8 @@ export function MemberAuthBar({ currentClubId }: MemberAuthBarProps) {
     trim(rawMeta?.preferred_username) ||
     trim(rawMeta?.user_name);
 
-  const memberNickname = member?.nickname?.trim() || "";
-  const memberName = member?.name?.trim() || "";
+  const memberNickname = (isLinked ? memberStatus?.nickname?.trim() : "") || "";
+  const memberName = (isLinked ? memberStatus?.memberName?.trim() : "") || "";
   const primaryDisplayName =
     memberNickname && memberNickname !== memberName ? memberNickname : kakaoName || memberName;
   const shouldShowRealName = memberName !== "" && primaryDisplayName !== memberName;
@@ -138,56 +167,98 @@ export function MemberAuthBar({ currentClubId }: MemberAuthBarProps) {
   const mypageHref = currentSlug ? `/c/${currentSlug}/mypage` : "/mypage";
 
   // ── Row 1 right slot ─────────────────────────────────────────────────
-  const row1Right = authUser && member ? (
-    <>
+  // authUser(세션)와 isLinked(회원 연결)를 분리해서 판정한다 —
+  // 세션이 있어도 회원 연결 조회 중/실패/미연결일 수 있으므로 로그인 버튼으로
+  // 되돌아가지(폴백하지) 않고 각각 별도 상태를 보여준다.
+  let row1Right: ReactNode;
+
+  if (authUser && isLinked) {
+    row1Right = (
+      <>
+        <span
+          className="whitespace-nowrap font-semibold"
+          style={{ fontSize: "var(--shell-user-size)", color: "var(--club-text)" }}
+        >
+          {primaryDisplayName}
+          {shouldShowRealName && (
+            <span className="ml-1 font-normal" style={{ color: "var(--club-muted)" }}>
+              ({memberName})
+            </span>
+          )}
+        </span>
+        <span style={{ color: "var(--club-border)" }} aria-hidden>·</span>
+        <Link
+          href={mypageHref}
+          className="whitespace-nowrap font-semibold transition-opacity hover:opacity-70"
+          style={{ fontSize: "var(--shell-user-size)", color: "var(--club-primary)" }}
+        >
+          마이
+        </Link>
+        <button
+          type="button"
+          disabled={signingOut}
+          onClick={handleSignOut}
+          className="whitespace-nowrap disabled:opacity-40 transition-opacity hover:opacity-70"
+          style={{ fontSize: "var(--shell-user-size)", color: "var(--club-muted)" }}
+        >
+          {signingOut ? "…" : "로그아웃"}
+        </button>
+      </>
+    );
+  } else if (authUser && statusError) {
+    row1Right = (
+      <button
+        type="button"
+        onClick={() => setStatusRetryKey((k) => k + 1)}
+        className="whitespace-nowrap font-semibold transition-opacity hover:opacity-70"
+        style={{ fontSize: "var(--shell-user-size)", color: "var(--club-muted)" }}
+      >
+        회원 정보 확인 실패 · 재시도
+      </button>
+    );
+  } else if (authUser && (statusLoading || memberStatus === null)) {
+    row1Right = (
       <span
         className="whitespace-nowrap font-semibold"
-        style={{ fontSize: "var(--shell-user-size)", color: "var(--club-text)" }}
+        style={{ fontSize: "var(--shell-user-size)", color: "var(--club-muted)" }}
       >
-        {primaryDisplayName}
-        {shouldShowRealName && (
-          <span className="ml-1 font-normal" style={{ color: "var(--club-muted)" }}>
-            ({memberName})
-          </span>
-        )}
+        확인 중…
       </span>
-      <span style={{ color: "var(--club-border)" }} aria-hidden>·</span>
+    );
+  } else if (authUser) {
+    // 세션은 있지만 이 클럽 회원으로 연결되지 않음 — 로그인 버튼으로 되돌리지 않는다.
+    row1Right = (
       <Link
-        href={mypageHref}
+        href="/auth/pending"
+        className="whitespace-nowrap font-semibold transition-opacity hover:opacity-70"
+        style={{ fontSize: "var(--shell-user-size)", color: "var(--club-muted)" }}
+      >
+        회원 연결 필요
+      </Link>
+    );
+  } else if (currentSlug) {
+    // slug가 확정된 페이지 — 중간 게이트 없이 클릭 즉시 Kakao OAuth 시작
+    row1Right = (
+      <PublicKakaoLoginButton
+        clubSlug={currentSlug}
+        className="whitespace-nowrap bg-transparent p-0 font-semibold transition-opacity hover:opacity-70 disabled:opacity-40"
+        style={{ fontSize: "var(--shell-user-size)", color: "var(--club-primary)" }}
+      >
+        카카오 로그인
+      </PublicKakaoLoginButton>
+    );
+  } else {
+    // slug 없는 페이지(플랫폼 홈 등) — club context를 임의로 추정하지 않고 /login으로 위임
+    row1Right = (
+      <Link
+        href={loginHref}
         className="whitespace-nowrap font-semibold transition-opacity hover:opacity-70"
         style={{ fontSize: "var(--shell-user-size)", color: "var(--club-primary)" }}
       >
-        마이
+        카카오 로그인
       </Link>
-      <button
-        type="button"
-        disabled={signingOut}
-        onClick={handleSignOut}
-        className="whitespace-nowrap disabled:opacity-40 transition-opacity hover:opacity-70"
-        style={{ fontSize: "var(--shell-user-size)", color: "var(--club-muted)" }}
-      >
-        {signingOut ? "…" : "로그아웃"}
-      </button>
-    </>
-  ) : currentSlug ? (
-    // slug가 확정된 페이지 — 중간 게이트 없이 클릭 즉시 Kakao OAuth 시작
-    <PublicKakaoLoginButton
-      clubSlug={currentSlug}
-      className="whitespace-nowrap bg-transparent p-0 font-semibold transition-opacity hover:opacity-70 disabled:opacity-40"
-      style={{ fontSize: "var(--shell-user-size)", color: "var(--club-primary)" }}
-    >
-      카카오 로그인
-    </PublicKakaoLoginButton>
-  ) : (
-    // slug 없는 페이지(플랫폼 홈 등) — club context를 임의로 추정하지 않고 /login으로 위임
-    <Link
-      href={loginHref}
-      className="whitespace-nowrap font-semibold transition-opacity hover:opacity-70"
-      style={{ fontSize: "var(--shell-user-size)", color: "var(--club-primary)" }}
-    >
-      카카오 로그인
-    </Link>
-  );
+    );
+  }
 
   // ── Row 2 left: 클럽명 + 클럽 이용 중 (항상 표시) ───────────────────
   const row2Left = (
