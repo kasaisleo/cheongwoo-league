@@ -6,11 +6,10 @@ import type { MemberGrade } from "@/lib/supabase/database.types";
 import type { PublicGuestListRow } from "@/lib/public-guest";
 
 /**
- * Admin 게스트 목록 row. guest_stats 뷰(전체 컬럼 + members embed) 대신
- * guests 원본을 service-role로 직접 조회해 필요한 필드만 선택하고,
- * win_rate는 wins/losses로 서버에서 계산, 소개자 닉네임은 별도 배치 조회로
- * 붙인다. converted_member(전환 회원 닉네임)는 실제 렌더에 쓰인 적이
- * 없어 조회 자체를 하지 않는다.
+ * Admin 게스트 목록 row. guests 원본을 service-role로 직접 조회해 필요한
+ * 필드만 선택하고, win_rate는 wins/losses로 서버에서 계산, 소개자 닉네임은
+ * 별도 배치 조회로 붙인다. 전환 회원 닉네임은 실제 렌더에 쓰이지 않아
+ * 조회하지 않는다.
  */
 interface AdminGuestRow {
   id: string;
@@ -50,9 +49,8 @@ export async function GuestList({ mode, clubId, canEdit = false, canDeactivate =
 }
 
 // ── Public ───────────────────────────────────────────────────────────
-// guest_stats.*(phone/notes/referred_by 등 전체 컬럼)를 그대로 노출하던
-// 문제를 막기 위해, Public은 최소 projection만 반환하는
-// get_public_guest_list RPC(0038)만 사용한다.
+// Public은 phone/notes/referred_by 등을 포함하지 않는 최소 projection만
+// 반환하는 get_public_guest_list RPC(0038)만 사용한다.
 async function PublicGuestListContainer({ clubId }: { clubId: string }) {
   const supabase = createClient();
   const { data, error } = await supabase

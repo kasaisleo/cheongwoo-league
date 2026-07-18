@@ -262,10 +262,6 @@ export interface SessionGuest {
   guest?: Pick<Guest, "id" | "name" | "phone" | "is_active">;
 }
 
-export interface GuestWithStats extends Guest {
-  win_rate: number;
-}
-
 export interface Database {
   public: {
     Tables: {
@@ -363,10 +359,6 @@ export interface Database {
     Views: {
       member_stats: {
         Row: MemberWithStats;
-        Relationships: [];
-      };
-      guest_stats: {
-        Row: GuestWithStats;
         Relationships: [];
       };
     };
