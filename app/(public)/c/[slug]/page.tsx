@@ -46,6 +46,11 @@ export default async function ClubHomePage({
   const week = thisWeekRange();
   const today = new Date().toISOString().slice(0, 10);
 
+  // "이번 주 게스트" 섹션은 isAdmin에게만 렌더되므로, 먼저 확인해 비관리자에게는
+  // guests 쿼리 자체를 실행하지 않는다.
+  const { getAdminAccessServer } = await import("@/lib/admin-permissions");
+  const { isAdmin } = await getAdminAccessServer();
+
   const [
     { data: activeSessionRows },
     { data: recentMatchRows },
@@ -67,13 +72,18 @@ export default async function ClubHomePage({
       .order("created_at", { ascending: false })
       .limit(3),
 
-    supabase
-      .from("guests")
-      .select("*")
-      .eq("club_id", clubId)
-      .gte("visit_date", week.start)
-      .lte("visit_date", week.end)
-      .order("visit_date", { ascending: true }),
+    // guests는 anon/authenticated GRANT가 없으므로(guests P0) service-role로 조회하고,
+    // 실제 렌더에 쓰이는 최소 컬럼만 select한다. Admin 전용 위젯이라 isAdmin이 아니면
+    // 쿼리 자체를 실행하지 않는다.
+    isAdmin
+      ? createServiceClient()
+          .from("guests")
+          .select("id, name, skill_grade, visit_date")
+          .eq("club_id", clubId)
+          .gte("visit_date", week.start)
+          .lte("visit_date", week.end)
+          .order("visit_date", { ascending: true })
+      : Promise.resolve({ data: [] }),
 
     applyRankingQuery(supabase, clubId, 3),
   ]);
@@ -105,8 +115,6 @@ export default async function ClubHomePage({
   const recentMatches = toDisplayMatches(recentMatchRows);
   const guestsThisWeek = weeklyGuests ?? [];
   const topRanked = (topRankRows ?? []) as PublicMemberListRow[];
-  const { getAdminAccessServer } = await import("@/lib/admin-permissions");
-  const { isAdmin } = await getAdminAccessServer();
   const skin = getClubSkin(club.skin_key);
 
   return (

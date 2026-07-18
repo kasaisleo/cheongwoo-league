@@ -1,29 +1,52 @@
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
-import { getAdminAccessServer } from "@/lib/admin-permissions";
+import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { ConvertGuestButton } from "@/components/guest/ConvertGuestButton";
 import { GuestAdminActions } from "@/components/guest/GuestAdminActions";
-import type { GuestWithStats, Member } from "@/lib/supabase/database.types";
+import type { MemberGrade } from "@/lib/supabase/database.types";
 import type { PublicGuestListRow } from "@/lib/public-guest";
 
-type GuestWithReferrer = GuestWithStats & {
-  referrer: Pick<Member, "nickname"> | null;
-  converted_member: Pick<Member, "nickname"> | null;
-};
+/**
+ * Admin 게스트 목록 row. guest_stats 뷰(전체 컬럼 + members embed) 대신
+ * guests 원본을 service-role로 직접 조회해 필요한 필드만 선택하고,
+ * win_rate는 wins/losses로 서버에서 계산, 소개자 닉네임은 별도 배치 조회로
+ * 붙인다. converted_member(전환 회원 닉네임)는 실제 렌더에 쓰인 적이
+ * 없어 조회 자체를 하지 않는다.
+ */
+interface AdminGuestRow {
+  id: string;
+  name: string;
+  visit_date: string;
+  phone: string | null;
+  age: number | null;
+  years_playing: number | null;
+  wins: number;
+  losses: number;
+  notes: string | null;
+  skill_grade: MemberGrade | null;
+  referred_by: string | null;
+  converted_to_member_id: string | null;
+  is_active: boolean;
+  win_rate: number;
+  referrer: { nickname: string } | null;
+}
 
 interface GuestListProps {
   mode: "public" | "admin";
   /** caller가 validate한 club.id. 이 값으로만 쿼리 — getCurrentClubId() 금지. */
   clubId: string;
+  /** mode="admin"일 때만 사용. 호출부(page.tsx)가 getAdminAccessServer()를
+   *  이미 실행했다면 그 결과를 그대로 전달 — 여기서 중복 호출하지 않는다. */
+  canEdit?: boolean;
+  canDeactivate?: boolean;
 }
 
-export async function GuestList({ mode, clubId }: GuestListProps) {
-  // Public과 Admin은 데이터 소스(RPC vs guest_stats 뷰)와 반환 컬럼이 완전히
-  // 다르므로, state/타입을 공유하지 않고 분기 자체를 완전히 분리한다.
+export async function GuestList({ mode, clubId, canEdit = false, canDeactivate = false }: GuestListProps) {
+  // Public과 Admin은 데이터 소스(RPC vs guests 원본 직접 조회)와 반환 컬럼이
+  // 완전히 다르므로, state/타입을 공유하지 않고 분기 자체를 완전히 분리한다.
   if (mode === "public") {
     return <PublicGuestListContainer clubId={clubId} />;
   }
-  return <AdminGuestListContainer clubId={clubId} />;
+  return <AdminGuestListContainer clubId={clubId} canEdit={canEdit} canDeactivate={canDeactivate} />;
 }
 
 // ── Public ───────────────────────────────────────────────────────────
@@ -45,27 +68,57 @@ async function PublicGuestListContainer({ clubId }: { clubId: string }) {
 }
 
 // ── Admin ────────────────────────────────────────────────────────────
-async function AdminGuestListContainer({ clubId }: { clubId: string }) {
-  const supabase = createClient();
+async function AdminGuestListContainer({
+  clubId,
+  canEdit,
+  canDeactivate,
+}: {
+  clubId: string;
+  canEdit: boolean;
+  canDeactivate: boolean;
+}) {
+  const admin = createServiceClient();
 
   // 관리자 모드에서는 비활성 게스트도 표시(상태 확인용) — is_active 필터 없음.
-  const { data, error } = await supabase
-    .from("guest_stats")
+  const { data: guestRows, error } = await admin
+    .from("guests")
     .select(
-      "*, referrer:members!guests_referred_by_fkey(nickname), converted_member:members!guests_converted_to_member_id_fkey(nickname)"
+      "id, name, visit_date, phone, age, years_playing, wins, losses, notes, skill_grade, referred_by, converted_to_member_id, is_active"
     )
     .eq("club_id", clubId)
     .order("visit_date", { ascending: false });
 
   if (error) {
-    // 임시 디버깅용 — 조회 실패가 빈 목록으로 위장되지 않도록 서버 콘솔에 남긴다.
-    console.error("[GuestList] guest_stats 조회 실패:", error);
+    // 조회 실패가 "게스트 0명"으로 위장되지 않도록 별도 오류 상태로 분리한다.
+    console.error("[GuestList] guests 조회 실패:", error.code, error.message);
+    return <AdminGuestList guests={[]} canEdit={canEdit} canDeactivate={canDeactivate} loadError />;
   }
-  const guests = (data ?? []) as unknown as GuestWithReferrer[];
 
-  const access = await getAdminAccessServer();
-  const canEdit = access.isAdmin;
-  const canDeactivate = access.isOwner;
+  const referrerIds = [...new Set((guestRows ?? []).map((g) => g.referred_by).filter((id): id is string => id !== null))];
+  const referrerMap = new Map<string, string>();
+  if (referrerIds.length > 0) {
+    const { data: referrerRows, error: referrerError } = await admin
+      .from("members")
+      .select("id, nickname")
+      .in("id", referrerIds)
+      .eq("club_id", clubId);
+
+    if (referrerError) {
+      // 소개자 닉네임 조회 실패는 게스트 목록 자체를 막지 않는다 — 목록은 유지하고
+      // 서버에만 기록한다(PII 없음, error code/message만).
+      console.error("[GuestList] 소개자 members 조회 실패:", referrerError.code, referrerError.message);
+    } else {
+      for (const m of referrerRows ?? []) referrerMap.set(m.id, m.nickname);
+    }
+  }
+
+  const guests: AdminGuestRow[] = (guestRows ?? []).map((g) => ({
+    ...g,
+    win_rate: g.wins + g.losses === 0 ? 0 : Math.round((g.wins / (g.wins + g.losses)) * 1000) / 10,
+    referrer: g.referred_by && referrerMap.has(g.referred_by)
+      ? { nickname: referrerMap.get(g.referred_by)! }
+      : null,
+  }));
 
   return <AdminGuestList guests={guests} canEdit={canEdit} canDeactivate={canDeactivate} />;
 }
@@ -75,13 +128,24 @@ function AdminGuestList({
   guests,
   canEdit,
   canDeactivate,
+  loadError = false,
 }: {
-  guests: GuestWithReferrer[];
+  guests: AdminGuestRow[];
   canEdit: boolean;
   canDeactivate: boolean;
+  loadError?: boolean;
 }) {
-  const active = guests.filter((g) => (g as any).is_active !== false);
-  const inactive = guests.filter((g) => (g as any).is_active === false);
+  const active = guests.filter((g) => g.is_active !== false);
+  const inactive = guests.filter((g) => g.is_active === false);
+
+  if (loadError) {
+    return (
+      <div className="rounded-[14px] border border-fault-400/40 bg-fault-400/5 p-8 text-center">
+        <p className="font-display text-[10px] font-bold uppercase tracking-widest text-fault-400">Load Failed</p>
+        <p className="mt-1 text-sm text-line-500">게스트 목록을 불러오지 못했습니다. 잠시 후 다시 시도해주세요.</p>
+      </div>
+    );
+  }
 
   if (guests.length === 0) {
     return (
@@ -144,11 +208,11 @@ function AdminGuestCard({
   canEdit,
   canDeactivate,
 }: {
-  guest: GuestWithReferrer;
+  guest: AdminGuestRow;
   canEdit: boolean;
   canDeactivate: boolean;
 }) {
-  const isInactive = (guest as any).is_active === false;
+  const isInactive = guest.is_active === false;
 
   return (
     <div className="overflow-hidden rounded-[14px] border border-line-200/40 bg-line-50">
@@ -201,9 +265,11 @@ function AdminGuestCard({
             {guest.wins}W {guest.losses}L · {guest.win_rate}%
           </p>
         )}
-        {guest.referrer && (
+        {guest.referrer ? (
           <p className="mt-0.5 text-[11px] text-line-400">소개: {guest.referrer.nickname}</p>
-        )}
+        ) : guest.referred_by ? (
+          <p className="mt-0.5 text-[11px] text-line-400 opacity-60">소개자 정보 확인 불가</p>
+        ) : null}
         {guest.notes && (
           <p className="mt-1 text-[11px] text-line-400">{guest.notes}</p>
         )}

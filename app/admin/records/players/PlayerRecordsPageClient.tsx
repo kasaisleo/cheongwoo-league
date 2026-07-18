@@ -192,16 +192,22 @@ export default function PlayerRecordsPageClient({ currentClubId }: { currentClub
         { data: matches },
         { data: attendanceRows },
         membersBody,
-        { data: guests },
+        guestsBody,
       ] = await Promise.all([
         supabase.from("matches").select("*").eq("club_id", currentClubId),
         clubSessionIds.length > 0
           ? supabase.from("attendance").select("session_id, member_id, status").in("session_id", clubSessionIds)
           : Promise.resolve({ data: [] as { session_id: string | null; member_id: string; status: string }[] }),
         fetch("/api/admin/members-list").then((res) => res.json()).catch(() => ({ members: [] })),
-        supabase.from("guests").select("id, name").eq("is_active", true).eq("club_id", currentClubId).is("converted_to_member_id", null),
+        fetch("/api/admin/guests-list?mode=records")
+          .then((res) => res.json())
+          .catch(() => {
+            console.error("[PlayerRecordsPageClient] guests-list 조회 실패");
+            return { guests: [] };
+          }),
       ]);
       const members: { id: string; name: string; member_type: MemberType; league_point: number }[] = membersBody?.members ?? [];
+      const guests: { id: string; name: string }[] = guestsBody?.guests ?? [];
 
       const completedIds = new Set(
         (sessions ?? []).filter((s) => s.status === "closed" || s.session_date < today).map((s) => s.id)

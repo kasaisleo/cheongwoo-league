@@ -13,7 +13,7 @@ import { toast } from "@/components/ui/Toast";
 import { MATCH_SESSION_DAY_LABEL, fetchActiveSessions } from "@/lib/match-session-label";
 import type { SessionDay } from "@/lib/supabase/database.types";
 import type { Guest, AttendanceSession } from "@/lib/supabase/database.types";
-import type { PlayerSelectorMember } from "@/components/match/PlayerSelector";
+import type { PlayerSelectorMember, PlayerSelectorGuest } from "@/components/match/PlayerSelector";
 import TennisBallLoader from "@/components/common/TennisBallLoader";
 
 type GuestModalTarget = "teamAPlayer1" | "teamAPlayer2" | "teamBPlayer1" | "teamBPlayer2";
@@ -69,7 +69,7 @@ export function NewMatchPageClient({ currentClubId }: { currentClubId: string })
   const preselectedSessionId = searchParams.get("sessionId");
 
   const [members, setMembers] = useState<PlayerSelectorMember[]>([]);
-  const [guests, setGuests] = useState<Guest[]>([]);
+  const [guests, setGuests] = useState<PlayerSelectorGuest[]>([]);
   const [_sessionGuestIds, setSessionGuestIds] = useState<string[]>([]);  // 게스트 참석 지정용 (향후 PlayerSelector에서 우선 노출)
   const [sessions, setSessions] = useState<AttendanceSession[]>([]);
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
@@ -107,19 +107,18 @@ export function NewMatchPageClient({ currentClubId }: { currentClubId: string })
 
   async function loadData() {
     const supabase = createClient();
-    const [memberBody, { data: guestData }, sessionList] = await Promise.all([
+    const [memberBody, guestBody, sessionList] = await Promise.all([
       fetch("/api/admin/members-list?dormant=exclude").then((res) => res.json()).catch(() => ({ members: [] })),
-      supabase
-  .from("guests")
-  .select("*")
-  .eq("club_id", currentClubId)
-  .is("converted_to_member_id", null)
-  .eq("is_active", true)
-  .order("created_at", { ascending: false }),
+      fetch("/api/admin/guests-list?mode=new-match")
+        .then((res) => res.json())
+        .catch(() => {
+          console.error("[NewMatchPageClient] guests-list 조회 실패");
+          return { guests: [] };
+        }),
       fetchActiveSessions(supabase, currentClubId),
     ]);
     setMembers(memberBody?.members ?? []);
-    setGuests(guestData ?? []);
+    setGuests(guestBody?.guests ?? []);
     setSessions(sessionList);
     if (preselectedSessionId) {
       const found = sessionList.find((s) => s.id === preselectedSessionId);

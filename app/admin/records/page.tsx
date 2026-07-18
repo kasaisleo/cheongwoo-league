@@ -42,7 +42,8 @@ function MemberTypeBadge({ isGuest, memberType }: { isGuest: boolean; memberType
 
 export default async function AdminRecordsPage() {
   const supabase = createClient();
-  // members_select_all 삭제 이후에도 끊기지 않도록 members 조회만 service-role로 분리.
+  // members_select_all 삭제(0037) + guests anon/authenticated ACL 없음(guests P0) 대응 —
+  // members/guests 조회만 service-role로 분리.
   const supabaseAdmin = createServiceClient();
   const access = await getAdminAccessServer();
   const currentClubId = access.clubId ?? "";
@@ -64,7 +65,7 @@ export default async function AdminRecordsPage() {
   ] = await Promise.all([
     supabase.from("matches").select("*").eq("club_id", currentClubId),
     supabaseAdmin.from("members").select("id, name, member_type").eq("is_active", true).eq("club_id", currentClubId),
-    supabase.from("guests").select("id, name").eq("is_active", true).eq("club_id", currentClubId).is("converted_to_member_id", null),
+    supabaseAdmin.from("guests").select("id, name").eq("is_active", true).eq("club_id", currentClubId).is("converted_to_member_id", null),
     clubSessionIds.length > 0
       ? supabase.from("attendance").select("session_id, member_id, status").in("session_id", clubSessionIds)
       : Promise.resolve({ data: [] as { session_id: string | null; member_id: string; status: string }[] }),

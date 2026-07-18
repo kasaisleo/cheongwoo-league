@@ -34,7 +34,7 @@ export default async function AdminGuestsPage() {
         </Link>
       </div>
 
-      <GuestList mode="admin" clubId={clubId} />
+      <GuestList mode="admin" clubId={clubId} canEdit={access.isAdmin} canDeactivate={access.isOwner} />
     </main>
   );
 }

@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { notFound } from "next/navigation";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { MATCH_SESSION_DAY_LABEL } from "@/lib/match-session-label";
@@ -6,27 +6,21 @@ import { getAdminAccessServer } from "@/lib/admin-permissions";
 
 export default async function GuestRecordPage({ params }: { params: { id: string } }) {
   const supabase = createClient();
-  // members_select_all 삭제 이후에도 끊기지 않도록 members 조회만 service-role로 분리.
+  // members_select_all 삭제 이후에도 끊기지 않도록, guests도 anon-key ACL이
+  // 없으므로(guests P0) 둘 다 service-role로 조회한다.
   const supabaseAdmin = createServiceClient();
   const access = await getAdminAccessServer();
   const currentClubId = access.clubId ?? "";
   const guestId = params.id;
 
   const [{ data: guest }, { data: allMatches }, { data: allSessions }, { data: allMembers }] = await Promise.all([
-    supabase.from("guests").select("id, name").eq("id", guestId).eq("club_id", currentClubId).maybeSingle(),
+    supabaseAdmin.from("guests").select("id, name").eq("id", guestId).eq("club_id", currentClubId).maybeSingle(),
     supabase.from("matches").select("*").eq("club_id", currentClubId).order("played_at", { ascending: false }),
     supabase.from("attendance_sessions").select("id, title, session_day").eq("club_id", currentClubId),
     supabaseAdmin.from("members").select("id, name").eq("is_active", true).eq("club_id", currentClubId),
   ]);
 
-  if (!guest) {
-    return (
-      <main className="px-4 pt-6">
-        <p className="text-sm" style={{ color: "var(--admin-muted)" }}>게스트를 찾을 수 없어요.</p>
-        <Link href="/admin/records/players" className="mt-2 block text-xs" style={{ color: "var(--admin-accent)" }}>← 선수 기록 분석</Link>
-      </main>
-    );
-  }
+  if (!guest) notFound();
 
   const myMatches = (allMatches ?? []).filter((m) => {
     const guestSlots = [m.team_a_player1_guest, m.team_a_player2_guest, m.team_b_player1_guest, m.team_b_player2_guest];

@@ -14,8 +14,8 @@ import { Dropdown, DropdownItem } from "@/components/ui/Dropdown";
 import { MATCH_SESSION_DAY_LABEL, fetchActiveSessions } from "@/lib/match-session-label";
 import { TEAM_LABEL, winnerLabel, scoreLabel } from "@/lib/match-team-labels";
 import type { DisplayMatch } from "@/lib/match-display";
-import type { Guest, AttendanceSession } from "@/lib/supabase/database.types";
-import type { PlayerSelectorMember } from "@/components/match/PlayerSelector";
+import type { AttendanceSession } from "@/lib/supabase/database.types";
+import type { PlayerSelectorMember, PlayerSelectorGuest } from "@/components/match/PlayerSelector";
 
 type Slot = "teamAPlayer1" | "teamAPlayer2" | "teamBPlayer1" | "teamBPlayer2";
 
@@ -32,7 +32,7 @@ export function EditMatchPageClient({
 }) {
   const router = useRouter();
   const [members,  setMembers]  = useState<PlayerSelectorMember[]>([]);
-  const [guests,   setGuests]   = useState<Guest[]>([]);
+  const [guests,   setGuests]   = useState<PlayerSelectorGuest[]>([]);
   const [sessions, setSessions] = useState<AttendanceSession[]>([]);
   const [sessionId, setSessionId] = useState<string | null>(match.session_id);
   const [loading, setLoading]   = useState(true);
@@ -54,13 +54,18 @@ export function EditMatchPageClient({
   useEffect(() => {
     async function load() {
       const supabase = createClient();
-      const [memberBody, { data: gData }, activeSessions] = await Promise.all([
+      const [memberBody, guestBody, activeSessions] = await Promise.all([
         fetch("/api/admin/members-list?dormant=exclude").then((res) => res.json()).catch(() => ({ members: [] })),
-        supabase.from("guests").select("*").eq("club_id", currentClubId).order("name"),
+        fetch("/api/admin/guests-list?mode=edit-match")
+          .then((res) => res.json())
+          .catch(() => {
+            console.error("[EditMatchPageClient] guests-list 조회 실패");
+            return { guests: [] };
+          }),
         fetchActiveSessions(supabase, currentClubId),
       ]);
       setMembers(memberBody?.members ?? []);
-      setGuests(gData ?? []);
+      setGuests(guestBody?.guests ?? []);
       setSessions(activeSessions);
       setLoading(false);
     }
