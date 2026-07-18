@@ -90,14 +90,11 @@ export function HomeAttendanceSection({ currentClubId }: HomeAttendanceSectionPr
         return;
       }
 
-      const { data: member } = await supabase
-        .from("members")
-        .select("id")
-        .eq("club_id", currentClubId)
-        .eq("auth_user_id", session.user.id)
-        .maybeSingle();
+      const body = await fetch(`/api/member/self?clubId=${currentClubId}`)
+        .then((res) => res.json())
+        .catch(() => ({ memberId: null }));
 
-      const mId = member?.id ?? null;
+      const mId = body?.memberId ?? null;
       setMemberId(mId);
 
       if (mId) {

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { PlayerSelector, playerKey, type SelectedPlayer } from "@/components/match/PlayerSelector";
+import { PlayerSelector, playerKey, type SelectedPlayer, type PlayerSelectorMember } from "@/components/match/PlayerSelector";
 import { ScoreStepper } from "@/components/match/ScoreStepper";
 import { QuickGuestModal } from "@/components/match/QuickGuestModal";
 import { Button } from "@/components/ui/Button";
@@ -10,7 +10,7 @@ import { toast } from "@/components/ui/Toast";
 import type { DisplayMatch } from "@/lib/match-display";
 import { Dropdown, DropdownItem } from "@/components/ui/Dropdown";
 import { MATCH_SESSION_DAY_LABEL, fetchActiveSessions } from "@/lib/match-session-label";
-import type { Member, Guest, AttendanceSession } from "@/lib/supabase/database.types";
+import type { Guest, AttendanceSession } from "@/lib/supabase/database.types";
 
 type GuestModalTarget = "teamAPlayer1" | "teamAPlayer2" | "teamBPlayer1" | "teamBPlayer2";
 
@@ -26,7 +26,7 @@ function toSelectedPlayer(p: DisplayMatch["teamAPlayer1"]): SelectedPlayer {
 }
 
 export function EditMatchModal({ match, onClose, onSaved, currentClubId }: EditMatchModalProps) {
-  const [members, setMembers] = useState<Member[]>([]);
+  const [members, setMembers] = useState<PlayerSelectorMember[]>([]);
   const [guests, setGuests] = useState<Guest[]>([]);
   const [sessions, setSessions] = useState<AttendanceSession[]>([]);
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(match.session_id);
@@ -58,8 +58,8 @@ export function EditMatchModal({ match, onClose, onSaved, currentClubId }: EditM
   useEffect(() => {
     async function loadData() {
       const supabase = createClient();
-      const [{ data: memberData }, { data: guestData }, activeSessions] = await Promise.all([
-        supabase.from("members").select("*").eq("is_active", true).eq("club_id", currentClubId).order("name"),
+      const [memberRes, { data: guestData }, activeSessions] = await Promise.all([
+        fetch(`/api/matches/edit-members?clubId=${currentClubId}`).then((res) => res.json()).catch(() => ({ members: [] })),
         supabase
           .from("guests")
           .select("*")
@@ -68,7 +68,7 @@ export function EditMatchModal({ match, onClose, onSaved, currentClubId }: EditM
           .order("created_at", { ascending: false }),
         fetchActiveSessions(supabase, currentClubId),
       ]);
-      setMembers(memberData ?? []);
+      setMembers(memberRes?.members ?? []);
       setGuests(guestData ?? []);
 
       let sessionList = activeSessions;
