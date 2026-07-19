@@ -42,8 +42,10 @@ function MemberTypeBadge({ isGuest, memberType }: { isGuest: boolean; memberType
 
 export default async function AdminRecordsPage() {
   const supabase = createClient();
-  // members_select_all 삭제(0037) + guests anon/authenticated ACL 없음(guests P0) 대응 —
-  // members/guests 조회만 service-role로 분리.
+  // members_select_all 삭제(0037) + guests anon/authenticated ACL 없음(guests P0) 대응,
+  // 그리고 attendance/attendance_sessions Admin read는 anon-role RLS가 아니라
+  // service-role + access.clubId로 강제한다 — members/guests/attendance* 조회를
+  // 모두 여기로 분리.
   const supabaseAdmin = createServiceClient();
   const access = await getAdminAccessServer();
   const currentClubId = access.clubId ?? "";
@@ -51,8 +53,9 @@ export default async function AdminRecordsPage() {
 
   // 세션(attendance_sessions)이 club_id를 가진 유일한 부모 리소스이므로,
   // attendance(club_id 없음)는 이 club 소속 session_id 집합으로만 scope한다.
-  const { data: allSessions } = await supabase
-    .from("attendance_sessions").select("*")
+  const { data: allSessions } = await supabaseAdmin
+    .from("attendance_sessions")
+    .select("id, title, session_date, session_day, status")
     .eq("club_id", currentClubId).neq("status", "archived")
     .order("session_date", { ascending: false });
   const clubSessionIds = (allSessions ?? []).map((s) => s.id);
@@ -63,11 +66,14 @@ export default async function AdminRecordsPage() {
     { data: guests },
     { data: allAttendance },
   ] = await Promise.all([
-    supabase.from("matches").select("*").eq("club_id", currentClubId),
+    supabase
+      .from("matches")
+      .select("id, session_id, winner_team, team_a_player1_member, team_a_player2_member, team_b_player1_member, team_b_player2_member, team_a_player1_guest, team_a_player2_guest, team_b_player1_guest, team_b_player2_guest")
+      .eq("club_id", currentClubId),
     supabaseAdmin.from("members").select("id, name, member_type").eq("is_active", true).eq("club_id", currentClubId),
     supabaseAdmin.from("guests").select("id, name").eq("is_active", true).eq("club_id", currentClubId).is("converted_to_member_id", null),
     clubSessionIds.length > 0
-      ? supabase.from("attendance").select("session_id, member_id, status").in("session_id", clubSessionIds)
+      ? supabaseAdmin.from("attendance").select("session_id, member_id, status").in("session_id", clubSessionIds)
       : Promise.resolve({ data: [] as { session_id: string | null; member_id: string; status: string }[] }),
   ]);
 

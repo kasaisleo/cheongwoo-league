@@ -56,10 +56,10 @@ async function getAdminDashboardData(currentClubId: string) {
     supabaseAdmin.from("members").select("*", { count: "exact", head: true }).eq("is_active", true).eq("is_dormant", false).eq("club_id", currentClubId),
     // adminMembers/masterMembers count 2개를 role만 읽는 쿼리 1개로 통합 (row 수가 적어 head count보다 저렴)
     supabaseAdmin.from("members").select("permission_role").in("permission_role", ["manager", "admin", "master"]).eq("club_id", currentClubId),
-    supabase.from("attendance_sessions").select("*", { count: "exact", head: true }).eq("club_id", currentClubId).eq("status", "open"),
+    supabaseAdmin.from("attendance_sessions").select("id", { count: "exact", head: true }).eq("club_id", currentClubId).eq("status", "open"),
     // 오늘 세션(todaySessions)과 출석 변화 scoping용 세션(recentSessionsForAttendance)을
     // 별도 쿼리 2개 대신, 최근 세션 목록 1개로 통합해 양쪽 용도로 파생한다.
-    supabase.from("attendance_sessions").select("id, title, session_day, session_date, status").eq("club_id", currentClubId).neq("status", "archived").order("session_date", { ascending: false }).limit(20),
+    supabaseAdmin.from("attendance_sessions").select("id, title, session_day, session_date, status").eq("club_id", currentClubId).neq("status", "archived").order("session_date", { ascending: false }).limit(20),
     supabase.from("matches").select("id, played_at, winner_team, score_a, score_b").eq("club_id", currentClubId).order("played_at", { ascending: false }).limit(5),
     supabaseAdmin.from("members").select("id, name, created_at").eq("club_id", currentClubId).eq("is_active", true).order("created_at", { ascending: false }).limit(5),
     supabaseAdmin.from("members").select("*", { count: "exact", head: true }).eq("club_id", currentClubId).eq("is_active", true).gte("created_at", daysAgoIso(7)),
@@ -83,13 +83,13 @@ async function getAdminDashboardData(currentClubId: string) {
     { data: recentAttendanceRows },
   ] = await Promise.all([
     todaySessionIds.length > 0
-      ? supabase.from("attendance").select("status").in("session_id", todaySessionIds).eq("status", "attending")
+      ? supabaseAdmin.from("attendance").select("status").in("session_id", todaySessionIds).eq("status", "attending")
       : Promise.resolve({ data: [] as { status: string }[] }),
     todaySessionIds.length > 0
       ? supabase.from("matches").select("*", { count: "exact", head: true }).in("session_id", todaySessionIds)
       : Promise.resolve({ count: 0 }),
     recentSessionIds.length > 0
-      ? supabase.from("attendance").select("member_id, status, session_id, updated_at").in("session_id", recentSessionIds).order("updated_at", { ascending: false }).limit(5)
+      ? supabaseAdmin.from("attendance").select("member_id, status, session_id, updated_at").in("session_id", recentSessionIds).order("updated_at", { ascending: false }).limit(5)
       : Promise.resolve({ data: [] as { member_id: string; status: string; session_id: string; updated_at: string }[] }),
   ]);
 

@@ -15,8 +15,13 @@ export default async function GuestRecordPage({ params }: { params: { id: string
 
   const [{ data: guest }, { data: allMatches }, { data: allSessions }, { data: allMembers }] = await Promise.all([
     supabaseAdmin.from("guests").select("id, name").eq("id", guestId).eq("club_id", currentClubId).maybeSingle(),
-    supabase.from("matches").select("*").eq("club_id", currentClubId).order("played_at", { ascending: false }),
-    supabase.from("attendance_sessions").select("id, title, session_day").eq("club_id", currentClubId),
+    supabase
+      .from("matches")
+      .select("id, played_at, session_id, score_a, score_b, winner_team, team_a_player1_member, team_a_player2_member, team_b_player1_member, team_b_player2_member, team_a_player1_guest, team_a_player2_guest, team_b_player1_guest, team_b_player2_guest")
+      .eq("club_id", currentClubId)
+      .order("played_at", { ascending: false }),
+    // attendance_sessions Admin read도 anon-role RLS가 아니라 service-role + club_id로 강제한다.
+    supabaseAdmin.from("attendance_sessions").select("id, title, session_day").eq("club_id", currentClubId),
     supabaseAdmin.from("members").select("id, name").eq("is_active", true).eq("club_id", currentClubId),
   ]);
 

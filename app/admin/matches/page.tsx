@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { createClient, createServiceClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/server";
 import { MATCH_SELECT_WITH_PLAYERS, toDisplayMatches } from "@/lib/match-display";
 import { requireAdminAccess } from "@/lib/admin-permissions";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
@@ -26,7 +26,7 @@ interface PageProps {
 
 export default async function AdminMatchesPage({ searchParams }: PageProps) {
   const access = await requireAdminAccess();
-  const supabase = createClient();
+  const admin = createServiceClient();
   const currentClubId = access.clubId ?? "";
 
   const rawType = searchParams.sessionType ?? "all";
@@ -35,7 +35,7 @@ export default async function AdminMatchesPage({ searchParams }: PageProps) {
   const q = searchParams.q?.trim() ?? "";
 
   // ── 세션(매치) 목록 ────────────────────────────────────────────
-  let sessionQuery = supabase
+  let sessionQuery = admin
     .from("attendance_sessions")
     .select("id, title, session_date, session_day, status")
     .eq("club_id", currentClubId)
@@ -60,7 +60,7 @@ export default async function AdminMatchesPage({ searchParams }: PageProps) {
   // MATCH_SELECT_WITH_PLAYERS가 members/guests를 임베드 조회하므로
   // service-role 필요(0037 members 락다운 + guests P0).
   const { data: rawMatches, error: matchesError } = sessionIds.length > 0
-    ? await createServiceClient()
+    ? await admin
         .from("matches")
         .select(MATCH_SELECT_WITH_PLAYERS)
         .in("session_id", sessionIds)
@@ -96,14 +96,14 @@ export default async function AdminMatchesPage({ searchParams }: PageProps) {
 
   const allIds = filteredSessions.map((s) => s.id);
   const { data: attendRows } = allIds.length > 0
-    ? await supabase
+    ? await admin
         .from("attendance")
         .select("session_id, status")
         .in("session_id", allIds)
     : { data: [] };
 
   // members_select_all 삭제 이후에도 끊기지 않도록 service-role로 조회.
-  const { count: totalMembers } = await createServiceClient()
+  const { count: totalMembers } = await admin
     .from("members")
     .select("id", { count: "exact", head: true })
     .eq("is_active", true)

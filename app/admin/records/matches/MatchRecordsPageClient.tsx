@@ -1,14 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useState } from "react";
 import type { CSSProperties } from "react";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/client";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { MATCH_SESSION_DAY_LABEL } from "@/lib/match-session-label";
 import { judgeMatchStatus, type MatchStatus } from "@/lib/records/matchStatus";
 import { pct, fmtPct } from "@/lib/records/dashboardUtils";
-import type { AttendanceStatus } from "@/lib/supabase/database.types";
 
 
 const STATUS_STYLE: Record<MatchStatus, CSSProperties> = {
@@ -21,14 +19,14 @@ const STATUS_STYLE: Record<MatchStatus, CSSProperties> = {
 // ── 선수별 상태 ───────────────────────────────────────────────────
 type PlayerStatus = "경기 참여" | "미참여" | "미출석" | "출석 후 미참여";
 
-interface PlayerStatusRow {
+export interface PlayerStatusRow {
   memberId: string;
   name: string;
   status: PlayerStatus;
 }
 
 // ── 세션 요약 타입 ────────────────────────────────────────────────
-interface SessionSummary {
+export interface SessionSummary {
   session: {
     id: string;
     title: string;
@@ -42,151 +40,30 @@ interface SessionSummary {
   absentCount: number;
   undecidedCount: number;
   noResponseCount: number;
-  gameParticipantIds: Set<string>;
   gameParticipantCount: number;
   noShowCount: number;
   noShowMembers: string[];
   matchStatus: MatchStatus;
 }
 
+interface MatchRecordsPageClientProps {
+  summaries: SessionSummary[];
+  totalMembersCount: number;
+  /** 세션별 선수 상태(펼침 UI) — 서버에서 전량 미리 계산해 전달, 재조회 없음. */
+  playerRowsBySession: Record<string, PlayerStatusRow[]>;
+}
+
 // ── 메인 ─────────────────────────────────────────────────────────
-export default function MatchRecordsPageClient({ currentClubId }: { currentClubId: string }) {
-  const supabase = useMemo(() => createClient(), []);
-  const [summaries, setSummaries] = useState<SessionSummary[]>([]);
-  const [loading, setLoading] = useState(true);
+export default function MatchRecordsPageClient({
+  summaries,
+  totalMembersCount,
+  playerRowsBySession,
+}: MatchRecordsPageClientProps) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [playerRows, setPlayerRows] = useState<PlayerStatusRow[]>([]);
-  const [loadingDetail, setLoadingDetail] = useState(false);
   const [filterStatus, setFilterStatus] = useState<MatchStatus | "전체">("전체");
-  const [memberNames, setMemberNames] = useState<Map<string, string>>(new Map());
-  const [totalMembersCount, setTotalMembersCount] = useState(0);
 
-  useEffect(() => {
-    async function load() {
-      const today = new Date().toISOString().slice(0, 10);
-
-      // attendance_sessions가 club_id를 가진 부모 리소스이므로, attendance(club_id 없음)는
-      // 이 club 소속 session_id 집합으로만 scope한다 — 타 club row가 섞이지 않도록 한다.
-      const { data: sessions } = await supabase
-        .from("attendance_sessions").select("*")
-        .eq("club_id", currentClubId).neq("status", "archived")
-        .order("session_date", { ascending: false });
-      const clubSessionIds = (sessions ?? []).map((s) => s.id);
-
-      const [
-        { data: allMatches },
-        { data: allAttendance },
-        membersBody,
-      ] = await Promise.all([
-        supabase.from("matches").select("id, session_id, winner_team, team_a_player1_member, team_a_player2_member, team_b_player1_member, team_b_player2_member").eq("club_id", currentClubId),
-        clubSessionIds.length > 0
-          ? supabase.from("attendance").select("session_id, member_id, status").in("session_id", clubSessionIds)
-          : Promise.resolve({ data: [] as { session_id: string | null; member_id: string; status: string }[] }),
-        fetch("/api/admin/members-list").then((res) => res.json()).catch(() => ({ members: [] })),
-      ]);
-      const members: { id: string; name: string }[] = membersBody?.members ?? [];
-
-      const nameMap = new Map((members ?? []).map((m) => [m.id, m.name]));
-      setMemberNames(nameMap);
-
-      const totalMembers = (members ?? []).length;
-
-      const attendBySession = new Map<string, { member_id: string; status: AttendanceStatus }[]>();
-      for (const row of allAttendance ?? []) {
-        if (!row.session_id) continue;
-        if (!attendBySession.has(row.session_id)) attendBySession.set(row.session_id, []);
-        attendBySession.get(row.session_id)!.push({ member_id: row.member_id, status: row.status as AttendanceStatus });
-      }
-
-      const participantsBySession = new Map<string, Set<string>>();
-      for (const m of allMatches ?? []) {
-        if (!m.session_id) continue;
-        if (!participantsBySession.has(m.session_id)) participantsBySession.set(m.session_id, new Set());
-        const s = participantsBySession.get(m.session_id)!;
-        [m.team_a_player1_member, m.team_a_player2_member, m.team_b_player1_member, m.team_b_player2_member]
-          .filter(Boolean).forEach((id) => s.add(id!));
-      }
-
-      const gameCountBySession = new Map<string, number>();
-      for (const m of allMatches ?? []) {
-        if (!m.session_id) continue;
-        gameCountBySession.set(m.session_id, (gameCountBySession.get(m.session_id) ?? 0) + 1);
-      }
-
-      const result: SessionSummary[] = (sessions ?? []).map((session) => {
-        const isCompleted = session.status === "closed" || session.session_date < today;
-        const attendRows = attendBySession.get(session.id) ?? [];
-        const attendingCount  = attendRows.filter((r) => r.status === "attending").length;
-        const absentCount     = attendRows.filter((r) => r.status === "absent").length;
-        const undecidedCount  = attendRows.filter((r) => r.status === "undecided").length;
-        const respondedCount  = attendingCount + absentCount + undecidedCount;
-        const noResponseCount = isCompleted ? Math.max(0, totalMembers - respondedCount) : 0;
-
-        const participants = participantsBySession.get(session.id) ?? new Set<string>();
-        const gameCount = gameCountBySession.get(session.id) ?? 0;
-
-        const noShowMembers = attendRows
-          .filter((r) => r.status === "attending" && !participants.has(r.member_id))
-          .map((r) => r.member_id);
-
-        const summary: SessionSummary = {
-          session: { id: session.id, title: session.title, session_date: session.session_date, session_day: session.session_day, status: session.status },
-          isCompleted,
-          gameCount,
-          attendingCount,
-          absentCount,
-          undecidedCount,
-          noResponseCount,
-          gameParticipantIds: participants,
-          gameParticipantCount: participants.size,
-          noShowCount: noShowMembers.length,
-          noShowMembers,
-          matchStatus: judgeMatchStatus({ isCompleted, gameCount, attendingCount, gameParticipantCount: participants.size, noShowCount: noShowMembers.length }),
-        };
-        return summary;
-      });
-
-      setSummaries(result);
-      setTotalMembersCount(totalMembers);
-      setLoading(false);
-    }
-    load();
-  }, [supabase, currentClubId]);
-
-  async function toggleExpand(sid: string, summary: SessionSummary) {
-    if (expandedId === sid) { setExpandedId(null); setPlayerRows([]); return; }
-    setExpandedId(sid);
-    setLoadingDetail(true);
-
-    const { data: attendRows } = await supabase
-      .from("attendance").select("member_id, status").eq("session_id", sid);
-    const membersBody = await fetch("/api/admin/members-list").then((res) => res.json()).catch(() => ({ members: [] }));
-
-    const respondedMap = new Map((attendRows ?? []).map((r) => [r.member_id, r.status as AttendanceStatus]));
-    const allMembers: { id: string; name: string }[] = membersBody?.members ?? [];
-
-    const rows: PlayerStatusRow[] = allMembers.map((m) => {
-      const attendStatus = respondedMap.get(m.id);
-      const inGame = summary.gameParticipantIds.has(m.id);
-      let status: PlayerStatus;
-
-      if (inGame) {
-        status = "경기 참여";
-      } else if (attendStatus === "attending") {
-        status = "출석 후 미참여";
-      } else if (attendStatus === "absent" || attendStatus === "undecided") {
-        status = "미참여";
-      } else {
-        status = summary.isCompleted ? "미출석" : "미참여";
-      }
-      return { memberId: m.id, name: m.name, status };
-    });
-
-    const ORDER: Record<PlayerStatus, number> = { "경기 참여": 0, "출석 후 미참여": 1, "미참여": 2, "미출석": 3 };
-    rows.sort((a, b) => ORDER[a.status] - ORDER[b.status] || a.name.localeCompare(b.name, "ko"));
-
-    setPlayerRows(rows);
-    setLoadingDetail(false);
+  function toggleExpand(sid: string) {
+    setExpandedId((prev) => (prev === sid ? null : sid));
   }
 
   function sessionTitle(s: SessionSummary["session"]) {
@@ -228,9 +105,7 @@ export default function MatchRecordsPageClient({ currentClubId }: { currentClubI
         ))}
       </div>
 
-      {loading ? (
-        <p className="text-center text-sm" style={{ color: "var(--admin-muted)" }}>불러오는 중...</p>
-      ) : filtered.length === 0 ? (
+      {filtered.length === 0 ? (
         <div className="rounded-[var(--admin-card-radius,14px)] border p-6 text-center" style={cardStyle}>
           <p className="text-sm" style={{ color: "var(--admin-muted)" }}>해당 상태의 매치가 없어요.</p>
         </div>
@@ -240,7 +115,7 @@ export default function MatchRecordsPageClient({ currentClubId }: { currentClubI
             <div key={s.session.id} className="overflow-hidden rounded-[var(--admin-card-radius,14px)] border" style={cardStyle}>
 
               {/* 카드 헤더 */}
-              <button type="button" onClick={() => toggleExpand(s.session.id, s)}
+              <button type="button" onClick={() => toggleExpand(s.session.id)}
                 className="flex w-full items-start justify-between px-4 py-3 text-left transition-colors hover:bg-[color:var(--admin-surface-raised,var(--admin-surface))]">
                 <div className="min-w-0 flex-1">
                   <div className="mb-1 flex items-center gap-2">
@@ -292,37 +167,34 @@ export default function MatchRecordsPageClient({ currentClubId }: { currentClubI
                 </div>
               </div>
 
-              {/* 상세 — 선수별 상태 */}
-              {expandedId === s.session.id && (
-                <div className="border-t px-4 pb-3 pt-2" style={{ borderColor: "var(--admin-border)" }}>
-                  {loadingDetail ? (
-                    <p className="py-2 text-center text-sm" style={{ color: "var(--admin-muted)" }}>불러오는 중...</p>
-                  ) : (
-                    <>
-                      <p className="mb-2 font-display text-[9px] font-bold uppercase tracking-widest" style={{ color: "var(--admin-muted)" }}>
-                        선수별 상태 ({playerRows.length}명)
-                      </p>
-                      <div className="space-y-0.5">
-                        {playerRows.map((r) => (
-                          <div key={r.memberId} className="flex items-center justify-between py-1">
-                            <span className="text-[14px] font-semibold" style={{ color: "var(--admin-text)" }}>{r.name}</span>
-                            <span className="text-[11px] font-semibold" style={PLAYER_STATUS_STYLE[r.status]}>
-                              {r.status}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                      {s.gameCount > 0 && (
-                        <div className="mt-3 border-t pt-2" style={{ borderColor: "var(--admin-border)" }}>
-                          <Link href="/admin/matches" className="text-[10px] font-semibold transition-colors hover:text-[color:var(--admin-text)]" style={{ color: "var(--admin-muted)" }}>
-                            경기 기록 관리 →
-                          </Link>
+              {/* 상세 — 선수별 상태, 서버에서 미리 계산된 데이터 */}
+              {expandedId === s.session.id && (() => {
+                const playerRows = playerRowsBySession[s.session.id] ?? [];
+                return (
+                  <div className="border-t px-4 pb-3 pt-2" style={{ borderColor: "var(--admin-border)" }}>
+                    <p className="mb-2 font-display text-[9px] font-bold uppercase tracking-widest" style={{ color: "var(--admin-muted)" }}>
+                      선수별 상태 ({playerRows.length}명)
+                    </p>
+                    <div className="space-y-0.5">
+                      {playerRows.map((r) => (
+                        <div key={r.memberId} className="flex items-center justify-between py-1">
+                          <span className="text-[14px] font-semibold" style={{ color: "var(--admin-text)" }}>{r.name}</span>
+                          <span className="text-[11px] font-semibold" style={PLAYER_STATUS_STYLE[r.status]}>
+                            {r.status}
+                          </span>
                         </div>
-                      )}
-                    </>
-                  )}
-                </div>
-              )}
+                      ))}
+                    </div>
+                    {s.gameCount > 0 && (
+                      <div className="mt-3 border-t pt-2" style={{ borderColor: "var(--admin-border)" }}>
+                        <Link href="/admin/matches" className="text-[10px] font-semibold transition-colors hover:text-[color:var(--admin-text)]" style={{ color: "var(--admin-muted)" }}>
+                          경기 기록 관리 →
+                        </Link>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
           ))}
         </div>

@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { pct, fmtPct } from "@/lib/records/dashboardUtils";
-import { createClient, createServiceClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/server";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { MATCH_SESSION_DAY_LABEL } from "@/lib/match-session-label";
 import { getAdminAccessServer } from "@/lib/admin-permissions";
@@ -13,11 +13,10 @@ function matchTitle(s: { session_day: string; title: string }) {
 
 // ── 페이지 ──────────────────────────────────────────────────────
 export default async function MemberRecordPage({ params }: { params: { id: string } }) {
-  const supabase = createClient();
-  // point_history_select_all/members_select_all 정책 삭제 이후에도 Admin 조회가
-  // 끊기지 않도록, point_history와 members 조회는 RLS를 우회하는 service-role로
-  // 한다. club_id/member_id는 반드시 서버에서 도출한 access.clubId와 URL의
-  // memberId만 쓴다 — 브라우저가 넘긴 club_id는 없고 있어도 무시한다.
+  // point_history/members/attendance/attendance_sessions 조회는 전부 RLS를
+  // 우회하는 service-role로 한다. club_id/member_id는 반드시 서버에서 도출한
+  // access.clubId와 URL의 memberId만 쓴다 — 브라우저가 넘긴 club_id는 없고
+  // 있어도 무시한다.
   const serviceSupabase = createServiceClient();
   const access = await getAdminAccessServer();
   const currentClubId = access.clubId ?? "";
@@ -27,15 +26,19 @@ export default async function MemberRecordPage({ params }: { params: { id: strin
   const [
     { data: member },
     { data: allMatches },
-    { data: attendanceRows },
     { data: allSessions },
     { data: pointHistory },
     { data: allMembers },
   ] = await Promise.all([
     serviceSupabase.from("members").select("id, name, member_type, league_point").eq("id", memberId).eq("club_id", currentClubId).maybeSingle(),
-    supabase.from("matches").select("*").eq("club_id", currentClubId).order("played_at", { ascending: false }),
-    supabase.from("attendance").select("session_id, status").eq("member_id", memberId),
-    supabase.from("attendance_sessions").select("id, title, session_date, session_day, status").eq("club_id", currentClubId).neq("status", "archived"),
+    serviceSupabase
+      .from("matches")
+      .select("id, played_at, session_id, score_a, score_b, winner_team, team_a_player1_member, team_a_player2_member, team_b_player1_member, team_b_player2_member")
+      .eq("club_id", currentClubId)
+      .order("played_at", { ascending: false }),
+    // attendance_sessions(club_id 보유)를 먼저 club 범위로 조회해 session_id 집합을
+    // 얻는다 — attendance(club_id 없음)는 이 집합으로만 scope한다(쿼리 레벨 강제).
+    serviceSupabase.from("attendance_sessions").select("id, title, session_date, session_day, status").eq("club_id", currentClubId).neq("status", "archived"),
     serviceSupabase
       .from("point_history")
       .select("*")
@@ -50,6 +53,14 @@ export default async function MemberRecordPage({ params }: { params: { id: strin
     // 진짜 404를 반환한다 — 커스텀 200 안내 화면으로 존재 여부를 흘리지 않는다.
     notFound();
   }
+
+  // attendance는 club_id가 없어 FK만으로 club 일치가 보장되지 않으므로,
+  // memberId 필터와 함께 검증된 clubSessionIds로도 쿼리 레벨에서 scope한다 —
+  // 사후 메모리 필터가 아니라 쿼리 자체가 club을 벗어난 row를 반환하지 않는다.
+  const clubSessionIds = (allSessions ?? []).map((s) => s.id);
+  const { data: attendanceRows } = clubSessionIds.length > 0
+    ? await serviceSupabase.from("attendance").select("session_id, status").eq("member_id", memberId).in("session_id", clubSessionIds)
+    : { data: [] as { session_id: string | null; status: string }[] };
 
   // ── 완료 매치 집합 ────────────────────────────────────────────
   const completedIds = new Set(
