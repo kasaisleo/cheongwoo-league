@@ -4,13 +4,13 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "@/components/ui/Toast";
-import { MATCH_SESSION_DAY_LABEL } from "@/lib/match-session-label";
+import { MATCH_SESSION_DAY_LABEL, type SessionSummary as AttendanceSessionSummary } from "@/lib/match-session-label";
 import { useIsAdmin } from "@/lib/hooks/useIsAdmin";
-import type { AttendanceSession, MemberType } from "@/lib/supabase/database.types";
+import type { MemberType } from "@/lib/supabase/database.types";
 
 // ── 타입 ─────────────────────────────────────────────────────────
 interface SessionSummary {
-  session: AttendanceSession;
+  session: AttendanceSessionSummary;
   matchCount: number;
 }
 
@@ -58,14 +58,15 @@ export default function MatchHistoryPageClient({ currentClubId }: { currentClubI
   // ── 매치 목록 로드 ──────────────────────────────────────────────
   async function loadSummaries() {
     setLoading(true);
-    const { data: sessions } = await supabase
-      .from("attendance_sessions")
-      .select("*")
-      .eq("club_id", currentClubId)
-      .in("status", ["closed", "archived"])
-      .order("session_date", { ascending: false });
+    const params = new URLSearchParams({ clubId: currentClubId, statuses: "closed,archived", order: "desc" });
+    const sessionList = await fetch(`/api/attendance/public-sessions?${params}`)
+      .then((res) => (res.ok ? res.json() : { sessions: [] }))
+      .then((body) => body.sessions as AttendanceSessionSummary[])
+      .catch(() => {
+        console.error("[MatchHistoryPageClient] public-sessions 조회 실패");
+        return [] as AttendanceSessionSummary[];
+      });
 
-    const sessionList = (sessions ?? []) as AttendanceSession[];
     const sessionIds = sessionList.map((s) => s.id);
 
     const { data: matchRows } = sessionIds.length > 0

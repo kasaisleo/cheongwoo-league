@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useState, useCallback } from "react";
+import { Suspense, useEffect, useMemo, useState, useCallback, useRef } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -12,10 +12,10 @@ import { AttendanceToggle } from "@/components/attendance/AttendanceToggle";
 import { SessionGuestSection } from "@/components/attendance/SessionGuestSection";
 import { MemberAttendanceCard } from "@/components/attendance/MemberAttendanceCard";
 import { getDisambiguatedName } from "@/lib/member-display";
-import { MATCH_SESSION_DAY_LABEL, fetchActiveSessions } from "@/lib/match-session-label";
+import { MATCH_SESSION_DAY_LABEL, type SessionSummary } from "@/lib/match-session-label";
 import { useAdminRole } from "@/lib/hooks/useAdminRole";
 import { PublicKakaoLoginButton } from "@/components/auth/PublicKakaoLoginButton";
-import type { AttendanceStatus, AttendanceSession, Member } from "@/lib/supabase/database.types";
+import type { AttendanceStatus, Member } from "@/lib/supabase/database.types";
 
 const MIN_REQUIRED_PLAYERS = 4;
 
@@ -25,10 +25,8 @@ function todayString(): string {
 
 type RosterMember = Pick<Member, "id" | "name" | "nickname" | "district" | "member_type">;
 
-interface MemberAttendance {
-  member: RosterMember;
+interface RosterRow extends RosterMember {
   status: AttendanceStatus;
-  attendanceId: string | null;
 }
 
 function AttendancePageInner({ currentClubId, clubSlug }: { currentClubId: string; clubSlug: string }) {
@@ -65,9 +63,9 @@ function AttendancePageInner({ currentClubId, clubSlug }: { currentClubId: strin
 
   const [mySessionStatus, setMySessionStatus] = useState<AttendanceStatus | null>(null);
   const [mySessionSubmitting, setMySessionSubmitting] = useState(false);
-  const [openSessions, setOpenSessions] = useState<AttendanceSession[]>([]);
+  const [openSessions, setOpenSessions] = useState<SessionSummary[]>([]);
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
-  const [rows, setRows] = useState<MemberAttendance[]>([]);
+  const [rows, setRows] = useState<RosterRow[]>([]);
   const [loadingSessions, setLoadingSessions] = useState(true);
   const [loadingRows, setLoadingRows] = useState(false);
   const [updatingMemberId, setUpdatingMemberId] = useState<string | null>(null);
@@ -99,21 +97,45 @@ function AttendancePageInner({ currentClubId, clubSlug }: { currentClubId: strin
     })();
   }, [supabase, currentClubId]);
 
-  // 선택 세션이 바뀌면 내 출석 상태도 다시 조회
-  const refreshMyStatus = useCallback(async (sessionId: string, memberId: string) => {
-    const { data } = await supabase
-      .from("attendance").select("status")
-      .eq("session_id", sessionId).eq("member_id", memberId).maybeSingle();
-    setMySessionStatus((data?.status as AttendanceStatus | null) ?? null);
-  }, [supabase]);
+  // 선택된 세션이 바뀐 뒤에도 응답이 늦게 도착해 최신 선택을 덮어쓰지 않도록 가드.
+  const selectedSessionIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    selectedSessionIdRef.current = selectedSessionId;
+  }, [selectedSessionId]);
 
-  // 1. open 상태인 세션 목록 불러오기. URL의 session_id가 있고 목록에 실제로 존재하면 그걸 우선 선택한다.
+  // 명단 + 내 출석 상태를 한 번에 불러온다 — roster API가 status/counts/selfStatus를
+  // 함께 반환하므로 attendance를 별도로 직접 조회하지 않는다.
+  const loadRows = useCallback(async (sessionId: string) => {
+    setLoadingRows(true);
+    const params = new URLSearchParams({ clubId: currentClubId, sessionId });
+    const body = await fetch(`/api/attendance/roster?${params}`)
+      .then((res) => (res.ok ? res.json() : { members: [], selfStatus: null }))
+      .catch(() => {
+        console.error("[AttendancePageClient] roster 조회 실패");
+        return { members: [], selfStatus: null };
+      });
+
+    if (selectedSessionIdRef.current !== sessionId) return;
+
+    setRows((body.members ?? []) as RosterRow[]);
+    setMySessionStatus((body.selfStatus ?? null) as AttendanceStatus | null);
+    setLoadingRows(false);
+  }, [currentClubId]);
+
+  // 1. open+closed 세션 목록 불러오기. URL의 session_id가 있고 목록에 실제로 존재하면 그걸 우선 선택한다.
   useEffect(() => {
     let isCurrent = true;
 
     async function loadSessions() {
       setLoadingSessions(true);
-      const sessions = await fetchActiveSessions(supabase, currentClubId);
+      const params = new URLSearchParams({ clubId: currentClubId, statuses: "open,closed", order: "asc" });
+      const sessions = await fetch(`/api/attendance/public-sessions?${params}`)
+        .then((res) => (res.ok ? res.json() : { sessions: [] }))
+        .then((body) => body.sessions as SessionSummary[])
+        .catch(() => {
+          console.error("[AttendancePageClient] public-sessions 조회 실패");
+          return [];
+        });
 
       if (!isCurrent) return;
 
@@ -132,60 +154,22 @@ function AttendancePageInner({ currentClubId, clubSlug }: { currentClubId: strin
     return () => {
       isCurrent = false;
     };
-  }, [supabase, initialSessionId, currentClubId]);
+  }, [initialSessionId, currentClubId]);
 
-  // 2. 선택된 세션의 출석 현황 불러오기
+  // 2. 선택된 세션의 명단/내 상태 불러오기
   useEffect(() => {
     setEditingClosedSession(false);
     setMemberQuery("");
     setStatusFilter("all");
-    setMySessionStatus(null);
 
     if (!selectedSessionId) {
+      setMySessionStatus(null);
       setRows([]);
       return;
     }
 
-    // 내 출석 상태 조회
-    if (myMemberId) {
-      void refreshMyStatus(selectedSessionId, myMemberId);
-    }
-
-    let isCurrent = true;
-    setLoadingRows(true);
-
-    async function loadRows() {
-      // members는 anon/authenticated GRANT가 회수되어(0037) 서버 API를 거친다.
-      const [members, { data: attendance }] = await Promise.all([
-        fetch(`/api/attendance/roster?clubId=${encodeURIComponent(currentClubId)}`)
-          .then((res) => (res.ok ? res.json() : { members: [] }))
-          .then((body) => body.members as RosterMember[]),
-        supabase.from("attendance").select("*").eq("session_id", selectedSessionId),
-      ]);
-
-      if (!isCurrent) return;
-
-      const attendanceByMember = new Map((attendance ?? []).map((a) => [a.member_id, a]));
-
-      setRows(
-        (members ?? []).map((member) => {
-          const existing = attendanceByMember.get(member.id);
-          return {
-            member,
-            // 기본 상태는 미정(undecided)
-            status: existing?.status ?? "undecided",
-            attendanceId: existing?.id ?? null,
-          };
-        })
-      );
-      setLoadingRows(false);
-    }
-
-    loadRows();
-    return () => {
-      isCurrent = false;
-    };
-  }, [selectedSessionId, supabase, myMemberId, refreshMyStatus, currentClubId]);
+    void loadRows(selectedSessionId);
+  }, [selectedSessionId, loadRows]);
 
   // 3-my. 회원 본인 출석 신청 핸들러 (POST /api/member/attendance 사용)
   async function handleMyStatusChange(status: AttendanceStatus) {
@@ -207,12 +191,11 @@ function AttendancePageInner({ currentClubId, clubSlug }: { currentClubId: strin
         const LABEL: Record<AttendanceStatus, string> = { attending: "출석", undecided: "미정", absent: "불참" };
         toast.success(`${LABEL[status]}으로 변경되었습니다.`);
         // rows도 즉시 갱신 — 카운트/shortage/필터 리스트가 같은 source로 즉시 반영
-        if (myMemberId) {
-          setRows((prev) =>
-            prev.map((row) => (row.member.id === myMemberId ? { ...row, status } : row))
-          );
-        }
-        await refreshMyStatus(selectedSessionId, myMemberId);
+        setRows((prev) =>
+          prev.map((row) => (row.id === myMemberId ? { ...row, status } : row))
+        );
+        // 성공 후 roster를 다시 조회해 서버 상태와 완전히 재동기화한다.
+        await loadRows(selectedSessionId);
       }
     } catch {
       setMySessionStatus(prev);
@@ -222,10 +205,8 @@ function AttendancePageInner({ currentClubId, clubSlug }: { currentClubId: strin
     }
   }
 
-  // 3. 출석 상태 변경 — 즉시 화면(통계 포함) 반영, 새로고침 없음. 실패 시 롤백.
-  //    - open: 회원 본인이 RLS를 통해 직접 upsert
-  //    - closed: 일반 회원은 RLS가 막음. 운영진은 admin-update API(service-role)로 보정
-  //    - archived: 읽기 전용 — 이 함수를 호출하는 토글 자체가 비활성화되어 있어야 한다
+  // 3. 출석 상태 변경(운영진) — open/closed 구분 없이 항상 admin-update API를 거친다.
+  //    archived는 서버가 차단한다. 실패 시 낙관적 업데이트를 롤백한다.
   async function updateStatus(memberId: string, newStatus: AttendanceStatus) {
     if (!selectedSessionId || !selectedSession) {
       toast.error("매치를 선택해주세요.");
@@ -237,71 +218,38 @@ function AttendancePageInner({ currentClubId, clubSlug }: { currentClubId: strin
       return;
     }
 
-    const previousStatus = rows.find((r) => r.member.id === memberId)?.status ?? "undecided";
+    if (!isAdmin) {
+      toast.error("운영진만 수정할 수 있습니다.");
+      return;
+    }
+
+    const previousStatus = rows.find((r) => r.id === memberId)?.status ?? "undecided";
 
     setRows((prev) =>
-      prev.map((row) => (row.member.id === memberId ? { ...row, status: newStatus } : row))
+      prev.map((row) => (row.id === memberId ? { ...row, status: newStatus } : row))
     );
     setPendingStatus(newStatus);
     setUpdatingMemberId(memberId);
 
-    let succeeded: boolean;
-    let newAttendanceId: string | null = null;
-
-    if (selectedSession.status === "closed") {
-      // 명단이 확정된 세션 — 운영진만 보정 가능. 별도 service-role API를 거친다.
-      if (!isAdmin) {
-        setUpdatingMemberId(null);
-        setPendingStatus(null);
-        setRows((prev) =>
-          prev.map((row) => (row.member.id === memberId ? { ...row, status: previousStatus } : row))
-        );
-        toast.error("완료된 매치는 운영진만 수정할 수 있습니다.");
-        return;
-      }
-
-      const res = await fetch("/api/attendance/admin-update", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ memberId, sessionId: selectedSessionId, status: newStatus }),
-      });
-      const body = await res.json().catch(() => null);
-      succeeded = res.ok;
-      newAttendanceId = body?.attendance?.id ?? null;
-    } else {
-      // open 세션 — 회원 본인이 RLS를 통해 직접 upsert
-      const { data, error } = await supabase
-        .from("attendance")
-        .upsert(
-          {
-            member_id: memberId,
-            session_id: selectedSessionId,
-            event_date: selectedSession.session_date,
-            status: newStatus,
-            updated_at: new Date().toISOString(),
-          },
-          { onConflict: "member_id,session_id" }
-        )
-        .select()
-        .single();
-
-      succeeded = !error && Boolean(data);
-      newAttendanceId = data?.id ?? null;
-    }
+    const res = await fetch("/api/attendance/admin-update", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ memberId, sessionId: selectedSessionId, status: newStatus }),
+    });
+    const body = await res.json().catch(() => null);
 
     setUpdatingMemberId(null);
 
-    if (!succeeded) {
+    if (!res.ok) {
       setRows((prev) =>
-        prev.map((row) => (row.member.id === memberId ? { ...row, status: previousStatus } : row))
+        prev.map((row) => (row.id === memberId ? { ...row, status: previousStatus } : row))
       );
-      toast.error("출석 변경에 실패했습니다.");
+      toast.error(body?.error ?? "출석 변경에 실패했습니다.");
       return;
     }
 
-    setRows((prev) =>
-      prev.map((row) => (row.member.id === memberId ? { ...row, attendanceId: newAttendanceId } : row))
-    );
+    // 성공 후 roster를 다시 조회해 서버 상태와 완전히 재동기화한다.
+    await loadRows(selectedSessionId);
   }
 
   async function handleCreateWeeklySessions(closeMenu?: () => void) {
@@ -395,7 +343,7 @@ function AttendancePageInner({ currentClubId, clubSlug }: { currentClubId: strin
     window.location.reload();
   }
 
-  const allMembers = rows.map((r) => r.member);
+  const allMembers = rows;
   const attending = rows.filter((r) => r.status === "attending").length;
   const undecided = rows.filter((r) => r.status === "undecided").length;
   const absent = rows.filter((r) => r.status === "absent").length;
@@ -416,8 +364,8 @@ function AttendancePageInner({ currentClubId, clubSlug }: { currentClubId: strin
   const displayedRows = rows.filter((row) => {
     const matchesQuery =
       normalizedQuery === "" ||
-      row.member.name?.toLowerCase().includes(normalizedQuery) ||
-      row.member.nickname?.toLowerCase().includes(normalizedQuery);
+      row.name?.toLowerCase().includes(normalizedQuery) ||
+      row.nickname?.toLowerCase().includes(normalizedQuery);
     const matchesStatus = statusFilter === "all" || row.status === statusFilter;
     return matchesQuery && matchesStatus;
   });
@@ -652,32 +600,32 @@ function AttendancePageInner({ currentClubId, clubSlug }: { currentClubId: strin
                 <div className="rounded-[14px] border border-line-200/40 bg-line-50 p-8 text-center"><p className="text-xs font-bold text-line-500">{rows.length === 0 ? "명단이 비어 있어요." : "검색/필터 조건에 맞는 회원이 없어요."}</p></div>
               ) : (
                 <div className="space-y-2">
-                  {displayedRows.map(({ member, status }) => (
+                  {displayedRows.map((row) => (
                     <Card
-                      key={member.id}
+                      key={row.id}
                       className={`flex items-center justify-between gap-2 border-l-4 p-3 ${
-                        status === "attending"
+                        row.status === "attending"
                           ? "border-l-gold"
-                          : status === "absent"
+                          : row.status === "absent"
                             ? "border-l-line-300"
                             : "border-l-clay-400"
                       }`}
                     >
                       {/* 이름만 표시 — 전화번호/메모 등 민감 정보 제외 */}
                       <span className="text-sm font-medium text-line-900">
-                        {getDisambiguatedName(member, allMembers)}
+                        {getDisambiguatedName(row, allMembers)}
                       </span>
                       {/* 읽기 전용 배지 — 수정 토글 없음 */}
                       <Badge
                         tone={
-                          status === "attending"
+                          row.status === "attending"
                             ? "win"
-                            : status === "absent"
+                            : row.status === "absent"
                               ? "loss"
                               : "amber"
                         }
                       >
-                        {status === "attending" ? "출석" : status === "absent" ? "불참" : "미정"}
+                        {row.status === "attending" ? "출석" : row.status === "absent" ? "불참" : "미정"}
                       </Badge>
                     </Card>
                   ))}
@@ -702,31 +650,31 @@ function AttendancePageInner({ currentClubId, clubSlug }: { currentClubId: strin
                 <div className="rounded-[14px] border border-line-200/40 bg-line-50 p-8 text-center"><p className="text-xs font-bold text-line-500">{rows.length === 0 ? "명단이 비어 있어요." : "검색/필터 조건에 맞는 회원이 없어요."}</p></div>
               ) : (
                 <div className="space-y-2">
-                  {displayedRows.map(({ member, status }) => (
+                  {displayedRows.map((row) => (
                     <Card
-                      key={member.id}
+                      key={row.id}
                       className={`flex items-center justify-between gap-2 border-l-4 p-3 ${
-                        status === "attending"
+                        row.status === "attending"
                           ? "border-l-gold"
-                          : status === "absent"
+                          : row.status === "absent"
                             ? "border-l-line-300"
                             : "border-l-clay-400"
                       }`}
                     >
                       <div className="flex flex-wrap items-center gap-1.5">
                         <span className="text-sm font-medium text-line-900">
-                          {getDisambiguatedName(member, allMembers)}
+                          {getDisambiguatedName(row, allMembers)}
                         </span>
-                        {member.member_type !== "정회원" && (
-                          <Badge tone="neutral">{member.member_type}</Badge>
+                        {row.member_type !== "정회원" && (
+                          <Badge tone="neutral">{row.member_type}</Badge>
                         )}
                       </div>
                       <AttendanceToggle
-                        value={status}
-                        onChange={(s) => updateStatus(member.id, s)}
-                        pendingStatus={updatingMemberId === member.id ? pendingStatus : null}
+                        value={row.status}
+                        onChange={(s) => updateStatus(row.id, s)}
+                        pendingStatus={updatingMemberId === row.id ? pendingStatus : null}
                         disabled={
-                          updatingMemberId === member.id ||
+                          updatingMemberId === row.id ||
                           (selectedSession?.status === "closed" && !(isAdmin && editingClosedSession))
                         }
                       />

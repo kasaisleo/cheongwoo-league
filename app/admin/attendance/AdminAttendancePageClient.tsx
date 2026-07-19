@@ -1,18 +1,17 @@
 "use client";
 
 import type { CSSProperties } from "react";
-import { Suspense, useEffect, useMemo, useState, useCallback } from "react";
+import { Suspense, useEffect, useState, useCallback, useRef } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
 import { Badge } from "@/components/ui/Badge";
 import { Dropdown, DropdownItem } from "@/components/ui/Dropdown";
 import { toast } from "@/components/ui/Toast";
 import { AttendanceToggle } from "@/components/attendance/AttendanceToggle";
 import { SessionGuestSection } from "@/components/attendance/SessionGuestSection";
 import { getDisambiguatedName } from "@/lib/member-display";
-import { MATCH_SESSION_DAY_LABEL, fetchActiveSessions } from "@/lib/match-session-label";
-import type { AttendanceStatus, AttendanceSession } from "@/lib/supabase/database.types";
+import { MATCH_SESSION_DAY_LABEL, type SessionSummary } from "@/lib/match-session-label";
+import type { AttendanceStatus } from "@/lib/supabase/database.types";
 import TennisBallLoader from "@/components/common/TennisBallLoader";
 
 /**
@@ -44,15 +43,13 @@ interface AttendanceListMember {
 interface MemberAttendance {
   member: AttendanceListMember;
   status: AttendanceStatus;
-  attendanceId: string | null;
 }
 
 function AdminAttendanceInner({ currentClubId }: { currentClubId: string }) {
   const searchParams = useSearchParams();
   const initialSessionId = searchParams.get("session_id");
-  const supabase = useMemo(() => createClient(), []);
 
-  const [openSessions, setOpenSessions] = useState<AttendanceSession[]>([]);
+  const [openSessions, setOpenSessions] = useState<SessionSummary[]>([]);
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
   const [rows, setRows] = useState<MemberAttendance[]>([]);
   const [loadingSessions, setLoadingSessions] = useState(true);
@@ -69,7 +66,14 @@ function AdminAttendanceInner({ currentClubId }: { currentClubId: string }) {
     let isCurrent = true;
     async function loadSessions() {
       setLoadingSessions(true);
-      const sessions = await fetchActiveSessions(supabase, currentClubId);
+      const params = new URLSearchParams({ clubId: currentClubId, statuses: "open,closed", order: "asc" });
+      const sessions = await fetch(`/api/attendance/public-sessions?${params}`)
+        .then((res) => (res.ok ? res.json() : { sessions: [] }))
+        .then((body) => body.sessions as SessionSummary[])
+        .catch(() => {
+          console.error("[AdminAttendancePageClient] public-sessions 조회 실패");
+          return [];
+        });
       if (!isCurrent) return;
       setOpenSessions(sessions);
       setSelectedSessionId((prev) => {
@@ -82,34 +86,45 @@ function AdminAttendanceInner({ currentClubId }: { currentClubId: string }) {
     }
     loadSessions();
     return () => { isCurrent = false; };
-  }, [supabase, initialSessionId, currentClubId]);
+  }, [initialSessionId, currentClubId]);
+
+  // 선택된 세션이 바뀐 뒤 응답이 늦게 도착해 최신 선택을 덮어쓰지 않도록 가드.
+  const selectedSessionIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    selectedSessionIdRef.current = selectedSessionId;
+  }, [selectedSessionId]);
+
+  // 회원 목록(role 포함)은 기존 /api/admin/members-list를 그대로 쓰고,
+  // 출석 상태/집계는 roster API(sessionId 모드)에서 가져와 id로 병합한다.
+  const loadRows = useCallback(async (sessionId: string) => {
+    setLoadingRows(true);
+    const [membersBody, rosterBody] = await Promise.all([
+      fetch("/api/admin/members-list?dormant=exclude").then((res) => res.json()).catch(() => ({ members: [] })),
+      fetch(`/api/attendance/roster?${new URLSearchParams({ clubId: currentClubId, sessionId })}`)
+        .then((res) => (res.ok ? res.json() : { members: [] }))
+        .catch(() => ({ members: [] })),
+    ]);
+
+    if (selectedSessionIdRef.current !== sessionId) return;
+
+    const members: AttendanceListMember[] = membersBody?.members ?? [];
+    const statusByMember = new Map<string, AttendanceStatus>(
+      ((rosterBody.members ?? []) as { id: string; status: AttendanceStatus }[]).map((m) => [m.id, m.status])
+    );
+    setRows(members.map((member) => ({
+      member,
+      status: statusByMember.get(member.id) ?? "undecided",
+    })));
+    setLoadingRows(false);
+  }, [currentClubId]);
 
   useEffect(() => {
     setEditingClosedSession(false);
     setMemberQuery("");
     setStatusFilter("all");
     if (!selectedSessionId) { setRows([]); return; }
-
-    let isCurrent = true;
-    setLoadingRows(true);
-
-    async function loadRows() {
-      const [membersBody, { data: attendance }] = await Promise.all([
-        fetch("/api/admin/members-list?dormant=exclude").then((res) => res.json()).catch(() => ({ members: [] })),
-        supabase.from("attendance").select("*").eq("session_id", selectedSessionId),
-      ]);
-      if (!isCurrent) return;
-      const members: AttendanceListMember[] = membersBody?.members ?? [];
-      const attendanceByMember = new Map((attendance ?? []).map((a) => [a.member_id, a]));
-      setRows(members.map((member) => {
-        const existing = attendanceByMember.get(member.id);
-        return { member, status: existing?.status ?? "undecided", attendanceId: existing?.id ?? null };
-      }));
-      setLoadingRows(false);
-    }
-    loadRows();
-    return () => { isCurrent = false; };
-  }, [selectedSessionId, supabase, currentClubId]);
+    void loadRows(selectedSessionId);
+  }, [selectedSessionId, loadRows]);
 
   const updateStatus = useCallback(async (memberId: string, newStatus: AttendanceStatus) => {
     if (!selectedSessionId || !selectedSession) {
@@ -125,37 +140,24 @@ function AdminAttendanceInner({ currentClubId }: { currentClubId: string }) {
     setUpdatingMemberId(memberId);
     setPendingStatus(newStatus);
 
-    let succeeded = false;
-    let newAttendanceId: string | null = null;
-
-    if (selectedSession.status === "closed") {
-      const res = await fetch("/api/attendance/admin-update", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ memberId, sessionId: selectedSessionId, status: newStatus }),
-      });
-      const body = await res.json().catch(() => null);
-      succeeded = res.ok;
-      newAttendanceId = body?.attendance?.id ?? null;
-    } else {
-      const { data, error } = await supabase.from("attendance").upsert({
-        member_id: memberId, session_id: selectedSessionId,
-        event_date: selectedSession.session_date, status: newStatus,
-        updated_at: new Date().toISOString(),
-      }, { onConflict: "member_id,session_id" }).select().single();
-      succeeded = !error && Boolean(data);
-      newAttendanceId = data?.id ?? null;
-    }
+    // open/closed 구분 없이 항상 admin-update API를 거친다 — archived는 서버가 차단한다.
+    const res = await fetch("/api/attendance/admin-update", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ memberId, sessionId: selectedSessionId, status: newStatus }),
+    });
+    const body = await res.json().catch(() => null);
 
     setUpdatingMemberId(null);
     setPendingStatus(null);
-    if (!succeeded) {
+    if (!res.ok) {
       setRows((prev) => prev.map((row) => row.member.id === memberId ? { ...row, status: previousStatus } : row));
-      toast.error("출석 변경에 실패했습니다.");
+      toast.error(body?.error ?? "출석 변경에 실패했습니다.");
       return;
     }
-    setRows((prev) => prev.map((row) => row.member.id === memberId ? { ...row, attendanceId: newAttendanceId } : row));
-  }, [selectedSessionId, rows, supabase]);  // eslint-disable-line react-hooks/exhaustive-deps
+    // 성공 후 roster를 다시 조회해 서버 상태와 완전히 재동기화한다.
+    await loadRows(selectedSessionId);
+  }, [selectedSessionId, rows, loadRows]);  // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleCreateWeeklySessions() {
     if (!window.confirm("기존 열린 토/일 매치를 보관하고 이번 주 토/일 매치를 새로 생성합니다. 진행할까요?")) return;
@@ -170,27 +172,17 @@ function AdminAttendanceInner({ currentClubId }: { currentClubId: string }) {
     closeMenu?.();
 
     if (targetStatus === "closed") {
-      const supabase = createClient();
-      const [{ data: matchData }, { data: attendData }] = await Promise.all([
-        supabase.from("matches").select("id, team_a_player1_member, team_a_player2_member, team_b_player1_member, team_b_player2_member").eq("session_id", sessionId),
-        supabase.from("attendance").select("member_id, status").eq("session_id", sessionId),
-      ]);
+      const checkBody = await fetch(`/api/admin/session-noshow-check?sessionId=${encodeURIComponent(sessionId)}`)
+        .then((res) => (res.ok ? res.json() : null))
+        .catch(() => null);
 
       const warnings: string[] = [];
 
-      if ((matchData ?? []).length === 0) {
+      if (!checkBody || !checkBody.hasMatches) {
         warnings.push("경기 기록이 없어요.");
       }
-
-      const participantIds = new Set<string>();
-      for (const m of matchData ?? []) {
-        [m.team_a_player1_member, m.team_a_player2_member, m.team_b_player1_member, m.team_b_player2_member]
-          .filter(Boolean).forEach((id) => participantIds.add(id!));
-      }
-      const attendingIds = (attendData ?? []).filter((r) => r.status === "attending").map((r) => r.member_id);
-      const noShowIds = attendingIds.filter((mid) => !participantIds.has(mid));
-      if (noShowIds.length > 0) {
-        warnings.push(`출석 체크 후 경기 기록이 없는 선수가 ${noShowIds.length}명 있어요.`);
+      if (checkBody?.noShowCount > 0) {
+        warnings.push(`출석 체크 후 경기 기록이 없는 선수가 ${checkBody.noShowCount}명 있어요.`);
       }
 
       if (warnings.length > 0) {

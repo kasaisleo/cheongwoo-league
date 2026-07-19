@@ -5,6 +5,9 @@ import { AttendanceStatusButtons } from "@/components/attendance/AttendanceStatu
 import { MATCH_SESSION_DAY_LABEL } from "@/lib/match-session-label";
 import type { AttendanceSession, AttendanceStatus } from "@/lib/supabase/database.types";
 
+/** public-sessions API의 최소 projection만 있으면 렌더 가능 — 전체 AttendanceSession 불필요. */
+type SessionDisplayInfo = Pick<AttendanceSession, "title" | "session_day" | "session_date">;
+
 /** 날짜 문자열(YYYY-MM-DD) → "2026.06.30" */
 function formatSessionDate(dateStr: string): string {
   const [y, m, d] = dateStr.split("-");
@@ -30,7 +33,7 @@ interface AttendanceStats {
 }
 
 interface MemberAttendanceCardProps {
-  session: AttendanceSession;
+  session: SessionDisplayInfo;
   myStatus: AttendanceStatus | null;
   stats?: AttendanceStats;
   onStatusChange: (status: AttendanceStatus) => void;

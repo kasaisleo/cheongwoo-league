@@ -205,6 +205,7 @@ export interface AttendanceSession {
   created_by: string | null;
   created_at: string;
   closed_at: string | null;
+  club_id: string;
 }
 
 export interface Guest {

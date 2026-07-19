@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
 import { PlayerSelector, playerKey, type SelectedPlayer, type PlayerSelectorMember, type PlayerSelectorGuest } from "@/components/match/PlayerSelector";
 import { ScoreStepper } from "@/components/match/ScoreStepper";
 import { QuickGuestModal } from "@/components/match/QuickGuestModal";
@@ -9,8 +8,8 @@ import { Button } from "@/components/ui/Button";
 import { toast } from "@/components/ui/Toast";
 import type { DisplayMatch } from "@/lib/match-display";
 import { Dropdown, DropdownItem } from "@/components/ui/Dropdown";
-import { MATCH_SESSION_DAY_LABEL, fetchActiveSessions } from "@/lib/match-session-label";
-import type { Guest, AttendanceSession } from "@/lib/supabase/database.types";
+import { MATCH_SESSION_DAY_LABEL, type SessionSummary } from "@/lib/match-session-label";
+import type { Guest } from "@/lib/supabase/database.types";
 
 type GuestModalTarget = "teamAPlayer1" | "teamAPlayer2" | "teamBPlayer1" | "teamBPlayer2";
 
@@ -28,7 +27,7 @@ function toSelectedPlayer(p: DisplayMatch["teamAPlayer1"]): SelectedPlayer {
 export function EditMatchModal({ match, onClose, onSaved, currentClubId }: EditMatchModalProps) {
   const [members, setMembers] = useState<PlayerSelectorMember[]>([]);
   const [guests, setGuests] = useState<PlayerSelectorGuest[]>([]);
-  const [sessions, setSessions] = useState<AttendanceSession[]>([]);
+  const [sessions, setSessions] = useState<SessionSummary[]>([]);
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(match.session_id);
   const [loading, setLoading] = useState(true);
 
@@ -57,8 +56,7 @@ export function EditMatchModal({ match, onClose, onSaved, currentClubId }: EditM
 
   useEffect(() => {
     async function loadData() {
-      const supabase = createClient();
-      const [memberRes, guestRes, activeSessions] = await Promise.all([
+      const [memberRes, guestRes, sessionsBody] = await Promise.all([
         fetch(`/api/matches/edit-members?clubId=${currentClubId}`)
           .then((res) => res.json())
           .catch(() => {
@@ -71,22 +69,26 @@ export function EditMatchModal({ match, onClose, onSaved, currentClubId }: EditM
             console.error("[EditMatchModal] edit-guests 조회 실패");
             return { guests: [] };
           }),
-        fetchActiveSessions(supabase, currentClubId),
+        fetch(`/api/attendance/public-sessions?${new URLSearchParams({ clubId: currentClubId, statuses: "open,closed", order: "asc" })}`)
+          .then((res) => (res.ok ? res.json() : { sessions: [] }))
+          .catch(() => {
+            console.error("[EditMatchModal] public-sessions 조회 실패");
+            return { sessions: [] };
+          }),
       ]);
       setMembers(memberRes?.members ?? []);
       setGuests(guestRes?.guests ?? []);
 
-      let sessionList = activeSessions;
-      // 이 경기에 이미 연결된 세션이 archived라서 목록에 없으면, 선택지가 사라지지 않도록 추가한다.
+      let sessionList = (sessionsBody?.sessions ?? []) as SessionSummary[];
+      // 이 경기에 이미 연결된 세션이 archived라서 목록에 없으면, 선택지가 사라지지 않도록 단건 모드로 추가한다.
       if (match.session_id && !sessionList.some((s) => s.id === match.session_id)) {
-        const { data: currentSession } = await supabase
-          .from("attendance_sessions")
-          .select("*")
-          .eq("id", match.session_id)
-          .eq("club_id", currentClubId)
-          .single();
-        if (currentSession) {
-          sessionList = [currentSession, ...sessionList];
+        const single = await fetch(
+          `/api/attendance/public-sessions?${new URLSearchParams({ clubId: currentClubId, sessionId: match.session_id })}`
+        )
+          .then((res) => (res.ok ? res.json() : { session: null }))
+          .catch(() => ({ session: null }));
+        if (single?.session) {
+          sessionList = [single.session as SessionSummary, ...sessionList];
         }
       }
       setSessions(sessionList);

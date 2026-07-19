@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/client";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { PlayerSelector, playerKey, type SelectedPlayer } from "@/components/match/PlayerSelector";
 import { ScoreStepper } from "@/components/match/ScoreStepper";
@@ -11,10 +10,9 @@ import { QuickGuestModal } from "@/components/match/QuickGuestModal";
 import { Button } from "@/components/ui/Button";
 import { toast } from "@/components/ui/Toast";
 import { Dropdown, DropdownItem } from "@/components/ui/Dropdown";
-import { MATCH_SESSION_DAY_LABEL, fetchActiveSessions } from "@/lib/match-session-label";
+import { MATCH_SESSION_DAY_LABEL, type SessionSummary } from "@/lib/match-session-label";
 import { TEAM_LABEL, winnerLabel, scoreLabel } from "@/lib/match-team-labels";
 import type { DisplayMatch } from "@/lib/match-display";
-import type { AttendanceSession } from "@/lib/supabase/database.types";
 import type { PlayerSelectorMember, PlayerSelectorGuest } from "@/components/match/PlayerSelector";
 
 type Slot = "teamAPlayer1" | "teamAPlayer2" | "teamBPlayer1" | "teamBPlayer2";
@@ -33,7 +31,7 @@ export function EditMatchPageClient({
   const router = useRouter();
   const [members,  setMembers]  = useState<PlayerSelectorMember[]>([]);
   const [guests,   setGuests]   = useState<PlayerSelectorGuest[]>([]);
-  const [sessions, setSessions] = useState<AttendanceSession[]>([]);
+  const [sessions, setSessions] = useState<SessionSummary[]>([]);
   const [sessionId, setSessionId] = useState<string | null>(match.session_id);
   const [loading, setLoading]   = useState(true);
 
@@ -53,8 +51,8 @@ export function EditMatchPageClient({
 
   useEffect(() => {
     async function load() {
-      const supabase = createClient();
-      const [memberBody, guestBody, activeSessions] = await Promise.all([
+      const params = new URLSearchParams({ clubId: currentClubId, statuses: "open,closed", order: "asc" });
+      const [memberBody, guestBody, sessionsBody] = await Promise.all([
         fetch("/api/admin/members-list?dormant=exclude").then((res) => res.json()).catch(() => ({ members: [] })),
         fetch("/api/admin/guests-list?mode=edit-match")
           .then((res) => res.json())
@@ -62,11 +60,16 @@ export function EditMatchPageClient({
             console.error("[EditMatchPageClient] guests-list 조회 실패");
             return { guests: [] };
           }),
-        fetchActiveSessions(supabase, currentClubId),
+        fetch(`/api/attendance/public-sessions?${params}`)
+          .then((res) => (res.ok ? res.json() : { sessions: [] }))
+          .catch(() => {
+            console.error("[EditMatchPageClient] public-sessions 조회 실패");
+            return { sessions: [] };
+          }),
       ]);
       setMembers(memberBody?.members ?? []);
       setGuests(guestBody?.guests ?? []);
-      setSessions(activeSessions);
+      setSessions(sessionsBody?.sessions ?? []);
       setLoading(false);
     }
     load();

@@ -10,9 +10,9 @@ import { QuickGuestModal } from "@/components/match/QuickGuestModal";
 import { Button } from "@/components/ui/Button";
 import { Dropdown, DropdownItem } from "@/components/ui/Dropdown";
 import { toast } from "@/components/ui/Toast";
-import { MATCH_SESSION_DAY_LABEL, fetchActiveSessions } from "@/lib/match-session-label";
-import type { SessionDay } from "@/lib/supabase/database.types";
-import type { Guest, AttendanceSession } from "@/lib/supabase/database.types";
+import { MATCH_SESSION_DAY_LABEL, type SessionSummary } from "@/lib/match-session-label";
+import type { SessionDay, AttendanceStatus } from "@/lib/supabase/database.types";
+import type { Guest } from "@/lib/supabase/database.types";
 import type { PlayerSelectorMember, PlayerSelectorGuest } from "@/components/match/PlayerSelector";
 import TennisBallLoader from "@/components/common/TennisBallLoader";
 
@@ -63,6 +63,17 @@ function getSubmitWarnings(params: {
   return warnings;
 }
 
+async function fetchOpenClosedSessions(clubId: string): Promise<SessionSummary[]> {
+  const params = new URLSearchParams({ clubId, statuses: "open,closed", order: "asc" });
+  return fetch(`/api/attendance/public-sessions?${params}`)
+    .then((res) => (res.ok ? res.json() : { sessions: [] }))
+    .then((body) => body.sessions as SessionSummary[])
+    .catch(() => {
+      console.error("[NewMatchPageClient] public-sessions 조회 실패");
+      return [];
+    });
+}
+
 export function NewMatchPageClient({ currentClubId }: { currentClubId: string }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -71,7 +82,7 @@ export function NewMatchPageClient({ currentClubId }: { currentClubId: string })
   const [members, setMembers] = useState<PlayerSelectorMember[]>([]);
   const [guests, setGuests] = useState<PlayerSelectorGuest[]>([]);
   const [_sessionGuestIds, setSessionGuestIds] = useState<string[]>([]);  // 게스트 참석 지정용 (향후 PlayerSelector에서 우선 노출)
-  const [sessions, setSessions] = useState<AttendanceSession[]>([]);
+  const [sessions, setSessions] = useState<SessionSummary[]>([]);
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
   const [attendees, setAttendees] = useState<SessionAttendees>({ attending: [], undecided: [] });
   const [sessionStats, setSessionStats] = useState<SessionStats | null>(null);
@@ -106,7 +117,6 @@ export function NewMatchPageClient({ currentClubId }: { currentClubId: string })
   useEffect(() => { loadData(); }, []);
 
   async function loadData() {
-    const supabase = createClient();
     const [memberBody, guestBody, sessionList] = await Promise.all([
       fetch("/api/admin/members-list?dormant=exclude").then((res) => res.json()).catch(() => ({ members: [] })),
       fetch("/api/admin/guests-list?mode=new-match")
@@ -115,7 +125,7 @@ export function NewMatchPageClient({ currentClubId }: { currentClubId: string })
           console.error("[NewMatchPageClient] guests-list 조회 실패");
           return { guests: [] };
         }),
-      fetchActiveSessions(supabase, currentClubId),
+      fetchOpenClosedSessions(currentClubId),
     ]);
     setMembers(memberBody?.members ?? []);
     setGuests(guestBody?.guests ?? []);
@@ -131,8 +141,10 @@ export function NewMatchPageClient({ currentClubId }: { currentClubId: string })
   const handleSessionSelect = useCallback(async (sessionId: string) => {
     setSelectedSessionId(sessionId);
     const supabase = createClient();
-    const [{ data: attendData }, { data: matchData }] = await Promise.all([
-      supabase.from("attendance").select("member_id, status").eq("session_id", sessionId).in("status", ["attending", "undecided"]),
+    const [rosterBody, { data: matchData }] = await Promise.all([
+      fetch(`/api/attendance/roster?${new URLSearchParams({ clubId: currentClubId, sessionId })}`)
+        .then((res) => (res.ok ? res.json() : { members: [] }))
+        .catch(() => ({ members: [] })),
       supabase
   .from("matches")
   .select("id, team_a_player1_member, team_a_player2_member, team_b_player1_member, team_b_player2_member")
@@ -140,10 +152,13 @@ export function NewMatchPageClient({ currentClubId }: { currentClubId: string })
   .eq("session_id", sessionId),
     ]);
 
-    const rows = attendData ?? [];
+    // responded=true인 행만 사용 — roster의 기본값(무응답=undecided)과 달리
+    // "실제로 상태를 입력한 회원"만 attending/undecided로 집계한다(기존 의미 보존).
+    const rows = ((rosterBody.members ?? []) as { id: string; status: AttendanceStatus; responded: boolean }[])
+      .filter((m) => m.responded);
     setAttendees({
-      attending: rows.filter((r) => r.status === "attending").map((r) => r.member_id),
-      undecided: rows.filter((r) => r.status === "undecided").map((r) => r.member_id),
+      attending: rows.filter((r) => r.status === "attending").map((r) => r.id),
+      undecided: rows.filter((r) => r.status === "undecided").map((r) => r.id),
     });
 
     const participantIds = new Set<string>();
@@ -177,8 +192,7 @@ export function NewMatchPageClient({ currentClubId }: { currentClubId: string })
       const body = await res.json().catch(() => null);
       if (!res.ok) { setNewSessionError(body?.error ?? "매치 추가에 실패했습니다."); return; }
       toast.success("매치가 추가되었습니다.");
-      const supabase = createClient();
-      const updated = await fetchActiveSessions(supabase, currentClubId);
+      const updated = await fetchOpenClosedSessions(currentClubId);
       setSessions(updated);
       if (body.sessionId) await handleSessionSelect(body.sessionId);
       setShowNewSession(false);

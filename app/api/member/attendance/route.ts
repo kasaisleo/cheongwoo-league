@@ -3,16 +3,9 @@ import { createClient, createServiceClient } from "@/lib/supabase/server";
 import type { AttendanceStatus } from "@/lib/supabase/database.types";
 import { getCurrentClubId } from "@/lib/current-club";
 
-// TODO(보안): attendance 테이블의 RLS가 현재 anon insert/update를 허용하고 있어
-// 인증 없이 누구나 직접 DB에 출석을 기록할 수 있는 상태입니다.
-// 이 API Route는 서버에서 Supabase Auth 세션을 검증해 "본인만 수정"을 강제하지만,
-// RLS 자체가 열려있어 API를 우회한 직접 DB 접근은 막을 수 없습니다.
-// 장기적으로 RLS 정책을 아래처럼 강화해야 합니다:
-//   - attendance insert: auth.uid()로 members를 찾아 member_id 일치 여부 확인
-//   - attendance update: 동일 조건
-//   - anon 허용 정책(attendance_insert_anon, attendance_update_anon) 삭제
-// 단, RLS 변경은 기존 관리자 출석 페이지(open 세션 직접 upsert)의 동작에 영향을
-// 줄 수 있으므로 별도 Step에서 신중하게 진행해야 합니다.
+// attendance의 anon/authenticated insert/update RLS 정책(attendance_insert_anon,
+// attendance_update_anon)은 0023에서 이미 제거되었다 — anon/authenticated는 attendance에
+// 쓰기 권한이 없고, 이 API가 service-role로 "본인만 수정"을 강제하는 유일한 쓰기 경로다.
 
 const VALID_STATUSES: AttendanceStatus[] = ["attending", "undecided", "absent"];
 
