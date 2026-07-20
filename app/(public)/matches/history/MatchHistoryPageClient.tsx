@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/client";
 import { toast } from "@/components/ui/Toast";
 import { MATCH_SESSION_DAY_LABEL, type SessionSummary as AttendanceSessionSummary } from "@/lib/match-session-label";
 import { useIsAdmin } from "@/lib/hooks/useIsAdmin";
@@ -14,13 +13,15 @@ interface SessionSummary {
   matchCount: number;
 }
 
+/** /api/matches/public 세션 모드 응답의 records[] 항목 — 서버에서 이미 집계·정렬됨. */
 interface PlayerRecord {
-  id: string;
-  name: string;
+  displayName: string;
   isGuest: boolean;
-  memberType: MemberType | null; // 회원이면 member_type, 게스트면 null
+  memberType: MemberType | null;
   wins: number;
   losses: number;
+  games: number;
+  winRate: number;
 }
 
 // ── 유틸 ─────────────────────────────────────────────────────────
@@ -45,7 +46,6 @@ function MemberTypeBadge({ isGuest, memberType }: { isGuest: boolean; memberType
 
 // ── 메인 컴포넌트 ─────────────────────────────────────────────────
 export default function MatchHistoryPageClient({ currentClubId }: { currentClubId: string }) {
-  const supabase = useMemo(() => createClient(), []);
   const isAdmin = useIsAdmin();
 
   const [summaries, setSummaries] = useState<SessionSummary[]>([]);
@@ -58,8 +58,8 @@ export default function MatchHistoryPageClient({ currentClubId }: { currentClubI
   // ── 매치 목록 로드 ──────────────────────────────────────────────
   async function loadSummaries() {
     setLoading(true);
-    const params = new URLSearchParams({ clubId: currentClubId, statuses: "closed,archived", order: "desc" });
-    const sessionList = await fetch(`/api/attendance/public-sessions?${params}`)
+    const sessionParams = new URLSearchParams({ clubId: currentClubId, statuses: "closed,archived", order: "desc" });
+    const sessionList = await fetch(`/api/attendance/public-sessions?${sessionParams}`)
       .then((res) => (res.ok ? res.json() : { sessions: [] }))
       .then((body) => body.sessions as AttendanceSessionSummary[])
       .catch(() => {
@@ -69,20 +69,28 @@ export default function MatchHistoryPageClient({ currentClubId }: { currentClubI
 
     const sessionIds = sessionList.map((s) => s.id);
 
-    const { data: matchRows } = sessionIds.length > 0
-      ? await supabase.from("matches").select("id, session_id").in("session_id", sessionIds)
-      : { data: [] };
+    const counts: Record<string, number> = sessionIds.length > 0
+      ? await fetch(
+          `/api/matches/public?${new URLSearchParams({ clubId: currentClubId, mode: "counts", sessionIds: sessionIds.join(",") })}`
+        )
+          .then((res) => (res.ok ? res.json() : { counts: {} }))
+          .then((body) => body.counts as Record<string, number>)
+          .catch(() => {
+            console.error("[MatchHistoryPageClient] matches/public counts 조회 실패");
+            return {};
+          })
+      : {};
 
     setSummaries(sessionList.map((session) => ({
       session,
-      matchCount: (matchRows ?? []).filter((m) => m.session_id === session.id).length,
+      matchCount: counts[session.id] ?? 0,
     })));
     setLoading(false);
   }
 
-  useEffect(() => { loadSummaries(); }, [supabase, currentClubId]);
+  useEffect(() => { loadSummaries(); }, [currentClubId]);
 
-  // ── 상세 — 참석자별 기록 ────────────────────────────────────────
+  // ── 상세 — 참석자별 기록(서버에서 이미 집계됨) ──────────────────
   async function toggleExpand(sessionId: string) {
     if (expandedSessionId === sessionId) {
       setExpandedSessionId(null);
@@ -92,95 +100,17 @@ export default function MatchHistoryPageClient({ currentClubId }: { currentClubI
     setExpandedSessionId(sessionId);
     setLoadingDetail(true);
 
-    const { data: matchRows } = await supabase
-      .from("matches")
-      .select("*")
-      .eq("session_id", sessionId);
+    const records = await fetch(
+      `/api/matches/public?${new URLSearchParams({ clubId: currentClubId, sessionId })}`
+    )
+      .then((res) => (res.ok ? res.json() : { records: [] }))
+      .then((body) => body.records as PlayerRecord[])
+      .catch(() => {
+        console.error("[MatchHistoryPageClient] matches/public 세션 조회 실패");
+        return [] as PlayerRecord[];
+      });
 
-    if (!matchRows || matchRows.length === 0) {
-      setPlayerRecords([]);
-      setLoadingDetail(false);
-      return;
-    }
-
-    // 참여한 멤버/게스트 ID 수집
-    const memberIds = new Set<string>();
-    const guestIds = new Set<string>();
-    for (const m of matchRows) {
-      [m.team_a_player1_member, m.team_a_player2_member,
-       m.team_b_player1_member, m.team_b_player2_member]
-        .filter(Boolean).forEach((id) => memberIds.add(id!));
-      [m.team_a_player1_guest, m.team_a_player2_guest,
-       m.team_b_player1_guest, m.team_b_player2_guest]
-        .filter(Boolean).forEach((id) => guestIds.add(id!));
-    }
-
-    // 이름 + member_type 조회.
-    // members/guests는 anon/authenticated GRANT가 회수되어(0037, guests P0)
-    // 서버 API를 거친다.
-    const [memberRows, guestRows] = await Promise.all([
-      memberIds.size > 0
-        ? fetch(
-            `/api/matches/session-members?clubId=${encodeURIComponent(currentClubId)}&ids=${[...memberIds].map(encodeURIComponent).join(",")}`
-          )
-            .then((res) => (res.ok ? res.json() : { members: [] }))
-            .then((body) => body.members as { id: string; name: string; member_type: MemberType }[])
-            .catch(() => {
-              console.error("[MatchHistoryPageClient] session-members 조회 실패");
-              return [];
-            })
-        : Promise.resolve([]),
-      guestIds.size > 0
-        ? fetch(
-            `/api/matches/guest-names?clubId=${encodeURIComponent(currentClubId)}&ids=${[...guestIds].map(encodeURIComponent).join(",")}`
-          )
-            .then((res) => (res.ok ? res.json() : { guests: [] }))
-            .then((body) => body.guests as { id: string; name: string }[])
-            .catch(() => {
-              console.error("[MatchHistoryPageClient] guest-names 조회 실패");
-              return [];
-            })
-        : Promise.resolve([]),
-    ]);
-
-    const memberMap = new Map(
-      (memberRows ?? []).map((m) => [m.id, { name: m.name, memberType: m.member_type }])
-    );
-    const guestMap = new Map((guestRows ?? []).map((g) => [g.id, g.name]));
-
-    // 승패 집계
-    const recordMap = new Map<string, PlayerRecord>();
-
-    function addResult(id: string | null, isGuest: boolean, isWin: boolean) {
-      if (!id) return;
-      const key = (isGuest ? "G:" : "M:") + id;
-      const info = isGuest
-        ? { name: guestMap.get(id) ?? "게스트", memberType: null }
-        : { name: memberMap.get(id)?.name ?? "알수없음", memberType: memberMap.get(id)?.memberType ?? null };
-      const prev = recordMap.get(key) ?? { id, isGuest, memberType: info.memberType, name: info.name, wins: 0, losses: 0 };
-      recordMap.set(key, { ...prev, wins: prev.wins + (isWin ? 1 : 0), losses: prev.losses + (isWin ? 0 : 1) });
-    }
-
-    for (const m of matchRows) {
-      const aWin = m.winner_team === "A";
-      addResult(m.team_a_player1_member, false, aWin);
-      addResult(m.team_a_player2_member, false, aWin);
-      addResult(m.team_a_player1_guest,  true,  aWin);
-      addResult(m.team_a_player2_guest,  true,  aWin);
-      addResult(m.team_b_player1_member, false, !aWin);
-      addResult(m.team_b_player2_member, false, !aWin);
-      addResult(m.team_b_player1_guest,  true,  !aWin);
-      addResult(m.team_b_player2_guest,  true,  !aWin);
-    }
-
-    const sorted = [...recordMap.values()].sort((a, b) => {
-      if (b.wins !== a.wins) return b.wins - a.wins;
-      const aTot = a.wins + a.losses, bTot = b.wins + b.losses;
-      if (bTot !== aTot) return bTot - aTot;
-      return a.name.localeCompare(b.name, "ko");
-    });
-
-    setPlayerRecords(sorted);
+    setPlayerRecords(records);
     setLoadingDetail(false);
   }
 
@@ -292,30 +222,26 @@ export default function MatchHistoryPageClient({ currentClubId }: { currentClubI
                     <div>
                       <p className="mb-2 text-[10px] font-semibold text-line-500">참석자별 기록</p>
                       <div className="space-y-2">
-                        {playerRecords.map((r) => {
-                          const games = r.wins + r.losses;
-                          const winRate = games > 0 ? Math.round((r.wins / games) * 100) : 0;
-                          return (
-                            <div key={(r.isGuest ? "G:" : "M:") + r.id}
-                              className="flex items-center justify-between">
-                              <div className="flex items-center gap-1.5">
-                                <span className="text-[15px] font-semibold leading-snug text-line-900">
-                                  {r.name}
-                                </span>
-                                <MemberTypeBadge isGuest={r.isGuest} memberType={r.memberType} />
-                              </div>
-                              <p className="text-right">
-                                <span className="font-score text-[11px] tabular-nums text-line-500">{games}</span>
-                                <span className="text-[11px] text-line-400">경기 · </span>
-                                <span className="font-score text-[11px] tabular-nums text-gold">{r.wins}</span>
-                                <span className="text-[11px] text-line-500">승 </span>
-                                <span className="font-score text-[11px] tabular-nums text-line-400">{r.losses}</span>
-                                <span className="text-[11px] text-line-400">패 · </span>
-                                <span className="font-score text-[11px] tabular-nums text-line-500">{winRate}%</span>
-                              </p>
+                        {playerRecords.map((r, idx) => (
+                          <div key={`${r.displayName}-${r.isGuest ? "guest" : "member"}-${idx}`}
+                            className="flex items-center justify-between">
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-[15px] font-semibold leading-snug text-line-900">
+                                {r.displayName}
+                              </span>
+                              <MemberTypeBadge isGuest={r.isGuest} memberType={r.memberType} />
                             </div>
-                          );
-                        })}
+                            <p className="text-right">
+                              <span className="font-score text-[11px] tabular-nums text-line-500">{r.games}</span>
+                              <span className="text-[11px] text-line-400">경기 · </span>
+                              <span className="font-score text-[11px] tabular-nums text-gold">{r.wins}</span>
+                              <span className="text-[11px] text-line-500">승 </span>
+                              <span className="font-score text-[11px] tabular-nums text-line-400">{r.losses}</span>
+                              <span className="text-[11px] text-line-400">패 · </span>
+                              <span className="font-score text-[11px] tabular-nums text-line-500">{r.winRate}%</span>
+                            </p>
+                          </div>
+                        ))}
                       </div>
                     </div>
                   )}

@@ -75,5 +75,11 @@ export async function GET(request: NextRequest) {
   return NextResponse.json({
     hasMatches: (matchData ?? []).length > 0,
     noShowCount,
+    // 아래 2개는 NewMatchPageClient의 Client direct matches 조회를 대체하기 위한
+    // additive 필드 — 기존 소비처(AdminAttendancePageClient 등)는 이 필드를 몰라도
+    // 무관하므로 회귀 없음. Admin 전용 응답이라 member UUID를 그대로 포함한다
+    // (PII 아님, guest 슬롯은 no-show 계산 대상이 아니므로 제외).
+    gameCount: (matchData ?? []).length,
+    participantMemberIds: [...participantIds],
   });
 }

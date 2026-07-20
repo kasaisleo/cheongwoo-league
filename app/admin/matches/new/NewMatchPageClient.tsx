@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { PlayerSelector, playerKey, type SelectedPlayer } from "@/components/match/PlayerSelector";
 import { ScoreStepper } from "@/components/match/ScoreStepper";
@@ -140,16 +139,13 @@ export function NewMatchPageClient({ currentClubId }: { currentClubId: string })
   // 세션 선택: 출석 목록 + 기존 경기 수 + 지정 게스트 로드
   const handleSessionSelect = useCallback(async (sessionId: string) => {
     setSelectedSessionId(sessionId);
-    const supabase = createClient();
-    const [rosterBody, { data: matchData }] = await Promise.all([
+    const [rosterBody, noShowBody] = await Promise.all([
       fetch(`/api/attendance/roster?${new URLSearchParams({ clubId: currentClubId, sessionId })}`)
         .then((res) => (res.ok ? res.json() : { members: [] }))
         .catch(() => ({ members: [] })),
-      supabase
-  .from("matches")
-  .select("id, team_a_player1_member, team_a_player2_member, team_b_player1_member, team_b_player2_member")
-  .eq("club_id", currentClubId)
-  .eq("session_id", sessionId),
+      fetch(`/api/admin/session-noshow-check?sessionId=${sessionId}`)
+        .then((res) => (res.ok ? res.json() : { gameCount: 0, participantMemberIds: [] }))
+        .catch(() => ({ gameCount: 0, participantMemberIds: [] })),
     ]);
 
     // responded=true인 행만 사용 — roster의 기본값(무응답=undecided)과 달리
@@ -161,13 +157,11 @@ export function NewMatchPageClient({ currentClubId }: { currentClubId: string })
       undecided: rows.filter((r) => r.status === "undecided").map((r) => r.id),
     });
 
-    const participantIds = new Set<string>();
-    for (const m of matchData ?? []) {
-      [m.team_a_player1_member, m.team_a_player2_member, m.team_b_player1_member, m.team_b_player2_member]
-        .filter(Boolean).forEach((id) => participantIds.add(id!));
-    }
+    const participantIds = new Set<string>(
+      (noShowBody.participantMemberIds ?? []) as string[]
+    );
     const attendingCount = rows.filter((r) => r.status === "attending").length;
-    setSessionStats({ gameCount: (matchData ?? []).length, attendingCount, participantIds });
+    setSessionStats({ gameCount: noShowBody.gameCount ?? 0, attendingCount, participantIds });
 
     // 지정 게스트 로드 (실패해도 경기 입력 가능)
     try {

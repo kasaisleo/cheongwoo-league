@@ -4,19 +4,11 @@ import type { Match, Member, Guest } from "@/lib/supabase/database.types";
 /** 일반 경기 승리 시 적용되는 리그 포인트 */
 export const LEAGUE_POINT_WIN = 10;
 
-type MatchWithClubId = Match & {
-  club_id?: string | null;
-};
-
 export interface MatchPlayerSlot {
   prefix: string;
   isGuest: boolean;
   id: string;
   won: boolean;
-}
-
-function getMatchClubId(match: Match): string | null {
-  return (match as MatchWithClubId).club_id ?? null;
 }
 
 export function extractPlayerSlots(match: Match): MatchPlayerSlot[] {
@@ -65,7 +57,7 @@ export async function applyMatch(
   supabase: ReturnType<typeof createServiceClient>,
   match: Match
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-  const clubId = getMatchClubId(match);
+  const clubId = match.club_id;
 
   if (!clubId) {
     return { ok: false, error: "match.club_id is required" };
@@ -153,7 +145,7 @@ export async function rollbackMatch(
   supabase: ReturnType<typeof createServiceClient>,
   match: Match
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-  const clubId = getMatchClubId(match);
+  const clubId = match.club_id;
 
   if (!clubId) {
     return { ok: false, error: "match.club_id is required" };

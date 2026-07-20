@@ -99,6 +99,7 @@ export interface Match {
   winner_team: WinnerTeam;
   created_by: string | null;
   created_at: string;
+  club_id: string;
 }
 
 /** 경기 화면에 표시할 선수 정보. 회원이든 게스트든 동일한 모양으로 다룬다. */
