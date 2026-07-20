@@ -99,3 +99,55 @@ export function toDisplayMatches(rows: unknown): DisplayMatch[] {
     teamBPlayer2: resolveSlot(row.team_b_player2_member_row, row.team_b_player2_guest_row),
   }));
 }
+
+/** Public 화면에 내려보낼 선수 표시 정보 — participant UUID를 포함하지 않는다. */
+export interface PublicDisplayPlayer {
+  name: string;
+  isGuest: boolean;
+}
+
+/**
+ * Public 화면(Client 포함) 전용 경기 타입 — DisplayMatch에서 participant UUID와
+ * created_at을 제거한 최소 표시 데이터. id는 경기 자체의 식별자(edit/delete 액션용)로,
+ * 참가자 UUID와는 무관하므로 유지한다.
+ */
+export interface PublicDisplayMatch {
+  id: string;
+  played_at: string;
+  session_id: string | null;
+  sessionDay: SessionDay | null;
+  sessionTitle: string | null;
+  score_a: number;
+  score_b: number;
+  score_a_tiebreak: number | null;
+  score_b_tiebreak: number | null;
+  winner_team: "A" | "B";
+  teamAPlayer1: PublicDisplayPlayer;
+  teamAPlayer2: PublicDisplayPlayer;
+  teamBPlayer1: PublicDisplayPlayer;
+  teamBPlayer2: PublicDisplayPlayer;
+}
+
+function toPublicPlayer(p: MatchPlayerDisplay): PublicDisplayPlayer {
+  return { name: p.name, isGuest: p.isGuest };
+}
+
+/** DisplayMatch[]에서 participant UUID/created_at을 제거해 Public 전용 타입으로 변환한다. */
+export function toPublicDisplayMatches(rows: unknown): PublicDisplayMatch[] {
+  return toDisplayMatches(rows).map((m) => ({
+    id: m.id,
+    played_at: m.played_at,
+    session_id: m.session_id,
+    sessionDay: m.sessionDay,
+    sessionTitle: m.sessionTitle,
+    score_a: m.score_a,
+    score_b: m.score_b,
+    score_a_tiebreak: m.score_a_tiebreak,
+    score_b_tiebreak: m.score_b_tiebreak,
+    winner_team: m.winner_team,
+    teamAPlayer1: toPublicPlayer(m.teamAPlayer1),
+    teamAPlayer2: toPublicPlayer(m.teamAPlayer2),
+    teamBPlayer1: toPublicPlayer(m.teamBPlayer1),
+    teamBPlayer2: toPublicPlayer(m.teamBPlayer2),
+  }));
+}

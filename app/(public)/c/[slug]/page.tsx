@@ -4,7 +4,7 @@ import { requirePublicClubBySlug } from "@/lib/public-club";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { Badge } from "@/components/ui/Badge";
 import { MatchCard } from "@/components/match/MatchCard";
-import { MATCH_SELECT_WITH_PLAYERS, toDisplayMatches } from "@/lib/match-display";
+import { MATCH_SELECT_WITH_PLAYERS, toPublicDisplayMatches } from "@/lib/match-display";
 import { MATCH_SESSION_DAY_LABEL, selectHomeSessions } from "@/lib/match-session-label";
 import { HomeAttendanceSection } from "@/components/attendance/HomeAttendanceSection";
 import { RankingTeaserCard } from "@/components/ranking/RankingTeaserCard";
@@ -112,7 +112,7 @@ export default async function ClubHomePage({
     })
   );
 
-  const recentMatches = toDisplayMatches(recentMatchRows);
+  const recentMatches = toPublicDisplayMatches(recentMatchRows);
   const guestsThisWeek = weeklyGuests ?? [];
   const topRanked = (topRankRows ?? []) as PublicMemberListRow[];
   const skin = getClubSkin(club.skin_key);

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { createClient, createServiceClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/server";
 import { MATCH_SESSION_DAY_LABEL } from "@/lib/match-session-label";
 import { pct, fmtPct, buildRecordsDashboardSummary, buildManagementAlerts } from "@/lib/records/dashboardUtils";
 import type { MemberType } from "@/lib/supabase/database.types";
@@ -41,10 +41,9 @@ function MemberTypeBadge({ isGuest, memberType }: { isGuest: boolean; memberType
 }
 
 export default async function AdminRecordsPage() {
-  const supabase = createClient();
   // members_select_all 삭제(0037) + guests anon/authenticated ACL 없음(guests P0) 대응,
-  // 그리고 attendance/attendance_sessions Admin read는 anon-role RLS가 아니라
-  // service-role + access.clubId로 강제한다 — members/guests/attendance* 조회를
+  // 그리고 attendance/attendance_sessions/matches Admin read는 anon-role RLS가 아니라
+  // service-role + access.clubId로 강제한다 — members/guests/attendance*/matches 조회를
   // 모두 여기로 분리.
   const supabaseAdmin = createServiceClient();
   const access = await getAdminAccessServer();
@@ -66,7 +65,7 @@ export default async function AdminRecordsPage() {
     { data: guests },
     { data: allAttendance },
   ] = await Promise.all([
-    supabase
+    supabaseAdmin
       .from("matches")
       .select("id, session_id, winner_team, team_a_player1_member, team_a_player2_member, team_b_player1_member, team_b_player2_member, team_a_player1_guest, team_a_player2_guest, team_b_player1_guest, team_b_player2_guest")
       .eq("club_id", currentClubId),

@@ -1,13 +1,12 @@
 import { notFound } from "next/navigation";
-import { createClient, createServiceClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/server";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { MATCH_SESSION_DAY_LABEL } from "@/lib/match-session-label";
 import { getAdminAccessServer } from "@/lib/admin-permissions";
 
 export default async function GuestRecordPage({ params }: { params: { id: string } }) {
-  const supabase = createClient();
-  // members_select_all 삭제 이후에도 끊기지 않도록, guests도 anon-key ACL이
-  // 없으므로(guests P0) 둘 다 service-role로 조회한다.
+  // members_select_all 삭제 이후에도 끊기지 않도록, guests/matches도 anon-key ACL이
+  // 없으므로(guests P0 / matches P0) 전부 service-role로 조회한다.
   const supabaseAdmin = createServiceClient();
   const access = await getAdminAccessServer();
   const currentClubId = access.clubId ?? "";
@@ -15,7 +14,7 @@ export default async function GuestRecordPage({ params }: { params: { id: string
 
   const [{ data: guest }, { data: allMatches }, { data: allSessions }, { data: allMembers }] = await Promise.all([
     supabaseAdmin.from("guests").select("id, name").eq("id", guestId).eq("club_id", currentClubId).maybeSingle(),
-    supabase
+    supabaseAdmin
       .from("matches")
       .select("id, played_at, session_id, score_a, score_b, winner_team, team_a_player1_member, team_a_player2_member, team_b_player1_member, team_b_player2_member, team_a_player1_guest, team_a_player2_guest, team_b_player1_guest, team_b_player2_guest")
       .eq("club_id", currentClubId)

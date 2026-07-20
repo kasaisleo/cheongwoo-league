@@ -2,8 +2,9 @@ import "server-only";
 import Link from "next/link";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { MatchCard } from "@/components/match/MatchCard";
-import { MATCH_SELECT_WITH_PLAYERS, toDisplayMatches } from "@/lib/match-display";
+import { MATCH_SELECT_WITH_PLAYERS, toPublicDisplayMatches } from "@/lib/match-display";
 import { MATCH_SESSION_DAY_FILTERS, MATCH_SESSION_DAY_LABEL } from "@/lib/match-session-label";
+import { memberPublicToken, resolveMemberByToken } from "@/lib/public-member-token";
 import { getAdminAccessServer } from "@/lib/admin-permissions";
 import { EmptyState } from "@/components/ui/SectionHeader";
 import type { Member, SessionDay } from "@/lib/supabase/database.types";
@@ -38,7 +39,7 @@ function isValidSessionType(value: string | undefined): value is SessionDay {
 export default async function MatchesPage({ searchParams }: MatchesPageProps) {
   const supabase = createClient();
   const currentClubId = await getCurrentClubId();
-  const filterMemberId = searchParams.member;
+  const filterMemberToken = searchParams.member;
   const filterSessionType = isValidSessionType(searchParams.sessionType)
     ? searchParams.sessionType
     : null;
@@ -68,6 +69,14 @@ export default async function MatchesPage({ searchParams }: MatchesPageProps) {
     .eq("club_id", currentClubId)
     .order("name");
 
+  const memberList = (members ?? []) as Pick<Member, "id" | "name">[];
+  // 토큰이 이 클럽 회원 목록 안에서 매칭되는 경우에만 실제 회원으로 취급한다.
+  // 타 클럽 토큰이나 잘못된 토큰은 절대 "필터 없음"으로 되돌리지 않고 명시적으로 빈 결과로 처리한다.
+  const selectedMember = filterMemberToken
+    ? resolveMemberByToken(currentClubId, filterMemberToken, memberList)
+    : null;
+  const invalidMemberFilter = Boolean(filterMemberToken) && !selectedMember;
+
   // MATCH_SELECT_WITH_PLAYERS가 members를 임베드 조회하므로 service-role 필요(0037).
   let matchesQuery = supabaseService
     .from("matches")
@@ -76,10 +85,12 @@ export default async function MatchesPage({ searchParams }: MatchesPageProps) {
     .order("played_at", { ascending: false })
     .order("created_at", { ascending: false });
 
-  if (filterMemberId) {
+  if (selectedMember) {
     matchesQuery = matchesQuery.or(
-      `team_a_player1_member.eq.${filterMemberId},team_a_player2_member.eq.${filterMemberId},team_b_player1_member.eq.${filterMemberId},team_b_player2_member.eq.${filterMemberId}`
+      `team_a_player1_member.eq.${selectedMember.id},team_a_player2_member.eq.${selectedMember.id},team_b_player1_member.eq.${selectedMember.id},team_b_player2_member.eq.${selectedMember.id}`
     );
+  } else if (invalidMemberFilter) {
+    matchesQuery = matchesQuery.eq("id", "00000000-0000-0000-0000-000000000000");
   }
 
   if (sessionIdsForType !== null) {
@@ -90,13 +101,7 @@ export default async function MatchesPage({ searchParams }: MatchesPageProps) {
   }
 
   const matchesResult = await matchesQuery;
-  const memberList = (members ?? []) as Pick<Member, "id" | "name">[];
-  const matches = toDisplayMatches(matchesResult.data);
-
-  // 현재 선택된 선수 이름 (선택 상태 칩 표시용)
-  const selectedMember = filterMemberId
-    ? memberList.find((m) => m.id === filterMemberId)
-    : null;
+  const matches = toPublicDisplayMatches(matchesResult.data);
 
   function buildHref(params: {
     member?: string;
@@ -112,9 +117,10 @@ export default async function MatchesPage({ searchParams }: MatchesPageProps) {
   }
 
   const emptyMessage = (() => {
-    if (filterSessionType && filterMemberId) return "조건에 맞는 경기 기록이 없어요.";
+    if (invalidMemberFilter) return "선택한 선수를 찾을 수 없어요.";
+    if (filterSessionType && filterMemberToken) return "조건에 맞는 경기 기록이 없어요.";
     if (filterSessionType) return "이 세션 구분에는 아직 등록된 경기가 없어요.";
-    if (filterMemberId) return "이 회원의 경기 기록이 없어요.";
+    if (filterMemberToken) return "이 회원의 경기 기록이 없어요.";
     return "아직 등록된 경기가 없어요.";
   })();
 
@@ -150,7 +156,7 @@ export default async function MatchesPage({ searchParams }: MatchesPageProps) {
 
       {/* ── 세션 구분 필터 — compact chip row, 항상 표시 ── */}
       <div className="mb-3 flex flex-wrap gap-1.5">
-        <Link href={buildHref({ member: filterMemberId })}>
+        <Link href={buildHref({ member: filterMemberToken })}>
           <span className={`inline-flex items-center rounded-sm border px-2.5 py-1 text-xs font-semibold transition-colors ${
             !filterSessionType
               ? "border-clay-400 bg-clay-400 text-line-25"
@@ -160,7 +166,7 @@ export default async function MatchesPage({ searchParams }: MatchesPageProps) {
           </span>
         </Link>
         {MATCH_SESSION_DAY_FILTERS.map((f) => (
-          <Link key={f.value} href={buildHref({ member: filterMemberId, sessionType: f.value })}>
+          <Link key={f.value} href={buildHref({ member: filterMemberToken, sessionType: f.value })}>
             <span className={`inline-flex items-center rounded-sm border px-2.5 py-1 text-xs font-semibold transition-colors ${
               filterSessionType === f.value
                 ? "border-clay-400 bg-clay-400 text-line-25"
@@ -191,7 +197,7 @@ export default async function MatchesPage({ searchParams }: MatchesPageProps) {
               </span>
               <Link
                 href={buildHref({
-                  member: filterMemberId,
+                  member: filterMemberToken,
                   sessionType: filterSessionType ?? undefined,
                   showPlayers: true,
                 })}
@@ -223,7 +229,7 @@ export default async function MatchesPage({ searchParams }: MatchesPageProps) {
             </span>
             <Link
               href={buildHref({
-                member: filterMemberId,
+                member: filterMemberToken,
                 sessionType: filterSessionType ?? undefined,
               })}
               className="text-[10px] font-semibold text-line-500 hover:text-line-700"
@@ -234,27 +240,30 @@ export default async function MatchesPage({ searchParams }: MatchesPageProps) {
           <div className="flex flex-wrap gap-1.5">
             <Link href={buildHref({ sessionType: filterSessionType ?? undefined })}>
               <span className={`inline-flex items-center rounded-sm border px-2.5 py-1 text-xs font-semibold transition-colors ${
-                !filterMemberId
+                !filterMemberToken
                   ? "border-clay-400 bg-clay-400 text-line-25"
                   : "border-line-200/40 bg-line-50 text-line-500"
               }`}>
                 전체
               </span>
             </Link>
-            {memberList.map((member) => (
-              <Link
-                key={member.id}
-                href={buildHref({ member: member.id, sessionType: filterSessionType ?? undefined })}
-              >
-                <span className={`inline-flex items-center rounded-sm border px-2.5 py-1 text-xs font-semibold transition-colors ${
-                  filterMemberId === member.id
-                    ? "border-clay-400 bg-clay-400 text-line-25"
-                    : "border-line-200/40 bg-line-50 text-line-500"
-                }`}>
-                  {member.name}
-                </span>
-              </Link>
-            ))}
+            {memberList.map((member) => {
+              const token = memberPublicToken(currentClubId, member.id);
+              return (
+                <Link
+                  key={token}
+                  href={buildHref({ member: token, sessionType: filterSessionType ?? undefined })}
+                >
+                  <span className={`inline-flex items-center rounded-sm border px-2.5 py-1 text-xs font-semibold transition-colors ${
+                    filterMemberToken === token
+                      ? "border-clay-400 bg-clay-400 text-line-25"
+                      : "border-line-200/40 bg-line-50 text-line-500"
+                  }`}>
+                    {member.name}
+                  </span>
+                </Link>
+              );
+            })}
           </div>
         </div>
       )}

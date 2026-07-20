@@ -97,10 +97,14 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
   const supabase = createServiceClient();
   const currentClubId = access.clubId;
 
-  // 0. 기존 경기 조회
+  // 0. 기존 경기 조회 — rollbackMatch/applyMatch(match-engine.ts)와 세션 재검증에
+  // 실제로 쓰이는 컬럼만 select한다(played_at/score/tiebreak/created_at/created_by는
+  // 이 핸들러에서 existingMatch를 통해 참조되지 않음).
   const { data: existingMatch, error: fetchError } = await supabase
     .from("matches")
-    .select("*")
+    .select(
+      "id, club_id, session_id, winner_team, team_a_player1_member, team_a_player1_guest, team_a_player2_member, team_a_player2_guest, team_b_player1_member, team_b_player1_guest, team_b_player2_member, team_b_player2_guest"
+    )
     .eq("id", matchId)
     .eq("club_id", currentClubId)
     .single();
@@ -109,25 +113,25 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     return NextResponse.json({ error: "경기를 찾을 수 없습니다." }, { status: 404 });
   }
 
-  // 1. 새로 선택된 선수들이 실제로 존재하는지 확인
+  // 1. 새로 선택된 선수들이 실제로 존재하는지 확인 — 존재 여부만 확인하므로 id만 필요.
   const memberIds = players.filter((p) => !p.isGuest).map((p) => p.id);
   const guestIds = players.filter((p) => p.isGuest).map((p) => p.id);
 
-  let memberRows: Member[] = [];
+  let memberRows: Pick<Member, "id">[] = [];
   if (memberIds.length > 0) {
     const { data } = await supabase
       .from("members")
-      .select("*")
+      .select("id")
       .in("id", memberIds)
       .eq("club_id", currentClubId);
     memberRows = data ?? [];
   }
 
-  let guestRows: Guest[] = [];
+  let guestRows: Pick<Guest, "id">[] = [];
   if (guestIds.length > 0) {
     const { data } = await supabase
       .from("guests")
-      .select("*")
+      .select("id")
       .in("id", guestIds)
       .eq("club_id", currentClubId);
     guestRows = data ?? [];
@@ -222,9 +226,12 @@ export async function DELETE(_request: NextRequest, { params }: RouteParams) {
   const supabase = createServiceClient();
   const currentClubId = access.clubId;
 
+  // rollbackMatch/복구용 applyMatch에서만 쓰이는 컬럼만 select한다.
   const { data: existingMatch, error: fetchError } = await supabase
     .from("matches")
-    .select("*")
+    .select(
+      "id, club_id, winner_team, team_a_player1_member, team_a_player1_guest, team_a_player2_member, team_a_player2_guest, team_b_player1_member, team_b_player1_guest, team_b_player2_member, team_b_player2_guest"
+    )
     .eq("id", matchId)
     .eq("club_id", currentClubId)
     .single();

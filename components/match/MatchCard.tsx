@@ -7,7 +7,7 @@ import { toast } from "@/components/ui/Toast";
 import { EditMatchModal } from "@/components/match/EditMatchModal";
 import { useIsAdmin } from "@/lib/hooks/useIsAdmin";
 import { MATCH_SESSION_DAY_LABEL } from "@/lib/match-session-label";
-import type { DisplayMatch } from "@/lib/match-display";
+import type { PublicDisplayMatch } from "@/lib/match-display";
 
 /**
  * MatchCard v3 — ATP Design Language Rollout (Step 17).
@@ -29,7 +29,7 @@ import type { DisplayMatch } from "@/lib/match-display";
  */
 
 interface MatchCardProps {
-  match: DisplayMatch;
+  match: PublicDisplayMatch;
   currentClubId: string;
 }
 
@@ -143,7 +143,7 @@ export function MatchCard({ match, currentClubId }: MatchCardProps) {
 
       {showEditModal && (
         <EditMatchModal
-          match={match}
+          matchId={match.id}
           currentClubId={currentClubId}
           onClose={() => setShowEditModal(false)}
           onSaved={() => {

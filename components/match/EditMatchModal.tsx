@@ -6,56 +6,125 @@ import { ScoreStepper } from "@/components/match/ScoreStepper";
 import { QuickGuestModal } from "@/components/match/QuickGuestModal";
 import { Button } from "@/components/ui/Button";
 import { toast } from "@/components/ui/Toast";
-import type { DisplayMatch } from "@/lib/match-display";
 import { Dropdown, DropdownItem } from "@/components/ui/Dropdown";
 import { MATCH_SESSION_DAY_LABEL, type SessionSummary } from "@/lib/match-session-label";
 import type { Guest } from "@/lib/supabase/database.types";
 
 type GuestModalTarget = "teamAPlayer1" | "teamAPlayer2" | "teamBPlayer1" | "teamBPlayer2";
+type LoadError = "forbidden" | "not_found" | "server_error" | null;
 
 interface EditMatchModalProps {
-  match: DisplayMatch;
+  matchId: string;
   onClose: () => void;
   onSaved: () => void;
   currentClubId: string;
 }
 
-function toSelectedPlayer(p: DisplayMatch["teamAPlayer1"]): SelectedPlayer {
+interface EditDetailPlayer {
+  id: string;
+  name: string;
+  isGuest: boolean;
+}
+
+interface EditDetailMatch {
+  id: string;
+  playedAt: string;
+  scoreA: number;
+  scoreB: number;
+  scoreATiebreak: number | null;
+  scoreBTiebreak: number | null;
+  winnerTeam: "A" | "B";
+  sessionId: string | null;
+  teamAPlayer1: EditDetailPlayer;
+  teamAPlayer2: EditDetailPlayer;
+  teamBPlayer1: EditDetailPlayer;
+  teamBPlayer2: EditDetailPlayer;
+}
+
+function toSelectedPlayer(p: EditDetailPlayer): SelectedPlayer {
   return { id: p.id, name: p.name, isGuest: p.isGuest };
 }
 
-export function EditMatchModal({ match, onClose, onSaved, currentClubId }: EditMatchModalProps) {
+const LOAD_ERROR_MESSAGE: Record<Exclude<LoadError, null>, string> = {
+  forbidden: "관리자 권한이 필요합니다.",
+  not_found: "경기 정보를 찾을 수 없습니다.",
+  server_error: "정보를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.",
+};
+
+export function EditMatchModal({ matchId, onClose, onSaved, currentClubId }: EditMatchModalProps) {
   const [members, setMembers] = useState<PlayerSelectorMember[]>([]);
   const [guests, setGuests] = useState<PlayerSelectorGuest[]>([]);
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
-  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(match.session_id);
+  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
+  const [playedAt, setPlayedAt] = useState<string>("");
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<LoadError>(null);
 
-  const [teamAPlayer1, setTeamAPlayer1] = useState<SelectedPlayer | null>(
-    toSelectedPlayer(match.teamAPlayer1)
-  );
-  const [teamAPlayer2, setTeamAPlayer2] = useState<SelectedPlayer | null>(
-    toSelectedPlayer(match.teamAPlayer2)
-  );
-  const [teamBPlayer1, setTeamBPlayer1] = useState<SelectedPlayer | null>(
-    toSelectedPlayer(match.teamBPlayer1)
-  );
-  const [teamBPlayer2, setTeamBPlayer2] = useState<SelectedPlayer | null>(
-    toSelectedPlayer(match.teamBPlayer2)
-  );
+  const [teamAPlayer1, setTeamAPlayer1] = useState<SelectedPlayer | null>(null);
+  const [teamAPlayer2, setTeamAPlayer2] = useState<SelectedPlayer | null>(null);
+  const [teamBPlayer1, setTeamBPlayer1] = useState<SelectedPlayer | null>(null);
+  const [teamBPlayer2, setTeamBPlayer2] = useState<SelectedPlayer | null>(null);
 
-  const [scoreA, setScoreA] = useState(match.score_a);
-  const [scoreB, setScoreB] = useState(match.score_b);
-  const [tiebreakA, setTiebreakA] = useState(match.score_a_tiebreak ?? 0);
-  const [tiebreakB, setTiebreakB] = useState(match.score_b_tiebreak ?? 0);
-  const [winnerTeam, setWinnerTeam] = useState<"A" | "B">(match.winner_team);
+  const [scoreA, setScoreA] = useState(0);
+  const [scoreB, setScoreB] = useState(0);
+  const [tiebreakA, setTiebreakA] = useState(0);
+  const [tiebreakB, setTiebreakB] = useState(0);
+  const [winnerTeam, setWinnerTeam] = useState<"A" | "B">("A");
 
   const [guestModalTarget, setGuestModalTarget] = useState<GuestModalTarget | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // 모달은 조건부 렌더로만 마운트되므로, 이 effect는 "모달이 열렸을 때"에만 실행된다 —
+  // 닫힌 상태에서는 edit-detail API를 호출하지 않는다.
   useEffect(() => {
-    async function loadData() {
+    let cancelled = false;
+
+    async function loadAll() {
+      const detailRes = await fetch(`/api/matches/${matchId}/edit-detail`).catch(() => null);
+      if (cancelled) return;
+
+      if (!detailRes) {
+        setLoadError("server_error");
+        setLoading(false);
+        return;
+      }
+      if (detailRes.status === 403) {
+        setLoadError("forbidden");
+        setLoading(false);
+        return;
+      }
+      if (detailRes.status === 404) {
+        setLoadError("not_found");
+        setLoading(false);
+        return;
+      }
+      if (!detailRes.ok) {
+        setLoadError("server_error");
+        setLoading(false);
+        return;
+      }
+
+      const detailBody = await detailRes.json().catch(() => null);
+      const match = detailBody?.match as EditDetailMatch | undefined;
+      if (!match) {
+        setLoadError("server_error");
+        setLoading(false);
+        return;
+      }
+
+      setSelectedSessionId(match.sessionId);
+      setPlayedAt(match.playedAt);
+      setTeamAPlayer1(toSelectedPlayer(match.teamAPlayer1));
+      setTeamAPlayer2(toSelectedPlayer(match.teamAPlayer2));
+      setTeamBPlayer1(toSelectedPlayer(match.teamBPlayer1));
+      setTeamBPlayer2(toSelectedPlayer(match.teamBPlayer2));
+      setScoreA(match.scoreA);
+      setScoreB(match.scoreB);
+      setTiebreakA(match.scoreATiebreak ?? 0);
+      setTiebreakB(match.scoreBTiebreak ?? 0);
+      setWinnerTeam(match.winnerTeam);
+
       const [memberRes, guestRes, sessionsBody] = await Promise.all([
         fetch(`/api/matches/edit-members?clubId=${currentClubId}`)
           .then((res) => res.json())
@@ -76,14 +145,16 @@ export function EditMatchModal({ match, onClose, onSaved, currentClubId }: EditM
             return { sessions: [] };
           }),
       ]);
+      if (cancelled) return;
+
       setMembers(memberRes?.members ?? []);
       setGuests(guestRes?.guests ?? []);
 
       let sessionList = (sessionsBody?.sessions ?? []) as SessionSummary[];
       // 이 경기에 이미 연결된 세션이 archived라서 목록에 없으면, 선택지가 사라지지 않도록 단건 모드로 추가한다.
-      if (match.session_id && !sessionList.some((s) => s.id === match.session_id)) {
+      if (match.sessionId && !sessionList.some((s) => s.id === match.sessionId)) {
         const single = await fetch(
-          `/api/attendance/public-sessions?${new URLSearchParams({ clubId: currentClubId, sessionId: match.session_id })}`
+          `/api/attendance/public-sessions?${new URLSearchParams({ clubId: currentClubId, sessionId: match.sessionId })}`
         )
           .then((res) => (res.ok ? res.json() : { session: null }))
           .catch(() => ({ session: null }));
@@ -91,11 +162,16 @@ export function EditMatchModal({ match, onClose, onSaved, currentClubId }: EditM
           sessionList = [single.session as SessionSummary, ...sessionList];
         }
       }
+      if (cancelled) return;
       setSessions(sessionList);
       setLoading(false);
     }
-    loadData();
-  }, [match.session_id, currentClubId]);
+
+    loadAll();
+    return () => {
+      cancelled = true;
+    };
+  }, [matchId, currentClubId]);
 
   const isTiebreakSet = (scoreA === 7 && scoreB === 6) || (scoreA === 6 && scoreB === 7);
 
@@ -150,12 +226,12 @@ export function EditMatchModal({ match, onClose, onSaved, currentClubId }: EditM
     setSubmitting(true);
     setError(null);
 
-    const res = await fetch(`/api/matches/${match.id}`, {
+    const res = await fetch(`/api/matches/${matchId}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         sessionId: selectedSessionId,
-        playedAt: match.played_at,
+        playedAt,
         teamAPlayer1: { id: teamAPlayer1!.id, isGuest: teamAPlayer1!.isGuest },
         teamAPlayer2: { id: teamAPlayer2!.id, isGuest: teamAPlayer2!.isGuest },
         teamBPlayer1: { id: teamBPlayer1!.id, isGuest: teamBPlayer1!.isGuest },
@@ -191,7 +267,11 @@ export function EditMatchModal({ match, onClose, onSaved, currentClubId }: EditM
           </button>
         </div>
 
-        {loading ? (
+        {loadError ? (
+          <p className="py-8 text-center text-sm text-[color:var(--surface-muted)]">
+            {LOAD_ERROR_MESSAGE[loadError]}
+          </p>
+        ) : loading ? (
           <p className="py-8 text-center text-sm text-[color:var(--surface-muted)]">불러오는 중...</p>
         ) : (
           <>

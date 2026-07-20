@@ -21,6 +21,7 @@ import {
 import { notFound } from "next/navigation";
 import type { PublicMemberDetailRow } from "@/lib/public-member";
 import { getAdminAccessServer } from "@/lib/admin-permissions";
+import { memberPublicToken } from "@/lib/public-member-token";
 
 /**
  * /c/[slug]/members/[id] — canonical public 회원 상세.
@@ -146,7 +147,7 @@ export default async function ClubMemberDetailPage({ params }: Props) {
         <section className="mb-4">
           <div className="mb-2 flex items-center justify-between">
             <h2 className="text-xs font-bold uppercase tracking-widest text-line-600">최근 경기</h2>
-            <Link href={`/c/${slug}/matches?member=${member.id}`} className="text-xs font-semibold text-clay-400">
+            <Link href={`/c/${slug}/matches?member=${memberPublicToken(clubId, member.id)}`} className="text-xs font-semibold text-clay-400">
               전체보기 →
             </Link>
           </div>
@@ -154,8 +155,8 @@ export default async function ClubMemberDetailPage({ params }: Props) {
             <Card className="p-4 text-center text-sm text-line-400">최근 경기 기록이 없습니다.</Card>
           ) : (
             <div className="space-y-2">
-              {recentMatches.map((summary) => (
-                <Link key={summary.match.id} href={`/c/${slug}/matches?member=${member.id}`}>
+              {recentMatches.map((summary, idx) => (
+                <Link key={`${idx}-${summary.match.played_at}`} href={`/c/${slug}/matches?member=${memberPublicToken(clubId, member.id)}`}>
                   <Card className="p-3">
                     <div className="flex items-center justify-between text-xs text-line-400">
                       <span>{summary.match.played_at}</span>
@@ -285,8 +286,8 @@ export default async function ClubMemberDetailPage({ params }: Props) {
             <Card className="p-4 text-center text-sm text-line-400">최근 파트너 정보가 없습니다.</Card>
           ) : (
             <div className="space-y-1.5">
-              {recentPartners.map((partner) => (
-                <Card key={`${partner.isGuest ? "guest" : "member"}:${partner.id}`} className="flex items-center justify-between p-3">
+              {recentPartners.map((partner, idx) => (
+                <Card key={`${idx}-${partner.isGuest ? "guest" : "member"}-${partner.name}`} className="flex items-center justify-between p-3">
                   <span className="text-sm font-medium text-line-900">{partner.name}</span>
                   <span className="text-xs font-semibold text-line-500">{partner.count}회</span>
                 </Card>

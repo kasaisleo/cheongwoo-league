@@ -80,7 +80,7 @@ export function RankingTeaserCard({
         if (!member) return null;
         const rank = idx + 2;
         return (
-          <Link key={member.id} href={rankingHref} className="block">
+          <Link key={`${rank}-${member.name}`} href={rankingHref} className="block">
             <div
               className={`flex items-center gap-3 px-4 py-3 transition-colors hover:bg-line-100/40 ${
                 idx === 0 ? "border-b border-line-200/30" : ""
