@@ -4,6 +4,27 @@ import type { Match, Member, Guest } from "@/lib/supabase/database.types";
 /** 일반 경기 승리 시 적용되는 리그 포인트 */
 export const LEAGUE_POINT_WIN = 10;
 
+/**
+ * applyMatch/rollbackMatch/extractPlayerSlots가 실제로 참조하는 필드만 정의한
+ * 최소 입력 타입. played_at/score/tiebreak/session_id/created_at/created_by는
+ * 여기서 절대 참조하지 않는다 — 호출부가 select("*") 없이 이 필드들만 select해도
+ * 안전함을 타입으로 보장한다.
+ */
+export type MatchRatingInput = Pick<
+  Match,
+  | "id"
+  | "club_id"
+  | "winner_team"
+  | "team_a_player1_member"
+  | "team_a_player1_guest"
+  | "team_a_player2_member"
+  | "team_a_player2_guest"
+  | "team_b_player1_member"
+  | "team_b_player1_guest"
+  | "team_b_player2_member"
+  | "team_b_player2_guest"
+>;
+
 export interface MatchPlayerSlot {
   prefix: string;
   isGuest: boolean;
@@ -11,7 +32,7 @@ export interface MatchPlayerSlot {
   won: boolean;
 }
 
-export function extractPlayerSlots(match: Match): MatchPlayerSlot[] {
+export function extractPlayerSlots(match: MatchRatingInput): MatchPlayerSlot[] {
   const teamAWon = match.winner_team === "A";
   const teamBWon = match.winner_team === "B";
 
@@ -55,7 +76,7 @@ export function extractPlayerSlots(match: Match): MatchPlayerSlot[] {
 
 export async function applyMatch(
   supabase: ReturnType<typeof createServiceClient>,
-  match: Match
+  match: MatchRatingInput
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const clubId = match.club_id;
 
@@ -143,7 +164,7 @@ export async function applyMatch(
 
 export async function rollbackMatch(
   supabase: ReturnType<typeof createServiceClient>,
-  match: Match
+  match: MatchRatingInput
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const clubId = match.club_id;
 

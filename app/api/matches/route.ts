@@ -93,21 +93,22 @@ export async function POST(request: NextRequest) {
   const memberIds = players.filter((p) => !p.isGuest).map((p) => p.id);
   const guestIds = players.filter((p) => p.isGuest).map((p) => p.id);
 
-  let memberRows: Member[] = [];
+  // 존재 + club 소속 여부만 확인하므로 id만 필요.
+  let memberRows: Pick<Member, "id">[] = [];
   if (memberIds.length > 0) {
     const { data } = await supabase
       .from("members")
-      .select("*")
+      .select("id")
       .in("id", memberIds)
       .eq("club_id", currentClubId);
     memberRows = data ?? [];
   }
 
-  let guestRows: Guest[] = [];
+  let guestRows: Pick<Guest, "id">[] = [];
   if (guestIds.length > 0) {
     const { data } = await supabase
       .from("guests")
-      .select("*")
+      .select("id")
       .in("id", guestIds)
       .eq("club_id", currentClubId);
     guestRows = data ?? [];
@@ -166,7 +167,11 @@ export async function POST(request: NextRequest) {
       score_b_tiebreak: isTiebreakSet ? scoreBTiebreak : null,
       winner_team: winnerTeam,
     })
-    .select()
+    // applyMatch(match-engine.ts)가 실제로 참조하는 컬럼만 반환한다 —
+    // played_at/score/tiebreak/session_id/created_at/created_by는 이후 미참조.
+    .select(
+      "id, club_id, winner_team, team_a_player1_member, team_a_player1_guest, team_a_player2_member, team_a_player2_guest, team_b_player1_member, team_b_player1_guest, team_b_player2_member, team_b_player2_guest"
+    )
     .single();
 
   if (matchError || !match) {

@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { getAdminAccessServer } from "@/lib/admin-permissions";
-import { applyMatch, rollbackMatch } from "@/lib/match-engine";
-import type { Match, Member, Guest } from "@/lib/supabase/database.types";
+import { applyMatch, rollbackMatch, type MatchRatingInput } from "@/lib/match-engine";
+import type { Member, Guest } from "@/lib/supabase/database.types";
+
+/** PUT은 rollback/apply 최소 필드 외에 session_id 갱신 여부 판단에 session_id도 필요하다. */
+type MatchUpdateContext = MatchRatingInput & { session_id: string | null };
 
 interface PlayerInput {
   id: string;
@@ -165,7 +168,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
   }
 
   // 2. rollback — 기존 경기가 미쳤던 효과(LP/wins/losses)를 먼저 되돌린다.
-  const rollbackResult = await rollbackMatch(supabase, existingMatch as Match);
+  const rollbackResult = await rollbackMatch(supabase, existingMatch as MatchUpdateContext);
   if (!rollbackResult.ok) {
     return NextResponse.json({ error: rollbackResult.error }, { status: 500 });
   }
@@ -174,7 +177,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
   const { data: updatedMatch, error: updateError } = await supabase
     .from("matches")
     .update({
-      session_id: sessionId ?? (existingMatch as Match).session_id,
+      session_id: sessionId ?? (existingMatch as MatchUpdateContext).session_id,
       played_at: playedAt,
       team_a_player1_member: teamAPlayer1.isGuest ? null : teamAPlayer1.id,
       team_a_player1_guest: teamAPlayer1.isGuest ? teamAPlayer1.id : null,
@@ -192,17 +195,21 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     })
     .eq("id", matchId)
     .eq("club_id", currentClubId)
-    .select()
+    // applyMatch(match-engine.ts)가 실제로 참조하는 컬럼만 반환한다 — session_id는
+    // 이후 updatedMatch에서 다시 참조되지 않아 제외.
+    .select(
+      "id, club_id, winner_team, team_a_player1_member, team_a_player1_guest, team_a_player2_member, team_a_player2_guest, team_b_player1_member, team_b_player1_guest, team_b_player2_member, team_b_player2_guest"
+    )
     .single();
 
   if (updateError || !updatedMatch) {
     // 수정 자체가 실패하면, 방금 되돌린 효과를 원래 경기 내용으로 다시 적용해 정합성을 복구한다.
-    await applyMatch(supabase, existingMatch as Match);
+    await applyMatch(supabase, existingMatch as MatchUpdateContext);
     return NextResponse.json({ error: "경기 수정에 실패했습니다." }, { status: 500 });
   }
 
   // 4. apply — 수정된 새 경기 내용으로 효과를 다시 적용한다.
-  const applyResult = await applyMatch(supabase, updatedMatch as Match);
+  const applyResult = await applyMatch(supabase, updatedMatch);
   if (!applyResult.ok) {
     return NextResponse.json({ error: applyResult.error }, { status: 500 });
   }
@@ -240,7 +247,7 @@ export async function DELETE(_request: NextRequest, { params }: RouteParams) {
     return NextResponse.json({ error: "경기를 찾을 수 없습니다." }, { status: 404 });
   }
 
-  const rollbackResult = await rollbackMatch(supabase, existingMatch as Match);
+  const rollbackResult = await rollbackMatch(supabase, existingMatch as MatchRatingInput);
   if (!rollbackResult.ok) {
     return NextResponse.json({ error: rollbackResult.error }, { status: 500 });
   }
@@ -253,7 +260,7 @@ export async function DELETE(_request: NextRequest, { params }: RouteParams) {
 
   if (deleteError) {
     // 삭제 자체가 실패하면, 되돌렸던 효과를 다시 적용해 정합성을 복구한다.
-    await applyMatch(supabase, existingMatch as Match);
+    await applyMatch(supabase, existingMatch as MatchRatingInput);
     return NextResponse.json({ error: "경기 삭제에 실패했습니다." }, { status: 500 });
   }
 
