@@ -6,8 +6,9 @@ import { Badge } from "@/components/ui/Badge";
 import { MATCH_SESSION_DAY_LABEL } from "@/lib/match-session-label";
 import { EmptyState } from "@/components/ui/SectionHeader";
 import { PublicShell } from "@/components/shell";
-import type { PointHistoryRpcRow } from "@/lib/point-history";
+import type { PointHistoryV2RpcRow } from "@/lib/point-history";
 import type { PublicMemberListRow } from "@/lib/public-member";
+import { memberPublicToken, resolveMemberByToken } from "@/lib/public-member-token";
 
 export const dynamic = "force-dynamic";
 
@@ -31,7 +32,7 @@ export default async function ClubPointHistoryPage({ params, searchParams }: Poi
   const club = await requirePublicClubBySlug(slug);
 
   const supabase = createClient();
-  const filterMemberId = searchParams.member;
+  const filterMemberToken = searchParams.member;
 
   // members는 anon/authenticated GRANT가 회수되어(0037) 직접 조회할 수 없다 —
   // 이미 club_id/is_active/deleted_at 필터를 강제하는 공개 RPC를 재사용한다.
@@ -40,15 +41,24 @@ export default async function ClubPointHistoryPage({ params, searchParams }: Poi
     .order("name");
 
   const memberList = (members ?? []) as PublicMemberListRow[];
-  const memberIds = memberList.map((m) => m.id);
 
-  const rpcMemberId = filterMemberId && memberIds.includes(filterMemberId) ? filterMemberId : null;
+  // 토큰이 이 클럽 회원 목록 안에서 매칭되는 경우에만 실제 회원으로 취급한다.
+  // 타 클럽 토큰이나 잘못된 토큰은 "필터 없음"(전체 조회)으로 조용히 되돌리지
+  // 않고, 아래에서 명시적으로 빈 결과로 처리한다(matches P0와 동일 원칙).
+  const resolvedMember = filterMemberToken
+    ? resolveMemberByToken(club.id, filterMemberToken, memberList)
+    : null;
+  const invalidMemberFilter = Boolean(filterMemberToken) && !resolvedMember;
 
-  const { data: historyRows } = await supabase.rpc("get_public_point_history", {
-    p_club_id: club.id,
-    p_member_id: rpcMemberId,
-  });
-  const history = (historyRows ?? []) as PointHistoryRpcRow[];
+  const historyRows = invalidMemberFilter
+    ? []
+    : (
+        await supabase.rpc("get_public_point_history_v2", {
+          p_club_id: club.id,
+          p_member_id: resolvedMember?.id ?? null,
+        })
+      ).data;
+  const history = (historyRows ?? []) as PointHistoryV2RpcRow[];
 
   const baseHref = `/c/${slug}/point-history`;
 
@@ -76,24 +86,29 @@ export default async function ClubPointHistoryPage({ params, searchParams }: Poi
 
       <div className="mb-4 flex flex-wrap gap-1.5">
         <Link href={baseHref}>
-          <span className={`inline-flex items-center rounded-full border px-3 py-1.5 text-sm transition-colors ${!filterMemberId ? "border-clay-400 bg-clay-400 text-line-25" : "border-line-200 bg-line-50 text-line-800"}`}>
+          <span className={`inline-flex items-center rounded-full border px-3 py-1.5 text-sm transition-colors ${!filterMemberToken ? "border-clay-400 bg-clay-400 text-line-25" : "border-line-200 bg-line-50 text-line-800"}`}>
             전체
           </span>
         </Link>
-        {memberList.map((member) => (
-          <Link key={member.id} href={`${baseHref}?member=${member.id}`}>
-            <span className={`inline-flex items-center rounded-full border px-3 py-1.5 text-sm transition-colors ${filterMemberId === member.id ? "border-clay-400 bg-clay-400 text-line-25" : "border-line-200 bg-line-50 text-line-800"}`}>
-              {member.name}
-            </span>
-          </Link>
-        ))}
+        {memberList.map((member) => {
+          const token = memberPublicToken(club.id, member.id);
+          return (
+            <Link key={token} href={`${baseHref}?member=${token}`}>
+              <span className={`inline-flex items-center rounded-full border px-3 py-1.5 text-sm transition-colors ${filterMemberToken === token ? "border-clay-400 bg-clay-400 text-line-25" : "border-line-200 bg-line-50 text-line-800"}`}>
+                {member.name}
+              </span>
+            </Link>
+          );
+        })}
       </div>
 
-      {history.length === 0 ? (
-        <EmptyState message={filterMemberId ? "이 회원의 포인트 변동 기록이 없어요." : "아직 포인트 변동 기록이 없어요."} />
+      {invalidMemberFilter ? (
+        <EmptyState message="선택한 선수를 찾을 수 없어요." />
+      ) : history.length === 0 ? (
+        <EmptyState message={filterMemberToken ? "이 회원의 포인트 변동 기록이 없어요." : "아직 포인트 변동 기록이 없어요."} />
       ) : (
         <div className="space-y-2">
-          {history.map((row) => {
+          {history.map((row, idx) => {
             const isPositive = row.point_change > 0;
             const isZero = row.point_change === 0;
             const dateLabel = new Date(row.created_at).toLocaleString("ko-KR", {
@@ -104,7 +119,7 @@ export default async function ClubPointHistoryPage({ params, searchParams }: Poi
               minute: "2-digit",
             });
             return (
-              <Card key={row.id} className="p-3">
+              <Card key={`${row.match_group_token ?? "standalone"}-${row.created_at}-${row.reason}-${idx}`} className="p-3">
                 <div className="flex items-center justify-between text-xs text-line-400">
                   <span>{dateLabel}</span>
                   <Badge tone={isZero ? "neutral" : isPositive ? "court" : "fault"}>
@@ -123,7 +138,7 @@ export default async function ClubPointHistoryPage({ params, searchParams }: Poi
                 <p className="mt-1 text-xs text-line-500">
                   {row.point_before} → {row.point_after}
                 </p>
-                {row.match_id && row.match_played_at ? (
+                {row.match_played_at ? (
                   <p className="mt-1 text-xs text-line-400">
                     연결된 경기: {row.match_played_at}
                     {row.session_day && ` · ${MATCH_SESSION_DAY_LABEL[row.session_day]}`}

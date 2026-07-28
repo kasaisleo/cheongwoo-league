@@ -4,7 +4,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { MATCH_SELECT_WITH_PLAYERS, toDisplayMatches, type DisplayMatch } from "@/lib/match-display";
 import { LEAGUE_POINT_WIN } from "@/lib/match-engine";
 import type { AttendanceStatus, SessionDay, SessionStatus } from "@/lib/supabase/database.types";
-import type { PointHistoryRpcRow } from "@/lib/point-history";
+import type { PointHistoryV2RpcRow } from "@/lib/point-history";
 
 /**
  * 이 파일의 모든 export 함수는 clubId를 필수 파라미터로 받는다 (TS 레벨 강제).
@@ -73,11 +73,11 @@ export interface MemberAttendanceSummary {
 }
 
 export interface MemberPointHistoryEntry {
-  id: string;
   createdAt: string;
   pointChange: number;
   reason: string;
-  matchId: string | null;
+  /** club_id+match_id 기반 비가역 해시(0043) — 같은 경기 그룹화 용도로만 사용, raw match UUID 아님. */
+  matchGroupToken: string | null;
 }
 
 export interface MemberPartnerSummary {
@@ -106,27 +106,32 @@ export function pointHistoryReasonLabel(reason: string): string {
 
 export interface PointHistoryGroup {
   key: string;
-  matchId: string | null;
+  matchGroupToken: string | null;
   entries: MemberPointHistoryEntry[];
 }
 
 /**
- * 최신순으로 정렬된 LP 이력 목록에서, 같은 match_id를 가진 항목들이 인접해 있으면
- * 하나의 그룹으로 묶는다. 정렬 순서 자체는 바꾸지 않고, 화면에 보여줄 묶음 경계만
- * 계산한다. match_id가 null인 항목(예: 대회 보너스 등 경기와 무관한 변동)은 항상
- * 단독 그룹이 된다.
+ * 최신순으로 정렬된 LP 이력 목록에서, 같은 matchGroupToken을 가진 항목들이
+ * 인접해 있으면 하나의 그룹으로 묶는다. 정렬 순서 자체는 바꾸지 않고, 화면에
+ * 보여줄 묶음 경계만 계산한다. matchGroupToken이 null인 항목(예: 대회 보너스
+ * 등 경기와 무관한 변동)은 항상 단독 그룹이 된다. 그룹/항목 key는 raw UUID
+ * 대신 index+생성시각 조합을 쓴다(entries에는 더 이상 row id가 없음).
  */
 export function groupPointHistoryByMatch(entries: MemberPointHistoryEntry[]): PointHistoryGroup[] {
   const groups: PointHistoryGroup[] = [];
 
-  for (const entry of entries) {
+  entries.forEach((entry, idx) => {
     const lastGroup = groups[groups.length - 1];
-    if (entry.matchId && lastGroup && lastGroup.matchId === entry.matchId) {
+    if (entry.matchGroupToken && lastGroup && lastGroup.matchGroupToken === entry.matchGroupToken) {
       lastGroup.entries.push(entry);
     } else {
-      groups.push({ key: entry.id, matchId: entry.matchId, entries: [entry] });
+      groups.push({
+        key: `${entry.matchGroupToken ?? "standalone"}-${entry.createdAt}-${entry.reason}-${idx}`,
+        matchGroupToken: entry.matchGroupToken,
+        entries: [entry],
+      });
     }
-  }
+  });
 
   return groups;
 }
@@ -302,13 +307,14 @@ export async function fetchMemberAttendanceRate(memberId: string, clubId: string
 /**
  * 회원의 최근 LP 변동 내역 N건.
  *
- * get_public_point_history RPC(0034)를 p_include_inactive_member=true로
+ * get_public_point_history_v2 RPC(0043)를 p_include_inactive_member=true로
  * 호출한다 — 이 프로필 위젯은 canonical 목록과 달리 활동상태(is_active)와
  * 무관하게 그 회원의 이력을 그대로 보여주는 게 기존 의도다(탈퇴/휴면
  * 회원의 프로필 페이지도 "탈퇴"/"활동 제외" 배지와 함께 정상 노출되는
  * 것과 동일한 맥락). RPC 자체가 p_member_id가 없으면 이 플래그를 무시하고
  * 항상 활동 회원만 반환하도록 잠겨 있어, 이 호출이 club 전체 비활성 회원
- * 노출로 이어지지 않는다.
+ * 노출로 이어지지 않는다. v2는 id/match_id/member_id/club_id raw UUID를
+ * 반환하지 않으므로 member_id를 별도로 매핑하지 않는다.
  */
 export async function fetchMemberRecentPointHistory(
   memberId: string,
@@ -318,18 +324,17 @@ export async function fetchMemberRecentPointHistory(
   const supabase = createClient();
   if (!(await verifyMemberInClub(memberId, clubId))) return [];
 
-  const { data } = await supabase.rpc("get_public_point_history", {
+  const { data } = await supabase.rpc("get_public_point_history_v2", {
     p_club_id: clubId,
     p_member_id: memberId,
     p_include_inactive_member: true,
   });
 
-  return ((data ?? []) as PointHistoryRpcRow[]).slice(0, limit).map((row) => ({
-    id: row.id,
+  return ((data ?? []) as PointHistoryV2RpcRow[]).slice(0, limit).map((row) => ({
     createdAt: row.created_at,
     pointChange: row.point_change,
     reason: row.reason,
-    matchId: row.match_id,
+    matchGroupToken: row.match_group_token,
   }));
 }
 

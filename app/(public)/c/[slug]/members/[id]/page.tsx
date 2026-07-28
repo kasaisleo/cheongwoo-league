@@ -256,8 +256,11 @@ export default async function ClubMemberDetailPage({ params }: Props) {
                     </p>
                   )}
                   <div className="space-y-1.5">
-                    {group.entries.map((entry) => (
-                      <div key={entry.id} className="flex items-center justify-between">
+                    {group.entries.map((entry, entryIdx) => (
+                      <div
+                        key={`${entry.matchGroupToken ?? "standalone"}-${entry.createdAt}-${entry.reason}-${entryIdx}`}
+                        className="flex items-center justify-between"
+                      >
                         <span className="text-xs text-line-500">
                           {new Date(entry.createdAt).toLocaleDateString("ko-KR")}
                         </span>
