@@ -1,11 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { getAdminAccessServer } from "@/lib/admin-permissions";
-import { applyMatch, rollbackMatch, type MatchRatingInput } from "@/lib/match-engine";
+import { mapMatchRpcError } from "@/lib/match-engine";
 import type { Member, Guest } from "@/lib/supabase/database.types";
-
-/** PUT은 rollback/apply 최소 필드 외에 session_id 갱신 여부 판단에 session_id도 필요하다. */
-type MatchUpdateContext = MatchRatingInput & { session_id: string | null };
 
 interface PlayerInput {
   id: string;
@@ -43,8 +40,9 @@ interface RouteParams {
  * 경기 수정. manager 이상만 가능 (현재는 isAdminSession으로 대체, 권한 시스템
  * 도입 후 permission_role >= manager 체크로 교체할 것).
  *
- * 처리 순서: rollbackMatch(기존 경기 효과 되돌리기) → 경기 내용 수정 → applyMatch(새 효과 적용)
- * 이 순서를 지켜야 LP/wins/losses가 항상 "현재 저장된 경기 내용"과 일치하는 상태를 유지한다.
+ * update_match_with_effects(0045)가 기존 경기 lock + 효과 undo + 내용 수정 +
+ * 신규 효과 apply를 단일 DB 트랜잭션으로 처리한다 — route는 더 이상 이
+ * 순서를 조립하지 않는다.
  */
 export async function PUT(request: NextRequest, { params }: RouteParams) {
   const access = await getAdminAccessServer();
@@ -100,23 +98,9 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
   const supabase = createServiceClient();
   const currentClubId = access.clubId;
 
-  // 0. 기존 경기 조회 — rollbackMatch/applyMatch(match-engine.ts)와 세션 재검증에
-  // 실제로 쓰이는 컬럼만 select한다(played_at/score/tiebreak/created_at/created_by는
-  // 이 핸들러에서 existingMatch를 통해 참조되지 않음).
-  const { data: existingMatch, error: fetchError } = await supabase
-    .from("matches")
-    .select(
-      "id, club_id, session_id, winner_team, team_a_player1_member, team_a_player1_guest, team_a_player2_member, team_a_player2_guest, team_b_player1_member, team_b_player1_guest, team_b_player2_member, team_b_player2_guest"
-    )
-    .eq("id", matchId)
-    .eq("club_id", currentClubId)
-    .single();
-
-  if (fetchError || !existingMatch) {
-    return NextResponse.json({ error: "경기를 찾을 수 없습니다." }, { status: 404 });
-  }
-
-  // 1. 새로 선택된 선수들이 실제로 존재하는지 확인 — 존재 여부만 확인하므로 id만 필요.
+  // 1. 새로 선택된 선수들이 실제로 존재하는지 확인. update_match_with_effects(0045)
+  //    내부에도 동일 검증이 있지만 member/guest를 구분하지 않으므로, 기존 UX(회원/게스트
+  //    각각 다른 메시지)를 유지하기 위해 여기서 먼저 확인한다.
   const memberIds = players.filter((p) => !p.isGuest).map((p) => p.id);
   const guestIds = players.filter((p) => p.isGuest).map((p) => p.id);
 
@@ -147,82 +131,45 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     return NextResponse.json({ error: "게스트 정보를 불러오지 못했습니다." }, { status: 500 });
   }
 
-  // 1-1. session_id가 함께 전달된 경우, 그 세션이 유효한지(존재 + archived 아님) 확인한다.
-  if (sessionId) {
-    const { data: session, error: sessionError } = await supabase
-      .from("attendance_sessions")
-      .select("id, status")
-      .eq("id", sessionId)
-      .eq("club_id", currentClubId)
-      .single();
+  // 2. update_match_with_effects(0045) 호출 — 매치 존재 확인(lock), 세션 검증,
+  //    기존 효과 undo, 내용 수정, 신규 효과 apply를 단일 트랜잭션으로 처리한다.
+  //    sessionId를 보내지 않으면 null을 전달하고, RPC가 기존 session_id를 그대로
+  //    유지한다(기존 route의 `sessionId ?? existingMatch.session_id`와 동일 의미).
+  const { error: rpcError } = await supabase.rpc("update_match_with_effects", {
+    p_match_id: matchId,
+    p_club_id: currentClubId,
+    p_session_id: sessionId ?? null,
+    p_played_at: playedAt,
+    p_score_a: scoreA,
+    p_score_b: scoreB,
+    p_score_a_tiebreak: isTiebreakSet ? scoreATiebreak : null,
+    p_score_b_tiebreak: isTiebreakSet ? scoreBTiebreak : null,
+    p_winner_team: winnerTeam,
+    p_team_a_player1_member: teamAPlayer1.isGuest ? null : teamAPlayer1.id,
+    p_team_a_player1_guest: teamAPlayer1.isGuest ? teamAPlayer1.id : null,
+    p_team_a_player2_member: teamAPlayer2.isGuest ? null : teamAPlayer2.id,
+    p_team_a_player2_guest: teamAPlayer2.isGuest ? teamAPlayer2.id : null,
+    p_team_b_player1_member: teamBPlayer1.isGuest ? null : teamBPlayer1.id,
+    p_team_b_player1_guest: teamBPlayer1.isGuest ? teamBPlayer1.id : null,
+    p_team_b_player2_member: teamBPlayer2.isGuest ? null : teamBPlayer2.id,
+    p_team_b_player2_guest: teamBPlayer2.isGuest ? teamBPlayer2.id : null,
+  });
 
-    if (sessionError || !session) {
-      return NextResponse.json({ error: "세션을 찾을 수 없습니다." }, { status: 404 });
-    }
-    if (session.status === "archived") {
-      return NextResponse.json(
-        { error: "보관된 세션으로는 변경할 수 없습니다." },
-        { status: 400 }
-      );
-    }
+  if (rpcError) {
+    const { status, message } = mapMatchRpcError(rpcError.message, "경기 수정에 실패했습니다.");
+    return NextResponse.json({ error: message }, { status });
   }
 
-  // 2. rollback — 기존 경기가 미쳤던 효과(LP/wins/losses)를 먼저 되돌린다.
-  const rollbackResult = await rollbackMatch(supabase, existingMatch as MatchUpdateContext);
-  if (!rollbackResult.ok) {
-    return NextResponse.json({ error: rollbackResult.error }, { status: 500 });
-  }
-
-  // 3. 경기 내용 수정
-  const { data: updatedMatch, error: updateError } = await supabase
-    .from("matches")
-    .update({
-      session_id: sessionId ?? (existingMatch as MatchUpdateContext).session_id,
-      played_at: playedAt,
-      team_a_player1_member: teamAPlayer1.isGuest ? null : teamAPlayer1.id,
-      team_a_player1_guest: teamAPlayer1.isGuest ? teamAPlayer1.id : null,
-      team_a_player2_member: teamAPlayer2.isGuest ? null : teamAPlayer2.id,
-      team_a_player2_guest: teamAPlayer2.isGuest ? teamAPlayer2.id : null,
-      team_b_player1_member: teamBPlayer1.isGuest ? null : teamBPlayer1.id,
-      team_b_player1_guest: teamBPlayer1.isGuest ? teamBPlayer1.id : null,
-      team_b_player2_member: teamBPlayer2.isGuest ? null : teamBPlayer2.id,
-      team_b_player2_guest: teamBPlayer2.isGuest ? teamBPlayer2.id : null,
-      score_a: scoreA,
-      score_b: scoreB,
-      score_a_tiebreak: isTiebreakSet ? scoreATiebreak : null,
-      score_b_tiebreak: isTiebreakSet ? scoreBTiebreak : null,
-      winner_team: winnerTeam,
-    })
-    .eq("id", matchId)
-    .eq("club_id", currentClubId)
-    // applyMatch(match-engine.ts)가 실제로 참조하는 컬럼만 반환한다 — session_id는
-    // 이후 updatedMatch에서 다시 참조되지 않아 제외.
-    .select(
-      "id, club_id, winner_team, team_a_player1_member, team_a_player1_guest, team_a_player2_member, team_a_player2_guest, team_b_player1_member, team_b_player1_guest, team_b_player2_member, team_b_player2_guest"
-    )
-    .single();
-
-  if (updateError || !updatedMatch) {
-    // 수정 자체가 실패하면, 방금 되돌린 효과를 원래 경기 내용으로 다시 적용해 정합성을 복구한다.
-    await applyMatch(supabase, existingMatch as MatchUpdateContext);
-    return NextResponse.json({ error: "경기 수정에 실패했습니다." }, { status: 500 });
-  }
-
-  // 4. apply — 수정된 새 경기 내용으로 효과를 다시 적용한다.
-  const applyResult = await applyMatch(supabase, updatedMatch);
-  if (!applyResult.ok) {
-    return NextResponse.json({ error: applyResult.error }, { status: 500 });
-  }
-
-  return NextResponse.json({ ok: true, matchId: updatedMatch.id });
+  return NextResponse.json({ ok: true, matchId });
 }
 
 /**
  * 경기 삭제. manager 이상만 가능 (현재는 isAdminSession으로 대체).
  *
- * 처리 순서: rollbackMatch(효과 되돌리기) → 경기 행 삭제.
- * point_history.match_id는 on delete set null로 설정되어 있어, 경기가 삭제되어도
- * rollback이 남긴 보정 레코드(및 기존 이력)는 그대로 보존된다(match_id만 null이 됨).
+ * delete_match_with_effects(0045)가 매치 존재 확인(lock) + 효과 undo + 행
+ * 삭제를 단일 트랜잭션으로 처리한다. point_history.match_id는 on delete set
+ * null이므로, 경기가 삭제되어도 rollback이 남긴 보정 레코드(및 기존 이력)는
+ * 그대로 보존된다(match_id만 null이 됨) — RPC 내부에서도 동일하게 일어난다.
  */
 export async function DELETE(_request: NextRequest, { params }: RouteParams) {
   const access = await getAdminAccessServer();
@@ -233,35 +180,14 @@ export async function DELETE(_request: NextRequest, { params }: RouteParams) {
   const supabase = createServiceClient();
   const currentClubId = access.clubId;
 
-  // rollbackMatch/복구용 applyMatch에서만 쓰이는 컬럼만 select한다.
-  const { data: existingMatch, error: fetchError } = await supabase
-    .from("matches")
-    .select(
-      "id, club_id, winner_team, team_a_player1_member, team_a_player1_guest, team_a_player2_member, team_a_player2_guest, team_b_player1_member, team_b_player1_guest, team_b_player2_member, team_b_player2_guest"
-    )
-    .eq("id", matchId)
-    .eq("club_id", currentClubId)
-    .single();
+  const { error: rpcError } = await supabase.rpc("delete_match_with_effects", {
+    p_match_id: matchId,
+    p_club_id: currentClubId,
+  });
 
-  if (fetchError || !existingMatch) {
-    return NextResponse.json({ error: "경기를 찾을 수 없습니다." }, { status: 404 });
-  }
-
-  const rollbackResult = await rollbackMatch(supabase, existingMatch as MatchRatingInput);
-  if (!rollbackResult.ok) {
-    return NextResponse.json({ error: rollbackResult.error }, { status: 500 });
-  }
-
-  const { error: deleteError } = await supabase
-    .from("matches")
-    .delete()
-    .eq("id", matchId)
-    .eq("club_id", currentClubId);
-
-  if (deleteError) {
-    // 삭제 자체가 실패하면, 되돌렸던 효과를 다시 적용해 정합성을 복구한다.
-    await applyMatch(supabase, existingMatch as MatchRatingInput);
-    return NextResponse.json({ error: "경기 삭제에 실패했습니다." }, { status: 500 });
+  if (rpcError) {
+    const { status, message } = mapMatchRpcError(rpcError.message, "경기 삭제에 실패했습니다.");
+    return NextResponse.json({ error: message }, { status });
   }
 
   return NextResponse.json({ ok: true });
