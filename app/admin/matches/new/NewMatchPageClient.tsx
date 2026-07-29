@@ -103,6 +103,30 @@ function buildPayloadSignature(params: {
   });
 }
 
+/** "+ 매치 직접 추가" 세션 생성용 저장 시도 식별 상태(0047 idempotency).
+ * buildPayloadSignature/PendingSubmission과 동일한 패턴 — signature가 바뀌지
+ * 않는 한 실패 후 재시도는 이 requestId를 그대로 재사용해야 서버가 같은
+ * 요청의 재전송으로 인식한다. */
+interface PendingSessionSubmission {
+  requestId: string;
+  signature: string;
+}
+
+/** 서버(0047 RPC)의 payload 비교와 동일한 필드·동일한 정규화 기준(trim)으로
+ * signature를 만든다 — 여기서 어긋나면 "의미상 같은 요청"이 다른 requestId로
+ * 갈려 중복 생성 방어가 무력화된다. */
+function buildSessionPayloadSignature(params: {
+  title: string;
+  sessionDate: string;
+  sessionDay: SessionDay;
+}): string {
+  return JSON.stringify({
+    title: params.title.trim(),
+    sessionDate: params.sessionDate,
+    sessionDay: params.sessionDay,
+  });
+}
+
 async function fetchOpenClosedSessions(clubId: string): Promise<SessionSummary[]> {
   const params = new URLSearchParams({ clubId, statuses: "open,closed", order: "asc" });
   return fetch(`/api/attendance/public-sessions?${params}`)
@@ -145,6 +169,8 @@ export function NewMatchPageClient({ currentClubId }: { currentClubId: string })
   const creatingSessionRef = useRef(false);
   // 0046 idempotency — signature가 같은 재시도만 requestId/playedAt을 재사용한다.
   const pendingSubmissionRef = useRef<PendingSubmission | null>(null);
+  // 0047 idempotency — "+ 매치 직접 추가" 세션 생성용, 위와 동일한 패턴.
+  const pendingSessionSubmissionRef = useRef<PendingSessionSubmission | null>(null);
   const [finishing, setFinishing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -220,14 +246,42 @@ export function NewMatchPageClient({ currentClubId }: { currentClubId: string })
     if (creatingSessionRef.current) return;
     creatingSessionRef.current = true;
     setCreatingSession(true); setNewSessionError(null);
+
+    // 0047 idempotency: handleSubmit과 동일한 패턴 — signature가 직전 실패
+    // 시도와 같으면 그때의 requestId를 재사용(입력을 안 바꾸고 다시 누른
+    // 재시도로 간주), 다르면 새 requestId를 발급한다.
+    const signature = buildSessionPayloadSignature({
+      title: newSessionTitle,
+      sessionDate: newSessionDate,
+      sessionDay: newSessionDay,
+    });
+    if (!pendingSessionSubmissionRef.current || pendingSessionSubmissionRef.current.signature !== signature) {
+      pendingSessionSubmissionRef.current = { requestId: crypto.randomUUID(), signature };
+    }
+    const { requestId } = pendingSessionSubmissionRef.current;
+
     try {
       const res = await fetch("/api/admin/sessions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: newSessionTitle.trim(), sessionDate: newSessionDate, sessionDay: newSessionDay }),
+        body: JSON.stringify({ title: newSessionTitle.trim(), sessionDate: newSessionDate, sessionDay: newSessionDay, requestId }),
       });
       const body = await res.json().catch(() => null);
-      if (!res.ok) { setNewSessionError(body?.error ?? "매치 추가에 실패했습니다."); return; }
+      if (!res.ok) {
+        if (res.status === 409) {
+          // 같은 requestId가 이미 다른 내용으로 처리됨 — 자동 재시도하지 않는다.
+          // 같은 requestId를 다시 쓰면 안 되므로 폐기하고, 목록 확인을 안내한다.
+          pendingSessionSubmissionRef.current = null;
+          setNewSessionError(body?.error ?? "같은 저장 요청이 다른 내용으로 이미 처리되었습니다. 목록을 확인한 뒤 다시 시도해주세요.");
+          return;
+        }
+        // 네트워크 오류·5xx·그 외 검증 실패는 ref를 유지한다 — 입력을 바꾸지
+        // 않고 다시 누르면 같은 requestId로 재전송돼야 한다.
+        setNewSessionError(body?.error ?? "매치 추가에 실패했습니다.");
+        return;
+      }
+      // 성공 — 이번 저장 시도는 종료됐으므로 폐기한다(다음 세션은 새 requestId).
+      pendingSessionSubmissionRef.current = null;
       toast.success("매치가 추가되었습니다.");
       const updated = await fetchOpenClosedSessions(currentClubId);
       setSessions(updated);
