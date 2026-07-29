@@ -43,6 +43,19 @@ export function mapMatchRpcError(errorMessage: string | undefined, fallback: str
   if (msg.startsWith("PARTICIPANT_CLUB_MISMATCH") || msg.startsWith("PARTICIPANT_NOT_FOUND")) {
     return { status: 500, message: "선수 정보를 확인하지 못했습니다." };
   }
+  if (msg.startsWith("IDEMPOTENCY_CONFLICT")) {
+    // 같은 requestId로 이미 다른 내용의 경기가 저장된 경우(0046) — RPC 원문은
+    // 노출하지 않고 고정 메시지만 반환한다. 409는 프런트가 자동 재시도하면
+    // 안 된다는 신호이므로, 클라이언트는 requestId를 폐기하고 사용자에게
+    // 목록 확인을 안내해야 한다.
+    return {
+      status: 409,
+      message: "같은 저장 요청이 다른 내용으로 이미 처리되었습니다. 목록을 확인한 뒤 다시 시도해주세요.",
+    };
+  }
+  // IDEMPOTENCY_RESOLUTION_FAILED(0046): ON CONFLICT DO NOTHING 이후 재조회에서
+  // 행을 못 찾은 내부 이상 상황 — 사용자에게 노출할 구체적 메시지가 없어
+  // 의도적으로 별도 분기 없이 기본 fallback(500)으로 떨어지게 둔다.
 
   return { status: 500, message: fallback };
 }

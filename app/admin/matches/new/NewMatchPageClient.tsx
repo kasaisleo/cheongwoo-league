@@ -62,6 +62,47 @@ function getSubmitWarnings(params: {
   return warnings;
 }
 
+/** 하나의 "저장 시도"를 식별하는 상태(0046 idempotency). signature가 바뀌지 않는 한
+ * 실패 후 재시도는 이 requestId/playedAt을 그대로 재사용해야 서버가 같은 요청의
+ * 재전송으로 인식한다. */
+interface PendingSubmission {
+  requestId: string;
+  playedAt: string;
+  signature: string;
+}
+
+/** 서버(0046 RPC)의 payload 비교와 동일한 필드·동일한 정규화 기준으로 signature를
+ * 만든다 — 여기서 어긋나면 "의미상 같은 요청"이 다른 requestId로 갈려 중복 생성
+ * 방어가 무력화된다. 타이브레이크가 아닌 세트는 tiebreak 값을 null로 정규화한다
+ * (RPC 쪽 정규화와 일치시킴). */
+function buildPayloadSignature(params: {
+  sessionId: string | null;
+  teamAPlayer1: SelectedPlayer | null;
+  teamAPlayer2: SelectedPlayer | null;
+  teamBPlayer1: SelectedPlayer | null;
+  teamBPlayer2: SelectedPlayer | null;
+  scoreA: number;
+  scoreB: number;
+  tiebreakA: number;
+  tiebreakB: number;
+  winnerTeam: "A" | "B" | null;
+  isTiebreakSet: boolean;
+}): string {
+  const slot = (p: SelectedPlayer | null) => (p ? `${p.isGuest ? "g" : "m"}:${p.id}` : null);
+  return JSON.stringify({
+    sessionId: params.sessionId,
+    teamAPlayer1: slot(params.teamAPlayer1),
+    teamAPlayer2: slot(params.teamAPlayer2),
+    teamBPlayer1: slot(params.teamBPlayer1),
+    teamBPlayer2: slot(params.teamBPlayer2),
+    scoreA: params.scoreA,
+    scoreB: params.scoreB,
+    tiebreakA: params.isTiebreakSet ? params.tiebreakA : null,
+    tiebreakB: params.isTiebreakSet ? params.tiebreakB : null,
+    winnerTeam: params.winnerTeam,
+  });
+}
+
 async function fetchOpenClosedSessions(clubId: string): Promise<SessionSummary[]> {
   const params = new URLSearchParams({ clubId, statuses: "open,closed", order: "asc" });
   return fetch(`/api/attendance/public-sessions?${params}`)
@@ -102,6 +143,8 @@ export function NewMatchPageClient({ currentClubId }: { currentClubId: string })
   const [submitting, setSubmitting] = useState(false);
   const submittingRef = useRef(false);
   const creatingSessionRef = useRef(false);
+  // 0046 idempotency — signature가 같은 재시도만 requestId/playedAt을 재사용한다.
+  const pendingSubmissionRef = useRef<PendingSubmission | null>(null);
   const [finishing, setFinishing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -261,13 +304,35 @@ export function NewMatchPageClient({ currentClubId }: { currentClubId: string })
     submittingRef.current = true;
     setSubmitting(true);
     setError(null);
+
+    // 0046 idempotency: 이번 제출의 signature를 계산해, 직전 실패 시도와
+    // "의미상 동일"하면 그때의 requestId/playedAt을 그대로 재사용한다(입력을
+    // 안 바꾸고 다시 누른 재시도로 간주). 하나라도 다르면 새 시도이므로 새
+    // requestId를 발급하고 playedAt을 이 시점에 고정(freeze)한다 — 매 요청마다
+    // 재계산하면 응답 유실 후 자정을 넘겨 재시도할 때 날짜가 달라져 서버의
+    // payload 비교(0046)가 "다른 요청"으로 오판하게 된다.
+    const signature = buildPayloadSignature({
+      sessionId: selectedSessionId,
+      teamAPlayer1, teamAPlayer2, teamBPlayer1, teamBPlayer2,
+      scoreA, scoreB, tiebreakA, tiebreakB,
+      winnerTeam, isTiebreakSet,
+    });
+    if (!pendingSubmissionRef.current || pendingSubmissionRef.current.signature !== signature) {
+      pendingSubmissionRef.current = {
+        requestId: crypto.randomUUID(),
+        playedAt: new Date().toISOString().slice(0, 10),
+        signature,
+      };
+    }
+    const { requestId, playedAt } = pendingSubmissionRef.current;
+
     try {
       const res = await fetch("/api/matches", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           sessionId: selectedSessionId,
-          playedAt: new Date().toISOString().slice(0, 10),
+          playedAt,
           teamAPlayer1: { id: teamAPlayer1!.id, isGuest: teamAPlayer1!.isGuest },
           teamAPlayer2: { id: teamAPlayer2!.id, isGuest: teamAPlayer2!.isGuest },
           teamBPlayer1: { id: teamBPlayer1!.id, isGuest: teamBPlayer1!.isGuest },
@@ -276,13 +341,26 @@ export function NewMatchPageClient({ currentClubId }: { currentClubId: string })
           scoreATiebreak: isTiebreakSet ? tiebreakA : null,
           scoreBTiebreak: isTiebreakSet ? tiebreakB : null,
           winnerTeam,
+          requestId,
         }),
       });
       if (!res.ok) {
         const body = await res.json().catch(() => null);
+        if (res.status === 409) {
+          // 같은 requestId가 이미 다른 내용으로 처리됨 — DB가 최종 판정한
+          // 진짜 충돌이므로 자동 재시도하지 않는다. 같은 requestId를 다시
+          // 쓰면 안 되므로 폐기하고, 사용자에게 목록 확인을 안내한다.
+          pendingSubmissionRef.current = null;
+          setError(body?.error ?? "같은 저장 요청이 다른 내용으로 이미 처리되었습니다. 목록을 확인한 뒤 다시 시도해주세요.");
+          return;
+        }
+        // 네트워크 오류·5xx·그 외 검증 실패는 pendingSubmissionRef를 유지한다 —
+        // 입력을 바꾸지 않고 다시 누르면 같은 requestId로 재전송돼야 한다.
         setError(body?.error ?? "저장에 실패했습니다. 다시 시도해주세요.");
         return;
       }
+      // 성공 — 이번 저장 시도는 종료됐으므로 폐기한다(다음 경기는 새 requestId).
+      pendingSubmissionRef.current = null;
       toast.success("경기 결과가 저장되었습니다.");
       // 선수 초기화 — 세션 유지, 다음 경기 연속 입력
       setTeamAPlayer1(null); setTeamAPlayer2(null);

@@ -21,6 +21,8 @@ interface CreateMatchBody {
   scoreATiebreak: number | null;
   scoreBTiebreak: number | null;
   winnerTeam: "A" | "B";
+  /** 저장 요청 식별자(0046 idempotency). 미전달 시 기존 동작과 동일(구버전 호환). */
+  requestId?: string;
 }
 
 function isValidPlayer(p: unknown): p is PlayerInput {
@@ -31,6 +33,10 @@ function isValidPlayer(p: unknown): p is PlayerInput {
     typeof (p as PlayerInput).isGuest === "boolean"
   );
 }
+
+// crypto.randomUUID()가 생성하는 정확한 형식만 허용 — 느슨한 검증은 idempotency
+// 인덱스에 임의 문자열이 들어가는 것을 방치하게 된다.
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export async function POST(request: NextRequest) {
   const access = await getAdminAccessServer();
@@ -50,10 +56,17 @@ export async function POST(request: NextRequest) {
     scoreATiebreak,
     scoreBTiebreak,
     winnerTeam,
+    requestId,
   } = body;
 
   if (!sessionId) {
     return NextResponse.json({ error: "출석 세션을 선택해주세요." }, { status: 400 });
+  }
+
+  // requestId는 선택값이지만(구버전 클라이언트 호환), 전달됐다면 형식이 정확해야
+  // idempotency 인덱스에 의미 있는 값만 쌓인다.
+  if (requestId !== undefined && !UUID_RE.test(requestId)) {
+    return NextResponse.json({ error: "요청 식별자가 올바르지 않습니다." }, { status: 400 });
   }
 
   const players = [teamAPlayer1, teamAPlayer2, teamBPlayer1, teamBPlayer2];
@@ -122,16 +135,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "게스트 정보를 불러오지 못했습니다." }, { status: 500 });
   }
 
-  // 2. 중복 저장 방지는 이번 단계에서 보류한다.
-  //    - 같은 날 같은 4명이 같은 스코어로 여러 세트를 치는 경우가 실제로 있어,
-  //      "4명+날짜+스코어 일치"만으로 서버에서 무조건 거부하지 않는다.
-  //    - idempotency_key(클라이언트 요청 식별자) 기반 차단이 더 안전하지만,
-  //      matches.idempotency_key 컬럼 추가는 후순위 작업이라 아직 도입하지 않는다.
-  //    - 현재는 프론트엔드의 저장 버튼 중복 클릭 방지(disabled 처리)로만 방어한다.
-
-  // 3. create_match_with_effects(0045) 호출 — matches insert + 선수별 LP/wins/losses/
+  // 2. create_match_with_effects(0046) 호출 — matches insert + 선수별 LP/wins/losses/
   //    point_history 반영을 단일 DB 트랜잭션으로 처리한다. 세션 존재/archived 검증은
   //    RPC 내부에서 동일한 메시지로 재현되므로 별도 pre-check를 두지 않는다.
+  //    requestId(=p_idempotency_key)를 전달하면 동일 club 안에서 같은 요청의
+  //    재시도는 새 경기를 만들지 않고 기존 match_id를 반환하거나(payload 동일),
+  //    IDEMPOTENCY_CONFLICT로 실패한다(payload 다름 — route에서 409로 매핑).
   const { data: newMatchId, error: rpcError } = await supabase.rpc("create_match_with_effects", {
     p_club_id: currentClubId,
     p_session_id: sessionId,
@@ -149,6 +158,7 @@ export async function POST(request: NextRequest) {
     p_team_b_player1_guest: teamBPlayer1.isGuest ? teamBPlayer1.id : null,
     p_team_b_player2_member: teamBPlayer2.isGuest ? null : teamBPlayer2.id,
     p_team_b_player2_guest: teamBPlayer2.isGuest ? teamBPlayer2.id : null,
+    p_idempotency_key: requestId ?? null,
   });
 
   if (rpcError || !newMatchId) {
