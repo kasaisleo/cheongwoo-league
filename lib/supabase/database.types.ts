@@ -120,16 +120,30 @@ export interface RatingHistory {
   created_at: string;
 }
 
+/**
+ * point_history 원본 행 그대로(단일 flat 타입 — 이 파일의 다른 테이블과 동일한
+ * 컨벤션). 이 테이블에 대한 client-side INSERT/UPDATE 호출이 저장소 어디에도
+ * 없으므로(유일한 쓰기 경로는 supabase/migrations/0045의 RPC — supabase.rpc()
+ * 호출이지 .from("point_history").insert()가 아니다) Row/Insert/Update로
+ * 분리할 실익이 없다. 신규 코드에서 이 인터페이스로 insert/update payload를
+ * 직접 구성하지 말 것.
+ */
 export interface PointHistory {
   id: string;
   match_id: string | null;
   member_id: string;
-  club_id: string | null;
+  club_id: string;
   point_before: number;
   point_after: number;
   point_change: number;
   reason: string;
   created_at: string;
+  /** club_id+member_id 범위에서만 삽입 순서를 보장(0048). 전역 커밋 순서 아님 —
+   * DB가 identity로 자동 채우므로 이 필드를 직접 지정하는 INSERT를 작성하지 말 것. */
+  sequence_no: number;
+  /** sequence_no가 실제 삽입 순서를 신뢰할 수 있는지 여부(0048). migration
+   * 적용 이전 기존 행은 false, 이후 신규 행은 DB default로 자동 true. */
+  sequence_trusted: boolean;
 }
 
 export interface MemberTimeline {

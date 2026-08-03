@@ -44,7 +44,17 @@ export default async function MemberRecordPage({ params }: { params: { id: strin
       .select("*")
       .eq("club_id", currentClubId)
       .eq("member_id", memberId)
-      .order("created_at", { ascending: true }),
+      // 0048: created_at을 1차 정렬로 유지(기존 표시 순서 보존 — 과거 147행의
+      // sequence_no는 backfill 값일 뿐 실제 삽입 순서가 아니므로 단독 정렬 금지)
+      // 하고, 동일 created_at(같은 트랜잭션에서 삽입된 행들)만 sequence_no로
+      // tie-break한다. .order()를 연속 호출하면 supabase-js가 각 호출마다
+      // 기존 order 쿼리스트링에 콤마로 이어붙여(postgrest-js order() 구현
+      // 확인) `order=created_at.asc,sequence_no.asc`를 생성하고, PostgREST가
+      // 이를 `ORDER BY created_at ASC, sequence_no ASC` 복합 정렬로 그대로
+      // 변환한다 — 단일 .order() 호출로 여러 컬럼을 합쳐 넘기는 것과 동일한
+      // 최종 SQL이 생성됨을 실제 설치된 패키지 소스로 확인했다.
+      .order("created_at", { ascending: true })
+      .order("sequence_no", { ascending: true }),
     serviceSupabase.from("members").select("id, name").eq("is_active", true).eq("club_id", currentClubId),
   ]);
 
