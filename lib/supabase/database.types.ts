@@ -27,6 +27,12 @@ export type StagingValidationStatus =
   | "needs_review"
   | "imported"
   | "skipped";
+/** Match System 2.0 (0050). court_assignment_enabled과의 조합 제약은 DB에서 강제하지 않는다 — normalize_match_config 참고. */
+export type MatchSlotMode = "none" | "ordered" | "timed";
+/** Match System 2.0 (0050). 전이 규칙: draft→{active,completed,cancelled}, active→{completed,cancelled}, completed→{active}(재오픈), cancelled는 terminal. */
+export type EventStatus = "draft" | "active" | "completed" | "cancelled";
+/** Match System 2.0 (0050). legacy_attendance_session은 향후 backfill phase 예약값 — 이번 phase에서는 native만 실제 생성됨. */
+export type EventSource = "native" | "legacy_attendance_session";
 
 export interface Member {
   id: string;
@@ -276,6 +282,66 @@ export interface SessionGuest {
   created_at: string;
   /** join용 — 조회 시 guests 테이블 join */
   guest?: Pick<Guest, "id" | "name" | "phone" | "is_active">;
+}
+
+/**
+ * clubs.match_config_defaults / events.match_config의 jsonb 형태(config v1, 0050).
+ * 실제 값 보장은 DB의 normalize_match_config(정상화 함수)와 CHECK 제약이 하며, 이 타입은
+ * 그 정규화된 결과의 모양만 기술한다 — 신규 코드에서 이 타입으로 직접 payload를 조립해
+ * RPC 없이 clubs/events에 쓰지 말 것(둘 다 쓰기는 create_event/update_event/
+ * set_club_match_config_defaults RPC 경유가 유일한 정상 경로).
+ */
+export interface MatchConfigV1 {
+  version: 1;
+  attendance_enabled: boolean;
+  participant_confirmation_required: boolean;
+  court_assignment_enabled: boolean;
+  slot_mode: MatchSlotMode;
+  pre_scheduling_enabled: boolean;
+  live_queue_enabled: boolean;
+  auto_generation_enabled: boolean;
+  review_required: boolean;
+  court_count: number | null;
+  max_games_per_member: number | null;
+  rest_gap_minutes: number | null;
+  partner_repeat_limit: number | null;
+  opponent_repeat_limit: number | null;
+}
+
+export interface Club {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  status: "active" | "inactive";
+  /** Event 생성 시 snapshot으로 복사되는 클럽 기본 운영 설정(0050). 정상 변경 경로는 set_club_match_config_defaults RPC뿐. */
+  match_config_defaults: MatchConfigV1;
+  created_at: string;
+}
+
+/**
+ * Match System 2.0 최상위 Event(0050). v1은 하루 단위(event_date만 사용).
+ * 쓰기는 create_event/update_event RPC 전용 — service_role조차 테이블에 직접
+ * INSERT/UPDATE 권한이 없다(DB GRANT로 강제됨). event_courts/event_sessions/
+ * event_participants/matches lifecycle 연결은 전부 별도 phase.
+ */
+export interface Event {
+  id: string;
+  club_id: string;
+  title: string;
+  event_date: string;
+  status: EventStatus;
+  source: EventSource;
+  match_config: MatchConfigV1;
+  attendance_opened_at: string | null;
+  attendance_closed_at: string | null;
+  participants_confirmed_at: string | null;
+  scheduling_confirmed_at: string | null;
+  started_at: string | null;
+  completed_at: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface Database {
