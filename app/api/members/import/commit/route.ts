@@ -9,12 +9,23 @@ interface CommitImportBody {
 
 /**
  * 운영진이 최종 확인한 staging_members 행들을 members에 반영한다.
- * 신규 회원만 반영 가능 — validation_status가 'valid'인 행만 허용한다.
- * (duplicate, missing_required, needs_review 등은 운영진이 staging_members에서
- * 직접 보정하거나 건너뛰어야 하며, 이 API는 그 상태를 그대로 반영하지 않는다.)
+ * 반영 가능 상태는 valid 또는 needs_review뿐이다 — 이 둘은 members.age가
+ * nullable이라 등록을 막을 이유가 없는 비차단 경고 상태다(나이/출생연도
+ * 미입력 또는 파싱 실패 — 원인 전수 확인 완료, lib/member-import.ts의
+ * needs_review 대입 지점 2곳 전부 이 두 사유뿐임을 확인했다).
+ * duplicate/missing_required/invalid_mapo_score 등 그 외 상태는 운영진이
+ * staging_members에서 직접 보정하거나 건너뛰어야 하며, 이 API는 그 상태를
+ * 그대로 반영하지 않는다.
+ *
+ * 클라이언트 선택 정책(app/admin/members/import/MemberImportPageClient.tsx의
+ * isCommittableStatus)과 반드시 동일한 조건을 유지해야 한다.
  *
  * 권한(Step 8-3): owner 전용 — 일괄 임포트 플로우의 일부.
  */
+function isCommittableStatus(status: StagingMember["validation_status"]): boolean {
+  return status === "valid" || status === "needs_review";
+}
+
 export async function POST(request: NextRequest) {
   const access = await getAdminAccessServer();
   if (!access.kakaoIsOwner) {
@@ -49,10 +60,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "대상 데이터를 불러오지 못했습니다." }, { status: 500 });
   }
 
-  const invalidRows = (rows as StagingMember[]).filter((r) => r.validation_status !== "valid");
+  const invalidRows = (rows as StagingMember[]).filter((r) => !isCommittableStatus(r.validation_status));
   if (invalidRows.length > 0) {
     return NextResponse.json(
-      { error: "신규 회원(valid 상태)만 반영할 수 있습니다. 선택한 항목 중 일부가 valid 상태가 아닙니다." },
+      { error: "등록 가능한 신규 회원 상태가 아닌 항목이 포함되어 있습니다." },
       { status: 400 }
     );
   }

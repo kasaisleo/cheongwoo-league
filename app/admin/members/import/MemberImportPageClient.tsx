@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { toast } from "@/components/ui/Toast";
-import type { StagingMember } from "@/lib/supabase/database.types";
+import type { StagingMember, StagingValidationStatus } from "@/lib/supabase/database.types";
 
 const STATUS_LABEL: Record<string, string> = {
   pending: "대기",
@@ -25,6 +25,13 @@ function statusTone(status: string): "win" | "fault" | "amber" | "neutral" {
     return "fault";
   }
   return "amber";
+}
+
+// 신규 회원으로 반영 가능한 상태 — commit API(app/api/members/import/commit/route.ts)의
+// 허용 조건과 반드시 동일하게 유지한다. valid/needs_review 둘 다 members.age가
+// nullable이라 등록을 막을 이유가 없는 비차단 경고 상태.
+function isCommittableStatus(status: StagingValidationStatus): boolean {
+  return status === "valid" || status === "needs_review";
 }
 
 export default function MemberImportPageClient() {
@@ -70,6 +77,7 @@ export default function MemberImportPageClient() {
     }
 
     toast.success(`${body.count}건을 불러왔습니다. 아래에서 검수해주세요.`);
+    setSelectedIds(new Set());
     loadStaging();
   }
 
@@ -82,8 +90,8 @@ export default function MemberImportPageClient() {
     });
   }
 
-  function selectAllValid() {
-    setSelectedIds(new Set(rows.filter((r) => r.validation_status === "valid").map((r) => r.id)));
+  function selectAllEligible() {
+    setSelectedIds(new Set(rows.filter((r) => isCommittableStatus(r.validation_status)).map((r) => r.id)));
   }
 
   async function handleCommit() {
@@ -148,7 +156,7 @@ export default function MemberImportPageClient() {
         <p className="text-sm font-bold text-clay-400">
           2. 검수 ({pendingRows.length}건 대기{importedCount > 0 ? `, ${importedCount}건 반영완료` : ""})
         </p>
-        <button type="button" onClick={selectAllValid} className="text-xs font-semibold text-clay-400">
+        <button type="button" onClick={selectAllEligible} className="text-xs font-semibold text-clay-400">
           신규 전체 선택
         </button>
       </div>
@@ -160,7 +168,7 @@ export default function MemberImportPageClient() {
       ) : (
         <div className="space-y-2">
           {pendingRows.map((row) => {
-            const canSelect = row.validation_status === "valid";
+            const canSelect = isCommittableStatus(row.validation_status);
             return (
               <Card key={row.id} className="p-3">
                 <div className="flex items-start justify-between gap-2">
