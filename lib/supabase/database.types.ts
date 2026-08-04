@@ -313,6 +313,10 @@ export interface Club {
   name: string;
   slug: string;
   description: string | null;
+  /** 코드 registry(lib/club-skin.ts SkinKey)에서 디자인을 결정하는 키(0030). DB에는 CHECK 제약 없음 — 알 수 없는 값은 getClubSkin()이 "default"로 폴백. */
+  skin_key: string;
+  /** 스킨 오버라이드용 확장 필드(0030). 현재 미사용, 구조 미확정 — 임의 필드를 가정하지 말 것. */
+  appearance_config: Record<string, unknown>;
   status: "active" | "inactive";
   /** Event 생성 시 snapshot으로 복사되는 클럽 기본 운영 설정(0050). 정상 변경 경로는 set_club_match_config_defaults RPC뿐. */
   match_config_defaults: MatchConfigV1;
