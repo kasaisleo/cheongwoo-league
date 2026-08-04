@@ -348,6 +348,42 @@ export interface Event {
   updated_at: string;
 }
 
+/**
+ * Match System 2.0 — Event 안의 코트/운영 슬롯(0051). attendance_sessions와
+ * 무관. 쓰기는 create_event_court/update_event_court/reorder_event_courts
+ * RPC 전용. 삭제 RPC 없음 — is_active=false로만 비활성화.
+ */
+export interface EventCourt {
+  id: string;
+  event_id: string;
+  club_id: string;
+  name: string;
+  position: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * Match System 2.0 — Event Court 안의 경기 슬롯(0051). 출석 세션
+ * (attendance_sessions)이 아니다. slot_mode는 이 행에 저장하지 않는다 —
+ * Event.match_config.slot_mode가 유일한 source of truth. 쓰기는
+ * create_event_session/update_event_session/reorder_event_sessions RPC 전용.
+ */
+export interface EventSession {
+  id: string;
+  event_id: string;
+  club_id: string;
+  event_court_id: string;
+  position: number;
+  starts_at: string | null;
+  ends_at: string | null;
+  label: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Database {
   public: {
     Tables: {
