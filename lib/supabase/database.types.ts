@@ -384,6 +384,89 @@ export interface EventSession {
   updated_at: string;
 }
 
+/** Match System 2.0 (0052). event_participants.participant_type — member/guest 중 정확히 하나(XOR, DB CHECK로 강제). */
+export type ParticipantType = "member" | "guest";
+/** Match System 2.0 (0052). event_participants.status. pending/confirmed는 is_active=true, withdrawn/excluded는 is_active=false와 항상 짝(DB CHECK로 강제). */
+export type ParticipantStatus = "pending" | "confirmed" | "withdrawn" | "excluded";
+/** Match System 2.0 (0052). event_participants.source_type — manual(수동 추가)/attendance_member(출석 임포트)/session_guest(게스트 임포트). */
+export type ParticipantSourceType = "manual" | "attendance_member" | "session_guest";
+
+/**
+ * Match System 2.0 — Event 참가자(0052). identity는 event_id+member_id 또는
+ * event_id+guest_id이고 is_active 무관 완전 유니크 — 이벤트당 회원/게스트 1명당
+ * 평생 1행이며, withdrawn 후 재추가는 새 행이 아니라 기존 행 복구다. excluded는
+ * 운영자 명시 제외 상태라 import가 자동으로 되살리지 않는다(update_event_participant
+ * 로만 해제 가능). attendance_sessions/attendance/session_guests와는 어떤 FK로도
+ * 연결되지 않는다 — source_attendance_session_id/source_record_id는 breadcrumb일
+ * 뿐이다. 쓰기는 import_event_participants_from_attendance/create_event_participant/
+ * update_event_participant/confirm_event_participants RPC 전용. 삭제 RPC 없음 —
+ * is_active=false(withdrawn/excluded)로만 비활성화.
+ */
+export interface EventParticipant {
+  id: string;
+  event_id: string;
+  club_id: string;
+  participant_type: ParticipantType;
+  member_id: string | null;
+  guest_id: string | null;
+  display_name_snapshot: string;
+  source_type: ParticipantSourceType;
+  source_attendance_session_id: string | null;
+  source_record_id: string | null;
+  status: ParticipantStatus;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * event_participants RPC 4종의 호출부 시그니처(0052) — 문서화 용도.
+ * 이 파일의 Database.Functions는 아직 어떤 RPC와도 연결되어 있지 않으므로
+ * (0045/0050/0051의 기존 RPC도 전부 동일) 아래 타입들도 supabase-js 제네릭
+ * 추론에는 연결되지 않는다. 실제 호출은 supabase.rpc("이름", params) 형태.
+ * private helper(_event_participant_upsert)는 앱 코드에서 직접 호출하지
+ * 않는 내부 전용 함수라 여기서 타입을 노출하지 않는다.
+ */
+export interface ImportEventParticipantsFromAttendanceParams {
+  p_event_id: string;
+  p_club_id: string;
+  p_attendance_session_id: string;
+}
+
+/** import_event_participants_from_attendance의 반환 shape(RETURNS TABLE, 항상 1행). */
+export interface ImportEventParticipantsResult {
+  inserted_count: number;
+  reactivated_count: number;
+  skipped_duplicate_count: number;
+  skipped_excluded_count: number;
+  skipped_inactive_member_count: number;
+  skipped_inactive_guest_count: number;
+}
+
+export interface CreateEventParticipantParams {
+  p_event_id: string;
+  p_club_id: string;
+  p_member_id?: string | null;
+  p_guest_id?: string | null;
+}
+/** create_event_participant의 반환값: 신규 생성되거나 재활성화된 event_participants.id(uuid). */
+export type CreateEventParticipantResult = string;
+
+export interface UpdateEventParticipantParams {
+  p_participant_id: string;
+  p_event_id: string;
+  p_club_id: string;
+  p_status: ParticipantStatus;
+}
+/** update_event_participant는 반환값 없음(void). */
+
+export interface ConfirmEventParticipantsParams {
+  p_event_id: string;
+  p_club_id: string;
+}
+/** confirm_event_participants의 반환값: pending→confirmed로 전환된 행 수. 0이면 활성 참가자 전원이 이미 confirmed였다는 뜻(strict idempotent no-op 포함). */
+export type ConfirmEventParticipantsResult = number;
+
 export interface Database {
   public: {
     Tables: {
