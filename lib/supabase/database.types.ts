@@ -467,6 +467,76 @@ export interface ConfirmEventParticipantsParams {
 /** confirm_event_participants의 반환값: pending→confirmed로 전환된 행 수. 0이면 활성 참가자 전원이 이미 confirmed였다는 뜻(strict idempotent no-op 포함). */
 export type ConfirmEventParticipantsResult = number;
 
+/**
+ * event_courts/event_sessions RPC 6종의 호출부 시그니처(0051, Phase 2A-5B) — 문서화 용도.
+ * 위 event_participants RPC 타입들과 동일하게 Database.Functions에는 연결하지 않는다.
+ * _event_session_validate_mode는 내부 전용 private helper라 여기서 노출하지 않는다.
+ */
+export interface CreateEventCourtParams {
+  p_event_id: string;
+  p_club_id: string;
+  p_name: string;
+  p_position?: number | null;
+}
+/** create_event_court의 반환값: 신규 event_courts.id(uuid). */
+export type CreateEventCourtResult = string;
+
+export interface UpdateEventCourtParams {
+  p_court_id: string;
+  p_event_id: string;
+  p_club_id: string;
+  p_name?: string | null;
+  p_position?: number | null;
+  p_is_active?: boolean | null;
+}
+/** update_event_court는 반환값 없음(void). */
+
+export interface ReorderEventCourtsParams {
+  p_event_id: string;
+  p_club_id: string;
+  p_court_ids: string[];
+}
+/** reorder_event_courts는 반환값 없음(void). p_court_ids는 활성 코트 전체 집합과 정확히 일치해야 한다. */
+
+export interface CreateEventSessionParams {
+  p_event_id: string;
+  p_club_id: string;
+  p_event_court_id: string;
+  p_position?: number | null;
+  p_starts_at?: string | null;
+  p_ends_at?: string | null;
+  p_label?: string | null;
+}
+/** create_event_session의 반환값: 신규 event_sessions.id(uuid). */
+export type CreateEventSessionResult = string;
+
+/**
+ * update_event_session — 코트 이동 인자 없음(2A-5B 확정: 세션의 코트 간 이동은
+ * 현재 RPC 계약에 없으며, 지원하려면 별도 migration이 필요하다. 시각/라벨은
+ * 3-상태(미터치/명시적 clear/새 값) 필드라 clear 플래그와 값을 동시에 넣지 않는다.
+ */
+export interface UpdateEventSessionParams {
+  p_session_id: string;
+  p_event_id: string;
+  p_club_id: string;
+  p_position?: number | null;
+  p_starts_at?: string | null;
+  p_ends_at?: string | null;
+  p_clear_times?: boolean;
+  p_label?: string | null;
+  p_clear_label?: boolean;
+  p_is_active?: boolean | null;
+}
+/** update_event_session은 반환값 없음(void). */
+
+export interface ReorderEventSessionsParams {
+  p_event_court_id: string;
+  p_event_id: string;
+  p_club_id: string;
+  p_session_ids: string[];
+}
+/** reorder_event_sessions는 반환값 없음(void). p_session_ids는 해당 코트의 활성 세션 전체 집합과 정확히 일치해야 한다. */
+
 export interface Database {
   public: {
     Tables: {

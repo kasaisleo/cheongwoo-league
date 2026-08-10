@@ -6,6 +6,7 @@ import { toast } from "@/components/ui/Toast";
 import { EventParticipantRoster } from "@/components/event/EventParticipantRoster";
 import { ImportAttendanceParticipantsSection } from "@/components/event/ImportAttendanceParticipantsSection";
 import { ConfirmEventParticipantsSection } from "@/components/event/ConfirmEventParticipantsSection";
+import { EventSchedulingSection, type SchedulingSnapshot } from "@/components/event/EventSchedulingSection";
 import type { Event, EventParticipant, EventStatus } from "@/lib/supabase/database.types";
 
 interface EventDetailPageClientProps {
@@ -49,6 +50,9 @@ export function EventDetailPageClient({ eventId }: EventDetailPageClientProps) {
   const [participants, setParticipants] = useState<EventParticipant[]>([]);
   const [loadingParticipants, setLoadingParticipants] = useState(true);
 
+  const [scheduling, setScheduling] = useState<SchedulingSnapshot | null>(null);
+  const [loadingScheduling, setLoadingScheduling] = useState(true);
+
   // Event 상세와 participants_confirmed_at은 roster 응답과는 별개 데이터라(2A-4B
   // 보정 사항) 항상 이 함수로 같이 다시 읽는다 — 한쪽만 재조회해서 화면에 stale한
   // 확정 상태가 남거나, 확정 성공 후에도 미확정으로 보이는 문제를 만들지 않는다.
@@ -81,9 +85,17 @@ export function EventDetailPageClient({ eventId }: EventDetailPageClientProps) {
     if (res.ok) setParticipants(body.participants ?? []);
   }, [eventId]);
 
+  const loadScheduling = useCallback(async () => {
+    setLoadingScheduling(true);
+    const res = await fetch(`/api/admin/events/${eventId}/scheduling`);
+    const body = await res.json().catch(() => null);
+    setLoadingScheduling(false);
+    if (res.ok) setScheduling(body);
+  }, [eventId]);
+
   const refreshAll = useCallback(async () => {
-    await Promise.all([loadEvent(), loadParticipants()]);
-  }, [loadEvent, loadParticipants]);
+    await Promise.all([loadEvent(), loadParticipants(), loadScheduling()]);
+  }, [loadEvent, loadParticipants, loadScheduling]);
 
   useEffect(() => {
     refreshAll().finally(() => setLoadingEvent(false));
@@ -191,6 +203,15 @@ export function EventDetailPageClient({ eventId }: EventDetailPageClientProps) {
           />
         </div>
       )}
+
+      <div className="mt-6">
+        <EventSchedulingSection
+          eventId={event.id}
+          scheduling={scheduling}
+          loading={loadingScheduling}
+          onChanged={refreshAll}
+        />
+      </div>
     </main>
   );
 }
