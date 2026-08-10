@@ -14,7 +14,7 @@ export const adminNavigation: NavItemConfig[] = [
   { id: "members", label: "회원관리", path: "/admin/members", showOnMobile: false, showOnDesktop: true },
   { id: "matches", label: "매치", path: "/admin/matches", showOnMobile: true, showOnDesktop: true },
   { id: "attendance", label: "출석", path: "/admin/attendance", showOnMobile: true, showOnDesktop: true },
-  { id: "events", label: "이벤트", path: "/admin/events", showOnMobile: false, showOnDesktop: true },
+  { id: "events", label: "경기 관리", path: "/admin/events", showOnMobile: false, showOnDesktop: true },
   { id: "records", label: "기록", path: "/admin/records", showOnMobile: true, showOnDesktop: true },
   { id: "guests", label: "게스트", path: "/admin/guests", showOnMobile: false, showOnDesktop: true },
   { id: "settings", label: "설정", path: "/admin/settings", showOnMobile: true, showOnDesktop: true, ownerOnly: true },

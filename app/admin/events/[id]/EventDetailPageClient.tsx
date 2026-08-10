@@ -122,7 +122,7 @@ export function EventDetailPageClient({ eventId }: EventDetailPageClientProps) {
   if (notFound || !event) {
     return (
       <main className="px-4 pt-6 pb-28">
-        <AdminPageHeader title="이벤트" backHref="/admin/events" />
+        <AdminPageHeader title="경기 관리" backHref="/admin/events" />
         <p className="text-sm text-[color:var(--surface-muted)]">이벤트를 찾을 수 없습니다.</p>
       </main>
     );

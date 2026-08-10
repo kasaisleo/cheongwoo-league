@@ -42,7 +42,7 @@ export function EventsPageClient({ currentClubId: _currentClubId }: EventsPageCl
   return (
     <main className="px-4 pt-6 pb-28">
       <AdminPageHeader
-        title="이벤트"
+        title="경기 관리"
         description="Match System 2.0 Event 목록 및 참가자 명단 관리."
         backHref="/admin"
         action={
