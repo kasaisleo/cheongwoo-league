@@ -537,6 +537,19 @@ export interface ReorderEventSessionsParams {
 }
 /** reorder_event_sessions는 반환값 없음(void). p_session_ids는 해당 코트의 활성 세션 전체 집합과 정확히 일치해야 한다. */
 
+/**
+ * confirm_event_scheduling(0053, Phase 2A-5C) — participants_confirmed_at이 있어야
+ * 호출 가능. 이미 scheduling_confirmed_at이 있으면 완전 no-op(재검증 없이 그대로
+ * 반환). 코트/슬롯의 실질 변경(0051 RPC 6종)이나 참가자 실질 변경(0052 RPC 3종,
+ * confirm_event_participants 제외)이 발생하면 각 RPC 내부에서 자동으로 다시 null이
+ * 된다 — 이 RPC를 호출하는 쪽에서 직접 무효화할 일은 없다.
+ */
+export interface ConfirmEventSchedulingParams {
+  p_event_id: string;
+  p_club_id: string;
+}
+/** confirm_event_scheduling은 반환값 없음(void). 최신 scheduling_confirmed_at은 반드시 GET /scheduling 재조회로 확인한다. */
+
 export interface Database {
   public: {
     Tables: {

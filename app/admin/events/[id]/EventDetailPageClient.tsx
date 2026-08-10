@@ -7,6 +7,7 @@ import { EventParticipantRoster } from "@/components/event/EventParticipantRoste
 import { ImportAttendanceParticipantsSection } from "@/components/event/ImportAttendanceParticipantsSection";
 import { ConfirmEventParticipantsSection } from "@/components/event/ConfirmEventParticipantsSection";
 import { EventSchedulingSection, type SchedulingSnapshot } from "@/components/event/EventSchedulingSection";
+import { ConfirmEventSchedulingSection } from "@/components/event/ConfirmEventSchedulingSection";
 import type { Event, EventParticipant, EventStatus } from "@/lib/supabase/database.types";
 
 interface EventDetailPageClientProps {
@@ -224,6 +225,12 @@ export function EventDetailPageClient({ eventId }: EventDetailPageClientProps) {
           onChanged={refreshAll}
         />
       </div>
+
+      {!locked && (
+        <div className="mt-6">
+          <ConfirmEventSchedulingSection eventId={event.id} scheduling={scheduling} onChanged={refreshAll} />
+        </div>
+      )}
     </main>
   );
 }

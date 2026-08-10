@@ -209,5 +209,16 @@ export function mapEventRpcError(errorMessage: string | undefined, fallback: str
     return { status: 409, message: "슬롯 목록이 최신 상태와 일치하지 않습니다. 새로고침 후 다시 시도해주세요." };
   }
 
+  // confirm_event_scheduling (2A-5C)
+  if (msg.startsWith("EVENT_PARTICIPANTS_NOT_CONFIRMED")) {
+    return { status: 409, message: "참가자 명단을 먼저 확정해야 스케줄을 확정할 수 있습니다." };
+  }
+  if (msg.startsWith("EVENT_SCHEDULING_NO_ACTIVE_COURTS")) {
+    return { status: 409, message: "활성 코트가 없어 스케줄을 확정할 수 없습니다." };
+  }
+  if (msg.startsWith("EVENT_SCHEDULING_COURT_MISSING_SESSIONS")) {
+    return { status: 409, message: "슬롯이 없는 코트가 있어 스케줄을 확정할 수 없습니다." };
+  }
+
   return { status: 500, message: fallback };
 }
