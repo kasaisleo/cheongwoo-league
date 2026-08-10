@@ -22,7 +22,8 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     !Array.isArray(courtIds) ||
     courtIds.length === 0 ||
     courtIds.length > MAX_COURT_IDS ||
-    !courtIds.every((id) => isValidUuid(id))
+    !courtIds.every((id) => isValidUuid(id)) ||
+    new Set(courtIds).size !== courtIds.length
   ) {
     return NextResponse.json({ error: "올바르지 않은 재정렬 요청입니다." }, { status: 400 });
   }

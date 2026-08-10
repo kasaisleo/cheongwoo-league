@@ -85,11 +85,16 @@ export function EventDetailPageClient({ eventId }: EventDetailPageClientProps) {
     if (res.ok) setParticipants(body.participants ?? []);
   }, [eventId]);
 
+  // loadingEvent와 동일한 이유로 loadingScheduling도 여기서 건드리지 않는다 —
+  // 최초 진입 로딩 전용 플래그이고, 백그라운드 재조회에서까지 true로 바뀌면
+  // EventSchedulingSection의 loading 분기가 하위 트리(펼침 상태를 소유한
+  // 자식이 아니라 입력 중인 폼 자체)를 매번 unmount/remount해 슬롯/코트 폼에
+  // 입력 중인 값이 날아간다(실사용 QA에서 실측된 버그, 최초 1회는 아래
+  // useEffect에서만 관리). 실패 시에는 loadEvent와 동일하게 기존 scheduling을
+  // 그대로 유지하고 별도 에러 토스트를 띄우지 않는다(이 파일의 기존 관례).
   const loadScheduling = useCallback(async () => {
-    setLoadingScheduling(true);
     const res = await fetch(`/api/admin/events/${eventId}/scheduling`);
     const body = await res.json().catch(() => null);
-    setLoadingScheduling(false);
     if (res.ok) setScheduling(body);
   }, [eventId]);
 
@@ -98,7 +103,10 @@ export function EventDetailPageClient({ eventId }: EventDetailPageClientProps) {
   }, [loadEvent, loadParticipants, loadScheduling]);
 
   useEffect(() => {
-    refreshAll().finally(() => setLoadingEvent(false));
+    refreshAll().finally(() => {
+      setLoadingEvent(false);
+      setLoadingScheduling(false);
+    });
   }, [refreshAll]);
 
   async function handleSave(e: React.FormEvent) {
@@ -120,7 +128,11 @@ export function EventDetailPageClient({ eventId }: EventDetailPageClientProps) {
       return;
     }
     toast.success("이벤트 정보가 저장되었습니다.");
-    await loadEvent();
+    // status 변경이 참가자/코트·슬롯의 잠금 표시에도 즉시 반영되어야 하므로
+    // loadEvent만이 아니라 refreshAll을 호출한다 — loadScheduling이 더 이상
+    // loadingScheduling을 매번 true로 바꾸지 않으므로(위 수정) 코트/슬롯 폼에
+    // 입력 중인 값은 이 호출로 초기화되지 않는다.
+    await refreshAll();
   }
 
   if (loadingEvent) {

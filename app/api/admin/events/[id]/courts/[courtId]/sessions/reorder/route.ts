@@ -30,7 +30,8 @@ export async function POST(
     !Array.isArray(sessionIds) ||
     sessionIds.length === 0 ||
     sessionIds.length > MAX_SESSION_IDS ||
-    !sessionIds.every((id) => isValidUuid(id))
+    !sessionIds.every((id) => isValidUuid(id)) ||
+    new Set(sessionIds).size !== sessionIds.length
   ) {
     return NextResponse.json({ error: "올바르지 않은 재정렬 요청입니다." }, { status: 400 });
   }

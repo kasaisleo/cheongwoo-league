@@ -791,18 +791,18 @@ function SessionFieldsForm({
   return (
     <div className="space-y-2">
       {slotMode === "timed" && (
-        <div className="flex gap-2">
+        <div className="flex flex-col gap-2 sm:flex-row">
           <input
             type="datetime-local"
             value={startsAtLocal}
             onChange={(e) => setStartsAtLocal(e.target.value)}
-            className={`${inputCls} h-8`}
+            className={`${inputCls} h-8 min-w-0 w-full`}
           />
           <input
             type="datetime-local"
             value={endsAtLocal}
             onChange={(e) => setEndsAtLocal(e.target.value)}
-            className={`${inputCls} h-8`}
+            className={`${inputCls} h-8 min-w-0 w-full`}
           />
         </div>
       )}
