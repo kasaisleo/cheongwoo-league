@@ -4,7 +4,9 @@ import { useEffect, useState, useCallback } from "react";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { toast } from "@/components/ui/Toast";
 import { EventParticipantRoster } from "@/components/event/EventParticipantRoster";
-import type { Event, EventStatus } from "@/lib/supabase/database.types";
+import { ImportAttendanceParticipantsSection } from "@/components/event/ImportAttendanceParticipantsSection";
+import { ConfirmEventParticipantsSection } from "@/components/event/ConfirmEventParticipantsSection";
+import type { Event, EventParticipant, EventStatus } from "@/lib/supabase/database.types";
 
 interface EventDetailPageClientProps {
   eventId: string;
@@ -37,23 +39,29 @@ function nextStatusOptions(current: EventStatus): EventStatus[] {
 
 export function EventDetailPageClient({ eventId }: EventDetailPageClientProps) {
   const [event, setEvent] = useState<Event | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loadingEvent, setLoadingEvent] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [title, setTitle] = useState("");
   const [eventDate, setEventDate] = useState("");
   const [status, setStatus] = useState<EventStatus>("draft");
   const [saving, setSaving] = useState(false);
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const [participants, setParticipants] = useState<EventParticipant[]>([]);
+  const [loadingParticipants, setLoadingParticipants] = useState(true);
+
+  // Event 상세와 participants_confirmed_at은 roster 응답과는 별개 데이터라(2A-4B
+  // 보정 사항) 항상 이 함수로 같이 다시 읽는다 — 한쪽만 재조회해서 화면에 stale한
+  // 확정 상태가 남거나, 확정 성공 후에도 미확정으로 보이는 문제를 만들지 않는다.
+  const loadEvent = useCallback(async () => {
+    setLoadingEvent(true);
     const res = await fetch(`/api/admin/events/${eventId}`);
     if (res.status === 404) {
-      setLoading(false);
+      setLoadingEvent(false);
       setNotFound(true);
       return;
     }
     const body = await res.json().catch(() => null);
-    setLoading(false);
+    setLoadingEvent(false);
     if (res.ok && body.event) {
       setEvent(body.event);
       setTitle(body.event.title);
@@ -62,9 +70,21 @@ export function EventDetailPageClient({ eventId }: EventDetailPageClientProps) {
     }
   }, [eventId]);
 
+  const loadParticipants = useCallback(async () => {
+    setLoadingParticipants(true);
+    const res = await fetch(`/api/admin/events/${eventId}/participants`);
+    const body = await res.json().catch(() => null);
+    setLoadingParticipants(false);
+    if (res.ok) setParticipants(body.participants ?? []);
+  }, [eventId]);
+
+  const refreshAll = useCallback(async () => {
+    await Promise.all([loadEvent(), loadParticipants()]);
+  }, [loadEvent, loadParticipants]);
+
   useEffect(() => {
-    load();
-  }, [load]);
+    refreshAll();
+  }, [refreshAll]);
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
@@ -85,10 +105,10 @@ export function EventDetailPageClient({ eventId }: EventDetailPageClientProps) {
       return;
     }
     toast.success("이벤트 정보가 저장되었습니다.");
-    await load();
+    await loadEvent();
   }
 
-  if (loading) {
+  if (loadingEvent) {
     return (
       <main className="px-4 pt-6 pb-28">
         <p className="text-sm text-[color:var(--surface-muted)]">불러오는 중...</p>
@@ -108,6 +128,7 @@ export function EventDetailPageClient({ eventId }: EventDetailPageClientProps) {
   const inputCls =
     "h-10 w-full rounded-sm border border-[color:var(--control-border)] bg-[color:var(--control-bg)] px-3 text-sm text-[color:var(--control-text)] placeholder:text-[color:var(--control-placeholder)] focus:outline-none focus:border-[color:var(--control-border-focus)] focus:ring-2 focus:ring-[color:var(--control-focus-ring)]";
   const labelCls = "mb-1.5 block text-xs font-semibold text-[color:var(--surface-muted)]";
+  const locked = event.status === "completed" || event.status === "cancelled";
 
   return (
     <main className="px-4 pt-6 pb-28">
@@ -142,8 +163,31 @@ export function EventDetailPageClient({ eventId }: EventDetailPageClientProps) {
         </button>
       </form>
 
+      {!locked && (
+        <div className="mb-6">
+          <ImportAttendanceParticipantsSection eventId={event.id} participants={participants} onChanged={refreshAll} />
+        </div>
+      )}
+
       <h2 className="mb-2 text-[13px] font-bold text-[color:var(--surface-text)]">참가자 명단</h2>
-      <EventParticipantRoster eventId={event.id} eventStatus={event.status} />
+      <EventParticipantRoster
+        eventId={event.id}
+        eventStatus={event.status}
+        participants={participants}
+        loading={loadingParticipants}
+        onChanged={refreshAll}
+      />
+
+      {!locked && (
+        <div className="mt-6">
+          <ConfirmEventParticipantsSection
+            eventId={event.id}
+            participants={participants}
+            participantsConfirmedAt={event.participants_confirmed_at}
+            onChanged={refreshAll}
+          />
+        </div>
+      )}
     </main>
   );
 }

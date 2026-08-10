@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "@/components/ui/Toast";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { AddEventParticipantSection } from "@/components/event/AddEventParticipantSection";
@@ -9,12 +9,17 @@ import type { EventParticipant, EventStatus, ParticipantStatus } from "@/lib/sup
 interface EventParticipantRosterProps {
   eventId: string;
   eventStatus: EventStatus;
+  participants: EventParticipant[];
+  loading: boolean;
+  /** roster/Event 상세를 함께 재조회하는 부모의 단일 refresh — participants_confirmed_at
+   * 동기화를 위해 이 컴포넌트가 직접 참가자만 재조회하지 않는다(2A-4B). */
+  onChanged: () => void;
 }
 
 const STATUS_LABEL: Record<ParticipantStatus, string> = {
-  pending: "대기",
-  confirmed: "확정",
-  withdrawn: "탈퇴",
+  pending: "확정 대기",
+  confirmed: "참가 확정",
+  withdrawn: "참가 취소",
   excluded: "제외",
 };
 
@@ -30,23 +35,33 @@ const STATUS_ACCENT: Record<ParticipantStatus, string> = {
 
 const FILTERS: Array<{ key: ParticipantStatus | "all"; label: string }> = [
   { key: "all", label: "전체" },
-  { key: "pending", label: "대기" },
-  { key: "confirmed", label: "확정" },
-  { key: "withdrawn", label: "탈퇴" },
+  { key: "pending", label: "확정 대기" },
+  { key: "confirmed", label: "참가 확정" },
+  { key: "withdrawn", label: "참가 취소" },
   { key: "excluded", label: "제외" },
 ];
 
 /**
- * EventParticipantRoster — event_participants roster 섹션(0052 Phase 2A-4A).
+ * EventParticipantRoster — 참가자 roster 섹션(0052 Phase 2A-4A/2A-4B).
  *
- * pending/confirmed/withdrawn/excluded 표시 + status 필터 + 탈퇴/제외/제외해제.
- * "confirmed"로의 수동 전환 버튼은 의도적으로 없다(2A-4B의 roster 확정 액션 몫).
- * completed/cancelled 이벤트는 추가/상태변경 버튼을 전부 비활성화한다 — 최종
- * 방어선은 API/RPC의 EVENT_STRUCTURE_LOCKED이고, 이 disabled는 UX일 뿐이다.
+ * participants/loading은 부모(EventDetailPageClient)가 소유한다 — 이 컴포넌트가
+ * 직접 GET하지 않는다. 어떤 변경이든(추가/취소/제외/제외해제) 성공 후에는
+ * onChanged()만 호출해 부모가 roster+Event를 함께 재조회하게 한다(2A-4B 보정 사항 —
+ * participants_confirmed_at은 roster 응답에 없는 별도 데이터라 단독 재조회로는
+ * 동기화되지 않는다).
+ *
+ * "확정"(confirmed)으로의 수동 전환 버튼은 의도적으로 없다 — roster 단위
+ * 확정은 ConfirmEventParticipantsSection(confirm_event_participants RPC)의 몫이다.
+ * completed/cancelled 이벤트는 추가/상태변경 버튼을 전부 숨긴다 — 최종 방어선은
+ * API/RPC의 EVENT_STRUCTURE_LOCKED이고, 이 숨김은 UX일 뿐이다.
  */
-export function EventParticipantRoster({ eventId, eventStatus }: EventParticipantRosterProps) {
-  const [participants, setParticipants] = useState<EventParticipant[]>([]);
-  const [loading, setLoading] = useState(true);
+export function EventParticipantRoster({
+  eventId,
+  eventStatus,
+  participants,
+  loading,
+  onChanged,
+}: EventParticipantRosterProps) {
   const [filter, setFilter] = useState<ParticipantStatus | "all">("all");
   const [pendingAction, setPendingAction] = useState<{
     participant: EventParticipant;
@@ -55,18 +70,6 @@ export function EventParticipantRoster({ eventId, eventStatus }: EventParticipan
   const [busyId, setBusyId] = useState<string | null>(null);
 
   const locked = eventStatus === "completed" || eventStatus === "cancelled";
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    const res = await fetch(`/api/admin/events/${eventId}/participants`);
-    const body = await res.json().catch(() => null);
-    setLoading(false);
-    if (res.ok) setParticipants(body.participants ?? []);
-  }, [eventId]);
-
-  useEffect(() => {
-    load();
-  }, [load]);
 
   const activeMemberIds = useMemo(
     () =>
@@ -96,6 +99,7 @@ export function EventParticipantRoster({ eventId, eventStatus }: EventParticipan
   }, [participants]);
 
   async function changeStatus(participantId: string, status: ParticipantStatus) {
+    if (busyId) return; // 동일 요청 연속 클릭 방지
     setBusyId(participantId);
     const res = await fetch(`/api/admin/events/${eventId}/participants/${participantId}`, {
       method: "PATCH",
@@ -109,7 +113,7 @@ export function EventParticipantRoster({ eventId, eventStatus }: EventParticipan
       return;
     }
     toast.success("참가자 상태가 변경되었습니다.");
-    await load();
+    onChanged();
   }
 
   function requestDestructive(participant: EventParticipant, nextStatus: "withdrawn" | "excluded") {
@@ -127,7 +131,7 @@ export function EventParticipantRoster({ eventId, eventStatus }: EventParticipan
     <div>
       {locked && (
         <div className="mb-3 rounded-[10px] border border-fault-400/40 bg-fault-400/10 px-3 py-2 text-xs font-semibold text-fault-400">
-          {eventStatus === "completed" ? "완료된" : "취소된"} 이벤트입니다 — 참가자 명단이 잠겨 있습니다.
+          {eventStatus === "completed" ? "완료된" : "취소된"} 경기입니다 — 참가자 명단이 잠겨 있습니다.
         </div>
       )}
 
@@ -187,7 +191,7 @@ export function EventParticipantRoster({ eventId, eventStatus }: EventParticipan
                         onClick={() => requestDestructive(p, "withdrawn")}
                         className="rounded-sm border border-[color:var(--surface-border)] px-2 py-1 text-[10px] font-semibold text-[color:var(--surface-muted)] disabled:opacity-40"
                       >
-                        탈퇴 처리
+                        참가 취소
                       </button>
                       <button
                         type="button"
@@ -195,7 +199,7 @@ export function EventParticipantRoster({ eventId, eventStatus }: EventParticipan
                         onClick={() => requestDestructive(p, "excluded")}
                         className="rounded-sm border border-fault-400/60 px-2 py-1 text-[10px] font-semibold text-fault-400 disabled:opacity-40"
                       >
-                        제외 처리
+                        제외
                       </button>
                     </>
                   )}
@@ -221,7 +225,7 @@ export function EventParticipantRoster({ eventId, eventStatus }: EventParticipan
           eventId={eventId}
           activeMemberIds={activeMemberIds}
           activeGuestIds={activeGuestIds}
-          onAdded={load}
+          onAdded={onChanged}
         />
       )}
 
@@ -229,15 +233,15 @@ export function EventParticipantRoster({ eventId, eventStatus }: EventParticipan
         open={pendingAction !== null}
         title={
           pendingAction?.nextStatus === "excluded"
-            ? `${pendingAction.participant.display_name_snapshot}님을 제외 처리할까요?`
-            : `${pendingAction?.participant.display_name_snapshot}님을 탈퇴 처리할까요?`
+            ? `${pendingAction.participant.display_name_snapshot}님을 제외할까요?`
+            : `${pendingAction?.participant.display_name_snapshot}님의 참가를 취소할까요?`
         }
         description={
           pendingAction?.nextStatus === "excluded"
-            ? "제외 처리된 참가자는 자동으로 다시 추가되지 않습니다. 나중에 명단에서 직접 제외를 해제해야 합니다."
-            : "탈퇴 처리 후에는 참가자 추가 화면에서 다시 추가하면 복구됩니다."
+            ? "제외된 참가자는 자동으로 다시 추가되지 않습니다. 나중에 명단에서 직접 제외를 해제해야 합니다."
+            : "참가 취소 후에는 참가자 추가 화면에서 다시 추가하면 복구됩니다."
         }
-        confirmLabel={pendingAction?.nextStatus === "excluded" ? "제외 처리" : "탈퇴 처리"}
+        confirmLabel={pendingAction?.nextStatus === "excluded" ? "제외" : "참가 취소"}
         danger
         onConfirm={confirmPendingAction}
         onCancel={() => setPendingAction(null)}
