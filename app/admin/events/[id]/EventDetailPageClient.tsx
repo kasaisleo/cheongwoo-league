@@ -52,16 +52,19 @@ export function EventDetailPageClient({ eventId }: EventDetailPageClientProps) {
   // Event 상세와 participants_confirmed_at은 roster 응답과는 별개 데이터라(2A-4B
   // 보정 사항) 항상 이 함수로 같이 다시 읽는다 — 한쪽만 재조회해서 화면에 stale한
   // 확정 상태가 남거나, 확정 성공 후에도 미확정으로 보이는 문제를 만들지 않는다.
+  //
+  // loadingEvent는 여기서 건드리지 않는다 — 최초 진입 로딩 전용 플래그이고,
+  // mutation 후 refreshAll()의 백그라운드 재조회에서까지 true로 바뀌면 화면
+  // 전체가 매번 "불러오는 중..."으로 unmount/remount되어 import 결과 패널·
+  // 선택한 세션·roster 필터 등 자식 컴포넌트의 로컬 상태가 전부 날아간다
+  // (실사용 QA에서 실측된 버그, 아래 useEffect에서만 최초 1회 관리).
   const loadEvent = useCallback(async () => {
-    setLoadingEvent(true);
     const res = await fetch(`/api/admin/events/${eventId}`);
     if (res.status === 404) {
-      setLoadingEvent(false);
       setNotFound(true);
       return;
     }
     const body = await res.json().catch(() => null);
-    setLoadingEvent(false);
     if (res.ok && body.event) {
       setEvent(body.event);
       setTitle(body.event.title);
@@ -83,7 +86,7 @@ export function EventDetailPageClient({ eventId }: EventDetailPageClientProps) {
   }, [loadEvent, loadParticipants]);
 
   useEffect(() => {
-    refreshAll();
+    refreshAll().finally(() => setLoadingEvent(false));
   }, [refreshAll]);
 
   async function handleSave(e: React.FormEvent) {
