@@ -45,7 +45,7 @@ export async function PATCH(
   }
 
   if (slug !== undefined) {
-    if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug))
+    if (!/^[a-z0-9]+(?:[-_][a-z0-9]+)*$/.test(slug))
       return NextResponse.json({ error: "slug_invalid" }, { status: 400 });
     if (RESERVED_SLUGS.has(slug))
       return NextResponse.json({ error: "slug_reserved" }, { status: 400 });

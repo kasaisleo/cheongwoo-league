@@ -236,8 +236,8 @@ export function ClubRegistryPageClient({ clubs: initial, isOwner }: Props) {
               </FormField>
               <FormField label="Slug">
                 <input className="cr-input" value={eSlug}
-                  onChange={e => setESlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))}
-                  required pattern="[a-z0-9]+(-[a-z0-9]+)*" />
+                  onChange={e => setESlug(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ""))}
+                  required pattern="[a-z0-9]+([-_][a-z0-9]+)*" />
                 <p style={{ color: C.dim, fontSize: 9, marginTop: 3 }}>/c/{eSlug || "…"}</p>
               </FormField>
               <FormField label="Description (optional)">
@@ -320,8 +320,8 @@ export function ClubRegistryPageClient({ clubs: initial, isOwner }: Props) {
               </FormField>
               <FormField label="Slug *">
                 <input className="cr-input" placeholder="cheongwoo-tennis" value={cSlug}
-                  onChange={e => setCSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))}
-                  required pattern="[a-z0-9]+(-[a-z0-9]+)*" />
+                  onChange={e => setCSlug(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ""))}
+                  required pattern="[a-z0-9]+([-_][a-z0-9]+)*" />
                 <p style={{ color: C.dim, fontSize: 9, marginTop: 3 }}>/c/{cSlug || "…"}</p>
               </FormField>
             </div>
