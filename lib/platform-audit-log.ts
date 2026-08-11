@@ -17,6 +17,7 @@ export type AuditAction =
   | "club.update"
   | "club.status_change"
   | "club.operator_role_change"
+  | "club.master_bootstrap"
   | "platform_admin.create"
   | "platform_admin.update"
   | "platform_admin.password_reset"
