@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { getPlatformAdminSession } from "@/lib/platform-admin-session";
@@ -57,7 +58,7 @@ export async function POST(req: NextRequest) {
 
   if (!name) return NextResponse.json({ error: "name_required" }, { status: 400 });
   if (!slug) return NextResponse.json({ error: "slug_required" }, { status: 400 });
-  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug))
+  if (!/^[a-z0-9]+(?:[-_][a-z0-9]+)*$/.test(slug))
     return NextResponse.json({ error: "slug_invalid" }, { status: 400 });
   if (RESERVED_SLUGS.has(slug))
     return NextResponse.json({ error: "slug_reserved" }, { status: 400 });
@@ -71,13 +72,28 @@ export async function POST(req: NextRequest) {
     .maybeSingle();
   if (existing) return NextResponse.json({ error: "slug_taken" }, { status: 409 });
 
+  const clubId = randomUUID();
+
   const { data, error } = await supabase
     .from("clubs")
-    .insert({ name, slug, description: description ?? null, status: "active" })
+    .insert({
+      id: clubId,
+      name,
+      slug,
+      description: description ?? null,
+      status: "active",
+    })
     .select("id, name, slug, description, status, created_at")
     .single();
 
-  if (error) return NextResponse.json({ error: "db_error" }, { status: 500 });
+  if (error) {
+    console.error("platform_club_create failed", {
+      code: error.code,
+      message: error.message,
+      hint: error.hint,
+    });
+    return NextResponse.json({ error: "db_error" }, { status: 500 });
+  }
 
   await recordPlatformAuditLog(session!, {
     action:      "club.create",
