@@ -550,6 +550,150 @@ export interface ConfirmEventSchedulingParams {
 }
 /** confirm_event_scheduling은 반환값 없음(void). 최신 scheduling_confirmed_at은 반드시 GET /scheduling 재조회로 확인한다. */
 
+/* ── Event Game (0054, Phase 2A-6B) ───────────────────────────────── */
+
+/** event_games.format — singles는 선수 2명(팀당 1명), doubles는 4명(팀당 2명). DB CHECK로 강제. */
+export type EventGameFormat = "singles" | "doubles";
+/**
+ * event_games.status. 2A-6B-2 현재 RPC로 도달 가능한 값은 draft(생성)와
+ * cancelled(취소)뿐이다 — in_progress/completed는 스키마에만 있고 전이 RPC가
+ * 아직 없다(경기 진행·결과 입력은 이후 phase).
+ */
+export type EventGameStatus = "draft" | "in_progress" | "completed" | "cancelled";
+/** event_games.source — manual(수동 대진)/auto(자동 편성, 이후 phase). */
+export type EventGameSource = "manual" | "auto";
+/** event_game_players.team — A/B 두 팀. DB CHECK로 강제. */
+export type EventGameTeam = "A" | "B";
+
+/**
+ * Match System 2.0 — Event 안의 개별 게임(0054). event_court_id만 있고
+ * event_session_id가 없는 행은 none 모드의 "코트만 배정" 상태이고, 둘 다 null이면
+ * 미배치다. 점수 컬럼은 없다 — 결과 입력은 이후 phase. 쓰기는 create/update/
+ * place/reorder/cancel_event_game + set_event_game_players RPC 전용.
+ */
+export interface EventGame {
+  id: string;
+  event_id: string;
+  club_id: string;
+  event_court_id: string | null;
+  event_session_id: string | null;
+  format: EventGameFormat;
+  status: EventGameStatus;
+  source: EventGameSource;
+  position: number;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * Match System 2.0 — event_games의 선수 슬롯(0054). member/guest 전용 컬럼이 없고
+ * event_participant_id 하나로 통합 참조한다(레거시 matches의 8-슬롯 방식과 다름).
+ */
+export interface EventGamePlayer {
+  id: string;
+  event_game_id: string;
+  event_id: string;
+  club_id: string;
+  event_participant_id: string;
+  team: EventGameTeam;
+  slot: number;
+  created_at: string;
+}
+
+/** GET /api/admin/events/[id]/games 응답의 게임 1건 — 선수와 표시용 이름을 함께 담는다. */
+export interface EventGameWithPlayers extends EventGame {
+  players: Array<{
+    event_participant_id: string;
+    team: EventGameTeam;
+    slot: number;
+    display_name: string;
+  }>;
+}
+
+/**
+ * create_event_game(0054) — 게임 생성과 최초 선수 배정을 한 트랜잭션에서 처리한다.
+ * 3개 배열(p_participant_ids/p_teams/p_slots)은 같은 길이의 병렬 배열이며,
+ * singles는 정확히 2개, doubles는 정확히 4개여야 한다. 참가자는 전부
+ * status='confirmed' + is_active여야 한다(participants_confirmed_at은 보지 않는다).
+ */
+export interface CreateEventGameParams {
+  p_event_id: string;
+  p_club_id: string;
+  p_format: EventGameFormat;
+  p_participant_ids: string[];
+  p_teams: EventGameTeam[];
+  p_slots: number[];
+  p_event_court_id?: string | null;
+  p_event_session_id?: string | null;
+  p_created_by?: string | null;
+}
+/** create_event_game의 반환값: 신규 event_games.id(uuid). */
+export type CreateEventGameResult = string;
+
+/**
+ * update_event_game(0054) — 이 phase에서 변경 가능한 "게임 자체 정보"는 format뿐이다.
+ * p_format_supplied가 "format을 바꾸려는 의도"를 나타내며, 이것으로 "미지정"과
+ * "명시적 null"을 구분한다(false + p_format non-null은 계약 위반으로 거부).
+ * format을 실제로 바꿀 때는 새 카디널리티에 맞는 선수 3개 배열이 전부 필요하다.
+ */
+export interface UpdateEventGameParams {
+  p_game_id: string;
+  p_event_id: string;
+  p_club_id: string;
+  p_format_supplied?: boolean;
+  p_format?: EventGameFormat | null;
+  p_participant_ids?: string[] | null;
+  p_teams?: EventGameTeam[] | null;
+  p_slots?: number[] | null;
+}
+/** update_event_game은 반환값 없음(void). */
+
+/** set_event_game_players(0054) — draft 게임의 전체 라인업을 한 번에 교체한다(부분 추가/삭제 없음). */
+export interface SetEventGamePlayersParams {
+  p_game_id: string;
+  p_event_id: string;
+  p_club_id: string;
+  p_participant_ids: string[];
+  p_teams: EventGameTeam[];
+  p_slots: number[];
+}
+/** set_event_game_players는 반환값 없음(void). */
+
+/**
+ * place_event_game(0054) — 코트/세션 배정만 변경한다. 두 인자는 "원하는 최종 상태"
+ * 이며 둘 다 null이면 미배치로 되돌린다. none 모드는 session 불가(court만 가능),
+ * ordered/timed는 배치 시 court+session 둘 다 필수.
+ */
+export interface PlaceEventGameParams {
+  p_game_id: string;
+  p_event_id: string;
+  p_club_id: string;
+  p_event_court_id: string | null;
+  p_event_session_id: string | null;
+}
+/** place_event_game은 반환값 없음(void). */
+
+/**
+ * reorder_event_games(0054) — slot_mode='none'일 때만 실행 가능하며, 대상은
+ * "status=draft이고 event_session_id가 null인" 실행 큐 전체다(코트만 지정된
+ * 게임도 이 큐에 포함된다). p_game_ids는 그 집합과 정확히 일치해야 한다.
+ */
+export interface ReorderEventGamesParams {
+  p_event_id: string;
+  p_club_id: string;
+  p_game_ids: string[];
+}
+/** reorder_event_games는 반환값 없음(void). */
+
+/** cancel_event_game(0054) — draft → cancelled만 실제 전이. 이미 cancelled면 no-op. */
+export interface CancelEventGameParams {
+  p_game_id: string;
+  p_event_id: string;
+  p_club_id: string;
+}
+/** cancel_event_game은 반환값 없음(void). */
+
 export interface Database {
   public: {
     Tables: {

@@ -1,4 +1,4 @@
-import type { MatchSlotMode } from "@/lib/supabase/database.types";
+import type { EventGameFormat, EventGameTeam, MatchSlotMode } from "@/lib/supabase/database.types";
 
 export interface EventRpcErrorInfo {
   status: number;
@@ -32,6 +32,69 @@ export function isValidBoundedString(value: unknown, maxLength: number): value i
 /** event_courts/event_sessions position 인자 — DB는 int4(>=1)만 강제, 상한은 오버플로 방지용 여유값. */
 export function isValidPosition(value: unknown): value is number {
   return typeof value === "number" && Number.isInteger(value) && value >= 1 && value <= 100000;
+}
+
+/**
+ * 대진 라인업 입력(2A-6B) — API는 읽기 쉬운 객체 배열로 받고, RPC 계약(3개
+ * 병렬 배열)으로 변환한다. 정원(singles 2 / doubles 4)·중복·자리 중복은 RPC가
+ * 최종 검증하지만, 형식 오류는 DB 왕복 없이 여기서 먼저 걸러 400으로 돌려준다.
+ */
+export interface GameLineupInput {
+  participantIds: string[];
+  teams: EventGameTeam[];
+  slots: number[];
+}
+
+export function parseGameLineup(
+  raw: unknown,
+  format: EventGameFormat
+): { ok: true; lineup: GameLineupInput } | { ok: false; message: string } {
+  if (!Array.isArray(raw)) {
+    return { ok: false, message: "선수 목록이 필요합니다." };
+  }
+  const required = format === "singles" ? 2 : 4;
+  if (raw.length !== required) {
+    return { ok: false, message: `${format === "singles" ? "단식은 2명" : "복식은 4명"}을 지정해야 합니다.` };
+  }
+
+  const participantIds: string[] = [];
+  const teams: EventGameTeam[] = [];
+  const slots: number[] = [];
+
+  for (const entry of raw) {
+    if (typeof entry !== "object" || entry === null) {
+      return { ok: false, message: "선수 정보 형식이 올바르지 않습니다." };
+    }
+    const { eventParticipantId, team, slot } = entry as {
+      eventParticipantId?: unknown;
+      team?: unknown;
+      slot?: unknown;
+    };
+    if (!isValidUuid(eventParticipantId)) {
+      return { ok: false, message: "참가자 정보가 올바르지 않습니다." };
+    }
+    if (team !== "A" && team !== "B") {
+      return { ok: false, message: "팀 값이 올바르지 않습니다." };
+    }
+    if (slot !== 1 && slot !== 2) {
+      return { ok: false, message: "자리 값이 올바르지 않습니다." };
+    }
+    if (format === "singles" && slot !== 1) {
+      return { ok: false, message: "단식에서는 2번 자리를 사용할 수 없습니다." };
+    }
+    participantIds.push(eventParticipantId);
+    teams.push(team);
+    slots.push(slot);
+  }
+
+  if (new Set(participantIds).size !== participantIds.length) {
+    return { ok: false, message: "같은 참가자를 중복해서 넣을 수 없습니다." };
+  }
+  if (new Set(teams.map((t, i) => `${t}:${slots[i]}`)).size !== teams.length) {
+    return { ok: false, message: "같은 팀·자리에 두 명을 넣을 수 없습니다." };
+  }
+
+  return { ok: true, lineup: { participantIds, teams, slots } };
 }
 
 /**
@@ -218,6 +281,38 @@ export function mapEventRpcError(errorMessage: string | undefined, fallback: str
   }
   if (msg.startsWith("EVENT_SCHEDULING_COURT_MISSING_SESSIONS")) {
     return { status: 409, message: "슬롯이 없는 코트가 있어 스케줄을 확정할 수 없습니다." };
+  }
+
+  // event_games / event_game_players (0054, 2A-6B)
+  if (msg.startsWith("EVENT_GAME_NOT_FOUND")) {
+    return { status: 404, message: "게임을 찾을 수 없습니다." };
+  }
+  if (msg.startsWith("EVENT_GAME_STRUCTURE_LOCKED")) {
+    return { status: 409, message: "진행·완료·취소된 게임은 변경할 수 없습니다." };
+  }
+  if (msg.startsWith("EVENT_GAME_PARTICIPANT_UNAVAILABLE")) {
+    return {
+      status: 409,
+      message: "확정된 참가자만 대진에 넣을 수 있습니다. 참가자 명단을 확인해주세요.",
+    };
+  }
+  if (msg.startsWith("EVENT_GAME_INVALID_PLAYERS")) {
+    return { status: 400, message: "선수 구성이 올바르지 않습니다. 단식은 2명, 복식은 4명이어야 합니다." };
+  }
+  if (msg.startsWith("EVENT_GAME_COURT_UNAVAILABLE")) {
+    return { status: 409, message: "사용할 수 없는 코트입니다. 코트 상태를 확인해주세요." };
+  }
+  if (msg.startsWith("EVENT_GAME_SESSION_UNAVAILABLE")) {
+    return { status: 409, message: "사용할 수 없는 슬롯입니다. 운영 방식과 슬롯 상태를 확인해주세요." };
+  }
+  if (msg.startsWith("EVENT_GAME_SESSION_CONFLICT")) {
+    return { status: 409, message: "이 슬롯에는 이미 다른 게임이 배치되어 있습니다." };
+  }
+  if (msg.startsWith("EVENT_GAME_PLAYER_TIME_CONFLICT")) {
+    return { status: 409, message: "같은 시간대에 이미 배정된 선수가 있습니다." };
+  }
+  if (msg.startsWith("EVENT_GAME_REORDER_INVALID")) {
+    return { status: 409, message: "게임 순서 정보가 최신 상태와 일치하지 않습니다. 새로고침 후 다시 시도해주세요." };
   }
 
   return { status: 500, message: fallback };

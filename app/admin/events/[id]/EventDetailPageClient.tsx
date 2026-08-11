@@ -8,6 +8,7 @@ import { ImportAttendanceParticipantsSection } from "@/components/event/ImportAt
 import { ConfirmEventParticipantsSection } from "@/components/event/ConfirmEventParticipantsSection";
 import { EventSchedulingSection, type SchedulingSnapshot } from "@/components/event/EventSchedulingSection";
 import { ConfirmEventSchedulingSection } from "@/components/event/ConfirmEventSchedulingSection";
+import { EventGamesSection } from "@/components/event/EventGamesSection";
 import type { Event, EventParticipant, EventStatus } from "@/lib/supabase/database.types";
 
 interface EventDetailPageClientProps {
@@ -231,6 +232,20 @@ export function EventDetailPageClient({ eventId }: EventDetailPageClientProps) {
           <ConfirmEventSchedulingSection eventId={event.id} scheduling={scheduling} onChanged={refreshAll} />
         </div>
       )}
+
+      {/*
+        대진 구성(2A-6B-2)은 완료/취소 이벤트에서도 읽기 전용으로 계속 보여준다 —
+        다른 섹션처럼 통째로 숨기면 지난 이벤트의 대진 기록을 볼 수 없기 때문이다.
+        잠금 처리는 섹션 내부가 scheduling.event.locked로 직접 판단한다.
+      */}
+      <div className="mt-6">
+        <EventGamesSection
+          eventId={event.id}
+          scheduling={scheduling}
+          participants={participants}
+          onChanged={refreshAll}
+        />
+      </div>
     </main>
   );
 }
