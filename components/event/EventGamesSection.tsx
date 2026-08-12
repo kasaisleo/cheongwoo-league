@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "@/components/ui/Toast";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import type { SchedulingSnapshot } from "@/components/event/EventSchedulingSection";
@@ -99,6 +99,14 @@ export function EventGamesSection({ eventId, scheduling, participants, onChanged
   const [games, setGames] = useState<EventGameWithPlayers[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  /**
+   * busy state만으로는 같은 tick에 들어온 두 번째 호출을 막지 못한다 —
+   * setBusy(true)가 리렌더 전이라 두 호출 모두 busy=false를 읽고 통과한다
+   * (Production QA에서 저장 버튼 연속 2회 클릭 시 POST가 2건 나간 것을 실측).
+   * 요청 시작 시점에 동기적으로 세워지는 ref를 실제 게이트로 쓰고, busy는
+   * 버튼 disabled/loading 표시용으로만 유지한다.
+   */
+  const mutationLockRef = useRef(false);
 
   const [showCreate, setShowCreate] = useState(false);
   const [format, setFormat] = useState<EventGameFormat>("doubles");
@@ -170,9 +178,16 @@ export function EventGamesSection({ eventId, scheduling, participants, onChanged
     };
   }, [eventId]);
 
-  /** 모든 쓰기 공통 래퍼 — busy 유지, 실패 메시지 노출, 성공 시 대진+부모 동시 갱신. */
+  /**
+   * 모든 쓰기 공통 래퍼 — 중복 요청 차단, 실패 메시지 노출, 성공 시 대진+부모
+   * 동시 갱신. 결과 저장·수정·초기화를 포함한 이 컴포넌트의 모든 mutation이
+   * 이 함수 하나를 거치므로, 잠금도 여기 한 곳에만 둔다.
+   */
   async function mutate(url: string, init: RequestInit, successMsg: string, fallbackMsg: string) {
-    if (busy) return false;
+    // fetch 호출 직전에 동기적으로 잠근다 — ConfirmDialog를 여는 시점이 아니라
+    // 실제 요청 시작 시점이어야 취소 시 잠금이 남지 않는다.
+    if (mutationLockRef.current) return false;
+    mutationLockRef.current = true;
     setBusy(true);
     try {
       const res = await fetch(url, init);
@@ -189,6 +204,8 @@ export function EventGamesSection({ eventId, scheduling, participants, onChanged
       toast.error(fallbackMsg);
       return false;
     } finally {
+      // 성공·실패·예외 어느 경로로 빠져나가도 반드시 함께 해제한다.
+      mutationLockRef.current = false;
       setBusy(false);
     }
   }
