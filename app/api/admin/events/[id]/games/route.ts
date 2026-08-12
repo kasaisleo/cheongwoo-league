@@ -57,7 +57,12 @@ export async function GET(_request: NextRequest, { params }: { params: { id: str
         .select("*")
         .eq("event_id", params.id)
         .eq("club_id", access.clubId)
-        .order("position", { ascending: true }),
+        // position만으로는 동률에서 순서가 비결정적이다(Postgres가 tie를 보장하지
+        // 않는다). id를 최종 tie-breaker로 둔다 — created_at은 같은 시각이 나올 수
+        // 있어 tie-breaker로 쓰지 않는다. 0060 이후 새 중복은 생기지 않지만,
+        // 그 전에 만들어진 중복이 남아 있어도 응답 순서는 항상 같아야 한다.
+        .order("position", { ascending: true })
+        .order("id", { ascending: true }),
       supabase
         .from("event_game_players")
         .select("*")
