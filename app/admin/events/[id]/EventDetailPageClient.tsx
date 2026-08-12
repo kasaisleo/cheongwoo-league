@@ -157,7 +157,16 @@ export function EventDetailPageClient({ eventId }: EventDetailPageClientProps) {
   const inputCls =
     "h-10 w-full rounded-sm border border-[color:var(--control-border)] bg-[color:var(--control-bg)] px-3 text-sm text-[color:var(--control-text)] placeholder:text-[color:var(--control-placeholder)] focus:outline-none focus:border-[color:var(--control-border-focus)] focus:ring-2 focus:ring-[color:var(--control-focus-ring)]";
   const labelCls = "mb-1.5 block text-xs font-semibold text-[color:var(--surface-muted)]";
-  const locked = event.status === "completed" || event.status === "cancelled";
+  /**
+   * 0058 이후 Event 전체 운영 잠금은 cancelled 하나뿐이다. completed는 운영상
+   * 종료 표시일 뿐이며, 결과 저장·초기화(0059)와 명단·코트·대진 변경을 DB가
+   * 계속 허용한다. 따라서 예전처럼 completed까지 묶어 섹션을 통째로 숨기면
+   * UI가 DB보다 과하게 잠그게 된다 — 여기서는 cancelled만 잠근다.
+   * 게임 단위 잠금(완료된 게임의 선수·배치 변경 금지)은 각 섹션이 게임의
+   * status로 따로 판단하고, 최종 방어는 항상 RPC가 한다.
+   */
+  const isCancelled = event.status === "cancelled";
+  const isCompleted = event.status === "completed";
 
   return (
     <main className="px-4 pt-6 pb-28">
@@ -192,7 +201,19 @@ export function EventDetailPageClient({ eventId }: EventDetailPageClientProps) {
         </button>
       </form>
 
-      {!locked && (
+      {isCompleted && (
+        <div className="mb-6 rounded-[10px] border border-[color:var(--surface-border)] bg-[color:var(--surface-bg)] px-3 py-2 text-xs text-[color:var(--surface-muted)]">
+          완료된 경기입니다. 경기 결과는 계속 수정하거나 초기화할 수 있고, 결과가 확정된 게임의 선수·배치만
+          잠깁니다.
+        </div>
+      )}
+      {isCancelled && (
+        <div className="mb-6 rounded-[10px] border border-fault-400/40 bg-fault-400/10 px-3 py-2 text-xs font-semibold text-fault-400">
+          취소된 경기입니다 — 모든 변경이 잠겨 있고 조회만 가능합니다.
+        </div>
+      )}
+
+      {!isCancelled && (
         <div className="mb-6">
           <ImportAttendanceParticipantsSection eventId={event.id} participants={participants} onChanged={refreshAll} />
         </div>
@@ -207,7 +228,7 @@ export function EventDetailPageClient({ eventId }: EventDetailPageClientProps) {
         onChanged={refreshAll}
       />
 
-      {!locked && (
+      {!isCancelled && (
         <div className="mt-6">
           <ConfirmEventParticipantsSection
             eventId={event.id}
@@ -227,7 +248,7 @@ export function EventDetailPageClient({ eventId }: EventDetailPageClientProps) {
         />
       </div>
 
-      {!locked && (
+      {!isCancelled && (
         <div className="mt-6">
           <ConfirmEventSchedulingSection eventId={event.id} scheduling={scheduling} onChanged={refreshAll} />
         </div>
@@ -236,7 +257,7 @@ export function EventDetailPageClient({ eventId }: EventDetailPageClientProps) {
       {/*
         대진 구성(2A-6B-2)은 완료/취소 이벤트에서도 읽기 전용으로 계속 보여준다 —
         다른 섹션처럼 통째로 숨기면 지난 이벤트의 대진 기록을 볼 수 없기 때문이다.
-        잠금 처리는 섹션 내부가 scheduling.event.locked로 직접 판단한다.
+        잠금 처리는 섹션 내부가 scheduling.event.isCancelled와 게임 status로 직접 판단한다.
       */}
       <div className="mt-6">
         <EventGamesSection

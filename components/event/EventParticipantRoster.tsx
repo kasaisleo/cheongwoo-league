@@ -69,7 +69,11 @@ export function EventParticipantRoster({
   } | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
 
-  const locked = eventStatus === "completed" || eventStatus === "cancelled";
+  // 0058: create/update_event_participant는 cancelled에서만 차단된다.
+  // completed Event의 명단 변경은 DB가 허용하므로 UI도 막지 않는다.
+  // (활성 게임에 배정된 참가자의 비활성화는 DB가 EVENT_PARTICIPANT_IN_ACTIVE_GAME으로
+  //  개별 차단하고, 그 메시지를 그대로 노출한다 — UI가 미리 판단하지 않는다.)
+  const locked = eventStatus === "cancelled";
 
   const activeMemberIds = useMemo(
     () =>
@@ -131,7 +135,7 @@ export function EventParticipantRoster({
     <div>
       {locked && (
         <div className="mb-3 rounded-[10px] border border-fault-400/40 bg-fault-400/10 px-3 py-2 text-xs font-semibold text-fault-400">
-          {eventStatus === "completed" ? "완료된" : "취소된"} 경기입니다 — 참가자 명단이 잠겨 있습니다.
+          취소된 경기입니다 — 참가자 명단이 잠겨 있습니다.
         </div>
       )}
 

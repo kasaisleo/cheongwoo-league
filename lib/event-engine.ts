@@ -133,8 +133,10 @@ export function mapEventRpcError(errorMessage: string | undefined, fallback: str
   if (msg.startsWith("INVALID_STATUS_TRANSITION")) {
     return { status: 409, message: "허용되지 않는 상태 변경입니다." };
   }
+  // 0058 이후 이 코드를 올리는 조건은 status='cancelled' 하나뿐이다
+  // (completed는 더 이상 구조 잠금이 아니다).
   if (msg.startsWith("EVENT_STRUCTURE_LOCKED")) {
-    return { status: 409, message: "완료되었거나 취소된 이벤트는 구조를 변경할 수 없습니다." };
+    return { status: 409, message: "취소된 이벤트는 변경할 수 없습니다." };
   }
   // normalize_match_config(0050) — 이번 phase UI는 match_config를 편집하지
   // 않아 실사용 경로는 없지만, update_event가 받는 인자라 방어적으로 매핑.
@@ -290,10 +292,11 @@ export function mapEventRpcError(errorMessage: string | undefined, fallback: str
   if (msg.startsWith("EVENT_GAME_STRUCTURE_LOCKED")) {
     return { status: 409, message: "진행·완료·취소된 게임은 변경할 수 없습니다." };
   }
+  // 0058 이후 배정 자격은 is_active 하나뿐이다(status='confirmed' 요구 제거).
   if (msg.startsWith("EVENT_GAME_PARTICIPANT_UNAVAILABLE")) {
     return {
       status: 409,
-      message: "확정된 참가자만 대진에 넣을 수 있습니다. 참가자 명단을 확인해주세요.",
+      message: "참가 중인 참가자만 대진에 넣을 수 있습니다. 참가자 명단을 확인해주세요.",
     };
   }
   if (msg.startsWith("EVENT_GAME_INVALID_PLAYERS")) {
@@ -313,6 +316,46 @@ export function mapEventRpcError(errorMessage: string | undefined, fallback: str
   }
   if (msg.startsWith("EVENT_GAME_REORDER_INVALID")) {
     return { status: 409, message: "게임 순서 정보가 최신 상태와 일치하지 않습니다. 새로고침 후 다시 시도해주세요." };
+  }
+
+  // 결과 저장·초기화 (0059, 2A-7B-2C)
+  //
+  // EVENT_GAME_PARTICIPANT_UNAVAILABLE / EVENT_GAME_INVALID_PLAYERS /
+  // EVENT_NOT_FOUND / EVENT_GAME_NOT_FOUND / EVENT_STRUCTURE_LOCKED는 위에서
+  // 이미 매핑된 코드를 그대로 재사용한다(취소된 이벤트는 EVENT_STRUCTURE_LOCKED로
+  // 올라오고, 0058 이후 그 코드가 뜻하는 것은 "취소된 이벤트"뿐이다).
+  if (msg.startsWith("EVENT_GAME_CANCELLED_NO_RESULT")) {
+    return { status: 409, message: "취소된 게임에는 결과를 저장하거나 초기화할 수 없습니다." };
+  }
+  if (msg.startsWith("EVENT_GAME_RESULT_FORMAT_UNSUPPORTED")) {
+    return { status: 409, message: "현재 결과 입력은 복식 게임만 지원합니다." };
+  }
+  if (msg.startsWith("EVENT_GAME_RESULT_TIE_NOT_ALLOWED")) {
+    return { status: 400, message: "두 팀의 점수가 같으면 저장할 수 없습니다. 승패가 갈리도록 입력해주세요." };
+  }
+  if (msg.startsWith("EVENT_GAME_RESULT_INCONSISTENT")) {
+    return {
+      status: 409,
+      message: "결과 기록이 서로 맞지 않습니다. 임의로 지우지 않았으니 운영자에게 확인을 요청해주세요.",
+    };
+  }
+  if (msg.startsWith("EVENT_GAME_MATCH_MANAGED_SEPARATELY")) {
+    return {
+      status: 409,
+      message: "이 경기 기록은 게임 결과 저장·초기화로만 변경할 수 있습니다.",
+    };
+  }
+  if (msg.startsWith("INVALID_SCORE")) {
+    return { status: 400, message: "점수는 0에서 7 사이여야 합니다." };
+  }
+  if (msg.startsWith("INVALID_TIEBREAK")) {
+    return { status: 400, message: "7-6 경기는 양 팀의 타이브레이크 점수를 모두 입력해야 합니다." };
+  }
+  if (msg.startsWith("PARTICIPANT_CLUB_MISMATCH")) {
+    return { status: 409, message: "선수 정보가 클럽과 일치하지 않습니다. 명단을 확인해주세요." };
+  }
+  if (msg.startsWith("EFFECT_UPDATE_FAILED")) {
+    return { status: 500, message: "기록 반영에 실패했습니다. 잠시 후 다시 시도해주세요." };
   }
 
   return { status: 500, message: fallback };

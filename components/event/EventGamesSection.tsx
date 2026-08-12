@@ -12,21 +12,27 @@ import type {
 } from "@/lib/supabase/database.types";
 
 /**
- * EventGamesSection — 수동 대진 구성(0054, Phase 2A-6B-2).
+ * EventGamesSection — 수동 대진 구성(0054, 2A-6B-2) + 게임 결과 관리(0059, 2A-7B-2D).
  *
- * 범위: 대진 생성 / 선수 지정 / 세션 배치·이동 / 순서 변경 / 취소.
- * 범위 밖(만들지 않음): 자동 편성, 경기 시작·종료, 점수 입력, 승패, 검수,
- * 랭킹 반영, games_confirmed_at.
+ * 범위: 대진 생성 / 선수 지정 / 세션 배치·이동 / 순서 변경 / 취소 /
+ *       결과 저장·수정·초기화.
+ * 범위 밖(만들지 않음): 자동 편성, 경기 시작·종료 전환, 검수, games_confirmed_at.
  *
  * 게이트 정책 — RPC 계약과 정확히 일치시킨다:
  *   - 게임 RPC들은 participants_confirmed_at / scheduling_confirmed_at을
- *     "보지 않는다"(0054 실측 확인). 따라서 이 UI도 그 두 값으로 잠그지
- *     않는다. 실제 제약은 "선수로 지정할 참가자가 status='confirmed' AND
- *     is_active여야 한다"는 것뿐이므로, 확정된 참가자가 0명일 때만 생성
- *     폼을 막고 안내한다.
- *   - 구조 잠금은 event.status가 completed/cancelled일 때만(다른 Event 섹션과 동일).
- *   - 그 외 모든 유효성(정원, 중복, 슬롯 점유, 시간 충돌, 모드별 배치 규칙)은
- *     서버 RPC가 최종 판정하고, 이 컴포넌트는 실패 메시지를 그대로 노출한다.
+ *     "보지 않는다". 따라서 이 UI도 그 두 값으로 잠그지 않는다.
+ *   - 0058 이후 배정 자격은 is_active 하나뿐이다(status='confirmed' 요구 제거).
+ *   - Event 전체 잠금은 cancelled 하나뿐이다. completed Event에서도 대진과
+ *     결과를 계속 다룰 수 있다.
+ *   - 게임 단위 잠금은 두 축이 다르다:
+ *       구조(선수·배치·순서·취소) → game.status === 'draft'일 때만
+ *       결과(저장·수정·초기화)   → game.status !== 'cancelled'일 때
+ *     즉 완료된 게임은 선수를 바꿀 수 없지만 점수는 정정할 수 있다. 선수를
+ *     바꾸려면 결과를 먼저 초기화해 draft로 되돌려야 한다.
+ *   - 결과 입력은 복식만 지원한다(0059 — matches의 슬롯 XOR CHECK 때문).
+ *   - 그 외 모든 유효성(정원, 중복, 슬롯 점유, 시간 충돌, 점수 범위, 동점,
+ *     타이브레이크, 효과 undo/apply)은 서버 RPC가 최종 판정하고, 이 컴포넌트는
+ *     실패 메시지를 그대로 노출한다. 승자·상태를 여기서 계산하지 않는다.
  */
 
 interface EventGamesSectionProps {
@@ -38,6 +44,27 @@ interface EventGamesSectionProps {
 }
 
 type LineupDraft = Record<string, string>; // "A:1" | "A:2" | "B:1" | "B:2" -> event_participant_id
+
+/** 결과 입력 폼의 로컬 값. 저장 실패 시 재입력이 필요 없도록 게임별로 유지한다. */
+interface ResultDraft {
+  scoreA: string;
+  scoreB: string;
+  tieA: string;
+  tieB: string;
+}
+
+const EMPTY_RESULT_DRAFT: ResultDraft = { scoreA: "", scoreB: "", tieA: "", tieB: "" };
+
+/** 저장된 결과를 폼 초기값으로 되돌린다(수정 진입 시). */
+function resultToDraft(r: EventGameWithPlayers["result"]): ResultDraft {
+  if (!r) return EMPTY_RESULT_DRAFT;
+  return {
+    scoreA: String(r.score_a),
+    scoreB: String(r.score_b),
+    tieA: r.score_a_tiebreak === null ? "" : String(r.score_a_tiebreak),
+    tieB: r.score_b_tiebreak === null ? "" : String(r.score_b_tiebreak),
+  };
+}
 
 const SINGLES_SEATS: Array<{ key: string; team: EventGameTeam; slot: number; label: string }> = [
   { key: "A:1", team: "A", slot: 1, label: "A팀" },
@@ -83,19 +110,21 @@ export function EventGamesSection({ eventId, scheduling, participants, onChanged
 
   const [cancelTarget, setCancelTarget] = useState<EventGameWithPlayers | null>(null);
 
-  const locked = scheduling?.event.locked ?? false;
+  /** 결과 폼을 펼친 게임과 게임별 입력값(저장 실패 시에도 유지). */
+  const [editingResultFor, setEditingResultFor] = useState<string | null>(null);
+  const [resultDrafts, setResultDrafts] = useState<Record<string, ResultDraft>>({});
+  const [saveResultTarget, setSaveResultTarget] = useState<EventGameWithPlayers | null>(null);
+  const [clearResultTarget, setClearResultTarget] = useState<EventGameWithPlayers | null>(null);
+
+  /** 0058: Event 전체 잠금은 cancelled 하나뿐. completed는 잠금이 아니다. */
+  const locked = scheduling?.event.isCancelled ?? false;
   const slotMode = scheduling?.event.slotMode ?? "none";
 
-  /** 대진에 넣을 수 있는 참가자 = status confirmed + is_active (RPC의 실제 조건과 동일). */
+  /** 대진에 넣을 수 있는 참가자 = is_active (0058이 status='confirmed' 요구를 제거). */
   const eligible = useMemo(
-    () => participants.filter((p) => p.status === "confirmed" && p.is_active),
+    () => participants.filter((p) => p.is_active),
     [participants]
   );
-  const nameById = useMemo(
-    () => new Map(eligible.map((p) => [p.id, p.display_name_snapshot])),
-    [eligible]
-  );
-
   /** 배치 가능한 슬롯(활성 코트의 활성 세션)만 평탄화. none 모드는 슬롯을 쓰지 않는다. */
   const placeableSessions = useMemo(() => {
     if (!scheduling || slotMode === "none") return [];
@@ -239,6 +268,61 @@ export function EventGamesSection({ eventId, scheduling, participants, onChanged
     );
   }
 
+  /**
+   * 결과 저장·수정 — 점수 4칸만 보내고 선수는 서버가 현재 라인업에서 직접 읽는다.
+   * 승자·Game 상태·Match 연결·포인트 효과는 전부 RPC가 정하므로 여기서
+   * 낙관적으로 확정 표시하지 않고, 성공 후 재조회 결과로만 렌더링한다.
+   */
+  async function handleSaveResult(game: EventGameWithPlayers) {
+    const d = resultDrafts[game.id] ?? EMPTY_RESULT_DRAFT;
+    if (d.scoreA.trim() === "" || d.scoreB.trim() === "") {
+      toast.error("양 팀 점수를 모두 입력해주세요.");
+      return;
+    }
+    const ok = await mutate(
+      `/api/admin/events/${eventId}/games/${game.id}/result`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          scoreA: d.scoreA.trim(),
+          scoreB: d.scoreB.trim(),
+          scoreATiebreak: d.tieA.trim() === "" ? null : d.tieA.trim(),
+          scoreBTiebreak: d.tieB.trim() === "" ? null : d.tieB.trim(),
+        }),
+      },
+      "경기 결과를 저장했습니다.",
+      "경기 결과 저장에 실패했습니다."
+    );
+    // 실패하면 입력값을 그대로 남겨 재입력이 필요 없게 한다.
+    if (ok) {
+      setEditingResultFor(null);
+      setResultDrafts((prev) => {
+        const next = { ...prev };
+        delete next[game.id];
+        return next;
+      });
+    }
+  }
+
+  /** 결과 초기화 — 효과 undo·Match 삭제·draft 복구는 전부 RPC가 한 트랜잭션에서 처리한다. */
+  async function handleClearResult(game: EventGameWithPlayers) {
+    const ok = await mutate(
+      `/api/admin/events/${eventId}/games/${game.id}/result`,
+      { method: "DELETE" },
+      "경기 결과를 초기화했습니다.",
+      "경기 결과 초기화에 실패했습니다."
+    );
+    if (ok) {
+      setEditingResultFor(null);
+      setResultDrafts((prev) => {
+        const next = { ...prev };
+        delete next[game.id];
+        return next;
+      });
+    }
+  }
+
   /** none 모드 실행 큐(미배치 draft) 순서 변경 — RPC가 이 집합 전체를 요구한다. */
   async function handleReorder(queue: EventGameWithPlayers[], index: number, direction: -1 | 1) {
     const target = index + direction;
@@ -299,6 +383,26 @@ export function EventGamesSection({ eventId, scheduling, participants, onChanged
     const isDraft = game.status === "draft";
     const sessionLabel = game.event_session_id ? sessionMetaById.get(game.event_session_id)?.label : null;
 
+    // 결과 액션 가능 여부 — DB가 명확히 금지하는 경우만 선제적으로 막고,
+    // 나머지 판정은 서버에 맡긴다.
+    const seatCount = game.format === "singles" ? 2 : 4;
+    const lineupComplete =
+      game.players.length === seatCount &&
+      new Set(game.players.map((p) => p.event_participant_id)).size === seatCount;
+    const resultBlockedReason = locked
+      ? "취소된 경기입니다."
+      : isCancelled
+        ? "취소된 게임에는 결과를 저장할 수 없습니다."
+        : game.format !== "doubles"
+          ? "현재 결과 입력은 복식 게임만 지원합니다."
+          : !lineupComplete
+            ? "선수 4명이 모두 배정되어야 결과를 입력할 수 있습니다."
+            : null;
+    const canEditResult = resultBlockedReason === null;
+    const draftValue = resultDrafts[game.id] ?? EMPTY_RESULT_DRAFT;
+    const winnerLabel =
+      game.result === null ? null : game.result.winner_team === "A" ? "A팀 승" : "B팀 승";
+
     return (
       <div
         key={game.id}
@@ -333,6 +437,28 @@ export function EventGamesSection({ eventId, scheduling, participants, onChanged
               <span className="mx-1.5 text-[color:var(--surface-muted)]">vs</span>
               {game.players.filter((p) => p.team === "B").map((p) => p.display_name).join(", ") || "—"}
             </p>
+            {game.result && (
+              <p className="mt-1 flex flex-wrap items-center gap-1.5 text-[12px]">
+                <span className="font-bold text-[color:var(--surface-text)]">
+                  {game.result.score_a} : {game.result.score_b}
+                </span>
+                {game.result.score_a_tiebreak !== null && game.result.score_b_tiebreak !== null && (
+                  <span className="text-[10px] text-[color:var(--surface-muted)]">
+                    (타이브레이크 {game.result.score_a_tiebreak}:{game.result.score_b_tiebreak})
+                  </span>
+                )}
+                <span
+                  className="rounded-sm border px-1.5 py-0.5 text-[10px] font-semibold"
+                  style={{
+                    borderColor: "var(--admin-accent)",
+                    background: "var(--admin-accent-soft)",
+                    color: "var(--admin-accent)",
+                  }}
+                >
+                  {winnerLabel}
+                </span>
+              </p>
+            )}
           </div>
 
           {!locked && isDraft && (
@@ -428,6 +554,102 @@ export function EventGamesSection({ eventId, scheduling, participants, onChanged
             </div>
           </div>
         )}
+
+        {/*
+          결과 관리 — 구조 잠금(draft 전용)과 축이 다르다. 완료된 게임도 점수
+          정정과 초기화가 가능하고, 선수를 바꾸려면 먼저 초기화해 draft로
+          되돌려야 한다(0059 계약).
+        */}
+        {!isCancelled && (
+          <div className="mt-2 border-t border-[color:var(--surface-border)] pt-2">
+            {!canEditResult ? (
+              <p className="text-[11px] text-[color:var(--surface-muted)]">{resultBlockedReason}</p>
+            ) : editingResultFor === game.id ? (
+              <div className="rounded-[10px] border border-[color:var(--surface-border)] p-2">
+                <div className="grid grid-cols-2 gap-2">
+                  {(
+                    [
+                      { key: "scoreA", label: "A팀 점수" },
+                      { key: "scoreB", label: "B팀 점수" },
+                      { key: "tieA", label: "A팀 타이브레이크 (선택)" },
+                      { key: "tieB", label: "B팀 타이브레이크 (선택)" },
+                    ] as const
+                  ).map((f) => (
+                    <label key={f.key} className="block">
+                      <span className="mb-1 block text-[10px] font-semibold text-[color:var(--surface-muted)]">
+                        {f.label}
+                      </span>
+                      <input
+                        type="number"
+                        inputMode="numeric"
+                        min={0}
+                        className={inputCls}
+                        value={draftValue[f.key]}
+                        disabled={busy}
+                        onChange={(e) =>
+                          setResultDrafts((prev) => ({
+                            ...prev,
+                            [game.id]: { ...(prev[game.id] ?? EMPTY_RESULT_DRAFT), [f.key]: e.target.value },
+                          }))
+                        }
+                      />
+                    </label>
+                  ))}
+                </div>
+                <p className="mt-1.5 text-[10px] text-[color:var(--surface-muted)]">
+                  7-6 경기만 타이브레이크 점수를 입력합니다. 승패는 점수로 자동 결정됩니다.
+                </p>
+                <div className="mt-2 flex gap-2">
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => (game.result ? setSaveResultTarget(game) : handleSaveResult(game))}
+                    className="flex-1 rounded-[var(--admin-button-radius,6px)] border px-3 py-1.5 text-xs font-semibold disabled:opacity-40"
+                    style={{ borderColor: "var(--admin-accent)", background: "var(--admin-accent-soft)", color: "var(--admin-accent)" }}
+                  >
+                    {busy ? "저장 중..." : game.result ? "결과 수정 저장" : "결과 저장"}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => setEditingResultFor(null)}
+                    className="rounded-[var(--admin-button-radius,6px)] border border-[color:var(--surface-border)] px-3 py-1.5 text-xs font-semibold text-[color:var(--surface-muted)] disabled:opacity-40"
+                  >
+                    닫기
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => {
+                    setResultDrafts((prev) => ({
+                      ...prev,
+                      [game.id]: prev[game.id] ?? resultToDraft(game.result),
+                    }));
+                    setEditingResultFor(game.id);
+                  }}
+                  className="rounded-[var(--admin-button-radius,6px)] border px-3 py-1.5 text-xs font-semibold disabled:opacity-40"
+                  style={{ borderColor: "var(--admin-accent)", background: "var(--admin-accent-soft)", color: "var(--admin-accent)" }}
+                >
+                  {game.result ? "결과 수정" : "결과 입력"}
+                </button>
+                {game.result && (
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => setClearResultTarget(game)}
+                    className="rounded-[var(--admin-button-radius,6px)] border border-fault-400/40 px-3 py-1.5 text-xs font-semibold text-fault-400 disabled:opacity-40"
+                  >
+                    결과 초기화
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     );
   }
@@ -452,7 +674,7 @@ export function EventGamesSection({ eventId, scheduling, participants, onChanged
 
       {locked && (
         <div className="mb-3 rounded-[10px] border border-fault-400/40 bg-fault-400/10 px-3 py-2 text-xs font-semibold text-fault-400">
-          {scheduling?.event.status === "completed" ? "완료된" : "취소된"} 경기입니다 — 대진이 잠겨 있습니다.
+          취소된 경기입니다 — 대진과 결과가 잠겨 있습니다.
         </div>
       )}
 
@@ -566,6 +788,32 @@ export function EventGamesSection({ eventId, scheduling, participants, onChanged
           if (target) handleCancel(target);
         }}
         onCancel={() => setCancelTarget(null)}
+      />
+
+      <ConfirmDialog
+        open={saveResultTarget !== null}
+        title="저장된 결과를 수정할까요?"
+        description="이미 반영된 승패와 포인트를 되돌린 뒤 새 점수로 다시 반영합니다. 승자가 바뀌면 선수들의 승패 기록도 함께 바뀝니다."
+        confirmLabel="결과 수정"
+        onConfirm={() => {
+          const target = saveResultTarget;
+          setSaveResultTarget(null);
+          if (target) handleSaveResult(target);
+        }}
+        onCancel={() => setSaveResultTarget(null)}
+      />
+
+      <ConfirmDialog
+        open={clearResultTarget !== null}
+        title="이 게임의 결과를 초기화할까요?"
+        description="저장된 경기 기록이 삭제되고, 반영됐던 포인트와 승패 기록이 되돌려집니다. 게임은 다시 대진 수정이 가능한 상태로 돌아갑니다."
+        confirmLabel="결과 초기화"
+        onConfirm={() => {
+          const target = clearResultTarget;
+          setClearResultTarget(null);
+          if (target) handleClearResult(target);
+        }}
+        onCancel={() => setClearResultTarget(null)}
       />
     </div>
   );

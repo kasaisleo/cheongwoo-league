@@ -12,6 +12,11 @@ import type { EventCourt, EventSession, MatchConfigV1 } from "@/lib/supabase/dat
  * 가능 여부를 UI가 판단하려면 부모 코트의 is_active를 알아야 하기 때문(정책 5).
  * slotModeLabel/canConfirmScheduling은 표시 편의용 계산값일 뿐 권한·유효성
  * 판단에 쓰지 않는다 — 최종 방어는 항상 RPC(정책 5).
+ *
+ * isCancelled / isCompleted는 0058 이후의 상태 계약을 그대로 옮긴 것이다.
+ * 예전에는 두 상태를 합친 locked 하나를 내려보냈지만, 0058이 Event 구조 잠금을
+ * cancelled 전용으로 좁히면서(completed는 운영상 종료 표시일 뿐) 두 값을
+ * 분리해야 UI가 DB보다 과하게 잠그지 않는다.
  */
 export async function GET(_request: Request, { params }: { params: { id: string } }) {
   const access = await getAdminAccessServer();
@@ -77,7 +82,8 @@ export async function GET(_request: Request, { params }: { params: { id: string 
       scheduling_confirmed_at: event.scheduling_confirmed_at,
       slotMode,
       slotModeLabel: SLOT_MODE_LABEL[slotMode] ?? slotMode,
-      locked: event.status === "completed" || event.status === "cancelled",
+      isCancelled: event.status === "cancelled",
+      isCompleted: event.status === "completed",
       canConfirmScheduling: event.participants_confirmed_at !== null,
     },
     courts: ((courts ?? []) as EventCourt[]).map((c) => ({

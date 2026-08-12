@@ -28,7 +28,10 @@ export interface SchedulingSnapshot {
     scheduling_confirmed_at: string | null;
     slotMode: MatchSlotMode;
     slotModeLabel: string;
-    locked: boolean;
+    /** 0058 이후 Event 전체 운영 잠금은 cancelled 하나뿐이다. */
+    isCancelled: boolean;
+    /** 운영상 종료 표시일 뿐 잠금이 아니다 — 결과·구조 변경은 각 RPC guard가 판정한다. */
+    isCompleted: boolean;
     canConfirmScheduling: boolean;
   };
   courts: SchedulingCourt[];
@@ -117,7 +120,9 @@ export function EventSchedulingSection({ eventId, scheduling, loading, onChanged
   }
 
   const { event, courts } = scheduling;
-  const locked = event.locked;
+  // 0058: 코트·슬롯 RPC 6종은 cancelled에서만 EVENT_STRUCTURE_LOCKED를 던진다.
+  // completed Event의 코트·슬롯 변경은 DB가 허용하므로 UI도 막지 않는다.
+  const locked = event.isCancelled;
   const slotMode = event.slotMode;
   const activeCourts = courts.filter((c) => c.is_active).sort((a, b) => a.position - b.position);
   const inactiveCourts = courts.filter((c) => !c.is_active).sort((a, b) => a.position - b.position);
@@ -478,7 +483,7 @@ export function EventSchedulingSection({ eventId, scheduling, loading, onChanged
 
       {locked && (
         <div className="mb-3 rounded-[10px] border border-fault-400/40 bg-fault-400/10 px-3 py-2 text-xs font-semibold text-fault-400">
-          {event.status === "completed" ? "완료된" : "취소된"} 경기입니다 — 코트/슬롯이 잠겨 있습니다.
+          취소된 경기입니다 — 코트/슬롯이 잠겨 있습니다.
         </div>
       )}
 

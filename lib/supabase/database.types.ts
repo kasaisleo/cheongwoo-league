@@ -106,6 +106,13 @@ export interface Match {
   created_by: string | null;
   created_at: string;
   club_id: string;
+  /**
+   * 이 Match가 확정한 Event 게임(0057). Event 유래 Match만 채워지고 legacy
+   * 경기(출석 세션 기반)는 null이다. Event game당 Match는 최대 1건이며,
+   * 값이 있는 Match는 save/clear_event_game_result로만 변경할 수 있다
+   * (legacy update/delete_match_with_effects는 0059가 차단한다).
+   */
+  event_game_id: string | null;
 }
 
 /** 경기 화면에 표시할 선수 정보. 회원이든 게스트든 동일한 모양으로 다룬다. */
@@ -601,6 +608,21 @@ export interface EventGamePlayer {
   created_at: string;
 }
 
+/**
+ * 게임에 연결된 확정 결과(0057 matches.event_game_id). 점수·승자의 원본은
+ * matches 한 곳뿐이므로(event_games에는 점수 컬럼이 없다) 이 값은 연결된
+ * Match를 그대로 옮긴 것이다. 결과가 없으면 null.
+ */
+export interface EventGameResult {
+  match_id: string;
+  score_a: number;
+  score_b: number;
+  score_a_tiebreak: number | null;
+  score_b_tiebreak: number | null;
+  winner_team: WinnerTeam;
+  played_at: string;
+}
+
 /** GET /api/admin/events/[id]/games 응답의 게임 1건 — 선수와 표시용 이름을 함께 담는다. */
 export interface EventGameWithPlayers extends EventGame {
   players: Array<{
@@ -609,6 +631,8 @@ export interface EventGameWithPlayers extends EventGame {
     slot: number;
     display_name: string;
   }>;
+  /** 연결된 Match의 결과. 아직 결과를 저장하지 않았으면 null. */
+  result: EventGameResult | null;
 }
 
 /**
@@ -693,6 +717,56 @@ export interface CancelEventGameParams {
   p_club_id: string;
 }
 /** cancel_event_game은 반환값 없음(void). */
+
+/**
+ * save_event_game_result(0059) — 최초 결과 저장과 기존 결과 수정을 한 함수가
+ * 처리한다. 승자·Game 상태·Match 생성/연결·포인트 효과는 전부 이 RPC가 단일
+ * 트랜잭션에서 결정하므로 호출부가 다시 계산하지 않는다.
+ *
+ * 선수 4개 인자는 event_game_players의 team/slot(A1·A2·B1·B2)에 그대로 대응한다.
+ * 복식만 지원한다(singles는 matches의 XOR CHECK 때문에 저장 자체가 불가).
+ * 타이브레이크는 7-6/6-7일 때만 필수이고 그 외에는 null로 정규화된다.
+ */
+export interface SaveEventGameResultParams {
+  p_game_id: string;
+  p_event_id: string;
+  p_club_id: string;
+  p_team_a_slot1_participant_id: string;
+  p_team_a_slot2_participant_id: string;
+  p_team_b_slot1_participant_id: string;
+  p_team_b_slot2_participant_id: string;
+  p_score_a: number;
+  p_score_b: number;
+  p_score_a_tiebreak?: number | null;
+  p_score_b_tiebreak?: number | null;
+  p_actor_member_id?: string | null;
+}
+
+/** save_event_game_result의 반환 1행. 같은 요청 재시도는 unchanged로 돌아온다. */
+export interface SaveEventGameResultRow {
+  event_game_id: string;
+  match_id: string;
+  result_action: "created" | "updated" | "unchanged";
+}
+
+/**
+ * clear_event_game_result(0059) — 연결 Match의 포인트·전적 효과를 되돌리고
+ * Match를 삭제한 뒤 Game을 draft로 복구한다(선수 배정·코트·순서는 유지).
+ * 이미 결과가 없으면 unchanged로 no-op 반환하고, 연결 Match 없이 결과 흔적만
+ * 남은 불일치 상태는 EVENT_GAME_RESULT_INCONSISTENT로 거부한다.
+ */
+export interface ClearEventGameResultParams {
+  p_game_id: string;
+  p_event_id: string;
+  p_club_id: string;
+}
+
+/** clear_event_game_result의 반환 1행. */
+export interface ClearEventGameResultRow {
+  event_game_id: string;
+  cleared_match_id: string | null;
+  result_action: "cleared" | "unchanged";
+}
 
 export interface Database {
   public: {

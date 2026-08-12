@@ -6,8 +6,10 @@ import type {
   EventGame,
   EventGameFormat,
   EventGamePlayer,
+  EventGameResult,
   EventGameWithPlayers,
   EventParticipant,
+  Match,
 } from "@/lib/supabase/database.types";
 
 /**
@@ -77,6 +79,41 @@ export async function GET(_request: NextRequest, { params }: { params: { id: str
     return NextResponse.json({ error: "대진을 불러오지 못했습니다." }, { status: 500 });
   }
 
+  // 확정 결과는 연결된 Match가 유일한 원본이다(0057/0059 — event_games에는
+  // 점수 컬럼이 없다). 이 Event의 게임 id로만 좁혀 조회하고 club_id도 함께
+  // 걸어 다른 클럽의 Match가 섞이지 않게 한다.
+  const gameIds = ((games ?? []) as EventGame[]).map((g) => g.id);
+  let resultByGameId = new Map<string, EventGameResult>();
+  if (gameIds.length > 0) {
+    const { data: linked, error: linkedError } = await supabase
+      .from("matches")
+      .select("id, event_game_id, score_a, score_b, score_a_tiebreak, score_b_tiebreak, winner_team, played_at")
+      .in("event_game_id", gameIds)
+      .eq("club_id", access.clubId);
+
+    if (linkedError) {
+      console.error("[admin/events/:id/games GET]", linkedError.code, linkedError.message);
+      return NextResponse.json({ error: "대진을 불러오지 못했습니다." }, { status: 500 });
+    }
+
+    resultByGameId = new Map(
+      ((linked ?? []) as Array<Pick<Match, "id" | "event_game_id" | "score_a" | "score_b" | "score_a_tiebreak" | "score_b_tiebreak" | "winner_team" | "played_at">>)
+        .filter((m): m is typeof m & { event_game_id: string } => m.event_game_id !== null)
+        .map((m) => [
+          m.event_game_id,
+          {
+            match_id: m.id,
+            score_a: m.score_a,
+            score_b: m.score_b,
+            score_a_tiebreak: m.score_a_tiebreak,
+            score_b_tiebreak: m.score_b_tiebreak,
+            winner_team: m.winner_team,
+            played_at: m.played_at,
+          },
+        ])
+    );
+  }
+
   const nameById = new Map(
     ((parts ?? []) as Pick<EventParticipant, "id" | "display_name_snapshot">[]).map((p) => [
       p.id,
@@ -102,6 +139,7 @@ export async function GET(_request: NextRequest, { params }: { params: { id: str
       players: (playersByGame.get(g.id) ?? []).sort(
         (a, b) => a.team.localeCompare(b.team) || a.slot - b.slot
       ),
+      result: resultByGameId.get(g.id) ?? null,
     })),
   };
 
