@@ -133,7 +133,13 @@ export function mapEventRpcError(errorMessage: string | undefined, fallback: str
   if (msg.startsWith("INVALID_STATUS_TRANSITION")) {
     return { status: 409, message: "허용되지 않는 상태 변경입니다." };
   }
-  // 0058 이후 이 코드를 올리는 조건은 status='cancelled' 하나뿐이다
+  // 0061(ensure_event_game_count)만 하위 이유를 붙여 올린다 — 이 함수는
+  // completed도 차단하므로 문구를 구분해야 한다. 반드시 무접미사 매핑보다
+  // 먼저 검사한다.
+  if (msg.startsWith("EVENT_STRUCTURE_LOCKED: event is completed")) {
+    return { status: 409, message: "완료된 이벤트에는 게임을 추가할 수 없습니다." };
+  }
+  // 0058 이후 이 코드를 접미사 없이 올리는 조건은 status='cancelled' 하나뿐이다
   // (completed는 더 이상 구조 잠금이 아니다).
   if (msg.startsWith("EVENT_STRUCTURE_LOCKED")) {
     return { status: 409, message: "취소된 이벤트는 변경할 수 없습니다." };
@@ -316,6 +322,27 @@ export function mapEventRpcError(errorMessage: string | undefined, fallback: str
   }
   if (msg.startsWith("EVENT_GAME_REORDER_INVALID")) {
     return { status: 409, message: "게임 순서 정보가 최신 상태와 일치하지 않습니다. 새로고침 후 다시 시도해주세요." };
+  }
+
+  // 빈 draft Game 일괄 확보 (0061, 2A-8B)
+  //
+  // EVENT_NOT_FOUND / EVENT_STRUCTURE_LOCKED는 위에서 이미 매핑된다.
+  // 하위 이유별로 코드를 나눠 두었으므로 사용자가 무엇을 고쳐야 하는지
+  // 문구만 보고 알 수 있다.
+  if (msg.startsWith("EVENT_GAME_BULK_TARGET_INVALID")) {
+    return { status: 400, message: "목표 게임 수를 1 ~ 200 사이 정수로 입력해주세요." };
+  }
+  if (msg.startsWith("EVENT_GAME_BULK_PARTICIPANTS_NOT_CONFIRMED")) {
+    return { status: 409, message: "참가자 명단을 먼저 확정해야 게임을 일괄 생성할 수 있습니다." };
+  }
+  if (msg.startsWith("EVENT_GAME_BULK_PARTICIPANTS_INSUFFICIENT")) {
+    return { status: 409, message: "복식 게임을 만들려면 확정된 참가자가 4명 이상이어야 합니다." };
+  }
+  if (msg.startsWith("EVENT_GAME_BULK_POSITION_OVERFLOW")) {
+    return {
+      status: 409,
+      message: "게임 정렬 값이 한계에 도달해 더 생성할 수 없습니다. 관리자에게 문의해주세요.",
+    };
   }
 
   // 결과 저장·초기화 (0059, 2A-7B-2C)

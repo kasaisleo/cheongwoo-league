@@ -768,6 +768,29 @@ export interface ClearEventGameResultRow {
   result_action: "cleared" | "unchanged";
 }
 
+/**
+ * ensure_event_game_count(0061) — non-cancelled Game 수를 목표치까지 채운다.
+ * 부족분만큼 빈 doubles draft Game을 만들고 event_game_players는 생성하지
+ * 않는다. 목표에 도달했거나 목표가 더 작으면 DML 없이 카운터만 반환한다.
+ * 목표 수는 어디에도 저장하지 않는다(요청 인자 전용).
+ */
+export interface EnsureEventGameCountParams {
+  p_event_id: string;
+  p_club_id: string;
+  /** 1 ~ 200. 상한 근거는 0061 migration 주석 참조. */
+  p_target_count: number;
+}
+
+/** ensure_event_game_count의 반환 1행. created_count=0이면 데이터 변경이 없다. */
+export interface EnsureEventGameCountRow {
+  target_count: number;
+  /** 호출 직전의 non-cancelled Game 수. */
+  previous_count: number;
+  created_count: number;
+  /** previous_count + created_count. */
+  final_count: number;
+}
+
 export interface Database {
   public: {
     Tables: {

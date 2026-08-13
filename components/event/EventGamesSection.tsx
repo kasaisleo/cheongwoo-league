@@ -55,6 +55,13 @@ interface ResultDraft {
 
 const EMPTY_RESULT_DRAFT: ResultDraft = { scoreA: "", scoreB: "", tieA: "", tieB: "" };
 
+/** 0061 RPC와 API 라우트가 강제하는 목표 게임 수 범위. 여기서는 입력 편의용. */
+const MIN_BULK_TARGET = 1;
+const MAX_BULK_TARGET = 200;
+
+/** 빈 draft Game 일괄 확보에 필요한 최소 확정 인원(복식 1경기). */
+const MIN_CONFIRMED_FOR_BULK = 4;
+
 /** 저장된 결과를 폼 초기값으로 되돌린다(수정 진입 시). */
 function resultToDraft(r: EventGameWithPlayers["result"]): ResultDraft {
   if (!r) return EMPTY_RESULT_DRAFT;
@@ -108,6 +115,11 @@ export function EventGamesSection({ eventId, scheduling, participants, onChanged
    */
   const mutationLockRef = useRef(false);
 
+  /** 빈 draft Game 일괄 확보(0061) — 목표 수는 저장하지 않고 요청 인자로만 쓴다. */
+  const [showBulk, setShowBulk] = useState(false);
+  const [bulkTarget, setBulkTarget] = useState("");
+  const [bulkConfirmTarget, setBulkConfirmTarget] = useState<number | null>(null);
+
   const [showCreate, setShowCreate] = useState(false);
   const [format, setFormat] = useState<EventGameFormat>("doubles");
   const [draft, setDraft] = useState<LineupDraft>({});
@@ -127,6 +139,21 @@ export function EventGamesSection({ eventId, scheduling, participants, onChanged
   /** 0058: Event 전체 잠금은 cancelled 하나뿐. completed는 잠금이 아니다. */
   const locked = scheduling?.event.isCancelled ?? false;
   const slotMode = scheduling?.event.slotMode ?? "none";
+
+  /**
+   * 일괄 확보(0061)만 예외적으로 completed도 차단한다 — 완료된 이벤트에 빈
+   * 게임을 더 만드는 조작은 운영상 의미가 없다(2A-8B 확정 정책 2). 나머지
+   * 기능의 잠금 계약은 그대로다.
+   */
+  const isCompleted = scheduling?.event.isCompleted ?? false;
+  const participantsConfirmed = (scheduling?.event.participants_confirmed_at ?? null) !== null;
+  /** RPC guard와 같은 정의 — status='confirmed' + is_active. */
+  const confirmedActiveCount = useMemo(
+    () => participants.filter((p) => p.is_active && p.status === "confirmed").length,
+    [participants]
+  );
+  const canBulkCreate =
+    !locked && !isCompleted && participantsConfirmed && confirmedActiveCount >= MIN_CONFIRMED_FOR_BULK;
 
   /** 대진에 넣을 수 있는 참가자 = is_active (0058이 status='confirmed' 요구를 제거). */
   const eligible = useMemo(
@@ -183,7 +210,16 @@ export function EventGamesSection({ eventId, scheduling, participants, onChanged
    * 동시 갱신. 결과 저장·수정·초기화를 포함한 이 컴포넌트의 모든 mutation이
    * 이 함수 하나를 거치므로, 잠금도 여기 한 곳에만 둔다.
    */
-  async function mutate(url: string, init: RequestInit, successMsg: string, fallbackMsg: string) {
+  async function mutate(
+    url: string,
+    init: RequestInit,
+    /**
+     * 문자열이면 그대로, 함수면 응답 본문으로 문구를 만든다 — 일괄 확보처럼
+     * "몇 개가 실제로 생성됐는지"에 따라 안내가 달라지는 경우에만 함수를 쓴다.
+     */
+    successMsg: string | ((body: unknown) => string),
+    fallbackMsg: string
+  ) {
     // fetch 호출 직전에 동기적으로 잠근다 — ConfirmDialog를 여는 시점이 아니라
     // 실제 요청 시작 시점이어야 취소 시 잠금이 남지 않는다.
     if (mutationLockRef.current) return false;
@@ -196,7 +232,7 @@ export function EventGamesSection({ eventId, scheduling, participants, onChanged
         toast.error(body?.error ?? fallbackMsg);
         return false;
       }
-      toast.success(successMsg);
+      toast.success(typeof successMsg === "string" ? successMsg : successMsg(body));
       await loadGames();
       await onChanged();
       return true;
@@ -207,6 +243,39 @@ export function EventGamesSection({ eventId, scheduling, participants, onChanged
       // 성공·실패·예외 어느 경로로 빠져나가도 반드시 함께 해제한다.
       mutationLockRef.current = false;
       setBusy(false);
+    }
+  }
+
+  /**
+   * 빈 doubles draft Game을 목표 수까지 확보한다(0061).
+   *
+   * 멱등 연산이므로 같은 목표로 다시 눌러도 서버가 아무것도 만들지 않는다.
+   * 목표가 현재보다 작아도 기존 게임을 취소하지 않는다 — 안내만 달라진다.
+   * 잠금은 mutate() 안의 mutationLockRef 하나가 담당하고, 여기서는 요청을
+   * ConfirmDialog 확인 이후에만 시작한다.
+   */
+  async function handleBulkEnsure(target: number) {
+    const ok = await mutate(
+      `/api/admin/events/${eventId}/games/bulk`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ targetCount: target }),
+      },
+      (body) => {
+        const r = body as { createdCount?: number; previousCount?: number; targetCount?: number } | null;
+        const created = r?.createdCount ?? 0;
+        const prev = r?.previousCount ?? 0;
+        const wanted = r?.targetCount ?? target;
+        if (created > 0) return `빈 게임 ${created}개를 생성했습니다. (총 ${prev + created}경기)`;
+        if (wanted < prev) return `목표 ${wanted}경기가 현재 게임 수보다 작아 변경되지 않았습니다.`;
+        return "추가 생성할 게임이 없습니다.";
+      },
+      "게임 일괄 생성에 실패했습니다."
+    );
+    if (ok) {
+      setShowBulk(false);
+      setBulkTarget("");
     }
   }
 
@@ -449,11 +518,16 @@ export function EventGamesSection({ eventId, scheduling, participants, onChanged
                 {sessionLabel ?? (slotMode === "none" ? "미배치" : "슬롯 미지정")}
               </span>
             </div>
-            <p className="mt-1 truncate text-[13px] font-semibold text-[color:var(--surface-text)]">
-              {game.players.filter((p) => p.team === "A").map((p) => p.display_name).join(", ") || "—"}
-              <span className="mx-1.5 text-[color:var(--surface-muted)]">vs</span>
-              {game.players.filter((p) => p.team === "B").map((p) => p.display_name).join(", ") || "—"}
-            </p>
+            {/* 0061의 빈 Game은 players가 0행이다 — "— vs —"로 뭉개지 않고 상태를 명시한다. */}
+            {game.players.length === 0 ? (
+              <p className="mt-1 text-[13px] font-semibold text-[color:var(--surface-muted)]">선수 미배정</p>
+            ) : (
+              <p className="mt-1 truncate text-[13px] font-semibold text-[color:var(--surface-text)]">
+                {game.players.filter((p) => p.team === "A").map((p) => p.display_name).join(", ") || "—"}
+                <span className="mx-1.5 text-[color:var(--surface-muted)]">vs</span>
+                {game.players.filter((p) => p.team === "B").map((p) => p.display_name).join(", ") || "—"}
+              </p>
+            )}
             {game.result && (
               <p className="mt-1 flex flex-wrap items-center gap-1.5 text-[12px]">
                 <span className="font-bold text-[color:var(--surface-text)]">
@@ -701,6 +775,94 @@ export function EventGamesSection({ eventId, scheduling, participants, onChanged
         </p>
       )}
 
+      {/* 빈 draft Game 일괄 확보(0061) — 목표 수는 저장하지 않는 요청 인자다. */}
+      {canBulkCreate && (
+        <div className="mb-3">
+          {!showBulk ? (
+            <button
+              type="button"
+              onClick={() => {
+                setShowBulk(true);
+                setBulkTarget(String(activeGames.length));
+              }}
+              className="w-full rounded-[var(--admin-button-radius,6px)] border border-[color:var(--surface-border)] px-3 py-2 text-xs font-semibold text-[color:var(--surface-muted)]"
+            >
+              게임 일괄 생성
+            </button>
+          ) : (
+            <div className="rounded-[14px] border border-[color:var(--surface-border)] bg-[color:var(--surface-bg)] p-3">
+              <p className="mb-2 text-[11px] text-[color:var(--surface-muted)]">
+                현재 {activeGames.length}경기 · 확정 참가자 {confirmedActiveCount}명
+              </p>
+              <label className="mb-1 block text-[11px] font-semibold text-[color:var(--surface-muted)]">
+                목표 게임 수 ({MIN_BULK_TARGET} ~ {MAX_BULK_TARGET})
+              </label>
+              <input
+                type="number"
+                inputMode="numeric"
+                min={MIN_BULK_TARGET}
+                max={MAX_BULK_TARGET}
+                step={1}
+                value={bulkTarget}
+                onChange={(e) => setBulkTarget(e.target.value)}
+                className={inputCls}
+              />
+              <p className="mt-1.5 text-[11px] text-[color:var(--surface-muted)]">
+                목표 수보다 부족한 만큼만 빈 복식 게임을 만듭니다. 선수는 생성 후 각 게임에서
+                배정하세요. 목표 수가 현재보다 작아도 기존 게임은 취소되지 않습니다.
+              </p>
+              <div className="mt-2 flex gap-2">
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => {
+                    const n = Number(bulkTarget);
+                    if (
+                      bulkTarget.trim() === "" ||
+                      !Number.isInteger(n) ||
+                      n < MIN_BULK_TARGET ||
+                      n > MAX_BULK_TARGET
+                    ) {
+                      toast.error(`목표 게임 수를 ${MIN_BULK_TARGET} ~ ${MAX_BULK_TARGET} 사이 정수로 입력해주세요.`);
+                      return;
+                    }
+                    setBulkConfirmTarget(n);
+                  }}
+                  className="flex-1 rounded-[var(--admin-button-radius,6px)] border px-3 py-2 text-sm font-semibold disabled:opacity-50"
+                  style={{
+                    borderColor: "var(--admin-accent)",
+                    background: "var(--admin-accent-soft)",
+                    color: "var(--admin-accent)",
+                  }}
+                >
+                  {busy ? "생성 중..." : "생성"}
+                </button>
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => {
+                    setShowBulk(false);
+                    setBulkTarget("");
+                  }}
+                  className="rounded-[var(--admin-button-radius,6px)] border border-[color:var(--surface-border)] px-3 py-2 text-sm font-semibold text-[color:var(--surface-muted)] disabled:opacity-50"
+                >
+                  닫기
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* eligible이 0명일 때는 위의 기존 안내가 이미 같은 내용을 덮으므로 중복 배너를 띄우지 않는다. */}
+      {!locked && !isCompleted && !canBulkCreate && eligible.length > 0 && (
+        <p className="mb-3 rounded-[10px] border border-[color:var(--surface-border)] px-3 py-2 text-xs text-[color:var(--surface-muted)]">
+          {!participantsConfirmed
+            ? "참가자 명단을 확정하면 게임을 일괄 생성할 수 있습니다."
+            : `확정 참가자가 ${confirmedActiveCount}명입니다 — 복식 게임을 만들려면 ${MIN_CONFIRMED_FOR_BULK}명 이상이어야 합니다.`}
+        </p>
+      )}
+
       <div className="mb-3 space-y-2">
         {activeGames.length === 0 ? (
           <p className="rounded-[14px] border border-[color:var(--surface-border)] bg-[color:var(--surface-bg)] px-4 py-3 text-sm text-[color:var(--surface-muted)]">
@@ -793,6 +955,27 @@ export function EventGamesSection({ eventId, scheduling, participants, onChanged
           )}
         </>
       )}
+
+      <ConfirmDialog
+        open={bulkConfirmTarget !== null}
+        title="빈 게임을 일괄 생성할까요?"
+        description={
+          bulkConfirmTarget === null
+            ? ""
+            : bulkConfirmTarget <= activeGames.length
+              ? `목표 ${bulkConfirmTarget}경기는 현재 ${activeGames.length}경기보다 크지 않아 아무것도 생성되지 않습니다. 기존 게임은 취소되지 않습니다.`
+              : `현재 ${activeGames.length}경기에서 목표 ${bulkConfirmTarget}경기까지 빈 복식 게임 ${
+                  bulkConfirmTarget - activeGames.length
+                }개를 만듭니다. 생성된 게임은 삭제할 수 없고 개별 취소만 가능합니다.`
+        }
+        confirmLabel="일괄 생성"
+        onConfirm={() => {
+          const target = bulkConfirmTarget;
+          setBulkConfirmTarget(null);
+          if (target !== null) handleBulkEnsure(target);
+        }}
+        onCancel={() => setBulkConfirmTarget(null)}
+      />
 
       <ConfirmDialog
         open={cancelTarget !== null}
