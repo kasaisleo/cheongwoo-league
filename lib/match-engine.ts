@@ -37,6 +37,12 @@ export function mapMatchRpcError(errorMessage: string | undefined, fallback: str
   if (msg.startsWith("INVALID_WINNER_TEAM") || msg.startsWith("INVALID_SCORE")) {
     return { status: 400, message: "점수와 승리팀 정보가 올바르지 않습니다." };
   }
+  if (msg.startsWith("LEGACY_MATCH_TIE_NOT_ALLOWED")) {
+    // 2A-8D-3A: 0066이 legacy RPC에 넣은 최종 방어선. 주 경로는 route.ts의
+    // scoreA === scoreB 400 검증이므로, 여기까지 오는 것은 RPC 직접 호출이나
+    // 레이스 컨디션뿐이다. 문구는 route.ts와 동일하게 맞춘다.
+    return { status: 400, message: "기존 경기 기록에서는 동점 결과를 저장할 수 없습니다." };
+  }
   if (msg.startsWith("INVALID_TIEBREAK")) {
     return { status: 400, message: "7-6 스코어에는 타이브레이크 점수를 입력해주세요." };
   }

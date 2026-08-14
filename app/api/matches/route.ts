@@ -88,6 +88,18 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "점수와 승리팀 정보가 올바르지 않습니다." }, { status: 400 });
   }
 
+  // 2A-8D-3A: legacy 경기 기록은 동점을 저장할 수 없다.
+  // Event Game의 5:5 무승부는 전용 Event result API만 다루므로, 이 경로에서는
+  // 5:5를 포함한 모든 동점을 거부한다. 이 검증이 없던 탓에 과거 5:5 + winner='B'
+  // 행이 만들어졌고, 그 정합화는 0066이 담당한다. RPC의
+  // LEGACY_MATCH_TIE_NOT_ALLOWED가 최종 방어선이고 여기가 주 경로다.
+  if (scoreA === scoreB) {
+    return NextResponse.json(
+      { error: "기존 경기 기록에서는 동점 결과를 저장할 수 없습니다." },
+      { status: 400 }
+    );
+  }
+
   const isTiebreakSet = (scoreA === 7 && scoreB === 6) || (scoreA === 6 && scoreB === 7);
   if (isTiebreakSet) {
     const validTiebreak = (s: number | null) => s !== null && Number.isInteger(s) && s >= 0;

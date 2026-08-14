@@ -28,6 +28,8 @@
 -- 이 파일이 바꾸는 것
 -- ------------------------------------------------------------
 --   [스키마] matches에 CHECK 2개 추가 (컬럼·인덱스 변경 없음)
+--            · chk_match_outcome_consistent — NOT VALID (2A-8D-3A)
+--            · chk_draw_no_tiebreak         — VALID (위반 행 없음)
 --   [함수]   _event_game_result_score   0059 기준 재정의
 --            _match_apply_draw_effects  신규 private helper
 --            _match_undo_draw_effects   신규 private helper
@@ -46,8 +48,10 @@
 -- "삭제·변형된 코드 줄 0건"을 검증했다. 그래서 0062의 completed lifecycle
 -- 계약(최초 저장 차단 / 정정 허용 / 초기화 차단 / cancelled 차단)이 그대로다.
 --
--- backfill 없음. 기존 Match 행은 CHECK를 그대로 통과해야 하며, 통과하지
--- 못하면 이 파일 전체가 롤백된다(단일 트랜잭션).
+-- backfill 없음. 기존 위반 행 1건의 정합화와
+-- chk_match_outcome_consistent의 VALIDATE는 0066이 담당한다.
+-- chk_draw_no_tiebreak은 위반 행이 없으므로 여기서 VALID로 걸린다.
+-- 그 외 기존 Match 행은 이 파일을 막지 않는다(단일 트랜잭션).
 -- ============================================================
 
 begin;
@@ -68,12 +72,23 @@ begin;
 --   기존 Match 9건의 방향 정합성을 Production에서 아직 검증하지 않았고,
 --   여기서 새로 강제하면 기존 데이터가 이 migration을 막을 수 있다.
 --   승자 계산은 기존대로 _event_game_result_score가 담당한다.
+--
+-- ★★ 2A-8D-3A: NOT VALID로 건다.
+--   Production 조사에서 기존 legacy Match 1건
+--   (81f3bc20-a104-4864-89dd-b642d1d3f36d, cheongwoo, score 5:5, winner_team='B')
+--   이 이 CHECK를 위반하는 것이 확인되었다. legacy 경로(API·RPC 양쪽)에 동점
+--   거부 검증이 전혀 없어 만들어진 행이다. VALID로 걸면 기존 행 검증 때문에
+--   이 migration 전체가 실패한다.
+--   NOT VALID는 "기존 행 검증만" 생략하고 이후 INSERT/UPDATE에는 즉시 적용되므로,
+--   신규 데이터에 대한 방어력은 VALID와 동일하다.
+--   0066이 그 1건을 무승부로 정합화한 뒤 같은 트랜잭션에서
+--   VALIDATE CONSTRAINT로 승격한다.
 alter table public.matches
   add constraint chk_match_outcome_consistent check (
     (score_a = 5 and score_b = 5 and winner_team = 'D')
     or
     (score_a <> score_b and winner_team in ('A', 'B'))
-  );
+  ) not valid;
 
 -- ------------------------------------------------------------
 -- [2] 무승부 타이브레이크 금지 CHECK
