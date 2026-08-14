@@ -8,7 +8,7 @@
 -- 통계 정의는 여전히 승패만 센다. 그 결과 1승 1패 1무인 회원이 "경기수 2 /
 -- 승률 50%"로 표시되고, 무승부만 치른 회원은 집계에서 사라진다.
 --
--- win_rate는 TypeScript가 아니라 DB 뷰·RPC에 하드코딩돼 있고
+-- win_rate는 TypeScript가 아니라 DB RPC에 하드코딩돼 있고
 -- (lib/ranking-query.ts가 DB에서 win_rate로 정렬한다), 화면마다 다시
 -- 계산하면 정의가 갈라진다. 그래서 DB 정의를 단일 진실로 통일한다.
 --
@@ -28,10 +28,19 @@
 -- ------------------------------------------------------------
 -- 이 파일이 바꾸는 것 (단일 트랜잭션)
 -- ------------------------------------------------------------
---   [1] member_stats 뷰              create or replace (ACL 보존)
---   [2] get_public_member_list       0036 기준 재정의 + drop/create + re-grant
---   [3] get_public_member_detail     0036 기준 재정의 + drop/create + re-grant
---   [4] get_public_guest_list        0038 기준 재정의 + drop/create + re-grant
+--   [1] get_public_member_list       0036 기준 재정의 + drop/create + re-grant
+--   [2] get_public_member_detail     0036 기준 재정의 + drop/create + re-grant
+--   [3] get_public_guest_list        0038 기준 재정의 + drop/create + re-grant
+--
+-- ★ member_stats 뷰는 건드리지 않는다 (2A-8D-4B).
+--   Production 뷰는 27컬럼이고 저장소에 없는 score_diff 집계를 포함한다.
+--   저장소 migration을 재생한 DB는 22컬럼이라 컬럼 이름·순서가 다르다.
+--   CREATE OR REPLACE VIEW는 "기존 컬럼 이름·순서·타입 동일 + 끝에만 추가"만
+--   허용하므로, 두 환경에서 동시에 성립하는 정의를 만들 수 없다.
+--   member_stats는 0037로 anon/authenticated 접근이 회수돼 있고 코드의 실제
+--   조회(.from("member_stats"))가 0건이므로, 공개 RPC 3개만 draw-aware로
+--   바꿔도 사용자 화면 정합은 100% 달성된다.
+--   스키마 드리프트 정리는 별도 Phase로 분리한다.
 --
 -- RPC 3개는 returns table에 컬럼을 추가하므로 반환 타입이 바뀐다.
 -- create or replace로는 반환 타입을 바꿀 수 없어 drop 후 create하고,
@@ -41,6 +50,7 @@
 -- win_rate 분모 교체와 draws/total_matches 추가만 기계적으로 적용했다.
 --
 -- 건드리지 않는 것:
+--   member_stats 뷰 (OID·정의·컬럼·owner·ACL 전부 불변)
 --   members.wins / members.losses / guests.wins / guests.losses 값
 --   matches 데이터 (조회만 한다 — DML 0건)
 --   draws 컬럼 추가 없음 (matches에서 파생한다)
@@ -52,75 +62,9 @@
 begin;
 
 
--- ============================================================
--- [1] member_stats 뷰 — draws / total_matches 추가, win_rate 재정의
--- ============================================================
--- ★ m.*를 쓰지 않는다. drop 없이 교체할 수 있느냐가 여기에 달려 있다.
---   뷰의 select 목록은 "생성 시점의 m.* 확장 결과"로 고정된다. 0004가 만든
---   기존 뷰는 22컬럼(win_rate 포함)이지만 members는 그 뒤 4컬럼이 늘어
---   지금 25컬럼이다(player_background / deleted_at / is_dormant / auth_user_id).
---   여기서 m.*를 다시 쓰면 컬럼이 밀려 다음 오류가 난다:
---     42P16 cannot change name of view column "win_rate" to "player_background"
---   기존 22컬럼을 순서대로 명시하면 create or replace view의 계약
---   ("기존 컬럼 이름·순서·타입 동일 + 신규 컬럼은 끝에만 추가")을 만족하므로
---   drop 없이 교체된다. 격리 DB 실측 결과:
---     View oid 동일(객체 교체 없음) / owner·ACL 완전 동일 /
---     기존 22컬럼 동일 / 끝에 draws·total_matches만 추가 /
---     신규 members 컬럼 유출 0건 / 0037의 직접 조회 제한 유지
---   drop을 쓰지 않으므로 "뷰가 사라지는 중간 상태"도 없고 ACL 재발급도 불필요하다.
---   앞으로 members에 컬럼이 추가돼도 이 뷰는 변하지 않는다.
---
--- club scope: draw 집계를 mt.club_id = m.club_id로 join해 강제한다.
-create or replace view public.member_stats as
-select
-  m.id,
-  m.name,
-  m.nickname,
-  m.grade,
-  m.rating,
-  m.wins,
-  m.losses,
-  m.is_active,
-  m.created_at,
-  m.club_id,
-  m.role,
-  m.phone,
-  m.mapo_score,
-  m.member_type,
-  m.league_point,
-  m.permission_role,
-  m.kakao_provider_id,
-  m.is_kakao_linked,
-  m.address_full,
-  m.district,
-  m.age,
-  case when (m.wins + m.losses + coalesce(dr.draws, 0)) = 0 then 0
-       else round((m.wins::numeric / (m.wins + m.losses + coalesce(dr.draws, 0))) * 100, 1)
-  end as win_rate,
-  coalesce(dr.draws, 0)::integer as draws,
-  (m.wins + m.losses + coalesce(dr.draws, 0))::integer as total_matches
-from public.members m
-left join (
-  select mt.club_id, u.member_id, count(distinct mt.id) as draws
-  from public.matches mt
-  cross join unnest(array[
-    mt.team_a_player1_member, mt.team_a_player2_member,
-    mt.team_b_player1_member, mt.team_b_player2_member
-  ]) as u(member_id)
-  where mt.winner_team = 'D'
-    and u.member_id is not null
-  group by mt.club_id, u.member_id
-) dr
-  on dr.member_id = m.id
- and dr.club_id = m.club_id;
-
-comment on view public.member_stats is 'league_point, wins, losses, draws, total_matches, win_rate 중심으로 사용. 2A-8D-4부터 win_rate 분모에 무승부가 포함된다(total_matches = wins + losses + draws). rating/grade는 deprecated 컬럼으로 select에는 포함되지만 신규 코드에서 참조하지 않음.';
-
--- ACL 재발급 없음 — create or replace라 0037의 revoke가 그대로 살아 있다.
-
 
 -- ============================================================
--- [2] get_public_member_list — 0036 기준 재정의
+-- [1] get_public_member_list — 0036 기준 재정의
 -- ============================================================
 -- 반환 타입이 바뀌므로 drop 후 create한다. ACL은 아래에서 다시 발급한다.
 drop function if exists public.get_public_member_list(uuid);
@@ -222,7 +166,7 @@ $$;
 
 
 -- ============================================================
--- [3] get_public_member_detail — 0036 기준 재정의
+-- [2] get_public_member_detail — 0036 기준 재정의
 -- ============================================================
 drop function if exists public.get_public_member_detail(uuid, uuid);
 
@@ -323,7 +267,7 @@ $$;
 
 
 -- ============================================================
--- [4] get_public_guest_list — 0038 기준 재정의
+-- [3] get_public_guest_list — 0038 기준 재정의
 -- ============================================================
 drop function if exists public.get_public_guest_list(uuid);
 
@@ -387,7 +331,7 @@ $$;
 
 
 -- ============================================================
--- [5] ACL 재발급 — 0036 / 0038과 동일하게 유지한다.
+-- [4] ACL 재발급 — 0036 / 0038과 동일하게 유지한다.
 -- ============================================================
 revoke all on function public.get_public_member_list(uuid) from public;
 grant execute on function public.get_public_member_list(uuid) to anon, authenticated;
@@ -400,7 +344,7 @@ grant execute on function public.get_public_guest_list(uuid) to anon, authentica
 
 
 -- ============================================================
--- [6] 검증 — 정의가 실제로 바뀌었는지 catalog로 확인한다.
+-- [5] 검증 — 정의가 실제로 바뀌었는지 catalog로 확인한다.
 -- ============================================================
 do $verify$
 declare
@@ -413,42 +357,6 @@ begin
     and p.prosrc like '%coalesce(dr.draws, 0)%';
   if v_count <> 3 then
     raise exception 'STATS_REDEFINE_FAILED: % of 3 RPCs have the draw-aware definition', v_count;
-  end if;
-
-  select count(*) into v_count
-  from pg_attribute a
-  where a.attrelid = 'public.member_stats'::regclass
-    and a.attname in ('draws','total_matches')
-    and not a.attisdropped;
-  if v_count <> 2 then
-    raise exception 'STATS_REDEFINE_FAILED: member_stats missing draws/total_matches (% of 2)', v_count;
-  end if;
-
-  -- 컬럼 집합이 "기존 22개 + 신규 2개 = 24개"여야 한다. m.*로 재생성해
-  -- members의 신규 컬럼이 새는 것을 막기 위한 방어다.
-  select count(*) into v_count
-  from pg_attribute a
-  where a.attrelid = 'public.member_stats'::regclass
-    and a.attnum > 0 and not a.attisdropped;
-  if v_count <> 24 then
-    raise exception 'STATS_REDEFINE_FAILED: member_stats has % columns (expected 24 = 22 existing + draws + total_matches)', v_count;
-  end if;
-
-  -- 기존 뷰에 없던 members 컬럼이 새로 들어오지 않았는지 이름으로 확인한다.
-  select count(*) into v_count
-  from pg_attribute a
-  where a.attrelid = 'public.member_stats'::regclass
-    and a.attname in ('player_background', 'deleted_at', 'is_dormant', 'auth_user_id')
-    and not a.attisdropped;
-  if v_count <> 0 then
-    raise exception 'STATS_REDEFINE_FAILED: member_stats leaked % newer members column(s)', v_count;
-  end if;
-
-  -- create or replace라 0037의 직접 조회 제한이 그대로 살아 있어야 한다.
-  -- (drop + create였다면 ACL이 지워져 여기서 걸린다.)
-  if has_table_privilege('anon', 'public.member_stats', 'SELECT')
-     or has_table_privilege('authenticated', 'public.member_stats', 'SELECT') then
-    raise exception 'STATS_REDEFINE_FAILED: member_stats readable by anon/authenticated (0037 lock lost)';
   end if;
 
   -- anon/authenticated EXECUTE가 되살아났는지 (drop이 ACL을 지웠으므로 필수)
