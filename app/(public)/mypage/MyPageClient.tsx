@@ -7,12 +7,15 @@ import { ClubMemberLoginGate } from "@/components/member/ClubMemberLoginGate";
 import { createClient } from "@/lib/supabase/client";
 import type { User } from "@supabase/supabase-js";
 import type { MemberType } from "@/lib/supabase/database.types";
+import { buildMatchRecord } from "@/lib/match-stats";
 
 interface MyPageMember {
   name: string;
   memberType: MemberType;
   wins: number;
   losses: number;
+  /** 2A-8D-4: winner_team=D 참여 수. 경기수·승률 분모에 포함된다. */
+  draws: number;
   leaguePoint: number;
   mapoScore: number | null;
 }
@@ -159,8 +162,10 @@ export default function MyPageClient({
     (authUser?.user_metadata?.preferred_username as string | undefined) ??
     null;
   const kakaoEmail = authUser?.email ?? null;
-  const matchesPlayed = member ? member.wins + member.losses : 0;
-  const winRate = matchesPlayed > 0 ? Math.round((member!.wins / matchesPlayed) * 100) : 0;
+  // 2A-8D-4: 경기수 = 승 + 패 + 무, 승률 = 승 / 경기수. 정의는 buildMatchRecord 하나.
+  const record = buildMatchRecord(member?.wins ?? 0, member?.losses ?? 0, member?.draws ?? 0);
+  const matchesPlayed = member ? record.totalMatches : 0;
+  const winRate = Math.round(record.winRate);
   const attendRateDisplay = calcAttendRate(attendingCount, completedCount);
 
   return (
@@ -195,6 +200,8 @@ export default function MyPageClient({
                   <span className="font-semibold text-gold">{member.wins}W</span>
                   <span className="mx-1 text-line-400">·</span>
                   <span className="text-line-500">{member.losses}L</span>
+                  <span className="mx-1 text-line-400">·</span>
+                  <span className="text-line-500">{member.draws}D</span>
                   <span className="mx-1.5 text-line-300">|</span>
                   <span className="text-line-500">{winRate}% Win Rate</span>
                 </p>

@@ -3,7 +3,8 @@ import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { ConvertGuestButton } from "@/components/guest/ConvertGuestButton";
 import { GuestAdminActions } from "@/components/guest/GuestAdminActions";
 import type { MemberGrade } from "@/lib/supabase/database.types";
-import type { PublicGuestListRow } from "@/lib/public-guest";
+import { normalizePublicGuestRow, type PublicGuestListRow, type RawPublicGuestListRow } from "@/lib/public-guest";
+import { buildMatchRecord } from "@/lib/match-stats";
 
 /**
  * Admin 게스트 목록 row. guests 원본을 service-role로 직접 조회해 필요한
@@ -26,6 +27,8 @@ interface AdminGuestRow {
   converted_to_member_id: string | null;
   is_active: boolean;
   win_rate: number;
+  /** 2A-8D-4: winner_team=D 참여 수. win_rate 분모에 포함된다. */
+  draws: number;
   referrer: { nickname: string } | null;
 }
 
@@ -60,7 +63,8 @@ async function PublicGuestListContainer({ clubId }: { clubId: string }) {
   if (error) {
     console.error("[GuestList] get_public_guest_list RPC 조회 실패:", error.code, error.message);
   }
-  const guests = (data ?? []) as PublicGuestListRow[];
+  // 2A-8D-4: RPC 경계 정규화(0067 적용 전 응답 호환).
+  const guests: PublicGuestListRow[] = (data ?? []).map((r: RawPublicGuestListRow) => normalizePublicGuestRow(r));
 
   return <PublicGuestList guests={guests} />;
 }
@@ -92,6 +96,31 @@ async function AdminGuestListContainer({
     return <AdminGuestList guests={[]} canEdit={canEdit} canDeactivate={canDeactivate} loadError />;
   }
 
+  // 2A-8D-4: 무승부 수는 matches에서 파생한다(guests에 draws 컬럼을 두지 않는다).
+  // 게스트마다 조회하면 N+1이므로, club scope의 winner_team=D Match를 한 번만
+  // 읽고 게스트 슬롯 4개를 순회해 guestId → drawCount map을 만든다.
+  // event_game_id는 보지 않는다 — legacy·Event-linked 무승부를 모두 포함한다.
+  const drawByGuest = new Map<string, number>();
+  {
+    const { data: drawRows, error: drawError } = await admin
+      .from("matches")
+      .select("id, team_a_player1_guest, team_a_player2_guest, team_b_player1_guest, team_b_player2_guest")
+      .eq("club_id", clubId)
+      .eq("winner_team", "D");
+    if (drawError) {
+      console.error("[GuestList] 무승부 집계 실패:", drawError.code, drawError.message);
+      return <AdminGuestList guests={[]} canEdit={canEdit} canDeactivate={canDeactivate} loadError />;
+    }
+    for (const m of drawRows ?? []) {
+      // 한 Match에 같은 게스트가 여러 슬롯에 있어도 Match당 1무만 센다.
+      const ids = new Set(
+        [m.team_a_player1_guest, m.team_a_player2_guest, m.team_b_player1_guest, m.team_b_player2_guest]
+          .filter((id): id is string => id !== null)
+      );
+      for (const id of ids) drawByGuest.set(id, (drawByGuest.get(id) ?? 0) + 1);
+    }
+  }
+
   const referrerIds = [...new Set((guestRows ?? []).map((g) => g.referred_by).filter((id): id is string => id !== null))];
   const referrerMap = new Map<string, string>();
   if (referrerIds.length > 0) {
@@ -112,7 +141,10 @@ async function AdminGuestListContainer({
 
   const guests: AdminGuestRow[] = (guestRows ?? []).map((g) => ({
     ...g,
-    win_rate: g.wins + g.losses === 0 ? 0 : Math.round((g.wins / (g.wins + g.losses)) * 1000) / 10,
+    draws: drawByGuest.get(g.id) ?? 0,
+    // 2A-8D-4: 승률 정의는 buildMatchRecord 하나로만 계산한다(DB 0067과 동일 식).
+    // 표시 자릿수(소수 1자리)는 기존 스타일을 유지한다.
+    win_rate: Math.round(buildMatchRecord(g.wins, g.losses, drawByGuest.get(g.id) ?? 0).winRate * 10) / 10,
     referrer: g.referred_by && referrerMap.has(g.referred_by)
       ? { nickname: referrerMap.get(g.referred_by)! }
       : null,

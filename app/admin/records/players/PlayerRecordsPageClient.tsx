@@ -14,6 +14,8 @@ export interface PlayerRecord {
   games: number;
   wins: number;
   losses: number;
+  /** 2A-8D-4: winner_team=D 참여 수. games = wins + losses + draws. */
+  draws: number;
   winRate: number;
   lp: number | null;
   attending: number;
@@ -299,6 +301,13 @@ export default function PlayerRecordsPageClient({ players }: { players: PlayerRe
                         <span className="text-[11px]" style={{ color: "var(--admin-muted)" }}>
                           <span className="font-score tabular-nums">{p.games}</span><span className="unit-kr">경기</span>
                           <span className="mx-0.5">·</span>
+                          {/* 2A-8D-4: 좁은 행이라 무승부가 있을 때만 N무를 덧붙인다. */}
+                          {p.draws > 0 && (
+                            <>
+                              <span className="font-score tabular-nums">{p.draws}</span><span className="unit-kr">무</span>
+                              <span className="mx-0.5">·</span>
+                            </>
+                          )}
                           <span className="font-score tabular-nums" style={{ color: "var(--admin-achievement)" }}>{p.winRate}%</span>
                         </span>
                         <span className="text-[10px]" style={{ color: "var(--admin-muted)" }}>→</span>

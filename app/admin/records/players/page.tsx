@@ -2,6 +2,7 @@ import { requireAdminAccess } from "@/lib/admin-permissions";
 import { createServiceClient } from "@/lib/supabase/server";
 import PlayerRecordsPageClient, { type PlayerRecord } from "./PlayerRecordsPageClient";
 import type { MemberType } from "@/lib/supabase/database.types";
+import { buildMatchRecord } from "@/lib/match-stats";
 
 export const dynamic = "force-dynamic";
 
@@ -73,8 +74,8 @@ export default async function AdminRecordsPlayersPage() {
 
   const statMap = new Map<string, PlayerRecord>();
   const mk = (id: string, isGuest: boolean): PlayerRecord => isGuest
-    ? { id, name: guestList.find((g) => g.id === id)?.name ?? "게스트", isGuest: true, memberType: null, games: 0, wins: 0, losses: 0, winRate: 0, lp: null, attending: 0, noShowCount: 0, totalCompleted: 0, attendRate: 0, noShowRate: 0, gameSessionCount: 0, participationRate: 0, absenceRate: 0 }
-    : { id, name: memberList.find((m) => m.id === id)?.name ?? "알수없음", isGuest: false, memberType: memberList.find((m) => m.id === id)?.member_type ?? null, games: 0, wins: 0, losses: 0, winRate: 0, lp: memberList.find((m) => m.id === id)?.league_point ?? null, attending: 0, noShowCount: 0, totalCompleted, attendRate: 0, noShowRate: 0, gameSessionCount: 0, participationRate: 0, absenceRate: 0 };
+    ? { id, name: guestList.find((g) => g.id === id)?.name ?? "게스트", isGuest: true, memberType: null, games: 0, wins: 0, losses: 0, draws: 0, winRate: 0, lp: null, attending: 0, noShowCount: 0, totalCompleted: 0, attendRate: 0, noShowRate: 0, gameSessionCount: 0, participationRate: 0, absenceRate: 0 }
+    : { id, name: memberList.find((m) => m.id === id)?.name ?? "알수없음", isGuest: false, memberType: memberList.find((m) => m.id === id)?.member_type ?? null, games: 0, wins: 0, losses: 0, draws: 0, winRate: 0, lp: memberList.find((m) => m.id === id)?.league_point ?? null, attending: 0, noShowCount: 0, totalCompleted, attendRate: 0, noShowRate: 0, gameSessionCount: 0, participationRate: 0, absenceRate: 0 };
 
   function ensure(id: string, isGuest: boolean) {
     const key = (isGuest ? "G:" : "M:") + id;
@@ -83,19 +84,27 @@ export default async function AdminRecordsPlayersPage() {
   }
 
   for (const m of matches ?? []) {
-    // 2A-8D: 무승부(D)는 승패 집계 대상이 아니다.
-    if (m.winner_team === "D") continue;
+    // 2A-8D-4: 무승부(D)도 집계 대상이다. 승도 패도 아니지만 경기수에는 들어가고,
+    // 무승부만 치른 선수가 목록에서 사라지지 않게 참가자로 등록한다.
+    const isDraw = m.winner_team === "D";
     const aWin = m.winner_team === "A";
-    const slots: [string | null, boolean, boolean][] = [
-      [m.team_a_player1_member, false, aWin], [m.team_a_player2_member, false, aWin],
-      [m.team_b_player1_member, false, !aWin], [m.team_b_player2_member, false, !aWin],
-      [m.team_a_player1_guest, true, aWin], [m.team_a_player2_guest, true, aWin],
-      [m.team_b_player1_guest, true, !aWin], [m.team_b_player2_guest, true, !aWin],
+    type Outcome = "win" | "loss" | "draw";
+    const teamA: Outcome = isDraw ? "draw" : aWin ? "win" : "loss";
+    const teamB: Outcome = isDraw ? "draw" : aWin ? "loss" : "win";
+    const slots: [string | null, boolean, Outcome][] = [
+      [m.team_a_player1_member, false, teamA], [m.team_a_player2_member, false, teamA],
+      [m.team_b_player1_member, false, teamB], [m.team_b_player2_member, false, teamB],
+      [m.team_a_player1_guest, true, teamA], [m.team_a_player2_guest, true, teamA],
+      [m.team_b_player1_guest, true, teamB], [m.team_b_player2_guest, true, teamB],
     ];
-    for (const [id, isGuest, isWin] of slots) {
+    for (const [id, isGuest, outcome] of slots) {
       if (!id) continue;
       const p = ensure(id, isGuest);
-      p.games++; if (isWin) p.wins++; else p.losses++;
+      // games는 승·패·무를 모두 센다(= wins + losses + draws).
+      p.games++;
+      if (outcome === "win") p.wins++;
+      else if (outcome === "loss") p.losses++;
+      else p.draws++;
     }
   }
 
@@ -110,7 +119,8 @@ export default async function AdminRecordsPlayersPage() {
   }
 
   for (const [key, p] of statMap) {
-    p.winRate = p.games > 0 ? Math.round((p.wins / p.games) * 100) : 0;
+    // 2A-8D-4: 승률 정의는 buildMatchRecord 하나로만 계산한다.
+    p.winRate = Math.round(buildMatchRecord(p.wins, p.losses, p.draws).winRate);
     p.attendRate = p.totalCompleted > 0 ? Math.round((p.attending / p.totalCompleted) * 100) : 0;
     p.noShowRate = p.attending > 0 ? Math.round((p.noShowCount / p.attending) * 100) : 0;
     const gameSessions = gameSessionsPerPlayer.get(key)?.size ?? 0;

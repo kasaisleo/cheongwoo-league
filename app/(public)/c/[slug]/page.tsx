@@ -13,7 +13,7 @@ import { applyRankingQuery } from "@/lib/ranking-query";
 import { getClubSkin } from "@/lib/club-skin";
 import { ClubBrandHeader, PublicShell } from "@/components/shell";
 import type { AttendanceSession } from "@/lib/supabase/database.types";
-import type { PublicMemberListRow } from "@/lib/public-member";
+import { normalizePublicMemberListRow, type PublicMemberListRow, type RawPublicMemberListRow } from "@/lib/public-member";
 
 export const dynamic = "force-dynamic";
 
@@ -114,7 +114,8 @@ export default async function ClubHomePage({
 
   const recentMatches = toPublicDisplayMatches(recentMatchRows);
   const guestsThisWeek = weeklyGuests ?? [];
-  const topRanked = (topRankRows ?? []) as PublicMemberListRow[];
+  // 2A-8D-4: RPC 경계 정규화(0067 적용 전 응답 호환).
+  const topRanked: PublicMemberListRow[] = (topRankRows ?? []).map((r: RawPublicMemberListRow) => normalizePublicMemberListRow(r));
   const skin = getClubSkin(club.skin_key);
 
   return (

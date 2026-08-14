@@ -20,6 +20,8 @@ interface PlayerRecord {
   memberType: MemberType | null;
   wins: number;
   losses: number;
+  /** 2A-8D-4: winner_team=D 참여 수. games = wins + losses + draws. */
+  draws: number;
   games: number;
   winRate: number;
 }
@@ -237,7 +239,9 @@ export default function MatchHistoryPageClient({ currentClubId }: { currentClubI
                               <span className="font-score text-[11px] tabular-nums text-gold">{r.wins}</span>
                               <span className="text-[11px] text-line-500">승 </span>
                               <span className="font-score text-[11px] tabular-nums text-line-400">{r.losses}</span>
-                              <span className="text-[11px] text-line-400">패 · </span>
+                              <span className="text-[11px] text-line-400">패 </span>
+                              <span className="font-score text-[11px] tabular-nums text-line-400">{r.draws}</span>
+                              <span className="text-[11px] text-line-400">무 · </span>
                               <span className="font-score text-[11px] tabular-nums text-line-500">{r.winRate}%</span>
                             </p>
                           </div>

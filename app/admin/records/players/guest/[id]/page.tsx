@@ -3,6 +3,7 @@ import { createServiceClient } from "@/lib/supabase/server";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { MATCH_SESSION_DAY_LABEL } from "@/lib/match-session-label";
 import { getAdminAccessServer } from "@/lib/admin-permissions";
+import { buildMatchRecord } from "@/lib/match-stats";
 
 export default async function GuestRecordPage({ params }: { params: { id: string } }) {
   // members_select_all 삭제 이후에도 끊기지 않도록, guests/matches도 anon-key ACL이
@@ -31,18 +32,21 @@ export default async function GuestRecordPage({ params }: { params: { id: string
     return guestSlots.includes(guestId);
   });
 
-  let wins = 0, losses = 0;
+  let wins = 0, losses = 0, draws = 0;
   const recentForms: string[] = [];
   for (const m of myMatches) {
     const isTeamA = [m.team_a_player1_guest, m.team_a_player2_guest].includes(guestId);
     const isDraw = m.winner_team === "D";
       // 2A-8D: D는 승도 패도 아니다. isWin은 D일 때 반드시 false여야 한다.
       const isWin = !isDraw && ((isTeamA && m.winner_team === "A") || (!isTeamA && m.winner_team === "B"));
-    if (isWin) wins++; else losses++;
-    if (recentForms.length < 5) recentForms.push(isWin ? "W" : "L");
+    // 2A-8D-4: 무승부를 패로 세던 버그 수정 — draws로 분리하고 경기수에 포함한다.
+    if (isDraw) draws++; else if (isWin) wins++; else losses++;
+    if (recentForms.length < 5) recentForms.push(isDraw ? "D" : isWin ? "W" : "L");
   }
-  const games = wins + losses;
-  const winRate = games > 0 ? Math.round((wins / games) * 100) : 0;
+  // 2A-8D-4: 경기수 = 승 + 패 + 무, 승률 = 승 / 경기수. 정의는 buildMatchRecord 하나.
+  const record = buildMatchRecord(wins, losses, draws);
+  const games = record.totalMatches;
+  const winRate = Math.round(record.winRate);
 
   const sessionMap    = new Map((allSessions ?? []).map((s) => [s.id, s]));
   const memberNameMap = new Map((allMembers ?? []).map((m) => [m.id, m.name]));
@@ -76,7 +80,7 @@ export default async function GuestRecordPage({ params }: { params: { id: string
             <div className="px-4 py-4">
               <p className="font-score text-4xl font-bold tabular-nums" style={{ color: "var(--admin-achievement)" }}>{winRate}%</p>
               <p className="mt-1 font-display text-[10px] font-bold uppercase tracking-widest" style={{ color: "var(--admin-muted)" }}>승률</p>
-              <p className="text-[10px]" style={{ color: "var(--admin-muted)" }}>{wins}승 {losses}패</p>
+              <p className="text-[10px]" style={{ color: "var(--admin-muted)" }}>{wins}승 {losses}패 {draws}무</p>
             </div>
             <div className="px-4 py-4">
               <p className="font-score text-4xl font-bold tabular-nums" style={{ color: "var(--admin-text)" }}>{myMatches.length}</p>

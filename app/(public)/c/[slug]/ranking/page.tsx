@@ -4,7 +4,7 @@ import { requirePublicClubBySlug } from "@/lib/public-club";
 import { RankMovement } from "@/components/ui/RankMovement";
 import { applyRankingQuery } from "@/lib/ranking-query";
 import { PublicShell, ClubPageHeader } from "@/components/shell";
-import type { PublicMemberListRow } from "@/lib/public-member";
+import { normalizePublicMemberListRow, type PublicMemberListRow, type RawPublicMemberListRow } from "@/lib/public-member";
 
 export const dynamic = "force-dynamic";
 
@@ -14,7 +14,8 @@ export default async function ClubRankingPage({ params }: { params: { slug: stri
 
   const supabase = createClient();
   const { data: rankedMembers } = await applyRankingQuery(supabase, club.id, undefined);
-  const members = (rankedMembers ?? []) as PublicMemberListRow[];
+  // 2A-8D-4: RPC 경계 정규화(0067 적용 전 응답 호환).
+  const members: PublicMemberListRow[] = (rankedMembers ?? []).map((r: RawPublicMemberListRow) => normalizePublicMemberListRow(r));
   const [first, second, third, ...rest] = members;
 
   return (

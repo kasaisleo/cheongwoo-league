@@ -70,7 +70,12 @@ export interface Member {
 }
 
 export interface MemberWithStats extends Member {
+  /** 2A-8D-4(0067): wins / total_matches * 100. 분모에 무승부가 포함된다. */
   win_rate: number;
+  /** 2A-8D-4(0067): winner_team=D 참여 Match 수. matches에서 파생한다. */
+  draws: number;
+  /** 2A-8D-4(0067): wins + losses + draws. */
+  total_matches: number;
   /** 전체 경기 누적 득점차 (내팀 - 상대팀). 경기 없으면 0. 동점 시 4번째 정렬 기준. */
   score_diff: number;
 }

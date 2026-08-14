@@ -7,6 +7,9 @@ export const LEAGUE_POINT_WIN = 10;
  */
 export const LEAGUE_POINT_DRAW = 5;
 
+// 2A-8D-4: 전적 요약(승·패·무·경기수·승률) helper는 lib/match-stats.ts로 분리했다.
+// Client Component도 쓰기 때문에, 서버 전용 RPC 오류 매핑이 있는 이 파일에 두지 않는다.
+
 export interface MatchRpcErrorInfo {
   status: number;
   message: string;

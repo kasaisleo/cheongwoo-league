@@ -102,12 +102,37 @@ export async function GET(request: NextRequest) {
     partnerName: m.partner?.name ?? null,
   }));
 
+  // 2A-8D-4: 무승부 수는 matches에서 파생한다(members에 draws 컬럼을 두지 않는다).
+  // 대상은 본인 1명뿐이므로 scoped count 1회로 끝난다 — N+1이 아니다.
+  // 회원 슬롯 4개 중 하나에 본인이 있고 winner_team='D'인 Match를 센다.
+  // club scope는 clubId로 강제하고, event_game_id는 보지 않는다
+  // (legacy·Event-linked 무승부를 모두 포함한다).
+  const { count: drawCount, error: drawError } = await admin
+    .from("matches")
+    .select("id", { count: "exact", head: true })
+    .eq("club_id", clubId)
+    .eq("winner_team", "D")
+    .or(
+      [
+        `team_a_player1_member.eq.${member.id}`,
+        `team_a_player2_member.eq.${member.id}`,
+        `team_b_player1_member.eq.${member.id}`,
+        `team_b_player2_member.eq.${member.id}`,
+      ].join(",")
+    );
+
+  if (drawError) {
+    console.error("[member/mypage] 무승부 집계 실패:", drawError.code, drawError.message);
+    return NextResponse.json({ error: "회원 정보를 불러오지 못했습니다." }, { status: 500 });
+  }
+
   return NextResponse.json({
     member: {
       name: member.name,
       memberType: member.member_type,
       wins: member.wins,
       losses: member.losses,
+      draws: drawCount ?? 0,
       leaguePoint: member.league_point,
       mapoScore: member.mapo_score,
     },

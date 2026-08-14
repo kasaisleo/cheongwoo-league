@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { requirePublicClubBySlug } from "@/lib/public-club";
 import { MemberList } from "@/components/member/MemberList";
 import { PublicShell, ClubPageHeader } from "@/components/shell";
-import type { PublicMemberListRow } from "@/lib/public-member";
+import { normalizePublicMemberListRow, type PublicMemberListRow, type RawPublicMemberListRow } from "@/lib/public-member";
 
 export const dynamic = "force-dynamic";
 
@@ -17,7 +17,9 @@ export default async function ClubMembersPage({ params }: { params: { slug: stri
     .order("league_point", { ascending: false })
     .order("nickname");
 
-  const members = (data ?? []) as PublicMemberListRow[];
+  // 2A-8D-4: 0067 적용 전 RPC 응답에는 draws / total_matches가 없다.
+  // RPC 경계에서 정규화해 앱 내부로는 필수 number만 흘린다.
+  const members: PublicMemberListRow[] = (data ?? []).map((r: RawPublicMemberListRow) => normalizePublicMemberListRow(r));
 
   return (
     <PublicShell>

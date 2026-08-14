@@ -7,7 +7,7 @@ import { MATCH_SESSION_DAY_LABEL } from "@/lib/match-session-label";
 import { EmptyState } from "@/components/ui/SectionHeader";
 import { PublicShell } from "@/components/shell";
 import type { PointHistoryV2RpcRow } from "@/lib/point-history";
-import type { PublicMemberListRow } from "@/lib/public-member";
+import { normalizePublicMemberListRow, type PublicMemberListRow, type RawPublicMemberListRow } from "@/lib/public-member";
 import { memberPublicToken, resolveMemberByToken } from "@/lib/public-member-token";
 
 export const dynamic = "force-dynamic";
@@ -40,7 +40,8 @@ export default async function ClubPointHistoryPage({ params, searchParams }: Poi
     .rpc("get_public_member_list", { p_club_id: club.id })
     .order("name");
 
-  const memberList = (members ?? []) as PublicMemberListRow[];
+  // 2A-8D-4: RPC 경계 정규화(0067 적용 전 응답 호환).
+  const memberList: PublicMemberListRow[] = (members ?? []).map((r: RawPublicMemberListRow) => normalizePublicMemberListRow(r));
 
   // 토큰이 이 클럽 회원 목록 안에서 매칭되는 경우에만 실제 회원으로 취급한다.
   // 타 클럽 토큰이나 잘못된 토큰은 "필터 없음"(전체 조회)으로 조용히 되돌리지

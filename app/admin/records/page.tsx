@@ -4,6 +4,7 @@ import { MATCH_SESSION_DAY_LABEL } from "@/lib/match-session-label";
 import { pct, fmtPct, buildRecordsDashboardSummary, buildManagementAlerts } from "@/lib/records/dashboardUtils";
 import type { MemberType } from "@/lib/supabase/database.types";
 import { getAdminAccessServer } from "@/lib/admin-permissions";
+import { buildMatchRecord } from "@/lib/match-stats";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 
 function todayStr() {
@@ -18,6 +19,8 @@ interface PlayerStat {
   games: number;
   wins: number;
   losses: number;
+  /** 2A-8D-4: winner_team=D 참여 수. games는 wins+losses+draws다. */
+  draws: number;
   winRate: number;
 }
 
@@ -99,31 +102,36 @@ export default async function AdminRecordsPage() {
   const guestMap  = new Map((guests  ?? []).map((g) => [g.id, g.name]));
   const statMap   = new Map<string, PlayerStat>();
 
-  function addResult(id: string | null, isGuest: boolean, isWin: boolean) {
+  function addResult(id: string | null, isGuest: boolean, outcome: "win" | "loss" | "draw") {
     if (!id) return;
     const key  = (isGuest ? "G:" : "M:") + id;
     const info = isGuest
       ? { name: guestMap.get(id) ?? "게스트", memberType: null }
       : { name: memberMap.get(id)?.name ?? "알수없음", memberType: memberMap.get(id)?.memberType ?? null };
-    const prev = statMap.get(key) ?? { id, name: info.name, isGuest, memberType: info.memberType, games: 0, wins: 0, losses: 0, winRate: 0 };
-    const wins   = prev.wins   + (isWin ? 1 : 0);
-    const losses = prev.losses + (isWin ? 0 : 1);
-    statMap.set(key, { ...prev, wins, losses, games: wins + losses, winRate: Math.round((wins / (wins + losses)) * 100) });
+    const prev = statMap.get(key) ?? { id, name: info.name, isGuest, memberType: info.memberType, games: 0, wins: 0, losses: 0, draws: 0, winRate: 0 };
+    const wins   = prev.wins   + (outcome === "win"  ? 1 : 0);
+    const losses = prev.losses + (outcome === "loss" ? 1 : 0);
+    const draws  = prev.draws  + (outcome === "draw" ? 1 : 0);
+    // 2A-8D-4: 경기수·승률은 buildMatchRecord 하나로만 계산한다.
+    const rec = buildMatchRecord(wins, losses, draws);
+    statMap.set(key, { ...prev, wins, losses, draws, games: rec.totalMatches, winRate: Math.round(rec.winRate) });
   }
 
   for (const m of matches) {
-    // 2A-8D: 무승부(D)는 승도 패도 아니다 — 승패 통계에서 제외한다.
-    // members.wins/losses도 무승부에서는 늘지 않으므로 두 집계가 일치한다.
-    if (m.winner_team === "D") continue;
+    // 2A-8D-4: 무승부(D)도 집계 대상이다. 승도 패도 아니지만 경기수에는 들어가고,
+    // 무승부만 치른 선수가 목록에서 사라지지 않게 참가자로 등록한다.
+    const isDraw = m.winner_team === "D";
     const aWin = m.winner_team === "A";
-    addResult(m.team_a_player1_member, false, aWin);
-    addResult(m.team_a_player2_member, false, aWin);
-    addResult(m.team_a_player1_guest,  true,  aWin);
-    addResult(m.team_a_player2_guest,  true,  aWin);
-    addResult(m.team_b_player1_member, false, !aWin);
-    addResult(m.team_b_player2_member, false, !aWin);
-    addResult(m.team_b_player1_guest,  true,  !aWin);
-    addResult(m.team_b_player2_guest,  true,  !aWin);
+    const teamA: "win" | "loss" | "draw" = isDraw ? "draw" : aWin ? "win" : "loss";
+    const teamB: "win" | "loss" | "draw" = isDraw ? "draw" : aWin ? "loss" : "win";
+    addResult(m.team_a_player1_member, false, teamA);
+    addResult(m.team_a_player2_member, false, teamA);
+    addResult(m.team_a_player1_guest,  true,  teamA);
+    addResult(m.team_a_player2_guest,  true,  teamA);
+    addResult(m.team_b_player1_member, false, teamB);
+    addResult(m.team_b_player2_member, false, teamB);
+    addResult(m.team_b_player1_guest,  true,  teamB);
+    addResult(m.team_b_player2_guest,  true,  teamB);
   }
 
   const top10 = [...statMap.values()]
@@ -449,7 +457,9 @@ export default async function AdminRecordsPage() {
                     <span className="font-score tabular-nums" style={{ color: "var(--admin-achievement)" }}>{p.wins}</span>
                     <span style={{ color: "var(--admin-muted)" }}>승 </span>
                     <span className="font-score tabular-nums" style={{ color: "var(--admin-muted)" }}>{p.losses}</span>
-                    <span style={{ color: "var(--admin-muted)" }}>패 · </span>
+                    <span style={{ color: "var(--admin-muted)" }}>패 </span>
+                    <span className="font-score tabular-nums" style={{ color: "var(--admin-muted)" }}>{p.draws}</span>
+                    <span style={{ color: "var(--admin-muted)" }}>무 · </span>
                     <span className="font-score tabular-nums" style={{ color: "var(--admin-muted)" }}>{p.winRate}%</span>
                   </p>
                 </div>

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import type { MemberType, WinnerTeam } from "@/lib/supabase/database.types";
+import { buildMatchRecord } from "@/lib/match-stats";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const MAX_SESSION_IDS = 50;
@@ -139,6 +140,8 @@ interface RecordAccumulator {
   memberType: MemberType | null;
   wins: number;
   losses: number;
+  /** 2A-8D-4: winner_team='D' 참여 수. wins/losses와 배타적이다. */
+  draws: number;
 }
 
 async function handleSessionMode(
@@ -195,7 +198,13 @@ async function handleSessionMode(
   // 응답에는 절대 포함하지 않는다(displayName만 노출).
   const recordMap = new Map<string, RecordAccumulator>();
 
-  function addResult(row: PlayerRelation | null, isGuest: boolean, isWin: boolean) {
+  /**
+   * 2A-8D-4: 참가자를 먼저 등록한 뒤 결과를 반영한다.
+   * outcome 'win' | 'loss' | 'draw' 3분기이며, 무승부는 wins/losses를
+   * 건드리지 않고 draws만 올린다. 그래서 무승부만 치른 선수도 응답에 남는다.
+   * key는 member:/guest: prefix로 namespace를 분리해 UUID 충돌을 막는다.
+   */
+  function addResult(row: PlayerRelation | null, isGuest: boolean, outcome: "win" | "loss" | "draw") {
     if (!row) return;
     const key = (isGuest ? "guest:" : "member:") + row.id;
     const prev = recordMap.get(key) ?? {
@@ -204,46 +213,56 @@ async function handleSessionMode(
       memberType: isGuest ? null : (row.member_type ?? null),
       wins: 0,
       losses: 0,
+      draws: 0,
     };
     recordMap.set(key, {
       ...prev,
-      wins: prev.wins + (isWin ? 1 : 0),
-      losses: prev.losses + (isWin ? 0 : 1),
+      wins: prev.wins + (outcome === "win" ? 1 : 0),
+      losses: prev.losses + (outcome === "loss" ? 1 : 0),
+      draws: prev.draws + (outcome === "draw" ? 1 : 0),
     });
   }
 
   for (const m of matchRows) {
-    // 2A-8D: 무승부(D)는 승패 집계 대상이 아니다.
-    if (m.winner_team === "D") continue;
+    // 2A-8D-4: 무승부(D)도 집계 대상이다 — 건너뛰면 무승부만 치른 선수가
+    // 응답에서 사라진다. A/B 승은 팀별로 승패를, D는 양 팀 모두 무를 받는다.
+    const isDraw = m.winner_team === "D";
     const aWin = m.winner_team === "A";
-    addResult(m.team_a_player1_member_row, false, aWin);
-    addResult(m.team_a_player1_guest_row, true, aWin);
-    addResult(m.team_a_player2_member_row, false, aWin);
-    addResult(m.team_a_player2_guest_row, true, aWin);
-    addResult(m.team_b_player1_member_row, false, !aWin);
-    addResult(m.team_b_player1_guest_row, true, !aWin);
-    addResult(m.team_b_player2_member_row, false, !aWin);
-    addResult(m.team_b_player2_guest_row, true, !aWin);
+    const teamA: "win" | "loss" | "draw" = isDraw ? "draw" : aWin ? "win" : "loss";
+    const teamB: "win" | "loss" | "draw" = isDraw ? "draw" : aWin ? "loss" : "win";
+    addResult(m.team_a_player1_member_row, false, teamA);
+    addResult(m.team_a_player1_guest_row, true, teamA);
+    addResult(m.team_a_player2_member_row, false, teamA);
+    addResult(m.team_a_player2_guest_row, true, teamA);
+    addResult(m.team_b_player1_member_row, false, teamB);
+    addResult(m.team_b_player1_guest_row, true, teamB);
+    addResult(m.team_b_player2_member_row, false, teamB);
+    addResult(m.team_b_player2_guest_row, true, teamB);
   }
 
   const records = [...recordMap.values()]
     .map((r) => {
-      const games = r.wins + r.losses;
+      // 2A-8D-4: 경기수·승률 정의는 lib/match-engine의 buildMatchRecord 하나로만
+      // 계산한다(DB 0067의 total_matches / win_rate와 같은 식).
+      const rec = buildMatchRecord(r.wins, r.losses, r.draws);
       return {
         displayName: r.displayName,
         isGuest: r.isGuest,
         memberType: r.memberType,
-        wins: r.wins,
-        losses: r.losses,
-        games,
-        winRate: games > 0 ? Math.round((r.wins / games) * 100) : 0,
+        wins: rec.wins,
+        losses: rec.losses,
+        // 기존 클라이언트 호환 필드는 유지하고 신규 필드를 추가한다.
+        // games는 이제 무승부를 포함한다(= totalMatches).
+        games: rec.totalMatches,
+        winRate: Math.round(rec.winRate),
+        draws: rec.draws,
+        totalMatches: rec.totalMatches,
       };
     })
     .sort((a, b) => {
       if (b.wins !== a.wins) return b.wins - a.wins;
-      const aTotal = a.wins + a.losses;
-      const bTotal = b.wins + b.losses;
-      if (bTotal !== aTotal) return bTotal - aTotal;
+      // 2A-8D-4: 경기수 tie-breaker도 무승부를 포함한 새 정의를 쓴다.
+      if (b.totalMatches !== a.totalMatches) return b.totalMatches - a.totalMatches;
       return a.displayName.localeCompare(b.displayName, "ko");
     });
 

@@ -19,7 +19,7 @@ import {
   groupPointHistoryByMatch,
 } from "@/lib/member-activity";
 import { notFound } from "next/navigation";
-import type { PublicMemberDetailRow } from "@/lib/public-member";
+import { normalizePublicMemberDetailRow, type PublicMemberDetailRow, type RawPublicMemberDetailRow } from "@/lib/public-member";
 import { getAdminAccessServer } from "@/lib/admin-permissions";
 import { memberPublicToken } from "@/lib/public-member-token";
 
@@ -64,11 +64,17 @@ export default async function ClubMemberDetailPage({ params }: Props) {
     p_club_id: clubId,
     p_member_id: memberId,
   });
-  const member = (data ?? [])[0] as PublicMemberDetailRow | undefined;
+  // 2A-8D-4: RPC 경계 정규화 — 0067 적용 전에는 draws / total_matches가 없다.
+  const rawMember = (data ?? [])[0] as RawPublicMemberDetailRow | undefined;
+  const member: PublicMemberDetailRow | undefined =
+    rawMember === undefined ? undefined : normalizePublicMemberDetailRow(rawMember);
 
   if (!member) notFound();
 
-  const matchesPlayed = member.wins + member.losses;
+  // 2A-8D-4: 경기수·승률은 0067이 RPC에서 이미 무승부를 포함해 계산한다.
+  //   total_matches = wins + losses + draws,  win_rate = wins / total_matches
+  // 여기서 다시 계산하면 정의가 갈라지므로 RPC 값을 그대로 쓴다.
+  const matchesPlayed = member.total_matches;
 
   const access = await getAdminAccessServer();
   const isAdmin = access.isAdmin;
@@ -129,7 +135,8 @@ export default async function ClubMemberDetailPage({ params }: Props) {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-2 border-t border-line-200 px-5 py-3 text-center">
+          {/* 2A-8D-4: 무승부를 승·패와 같은 층위로 표시한다(0무도 표시). */}
+          <div className="grid grid-cols-3 gap-2 border-t border-line-200 px-5 py-3 text-center">
             <div>
               <p className="font-score text-lg font-bold text-gold">{member.wins}</p>
               <p className="text-xs text-line-500">승</p>
@@ -137,6 +144,10 @@ export default async function ClubMemberDetailPage({ params }: Props) {
             <div>
               <p className="font-score text-lg font-bold text-line-500">{member.losses}</p>
               <p className="text-xs text-line-500">패</p>
+            </div>
+            <div>
+              <p className="font-score text-lg font-bold text-line-500">{member.draws}</p>
+              <p className="text-xs text-line-500">무</p>
             </div>
           </div>
         </Card>

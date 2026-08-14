@@ -4,6 +4,7 @@ import { createServiceClient } from "@/lib/supabase/server";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { MATCH_SESSION_DAY_LABEL } from "@/lib/match-session-label";
 import { getAdminAccessServer } from "@/lib/admin-permissions";
+import { buildMatchRecord } from "@/lib/match-stats";
 
 // ── 매치명 헬퍼 ─────────────────────────────────────────────────
 function matchTitle(s: { session_day: string; title: string }) {
@@ -84,18 +85,20 @@ export default async function MemberRecordPage({ params }: { params: { id: strin
             m.team_b_player1_member, m.team_b_player2_member].includes(memberId);
   });
 
-  let wins = 0, losses = 0;
+  let wins = 0, losses = 0, draws = 0;
   const recentForms: string[] = [];
   for (const m of myMatches) {
     const isTeamA = [m.team_a_player1_member, m.team_a_player2_member].includes(memberId);
     const isDraw = m.winner_team === "D";
       // 2A-8D: D는 승도 패도 아니다. isWin은 D일 때 반드시 false여야 한다.
       const isWin = !isDraw && ((isTeamA && m.winner_team === "A") || (!isTeamA && m.winner_team === "B"));
-    // 2A-8D: 무승부는 승·패 어느 쪽으로도 세지 않는다.
-    if (isDraw) { /* 승패 집계 제외 */ } else if (isWin) wins++; else losses++;
+    // 2A-8D-4: 무승부는 승·패로 세지 않지만 draws로 세어 경기수에 포함한다.
+    if (isDraw) draws++; else if (isWin) wins++; else losses++;
     if (recentForms.length < 5) recentForms.push(isDraw ? "D" : isWin ? "W" : "L");
   }
-  const games = wins + losses;
+  // 2A-8D-4: 경기수 = 승 + 패 + 무, 승률 = 승 / 경기수. 정의는 buildMatchRecord 하나.
+  const record = buildMatchRecord(wins, losses, draws);
+  const games = record.totalMatches;
   const winRate = pct(wins, games);
 
   const gameSessionIds = new Set(
@@ -217,7 +220,7 @@ export default async function MemberRecordPage({ params }: { params: { id: strin
             <div className="px-5 py-4">
               <p className="font-score text-4xl font-bold tabular-nums" style={{ color: "var(--admin-text)" }}>{games}</p>
               <p className="mt-1 font-display text-[10px] font-bold uppercase tracking-widest" style={{ color: "var(--admin-muted)" }}>총 경기</p>
-              <p className="text-[10px]" style={{ color: "var(--admin-muted)" }}>{wins}승 {losses}패</p>
+              <p className="text-[10px]" style={{ color: "var(--admin-muted)" }}>{wins}승 {losses}패 {draws}무</p>
             </div>
             <div className="px-5 py-4">
               <p className="font-score text-4xl font-bold tabular-nums" style={{ color: "var(--admin-achievement)" }}>{fmtPct(winRate)}</p>

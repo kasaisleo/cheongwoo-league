@@ -112,7 +112,13 @@ export function sortMembers(members: PublicMemberListRow[], sortBy: MemberSortOp
     case "win_rate":
       return sorted.sort((a, b) => b.win_rate - a.win_rate);
     case "matches_played":
-      return sorted.sort((a, b) => b.wins + b.losses - (a.wins + a.losses));
+      // 2A-8D-4: 경기수 정렬도 무승부를 포함한 새 정의를 쓴다.
+      // total_matches는 0067이 RPC에서 wins + losses + draws로 계산한 값이다.
+      // 동률이면 이름으로 안정 정렬한다(기존에는 tie-breaker가 없어 순서가
+      // 입력 순서에 좌우됐다).
+      return sorted.sort(
+        (a, b) => b.total_matches - a.total_matches || a.name.localeCompare(b.name, "ko")
+      );
     default:
       return sorted;
   }
