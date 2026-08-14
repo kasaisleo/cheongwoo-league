@@ -22,13 +22,19 @@ import type {
  *   - 게임 RPC들은 participants_confirmed_at / scheduling_confirmed_at을
  *     "보지 않는다". 따라서 이 UI도 그 두 값으로 잠그지 않는다.
  *   - 0058 이후 배정 자격은 is_active 하나뿐이다(status='confirmed' 요구 제거).
- *   - Event 전체 잠금은 cancelled 하나뿐이다. completed Event에서도 대진과
- *     결과를 계속 다룰 수 있다.
- *   - 게임 단위 잠금은 두 축이 다르다:
- *       구조(선수·배치·순서·취소) → game.status === 'draft'일 때만
- *       결과(저장·수정·초기화)   → game.status !== 'cancelled'일 때
+ *   - Event 단위 잠금은 0062에서 두 축으로 갈렸다:
+ *       구조(대진 생성·일괄 확보·format·선수·코트/슬롯·순서·취소)
+ *         → cancelled 또는 completed 이면 전부 차단 (structureLocked)
+ *       결과
+ *         → cancelled 이면 전부 차단
+ *         → completed 이면 "기존 결과가 있는 completed Game의 정정"만 허용.
+ *            draft/in_progress Game의 최초 입력과 결과 초기화는 차단.
+ *     되돌리려면 Event 상태를 active로 재활성화해야 한다(completed_at=null).
+ *   - 게임 단위 잠금은 그대로 두 축이다:
+ *       구조 → game.status === 'draft'일 때만
+ *       결과 → game.status !== 'cancelled'일 때
  *     즉 완료된 게임은 선수를 바꿀 수 없지만 점수는 정정할 수 있다. 선수를
- *     바꾸려면 결과를 먼저 초기화해 draft로 되돌려야 한다.
+ *     바꾸려면 결과를 먼저 초기화해 draft로 되돌려야 한다(active/draft Event에서만).
  *   - 결과 입력은 복식만 지원한다(0059 — matches의 슬롯 XOR CHECK 때문).
  *   - 그 외 모든 유효성(정원, 중복, 슬롯 점유, 시간 충돌, 점수 범위, 동점,
  *     타이브레이크, 효과 undo/apply)은 서버 RPC가 최종 판정하고, 이 컴포넌트는
@@ -136,16 +142,23 @@ export function EventGamesSection({ eventId, scheduling, participants, onChanged
   const [saveResultTarget, setSaveResultTarget] = useState<EventGameWithPlayers | null>(null);
   const [clearResultTarget, setClearResultTarget] = useState<EventGameWithPlayers | null>(null);
 
-  /** 0058: Event 전체 잠금은 cancelled 하나뿐. completed는 잠금이 아니다. */
+  /** cancelled Event는 조회 외 모든 조작이 막힌다(terminal). */
   const locked = scheduling?.event.isCancelled ?? false;
   const slotMode = scheduling?.event.slotMode ?? "none";
 
-  /**
-   * 일괄 확보(0061)만 예외적으로 completed도 차단한다 — 완료된 이벤트에 빈
-   * 게임을 더 만드는 조작은 운영상 의미가 없다(2A-8B 확정 정책 2). 나머지
-   * 기능의 잠금 계약은 그대로다.
-   */
   const isCompleted = scheduling?.event.isCompleted ?? false;
+  /**
+   * 0062: 잠금 축이 두 개로 갈린다 — RPC guard와 정확히 같은 경계로 맞춘다.
+   *
+   *   structureLocked = cancelled 또는 completed
+   *     → 대진 생성·일괄 확보·format·선수·코트/슬롯·순서·취소 전부 차단
+   *   결과는 별도 —
+   *     · 기존 결과가 있는 completed Game의 "정정"은 completed Event에서도 허용
+   *     · draft/in_progress Game의 "최초 입력"은 completed Event에서 차단
+   *     · 결과 "초기화"는 completed Event에서 차단
+   *   되돌리려면 Event를 진행 중(active)으로 재활성화해야 한다.
+   */
+  const structureLocked = locked || isCompleted;
   const participantsConfirmed = (scheduling?.event.participants_confirmed_at ?? null) !== null;
   /** RPC guard와 같은 정의 — status='confirmed' + is_active. */
   const confirmedActiveCount = useMemo(
@@ -153,7 +166,7 @@ export function EventGamesSection({ eventId, scheduling, participants, onChanged
     [participants]
   );
   const canBulkCreate =
-    !locked && !isCompleted && participantsConfirmed && confirmedActiveCount >= MIN_CONFIRMED_FOR_BULK;
+    !structureLocked && participantsConfirmed && confirmedActiveCount >= MIN_CONFIRMED_FOR_BULK;
 
   /** 대진에 넣을 수 있는 참가자 = is_active (0058이 status='confirmed' 요구를 제거). */
   const eligible = useMemo(
@@ -475,16 +488,27 @@ export function EventGamesSection({ eventId, scheduling, participants, onChanged
     const lineupComplete =
       game.players.length === seatCount &&
       new Set(game.players.map((p) => p.event_participant_id)).size === seatCount;
+    /**
+     * 0062: completed Event에서는 "기존 결과가 있는 completed Game"만 정정할 수
+     * 있다. RPC가 요구하는 두 조건(Game status='completed' + linked Match 1건)을
+     * 화면에서도 같은 기준으로 판정한다 — game.result가 곧 linked Match의 존재를
+     * 뜻한다(GET /games가 matches에서 채우고, 0057 partial unique가 1건을 보장).
+     */
+    const isResultCorrection = game.status === "completed" && game.result !== null;
     const resultBlockedReason = locked
       ? "취소된 경기입니다."
       : isCancelled
         ? "취소된 게임에는 결과를 저장할 수 없습니다."
         : game.format !== "doubles"
           ? "현재 결과 입력은 복식 게임만 지원합니다."
-          : !lineupComplete
-            ? "선수 4명이 모두 배정되어야 결과를 입력할 수 있습니다."
-            : null;
+          : isCompleted && !isResultCorrection
+            ? "완료된 이벤트에는 새로운 결과를 입력할 수 없습니다. 이벤트를 진행 중으로 변경해주세요."
+            : !lineupComplete
+              ? "선수 4명이 모두 배정되어야 결과를 입력할 수 있습니다."
+              : null;
     const canEditResult = resultBlockedReason === null;
+    /** 결과 초기화만 completed Event에서 추가로 차단된다(정정은 허용). */
+    const canClearResult = canEditResult && !isCompleted;
     const draftValue = resultDrafts[game.id] ?? EMPTY_RESULT_DRAFT;
     const winnerLabel =
       game.result === null ? null : game.result.winner_team === "A" ? "A팀 승" : "B팀 승";
@@ -552,7 +576,7 @@ export function EventGamesSection({ eventId, scheduling, participants, onChanged
             )}
           </div>
 
-          {!locked && isDraft && (
+          {!structureLocked && isDraft && (
             <div className="flex flex-shrink-0 items-center gap-1">
               {queueIndex !== undefined && (
                 <>
@@ -600,7 +624,7 @@ export function EventGamesSection({ eventId, scheduling, participants, onChanged
         </div>
 
         {/* 슬롯 배치·이동 — ordered/timed에서만 의미가 있다(none은 슬롯을 쓰지 않음). */}
-        {!locked && isDraft && slotMode !== "none" && (
+        {!structureLocked && isDraft && slotMode !== "none" && (
           <div className="mt-2">
             <select
               className={inputCls}
@@ -618,7 +642,7 @@ export function EventGamesSection({ eventId, scheduling, participants, onChanged
           </div>
         )}
 
-        {!locked && isDraft && editingPlayersFor === game.id && (
+        {!structureLocked && isDraft && editingPlayersFor === game.id && (
           <div className="mt-2 rounded-[10px] border border-[color:var(--surface-border)] p-2">
             {renderSeatPicker(game.format, editDraft, setEditDraft)}
             <div className="mt-2 flex gap-2">
@@ -727,7 +751,8 @@ export function EventGamesSection({ eventId, scheduling, participants, onChanged
                 >
                   {game.result ? "결과 수정" : "결과 입력"}
                 </button>
-                {game.result && (
+                {/* 0062: completed Event에서는 초기화만 숨긴다 — 정정은 위 버튼으로 계속 가능. */}
+                {game.result && canClearResult && (
                   <button
                     type="button"
                     disabled={busy}
@@ -736,6 +761,11 @@ export function EventGamesSection({ eventId, scheduling, participants, onChanged
                   >
                     결과 초기화
                   </button>
+                )}
+                {game.result && !canClearResult && (
+                  <span className="text-[11px] text-[color:var(--surface-muted)]">
+                    완료된 이벤트에서는 초기화할 수 없습니다.
+                  </span>
                 )}
               </div>
             )}
@@ -769,7 +799,15 @@ export function EventGamesSection({ eventId, scheduling, participants, onChanged
         </div>
       )}
 
-      {!locked && eligible.length === 0 && (
+      {/* 0062: completed Event의 잠금 범위를 명시한다. cancelled 배너와 동시에 뜨지 않는다. */}
+      {!locked && isCompleted && (
+        <div className="mb-3 rounded-[10px] border border-[color:var(--surface-border)] bg-[color:var(--surface-bg)] px-3 py-2 text-xs text-[color:var(--surface-muted)]">
+          완료된 이벤트입니다. 대진 구조와 새로운 결과 입력은 잠겨 있으며, 기존 경기 결과만 정정할 수
+          있습니다. 다시 변경하려면 상태를 진행 중으로 되돌려주세요.
+        </div>
+      )}
+
+      {!structureLocked && eligible.length === 0 && (
         <p className="mb-3 rounded-[10px] border border-[color:var(--surface-border)] px-3 py-2 text-xs text-[color:var(--surface-muted)]">
           확정된 참가자가 없습니다 — 참가자 명단을 먼저 확정하면 대진을 만들 수 있습니다.
         </p>
@@ -855,7 +893,7 @@ export function EventGamesSection({ eventId, scheduling, participants, onChanged
       )}
 
       {/* eligible이 0명일 때는 위의 기존 안내가 이미 같은 내용을 덮으므로 중복 배너를 띄우지 않는다. */}
-      {!locked && !isCompleted && !canBulkCreate && eligible.length > 0 && (
+      {!structureLocked && !canBulkCreate && eligible.length > 0 && (
         <p className="mb-3 rounded-[10px] border border-[color:var(--surface-border)] px-3 py-2 text-xs text-[color:var(--surface-muted)]">
           {!participantsConfirmed
             ? "참가자 명단을 확정하면 게임을 일괄 생성할 수 있습니다."
@@ -879,7 +917,7 @@ export function EventGamesSection({ eventId, scheduling, participants, onChanged
         {cancelledGames.map((g) => renderGameCard(g))}
       </div>
 
-      {!locked && eligible.length > 0 && (
+      {!structureLocked && eligible.length > 0 && (
         <>
           {!showCreate ? (
             <button

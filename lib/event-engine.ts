@@ -133,16 +133,25 @@ export function mapEventRpcError(errorMessage: string | undefined, fallback: str
   if (msg.startsWith("INVALID_STATUS_TRANSITION")) {
     return { status: 409, message: "허용되지 않는 상태 변경입니다." };
   }
-  // 0061(ensure_event_game_count)만 하위 이유를 붙여 올린다 — 이 함수는
-  // completed도 차단하므로 문구를 구분해야 한다. 반드시 무접미사 매핑보다
-  // 먼저 검사한다.
+  // completed Event 구조 잠금(0061 ensure + 0062의 구조 mutation 6개)은 하위
+  // 이유를 붙여 올린다. 0062 이후 이 접미사를 쓰는 함수가 여러 개이므로 문구를
+  // "게임 추가" 전용이 아닌 구조 변경 일반으로 둔다 — 순서 변경·선수 배정·
+  // 취소에도 같은 문구가 맞아야 한다. 반드시 무접미사 매핑보다 먼저 검사한다.
   if (msg.startsWith("EVENT_STRUCTURE_LOCKED: event is completed")) {
-    return { status: 409, message: "완료된 이벤트에는 게임을 추가할 수 없습니다." };
+    return { status: 409, message: "완료된 이벤트는 대진 구조를 변경할 수 없습니다." };
   }
-  // 0058 이후 이 코드를 접미사 없이 올리는 조건은 status='cancelled' 하나뿐이다
-  // (completed는 더 이상 구조 잠금이 아니다).
+  // 접미사 없이 이 코드를 올리는 조건은 status='cancelled' 하나뿐이다
+  // (0058이 completed를 잠금에서 제외했고, 0062가 completed를 위 접미사 형태로
+  // 되돌려 넣었으므로 무접미사는 여전히 cancelled 전용이다).
   if (msg.startsWith("EVENT_STRUCTURE_LOCKED")) {
     return { status: 409, message: "취소된 이벤트는 변경할 수 없습니다." };
+  }
+  // Event 완료 전제조건 (0062) — 상태 전환 실패이므로 409.
+  if (msg.startsWith("EVENT_COMPLETION_NO_GAMES")) {
+    return { status: 409, message: "완료할 게임이 없습니다." };
+  }
+  if (msg.startsWith("EVENT_COMPLETION_GAMES_INCOMPLETE")) {
+    return { status: 409, message: "모든 게임의 결과를 입력해야 이벤트를 완료할 수 있습니다." };
   }
   // normalize_match_config(0050) — 이번 phase UI는 match_config를 편집하지
   // 않아 실사용 경로는 없지만, update_event가 받는 인자라 방어적으로 매핑.
@@ -353,6 +362,21 @@ export function mapEventRpcError(errorMessage: string | undefined, fallback: str
   // 올라오고, 0058 이후 그 코드가 뜻하는 것은 "취소된 이벤트"뿐이다).
   if (msg.startsWith("EVENT_GAME_CANCELLED_NO_RESULT")) {
     return { status: 409, message: "취소된 게임에는 결과를 저장하거나 초기화할 수 없습니다." };
+  }
+  // completed Event 결과 정책 (0062) — 정정만 허용, 최초 입력·초기화는 차단.
+  if (msg.startsWith("EVENT_RESULT_FIRST_SAVE_LOCKED")) {
+    return {
+      status: 409,
+      message:
+        "완료된 이벤트에는 새로운 경기 결과를 입력할 수 없습니다. 이벤트를 진행 중으로 변경한 뒤 입력해 주세요.",
+    };
+  }
+  if (msg.startsWith("EVENT_RESULT_CLEAR_LOCKED")) {
+    return {
+      status: 409,
+      message:
+        "완료된 이벤트의 결과는 초기화할 수 없습니다. 이벤트를 진행 중으로 변경한 뒤 초기화해 주세요.",
+    };
   }
   if (msg.startsWith("EVENT_GAME_RESULT_FORMAT_UNSUPPORTED")) {
     return { status: 409, message: "현재 결과 입력은 복식 게임만 지원합니다." };
