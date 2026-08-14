@@ -1,5 +1,11 @@
 /** 일반 경기 승리 시 적용되는 리그 포인트. supabase/migrations/0045의 v_league_point_win과 동기화 필수(수동 관리). */
 export const LEAGUE_POINT_WIN = 10;
+/**
+ * 2A-8D: 5:5 무승부 포인트. DB의 _match_apply_draw_effects
+ * (v_league_point_draw)와 수동 동기화 필수 — LEAGUE_POINT_WIN과 같은 관례다.
+ * 실제 포인트 반영은 DB RPC가 하고, 이 상수는 화면 표시용 계산에만 쓴다.
+ */
+export const LEAGUE_POINT_DRAW = 5;
 
 export interface MatchRpcErrorInfo {
   status: number;

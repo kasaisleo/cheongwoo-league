@@ -88,9 +88,12 @@ export default async function MemberRecordPage({ params }: { params: { id: strin
   const recentForms: string[] = [];
   for (const m of myMatches) {
     const isTeamA = [m.team_a_player1_member, m.team_a_player2_member].includes(memberId);
-    const isWin = (isTeamA && m.winner_team === "A") || (!isTeamA && m.winner_team === "B");
-    if (isWin) wins++; else losses++;
-    if (recentForms.length < 5) recentForms.push(isWin ? "W" : "L");
+    const isDraw = m.winner_team === "D";
+      // 2A-8D: D는 승도 패도 아니다. isWin은 D일 때 반드시 false여야 한다.
+      const isWin = !isDraw && ((isTeamA && m.winner_team === "A") || (!isTeamA && m.winner_team === "B"));
+    // 2A-8D: 무승부는 승·패 어느 쪽으로도 세지 않는다.
+    if (isDraw) { /* 승패 집계 제외 */ } else if (isWin) wins++; else losses++;
+    if (recentForms.length < 5) recentForms.push(isDraw ? "D" : isWin ? "W" : "L");
   }
   const games = wins + losses;
   const winRate = pct(wins, games);
@@ -137,7 +140,9 @@ export default async function MemberRecordPage({ params }: { params: { id: strin
 
   const recentMatchItems = myMatches.slice(0, 10).map((m) => {
     const isTeamA = [m.team_a_player1_member, m.team_a_player2_member].includes(memberId);
-    const isWin = (isTeamA && m.winner_team === "A") || (!isTeamA && m.winner_team === "B");
+    const isDraw = m.winner_team === "D";
+      // 2A-8D: D는 승도 패도 아니다. isWin은 D일 때 반드시 false여야 한다.
+      const isWin = !isDraw && ((isTeamA && m.winner_team === "A") || (!isTeamA && m.winner_team === "B"));
     const session = m.session_id ? sessionMap.get(m.session_id) : null;
     const partnerId = isTeamA
       ? [m.team_a_player1_member, m.team_a_player2_member].find((id) => id && id !== memberId)
@@ -145,7 +150,7 @@ export default async function MemberRecordPage({ params }: { params: { id: strin
     const opponentIds = isTeamA
       ? [m.team_b_player1_member, m.team_b_player2_member].filter(Boolean)
       : [m.team_a_player1_member, m.team_a_player2_member].filter(Boolean);
-    return { m, isTeamA, isWin, session,
+    return { m, isTeamA, isWin, isDraw, session,
       partnerName: partnerId ? (memberNameMap.get(partnerId) ?? "알수없음") : null,
       opponentNames: opponentIds.map((id) => memberNameMap.get(id!) ?? "알수없음"),
     };
@@ -360,7 +365,7 @@ export default async function MemberRecordPage({ params }: { params: { id: strin
           </div>
         ) : (
           <div className="overflow-hidden rounded-[var(--admin-card-radius,14px)] border" style={cardStyle}>
-            {recentMatchItems.map(({ m, isTeamA, isWin, session, partnerName, opponentNames }, idx) => (
+            {recentMatchItems.map(({ m, isTeamA, isWin, isDraw, session, partnerName, opponentNames }, idx) => (
               <div key={m.id}
                 className={`flex items-center gap-3 px-4 py-3 ${idx < recentMatchItems.length - 1 ? "border-b" : ""}`}
                 style={{ borderColor: "var(--admin-border)" }}>

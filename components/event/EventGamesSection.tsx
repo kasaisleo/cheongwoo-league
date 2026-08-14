@@ -61,6 +61,25 @@ interface ResultDraft {
 
 const EMPTY_RESULT_DRAFT: ResultDraft = { scoreA: "", scoreB: "", tieA: "", tieB: "" };
 
+/**
+ * 2A-8D: 동점 판정 헬퍼. 서버(_event_game_result_score)와 같은 기준을 쓴다 —
+ * 정확히 5:5만 무승부이고, 그 밖의 동점은 저장할 수 없다. 최종 판정은 항상
+ * 서버와 DB CHECK가 하고 여기서는 불필요한 왕복만 줄인다.
+ */
+function parseScore(v: string): number | null {
+  const t = v.trim();
+  if (t === "") return null;
+  const n = Number(t);
+  return Number.isInteger(n) ? n : null;
+}
+function isTieScore(a: string, b: string): boolean {
+  const x = parseScore(a), y = parseScore(b);
+  return x !== null && y !== null && x === y;
+}
+function isDrawScore(a: string, b: string): boolean {
+  return parseScore(a) === 5 && parseScore(b) === 5;
+}
+
 /** 0061 RPC와 API 라우트가 강제하는 목표 게임 수 범위. 여기서는 입력 편의용. */
 const MIN_BULK_TARGET = 1;
 const MAX_BULK_TARGET = 200;
@@ -378,6 +397,13 @@ export function EventGamesSection({ eventId, scheduling, participants, onChanged
       toast.error("양 팀 점수를 모두 입력해주세요.");
       return;
     }
+    // 2A-8D: 5:5는 무승부이고 타이브레이크를 쓸 수 없다. 입력창에 값이 남아
+    // 있어도 payload에서 null로 보내 불필요한 400을 만들지 않는다.
+    const drawPayload = isDrawScore(d.scoreA, d.scoreB);
+    if (isTieScore(d.scoreA, d.scoreB) && !drawPayload) {
+      toast.error("동점 결과는 5 : 5 무승부만 저장할 수 있습니다.");
+      return;
+    }
     const ok = await mutate(
       `/api/admin/events/${eventId}/games/${game.id}/result`,
       {
@@ -386,8 +412,8 @@ export function EventGamesSection({ eventId, scheduling, participants, onChanged
         body: JSON.stringify({
           scoreA: d.scoreA.trim(),
           scoreB: d.scoreB.trim(),
-          scoreATiebreak: d.tieA.trim() === "" ? null : d.tieA.trim(),
-          scoreBTiebreak: d.tieB.trim() === "" ? null : d.tieB.trim(),
+          scoreATiebreak: drawPayload || d.tieA.trim() === "" ? null : d.tieA.trim(),
+          scoreBTiebreak: drawPayload || d.tieB.trim() === "" ? null : d.tieB.trim(),
         }),
       },
       "경기 결과를 저장했습니다.",
@@ -510,8 +536,19 @@ export function EventGamesSection({ eventId, scheduling, participants, onChanged
     /** 결과 초기화만 completed Event에서 추가로 차단된다(정정은 허용). */
     const canClearResult = canEditResult && !isCompleted;
     const draftValue = resultDrafts[game.id] ?? EMPTY_RESULT_DRAFT;
+    /**
+     * 2A-8D: winner_team은 A/B/D 3값이다. 삼항으로 두면 'D'가 조용히 "B팀 승"으로
+     * 표시되므로 반드시 3분기로 판정한다. 무승부는 어느 팀도 강조하지 않는다.
+     */
+    const isDrawResult = game.result?.winner_team === "D";
     const winnerLabel =
-      game.result === null ? null : game.result.winner_team === "A" ? "A팀 승" : "B팀 승";
+      game.result === null
+        ? null
+        : game.result.winner_team === "A"
+          ? "A팀 승"
+          : game.result.winner_team === "B"
+            ? "B팀 승"
+            : "무승부";
 
     return (
       <div
@@ -562,13 +599,21 @@ export function EventGamesSection({ eventId, scheduling, participants, onChanged
                     (타이브레이크 {game.result.score_a_tiebreak}:{game.result.score_b_tiebreak})
                   </span>
                 )}
+                {/* 2A-8D: 무승부에는 승자 강조(accent)를 쓰지 않고 중립 색으로 표시한다. */}
                 <span
                   className="rounded-sm border px-1.5 py-0.5 text-[10px] font-semibold"
-                  style={{
-                    borderColor: "var(--admin-accent)",
-                    background: "var(--admin-accent-soft)",
-                    color: "var(--admin-accent)",
-                  }}
+                  style={
+                    isDrawResult
+                      ? {
+                          borderColor: "var(--surface-border)",
+                          color: "var(--surface-muted)",
+                        }
+                      : {
+                          borderColor: "var(--admin-accent)",
+                          background: "var(--admin-accent-soft)",
+                          color: "var(--admin-accent)",
+                        }
+                  }
                 >
                   {winnerLabel}
                 </span>
@@ -683,12 +728,17 @@ export function EventGamesSection({ eventId, scheduling, participants, onChanged
               <div className="rounded-[10px] border border-[color:var(--surface-border)] p-2">
                 <div className="grid grid-cols-2 gap-2">
                   {(
-                    [
-                      { key: "scoreA", label: "A팀 점수" },
-                      { key: "scoreB", label: "B팀 점수" },
-                      { key: "tieA", label: "A팀 타이브레이크 (선택)" },
-                      { key: "tieB", label: "B팀 타이브레이크 (선택)" },
-                    ] as const
+                    (isDrawScore(draftValue.scoreA, draftValue.scoreB)
+                      ? [
+                          { key: "scoreA", label: "A팀 점수" },
+                          { key: "scoreB", label: "B팀 점수" },
+                        ]
+                      : [
+                          { key: "scoreA", label: "A팀 점수" },
+                          { key: "scoreB", label: "B팀 점수" },
+                          { key: "tieA", label: "A팀 타이브레이크 (선택)" },
+                          { key: "tieB", label: "B팀 타이브레이크 (선택)" },
+                        ]) as ReadonlyArray<{ key: keyof ResultDraft; label: string }>
                   ).map((f) => (
                     <label key={f.key} className="block">
                       <span className="mb-1 block text-[10px] font-semibold text-[color:var(--surface-muted)]">
@@ -712,7 +762,11 @@ export function EventGamesSection({ eventId, scheduling, participants, onChanged
                   ))}
                 </div>
                 <p className="mt-1.5 text-[10px] text-[color:var(--surface-muted)]">
-                  7-6 경기만 타이브레이크 점수를 입력합니다. 승패는 점수로 자동 결정됩니다.
+                  {isDrawScore(draftValue.scoreA, draftValue.scoreB)
+                    ? "5 : 5 — 무승부로 저장됩니다. 네 선수 모두 포인트를 얻고 승패는 기록되지 않습니다."
+                    : isTieScore(draftValue.scoreA, draftValue.scoreB)
+                      ? "동점 결과는 5 : 5 무승부만 저장할 수 있습니다."
+                      : "7-6 경기만 타이브레이크 점수를 입력합니다. 승패는 점수로 자동 결정됩니다."}
                 </p>
                 <div className="mt-2 flex gap-2">
                   <button

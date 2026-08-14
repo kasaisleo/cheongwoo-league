@@ -35,7 +35,9 @@ export default async function GuestRecordPage({ params }: { params: { id: string
   const recentForms: string[] = [];
   for (const m of myMatches) {
     const isTeamA = [m.team_a_player1_guest, m.team_a_player2_guest].includes(guestId);
-    const isWin = (isTeamA && m.winner_team === "A") || (!isTeamA && m.winner_team === "B");
+    const isDraw = m.winner_team === "D";
+      // 2A-8D: D는 승도 패도 아니다. isWin은 D일 때 반드시 false여야 한다.
+      const isWin = !isDraw && ((isTeamA && m.winner_team === "A") || (!isTeamA && m.winner_team === "B"));
     if (isWin) wins++; else losses++;
     if (recentForms.length < 5) recentForms.push(isWin ? "W" : "L");
   }
@@ -120,7 +122,9 @@ export default async function GuestRecordPage({ params }: { params: { id: string
           <div className="overflow-hidden rounded-[var(--admin-card-radius,14px)] border" style={cardStyle}>
             {myMatches.slice(0, 10).map((m, idx) => {
               const isTeamA = [m.team_a_player1_guest, m.team_a_player2_guest].includes(guestId);
-              const isWin = (isTeamA && m.winner_team === "A") || (!isTeamA && m.winner_team === "B");
+              const isDraw = m.winner_team === "D";
+      // 2A-8D: D는 승도 패도 아니다. isWin은 D일 때 반드시 false여야 한다.
+      const isWin = !isDraw && ((isTeamA && m.winner_team === "A") || (!isTeamA && m.winner_team === "B"));
               const session = m.session_id ? sessionMap.get(m.session_id) : null;
               const partnerMemberId = isTeamA
                 ? [m.team_a_player1_member, m.team_a_player2_member].find(Boolean)

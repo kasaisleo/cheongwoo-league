@@ -16,7 +16,8 @@ export type PermissionRole = "member" | "scorer" | "manager" | "admin" | "master
 export type AttendanceStatus = "attending" | "absent" | "undecided";
 export type SessionDay = "saturday" | "sunday" | "holiday" | "custom";
 export type SessionStatus = "open" | "closed" | "archived";
-export type WinnerTeam = "A" | "B";
+/** A/B는 승패, D는 무승부(2A-8D — Event 복식 Game의 정확한 5:5). nullable이 아니다. */
+export type WinnerTeam = "A" | "B" | "D";
 export type StagingValidationStatus =
   | "pending"
   | "valid"

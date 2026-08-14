@@ -143,9 +143,19 @@ export async function POST(
   if (scoreA.value < 0 || scoreA.value > 7 || scoreB.value < 0 || scoreB.value > 7) {
     return NextResponse.json({ error: "점수는 0에서 7 사이여야 합니다." }, { status: 400 });
   }
-  if (scoreA.value === scoreB.value) {
+  // 2A-8D: 동점 중 정확히 5:5만 무승부로 허용한다. 그 밖의 동점은 여기서 막고,
+  // 5:5에는 타이브레이크를 쓸 수 없다. 최종 판정은 RPC(_event_game_result_score)와
+  // DB CHECK(chk_match_outcome_consistent)가 하지만, 왕복 없이 먼저 걸러 준다.
+  const isDraw = scoreA.value === 5 && scoreB.value === 5;
+  if (scoreA.value === scoreB.value && !isDraw) {
     return NextResponse.json(
-      { error: "두 팀의 점수가 같으면 저장할 수 없습니다. 승패가 갈리도록 입력해주세요." },
+      { error: "동점 결과는 5:5 무승부만 저장할 수 있습니다." },
+      { status: 400 }
+    );
+  }
+  if (isDraw && (tbA.value !== null || tbB.value !== null)) {
+    return NextResponse.json(
+      { error: "5:5 무승부에는 타이브레이크 점수를 입력할 수 없습니다." },
       { status: 400 }
     );
   }

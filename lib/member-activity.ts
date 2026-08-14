@@ -2,7 +2,7 @@ import "server-only";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { MATCH_SELECT_WITH_PLAYERS, toDisplayMatches, type DisplayMatch } from "@/lib/match-display";
-import { LEAGUE_POINT_WIN } from "@/lib/match-engine";
+import { LEAGUE_POINT_DRAW, LEAGUE_POINT_WIN } from "@/lib/match-engine";
 import type { AttendanceStatus, SessionDay, SessionStatus } from "@/lib/supabase/database.types";
 import type { PointHistoryV2RpcRow } from "@/lib/point-history";
 
@@ -58,6 +58,8 @@ export interface MemberMatchSummary {
   partner: { id: string; name: string; isGuest: boolean } | null;
   opponents: { id: string; name: string; isGuest: boolean }[];
   won: boolean;
+  /** 2A-8D: 5:5 무승부. won과 배타적이며, true면 승도 패도 아니다. */
+  isDraw: boolean;
   myScore: number;
   opponentScore: number;
   lpChange: number | null;
@@ -161,7 +163,10 @@ function summarizeMatchForMember(match: DisplayMatch, memberId: string): MemberM
   const partnerSlot = slots.find((s) => s.team === mySlot.team && s.player.id !== memberId);
   const opponentSlots = slots.filter((s) => s.team !== mySlot.team);
 
-  const won = match.winner_team === mySlot.team;
+  // 2A-8D: 무승부(D)는 어느 팀과도 일치하지 않으므로 won은 자연히 false다.
+  // 개인 관점 결과를 승/패/무로 구분하려면 isDraw를 함께 본다.
+  const isDraw = match.winner_team === "D";
+  const won = !isDraw && match.winner_team === mySlot.team;
   const myScore = mySlot.team === "A" ? match.score_a : match.score_b;
   const opponentScore = mySlot.team === "A" ? match.score_b : match.score_a;
 
@@ -170,9 +175,11 @@ function summarizeMatchForMember(match: DisplayMatch, memberId: string): MemberM
     partner: partnerSlot ? partnerSlot.player : null,
     opponents: opponentSlots.map((s) => s.player),
     won,
+    isDraw,
     myScore,
     opponentScore,
-    lpChange: won ? LEAGUE_POINT_WIN : 0,
+    // 2A-8D: 무승부는 +5(DB의 _match_apply_draw_effects와 동기화 필수).
+    lpChange: isDraw ? LEAGUE_POINT_DRAW : won ? LEAGUE_POINT_WIN : 0,
   };
 }
 

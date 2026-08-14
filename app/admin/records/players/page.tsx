@@ -83,6 +83,8 @@ export default async function AdminRecordsPlayersPage() {
   }
 
   for (const m of matches ?? []) {
+    // 2A-8D: 무승부(D)는 승패 집계 대상이 아니다.
+    if (m.winner_team === "D") continue;
     const aWin = m.winner_team === "A";
     const slots: [string | null, boolean, boolean][] = [
       [m.team_a_player1_member, false, aWin], [m.team_a_player2_member, false, aWin],

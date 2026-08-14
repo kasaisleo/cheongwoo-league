@@ -95,6 +95,8 @@ export async function GET(request: NextRequest) {
     id: m.match.id,
     playedAt: m.match.played_at,
     won: m.won,
+    // 2A-8D: 무승부는 승도 패도 아니다 — 화면이 "무"로 표시할 수 있게 전달한다.
+    isDraw: m.isDraw,
     myScore: m.myScore,
     opponentScore: m.opponentScore,
     partnerName: m.partner?.name ?? null,

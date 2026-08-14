@@ -48,6 +48,8 @@ export function MatchCard({ match, currentClubId }: MatchCardProps) {
   const [showEditModal, setShowEditModal] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
+  // 2A-8D: winner_team은 A/B/D 3값이다. 무승부는 어느 팀도 승자로 강조하지 않는다.
+  const isDraw = match.winner_team === "D";
   const aWon = match.winner_team === "A";
 
   const teamAData: TeamRowData = {
@@ -67,8 +69,9 @@ export function MatchCard({ match, currentClubId }: MatchCardProps) {
     opponentTiebreak: match.score_a_tiebreak,
   };
 
-  const winnerData = aWon ? teamAData : teamBData;
-  const loserData  = aWon ? teamBData : teamAData;
+  // 2A-8D: 무승부는 승/패가 없으므로 팀 순서를 A/B 그대로 두고 강조하지 않는다.
+  const winnerData = isDraw ? teamAData : aWon ? teamAData : teamBData;
+  const loserData  = isDraw ? teamBData : aWon ? teamBData : teamAData;
 
   async function handleDelete() {
     const confirmed = window.confirm("정말 이 경기를 삭제하시겠습니까?");

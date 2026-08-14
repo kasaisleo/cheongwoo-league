@@ -409,8 +409,12 @@ export function mapEventRpcError(errorMessage: string | undefined, fallback: str
   if (msg.startsWith("EVENT_GAME_RESULT_FORMAT_UNSUPPORTED")) {
     return { status: 409, message: "현재 결과 입력은 복식 게임만 지원합니다." };
   }
+  // 2A-8D: 5:5는 무승부로 허용되므로 이 코드는 "그 밖의 동점"에만 올라온다.
+  if (msg.startsWith("EVENT_GAME_RESULT_DRAW_TIEBREAK_NOT_ALLOWED")) {
+    return { status: 400, message: "5:5 무승부에는 타이브레이크 점수를 입력할 수 없습니다." };
+  }
   if (msg.startsWith("EVENT_GAME_RESULT_TIE_NOT_ALLOWED")) {
-    return { status: 400, message: "두 팀의 점수가 같으면 저장할 수 없습니다. 승패가 갈리도록 입력해주세요." };
+    return { status: 400, message: "동점 결과는 5:5 무승부만 저장할 수 있습니다." };
   }
   if (msg.startsWith("EVENT_GAME_RESULT_INCONSISTENT")) {
     return {

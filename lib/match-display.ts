@@ -38,7 +38,7 @@ interface RawMatchRow {
   score_b: number;
   score_a_tiebreak: number | null;
   score_b_tiebreak: number | null;
-  winner_team: "A" | "B";
+  winner_team: "A" | "B" | "D";
   created_at: string;
   team_a_player1_member_row: RawSlot | null;
   team_a_player1_guest_row: RawSlot | null;
@@ -60,7 +60,7 @@ export interface DisplayMatch {
   score_b: number;
   score_a_tiebreak: number | null;
   score_b_tiebreak: number | null;
-  winner_team: "A" | "B";
+  winner_team: "A" | "B" | "D";
   created_at: string;
   teamAPlayer1: MatchPlayerDisplay;
   teamAPlayer2: MatchPlayerDisplay;
@@ -121,7 +121,7 @@ export interface PublicDisplayMatch {
   score_b: number;
   score_a_tiebreak: number | null;
   score_b_tiebreak: number | null;
-  winner_team: "A" | "B";
+  winner_team: "A" | "B" | "D";
   teamAPlayer1: PublicDisplayPlayer;
   teamAPlayer2: PublicDisplayPlayer;
   teamBPlayer1: PublicDisplayPlayer;

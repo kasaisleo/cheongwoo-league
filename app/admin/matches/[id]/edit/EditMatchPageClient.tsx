@@ -44,7 +44,11 @@ export function EditMatchPageClient({
   const [scoreB, setScoreB] = useState(match.score_b);
   const [tbA, setTbA] = useState(match.score_a_tiebreak ?? 0);
   const [tbB, setTbB] = useState(match.score_b_tiebreak ?? 0);
-  const [winner, setWinner] = useState<"A" | "B">(match.winner_team);
+  // 2A-8D: legacy 편집 화면은 무승부를 만들 수 없다(승자 선택이 필수).
+  // D Match는 아래에서 편집 자체를 막고, 여기서는 타입 안전한 기본값만 둔다.
+  const isDrawMatch = match.winner_team === "D";
+  const initialWinner: "A" | "B" = match.winner_team === "B" ? "B" : "A";
+  const [winner, setWinner] = useState<"A" | "B">(initialWinner);
   const [guestSlot, setGuestSlot] = useState<Slot | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -83,6 +87,13 @@ export function EditMatchPageClient({
 
   async function handleSave() {
     if (!allUnique) { toast.error("4명의 선수를 모두 다르게 선택해주세요."); return; }
+    // 2A-8D: 무승부 Match는 Event 결과 경로가 소유한다(0059가 legacy
+    // update_match_with_effects를 차단한다). 저장을 시도해 서버 오류를 보여주기
+    // 전에 화면에서 먼저 막고 무엇을 해야 하는지 알려준다.
+    if (isDrawMatch) {
+      setError("무승부 경기는 이벤트 대진 화면에서만 수정할 수 있습니다.");
+      return;
+    }
     setSubmitting(true); setError(null);
 
     const res = await fetch(`/api/matches/${match.id}`, {

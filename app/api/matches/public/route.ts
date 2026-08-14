@@ -213,6 +213,8 @@ async function handleSessionMode(
   }
 
   for (const m of matchRows) {
+    // 2A-8D: 무승부(D)는 승패 집계 대상이 아니다.
+    if (m.winner_team === "D") continue;
     const aWin = m.winner_team === "A";
     addResult(m.team_a_player1_member_row, false, aWin);
     addResult(m.team_a_player1_guest_row, true, aWin);

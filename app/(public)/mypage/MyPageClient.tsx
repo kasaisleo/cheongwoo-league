@@ -21,6 +21,8 @@ interface MyPageRecentMatch {
   id: string;
   playedAt: string;
   won: boolean;
+  /** 2A-8D: 5:5 무승부. won과 배타적이다. */
+  isDraw?: boolean;
   myScore: number;
   opponentScore: number;
   partnerName: string | null;
@@ -250,7 +252,7 @@ export default function MyPageClient({
               {recentMatches.map((match, idx) => (
                 <div key={match.id}
                   className={`flex items-center gap-3 px-4 py-2.5 ${idx < recentMatches.length - 1 ? "border-b border-line-200/30" : ""}`}>
-                  <ResultBadge result={match.won ? "win" : "loss"} size="sm" />
+                  <ResultBadge result={match.isDraw ? "draw" : match.won ? "win" : "loss"} size="sm" />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-xs font-semibold text-line-800">
                       {match.partnerName ?? "—"}

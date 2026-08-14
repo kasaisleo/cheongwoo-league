@@ -112,6 +112,9 @@ export default async function AdminRecordsPage() {
   }
 
   for (const m of matches) {
+    // 2A-8D: 무승부(D)는 승도 패도 아니다 — 승패 통계에서 제외한다.
+    // members.wins/losses도 무승부에서는 늘지 않으므로 두 집계가 일치한다.
+    if (m.winner_team === "D") continue;
     const aWin = m.winner_team === "A";
     addResult(m.team_a_player1_member, false, aWin);
     addResult(m.team_a_player2_member, false, aWin);

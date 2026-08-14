@@ -172,7 +172,9 @@ export default async function ClubMemberDetailPage({ params }: Props) {
                         {member.name}
                         {summary.partner && ` / ${summary.partner.name}`}
                       </span>
-                      <Badge tone={summary.won ? "court" : "fault"}>{summary.won ? "승" : "패"}</Badge>
+                      <Badge tone={summary.isDraw ? "neutral" : summary.won ? "court" : "fault"}>
+                        {summary.isDraw ? "무" : summary.won ? "승" : "패"}
+                      </Badge>
                     </div>
                     <p className="mt-1 text-xs text-line-500">
                       vs {summary.opponents.map((o) => o.name).join(" / ")}
