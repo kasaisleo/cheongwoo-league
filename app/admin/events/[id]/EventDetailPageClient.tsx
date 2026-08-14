@@ -7,6 +7,7 @@ import { EventParticipantRoster } from "@/components/event/EventParticipantRoste
 import { ImportAttendanceParticipantsSection } from "@/components/event/ImportAttendanceParticipantsSection";
 import { ConfirmEventParticipantsSection } from "@/components/event/ConfirmEventParticipantsSection";
 import { EventSchedulingSection, type SchedulingSnapshot } from "@/components/event/EventSchedulingSection";
+import { EventSlotModeSection } from "@/components/event/EventSlotModeSection";
 import { ConfirmEventSchedulingSection } from "@/components/event/ConfirmEventSchedulingSection";
 import { EventGamesSection } from "@/components/event/EventGamesSection";
 import type { Event, EventParticipant, EventStatus } from "@/lib/supabase/database.types";
@@ -241,6 +242,16 @@ export function EventDetailPageClient({ eventId }: EventDetailPageClientProps) {
           />
         </div>
       )}
+
+      {/* 0063: 운영 방식(slot_mode)은 코트·슬롯 구성의 전제이므로 그 바로 위에 둔다. */}
+      <div className="mt-6">
+        <EventSlotModeSection
+          eventId={event.id}
+          scheduling={scheduling}
+          loading={loadingScheduling}
+          onChanged={refreshAll}
+        />
+      </div>
 
       <div className="mt-6">
         <EventSchedulingSection

@@ -153,8 +153,36 @@ export function mapEventRpcError(errorMessage: string | undefined, fallback: str
   if (msg.startsWith("EVENT_COMPLETION_GAMES_INCOMPLETE")) {
     return { status: 409, message: "모든 게임의 결과를 입력해야 이벤트를 완료할 수 있습니다." };
   }
-  // normalize_match_config(0050) — 이번 phase UI는 match_config를 편집하지
-  // 않아 실사용 경로는 없지만, update_event가 받는 인자라 방어적으로 매핑.
+  // 운영 방식(slot_mode) 전환 잠금 (0063, 2A-8C)
+  //
+  // 하위 이유가 있는 것을 먼저 검사한다 — 관리자가 "무엇을 정리해야 바꿀 수
+  // 있는지"를 문구만 보고 알 수 있어야 한다. completed/cancelled는 위의
+  // EVENT_STRUCTURE_LOCKED 매핑(0062)을 그대로 재사용한다.
+  if (msg.startsWith("EVENT_SLOT_MODE_LOCKED: active sessions exist")) {
+    return {
+      status: 409,
+      message: "활성 슬롯이 있어 운영 방식을 변경할 수 없습니다. 슬롯을 먼저 비활성화해 주세요.",
+    };
+  }
+  if (msg.startsWith("EVENT_SLOT_MODE_LOCKED: games are assigned to sessions")) {
+    return { status: 409, message: "슬롯에 배정된 게임이 있어 운영 방식을 변경할 수 없습니다." };
+  }
+  // 0058 update_event가 접미사 없이 올리는 경우까지 포함.
+  if (msg.startsWith("EVENT_SLOT_MODE_LOCKED")) {
+    return { status: 409, message: "현재 구성에서는 운영 방식을 변경할 수 없습니다." };
+  }
+  // 0063: update_event(p_match_config)로 slot_mode를 바꾸려 한 경우.
+  // 그 경로는 전환 잠금(활성 슬롯·슬롯 배정 게임)을 우회하므로 차단하고
+  // 전용 설정 화면으로 유도한다.
+  if (msg.startsWith("EVENT_SLOT_MODE_DEDICATED_PATH_REQUIRED")) {
+    return { status: 409, message: "운영 방식은 전용 설정에서 변경해 주세요." };
+  }
+  // 0063 update_event_slot_mode / 0050 normalize_match_config 공통.
+  // 일반 CONFIG_ 매핑보다 먼저 검사해 구체적인 문구를 준다.
+  if (msg.startsWith("CONFIG_INVALID_SLOT_MODE")) {
+    return { status: 400, message: "운영 방식이 올바르지 않습니다." };
+  }
+  // normalize_match_config(0050) — update_event가 받는 인자라 방어적으로 매핑.
   if (msg.startsWith("CONFIG_")) {
     return { status: 400, message: "설정값이 올바르지 않습니다." };
   }

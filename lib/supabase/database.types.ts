@@ -791,6 +791,28 @@ export interface EnsureEventGameCountRow {
   final_count: number;
 }
 
+/**
+ * update_event_slot_mode(0063) — events.match_config의 slot_mode 키 하나만
+ * 원자적으로 교체한다. 다른 13개 키는 저장된 값 그대로 유지된다.
+ * 같은 값으로 호출하면 DML 없이 changed=false로 반환한다.
+ */
+export interface UpdateEventSlotModeParams {
+  p_event_id: string;
+  p_club_id: string;
+  /** DB canonical string만 허용 — 보정하지 않는다. */
+  p_slot_mode: MatchSlotMode;
+}
+
+/** update_event_slot_mode의 반환 1행. */
+export interface UpdateEventSlotModeRow {
+  event_id: string;
+  slot_mode: MatchSlotMode;
+  /** 실제 변경이 있었으면 항상 null(스케줄 확정 무효화). */
+  scheduling_confirmed_at: string | null;
+  /** false면 요청값이 현재값과 같아 아무것도 바뀌지 않았다는 뜻. */
+  changed: boolean;
+}
+
 export interface Database {
   public: {
     Tables: {
