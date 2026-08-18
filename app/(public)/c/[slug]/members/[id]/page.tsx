@@ -89,7 +89,7 @@ export default async function ClubMemberDetailPage({ params }: Props) {
     ]);
 
   return (
-    <MemberCareerProvider memberId={member.id} isAdmin={isAdmin}>
+    <MemberCareerProvider memberId={member.id} clubSlug={slug} isAdmin={isAdmin}>
       <main className="px-4 pt-6">
         <BackButton />
 

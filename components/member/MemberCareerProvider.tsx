@@ -2,18 +2,22 @@
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { EditTimelineModal } from "@/components/member/EditTimelineModal";
+import {
+  toPublicTimelineItem,
+  type PublicMemberTimelineItem,
+} from "@/lib/member-timeline-public";
 import type { MemberTimeline } from "@/lib/supabase/database.types";
 
 interface MemberCareerContextValue {
-  items: MemberTimeline[];
+  items: PublicMemberTimelineItem[];
   loading: boolean;
   isAdmin: boolean;
   /** 대표 커리어(없으면 null). items에서 매번 파생되므로 항상 최신이다. */
-  highlighted: MemberTimeline | null;
+  highlighted: PublicMemberTimelineItem | null;
   /** isHighlight=true 항목을 제외한 본문 목록 — 대표 카드와 중복 노출되지 않는다. */
-  bodyItems: MemberTimeline[];
+  bodyItems: PublicMemberTimelineItem[];
   openAddModal: () => void;
-  openEditModal: (item: MemberTimeline) => void;
+  openEditModal: (item: PublicMemberTimelineItem) => void;
 }
 
 const MemberCareerContext = createContext<MemberCareerContextValue | null>(null);
@@ -33,6 +37,8 @@ export function useMemberCareer(): MemberCareerContextValue {
 
 interface MemberCareerProviderProps {
   memberId: string;
+  /** public Club context의 정본 — 페이지 URL의 slug를 그대로 내려받는다. */
+  clubSlug: string;
   isAdmin: boolean;
   children: ReactNode;
 }
@@ -63,15 +69,18 @@ interface MemberCareerProviderProps {
  * 성능)을 잃는다 — 이 작은 클라이언트 Provider 하나만 끼워 넣는 것이
  * 훨씬 적은 비용으로 같은 효과를 낸다.
  */
-export function MemberCareerProvider({ memberId, isAdmin, children }: MemberCareerProviderProps) {
-  const [items, setItems] = useState<MemberTimeline[]>([]);
+export function MemberCareerProvider({ memberId, clubSlug, isAdmin, children }: MemberCareerProviderProps) {
+  const [items, setItems] = useState<PublicMemberTimelineItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [editingItem, setEditingItem] = useState<MemberTimeline | null>(null);
+  const [editingItem, setEditingItem] = useState<PublicMemberTimelineItem | null>(null);
 
   async function loadTimeline() {
     setLoading(true);
-    const res = await fetch(`/api/members/timeline?memberId=${memberId}`);
+    const res = await fetch(
+        `/api/members/timeline?clubSlug=${encodeURIComponent(clubSlug)}` +
+          `&memberId=${encodeURIComponent(memberId)}`
+      );
     const body = await res.json().catch(() => null);
     setLoading(false);
     if (res.ok) {
@@ -93,7 +102,10 @@ export function MemberCareerProvider({ memberId, isAdmin, children }: MemberCare
    * 대표 커리어 카드(highlighted)와 본문 목록(bodyItems)이 — 둘 다 items에서
    * 파생되므로 — 같은 렌더링 사이클에서 함께 갱신된다.
    */
-  function applySavedItem(saved: MemberTimeline) {
+  function applySavedItem(savedRow: MemberTimeline) {
+    // 운영진 mutation 응답은 row 전체다. 공개 화면 state 는 공개 필드만
+    // 담으므로 여기서 한 번 좁혀 GET 결과와 같은 모양을 유지한다.
+    const saved = toPublicTimelineItem(savedRow);
     setItems((prev) => {
       const exists = prev.some((item) => item.id === saved.id);
       let next = exists ? prev.map((item) => (item.id === saved.id ? saved : item)) : [saved, ...prev];

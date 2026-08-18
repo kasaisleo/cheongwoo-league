@@ -10,12 +10,13 @@ import {
 } from "@/lib/constants/member-timeline";
 import { NO_ASSOCIATION, getTimelineSchema, type TimelineFormValues } from "@/lib/timeline-schemas";
 import { TimelineFieldRenderer } from "@/components/member/TimelineFieldRenderer";
+import type { PublicMemberTimelineItem } from "@/lib/member-timeline-public";
 import type { MemberTimeline } from "@/lib/supabase/database.types";
 
 interface EditTimelineModalProps {
   memberId: string;
   /** 수정 모드면 기존 항목, 추가 모드면 null */
-  existing: MemberTimeline | null;
+  existing: PublicMemberTimelineItem | null;
   onClose: () => void;
   /**
    * 저장(추가/수정) 성공 시 서버가 반환한 최신 row를 그대로 전달한다.
@@ -27,7 +28,7 @@ interface EditTimelineModalProps {
   onDeleted: (deletedId: string) => void;
 }
 
-function initialValues(existing: MemberTimeline | null): TimelineFormValues {
+function initialValues(existing: PublicMemberTimelineItem | null): TimelineFormValues {
   return {
     eventYear: existing?.event_year != null ? String(existing.event_year) : "",
     eventMonth: existing?.event_month != null ? String(existing.event_month) : "",
