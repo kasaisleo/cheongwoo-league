@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "check:migration-security": "node scripts/check-migration-security.mjs",
+    "test:migration-security": "node --test scripts/check-migration-security.test.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.5.2",
