@@ -4,7 +4,8 @@ import { useMemo, useState } from "react";
 import { toast } from "@/components/ui/Toast";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { AddEventParticipantSection } from "@/components/event/AddEventParticipantSection";
-import type { EventParticipant, EventStatus, ParticipantStatus } from "@/lib/supabase/database.types";
+import type { EventParticipant, EventStatus, ParticipantStatus, Gender, DominantHand } from "@/lib/supabase/database.types";
+import { GENDER_LABEL, DOMINANT_HAND_LABEL, GENDERS, DOMINANT_HANDS } from "@/lib/player-profile";
 
 interface EventParticipantRosterProps {
   eventId: string;
@@ -41,6 +42,29 @@ const FILTERS: Array<{ key: ParticipantStatus | "all"; label: string }> = [
   { key: "excluded", label: "제외" },
 ];
 
+/** 0074: NULL(아직 굳지 않음)과 unspecified(명시적 미지정)를 select 에서 구분하는 sentinel. */
+const NULL_SENTINEL = "__null__";
+
+interface ProfileDraft {
+  gender: string;
+  tennisStartYear: string;
+  dominantHand: string;
+  rating: string;
+}
+
+const EMPTY_DRAFT: ProfileDraft = {
+  gender: NULL_SENTINEL,
+  tennisStartYear: "",
+  dominantHand: NULL_SENTINEL,
+  rating: "",
+};
+
+/** NULL 을 어떻게 부를지는 참가자 종류에 따라 다르다. */
+const nullLabel = (isMember: boolean) => (isMember ? "회원 프로필 사용" : "미설정");
+
+const profileInputCls =
+  "h-9 w-full rounded-sm border border-[color:var(--surface-border)] bg-[color:var(--surface-bg)] px-2 text-[12px] text-[color:var(--surface-text)]";
+
 /**
  * EventParticipantRoster — 참가자 roster 섹션(0052 Phase 2A-4A/2A-4B).
  *
@@ -68,12 +92,26 @@ export function EventParticipantRoster({
     nextStatus: "withdrawn" | "excluded";
   } | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  /** 0074: participant snapshot 편집. NULL 상태를 sentinel 로 구분한다 —
+   *  select value 에 null 을 넣을 수 없고, "아직 굳지 않음"과 "명시적 미지정"은
+   *  의미가 다르기 때문이다. */
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [draft, setDraft] = useState<ProfileDraft>(EMPTY_DRAFT);
 
   // 0058: create/update_event_participant는 cancelled에서만 차단된다.
   // completed Event의 명단 변경은 DB가 허용하므로 UI도 막지 않는다.
   // (활성 게임에 배정된 참가자의 비활성화는 DB가 EVENT_PARTICIPANT_IN_ACTIVE_GAME으로
   //  개별 차단하고, 그 메시지를 그대로 노출한다 — UI가 미리 판단하지 않는다.)
   const locked = eventStatus === "cancelled";
+
+  // 0074: Profile RPC(set_event_participant_profile)는 completed 도 차단한다.
+  // 기존 상태 변경 정책(cancelled 만 잠금)과 다르므로 별도 조건을 둔다 —
+  // 저장을 눌렀다가 RPC 오류를 보는 UX 가 되지 않게 버튼을 미리 비활성화한다.
+  const profileLocked = eventStatus === "completed" || eventStatus === "cancelled";
+  const profileLockMessage =
+    eventStatus === "completed"
+      ? "완료된 Event의 선수 정보는 수정할 수 없습니다"
+      : "취소된 Event의 선수 정보는 수정할 수 없습니다";
 
   const activeMemberIds = useMemo(
     () =>
@@ -131,6 +169,52 @@ export function EventParticipantRoster({
     await changeStatus(participant.id, nextStatus);
   }
 
+  function toggleProfile(p: EventParticipant) {
+    if (editingId === p.id) {
+      setEditingId(null);
+      setDraft(EMPTY_DRAFT);
+      return;
+    }
+    // 저장된 snapshot 을 그대로 연다 — NULL 은 NULL 상태로 표시하고 임의로
+    // unspecified 로 바꾸지 않는다(fallback 의미가 사라지기 때문).
+    setDraft({
+      gender: p.gender_snapshot ?? NULL_SENTINEL,
+      tennisStartYear: p.tennis_start_year_snapshot?.toString() ?? "",
+      dominantHand: p.dominant_hand_snapshot ?? NULL_SENTINEL,
+      rating: p.rating_snapshot?.toString() ?? "",
+    });
+    setEditingId(p.id);
+  }
+
+  async function saveProfile(participantId: string) {
+    if (busyId) return;
+    setBusyId(participantId);
+    // 네 key 를 항상 보낸다. sentinel 과 빈 입력은 명시적 null 로 변환한다.
+    const res = await fetch(
+      `/api/admin/events/${eventId}/participants/${participantId}/profile`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          gender: draft.gender === NULL_SENTINEL ? null : draft.gender,
+          tennisStartYear: draft.tennisStartYear.trim() || null,
+          dominantHand: draft.dominantHand === NULL_SENTINEL ? null : draft.dominantHand,
+          rating: draft.rating.trim() || null,
+        }),
+      }
+    );
+    const body = await res.json().catch(() => null);
+    setBusyId(null);
+    if (!res.ok) {
+      toast.error(body?.error ?? "참가자 정보 저장에 실패했습니다.");
+      return;
+    }
+    toast.success("참가자 정보를 저장했습니다.");
+    setEditingId(null);
+    setDraft(EMPTY_DRAFT);
+    onChanged();
+  }
+
   return (
     <div>
       {locked && (
@@ -168,9 +252,10 @@ export function EventParticipantRoster({
           visible.map((p) => (
             <div
               key={p.id}
-              className="flex items-center gap-3 border-l-4 border-b border-b-[color:var(--surface-border)] bg-[color:var(--surface-bg)] px-4 py-3 last:border-b-0"
+              className="border-l-4 border-b border-b-[color:var(--surface-border)] bg-[color:var(--surface-bg)] last:border-b-0"
               style={{ borderLeftColor: STATUS_ACCENT[p.status] }}
             >
+              <div className="flex items-center gap-3 px-4 py-3">
               <div className="min-w-0 flex-1">
                 <p className="truncate text-[15px] font-semibold leading-snug text-[color:var(--surface-text)]">
                   {p.display_name_snapshot}
@@ -207,6 +292,14 @@ export function EventParticipantRoster({
                       </button>
                     </>
                   )}
+                  <button
+                    type="button"
+                    disabled={busyId === p.id}
+                    onClick={() => toggleProfile(p)}
+                    className="rounded-sm border border-[color:var(--surface-border)] px-2 py-1 text-[10px] font-semibold text-[color:var(--surface-muted)] disabled:opacity-40"
+                  >
+                    {editingId === p.id ? "닫기" : "정보"}
+                  </button>
                   {p.status === "excluded" && (
                     <button
                       type="button"
@@ -219,6 +312,90 @@ export function EventParticipantRoster({
                   )}
                 </div>
               )}
+                </div>
+
+                {/* 0074: 자동 대진용 snapshot 편집. 서버(RPC)가 최종 검증이다. */}
+                {editingId === p.id && (
+                  <div className="border-t border-[color:var(--surface-border)] bg-[color:var(--surface-bg-raised)] px-4 py-3">
+                    <div className="grid grid-cols-2 gap-2">
+                      <label className="block">
+                        <span className="mb-1 block text-[10px] font-semibold text-[color:var(--surface-muted)]">성별</span>
+                        <select
+                          className={profileInputCls}
+                          value={draft.gender}
+                          onChange={(e) => setDraft({ ...draft, gender: e.target.value })}
+                        >
+                          <option value={NULL_SENTINEL}>{nullLabel(p.participant_type === "member")}</option>
+                          {GENDERS.map((g) => (
+                            <option key={g} value={g}>{GENDER_LABEL[g]}</option>
+                          ))}
+                        </select>
+                      </label>
+                      <label className="block">
+                        <span className="mb-1 block text-[10px] font-semibold text-[color:var(--surface-muted)]">주손</span>
+                        <select
+                          className={profileInputCls}
+                          value={draft.dominantHand}
+                          onChange={(e) => setDraft({ ...draft, dominantHand: e.target.value })}
+                        >
+                          <option value={NULL_SENTINEL}>{nullLabel(p.participant_type === "member")}</option>
+                          {DOMINANT_HANDS.map((h) => (
+                            <option key={h} value={h}>{DOMINANT_HAND_LABEL[h]}</option>
+                          ))}
+                        </select>
+                      </label>
+                      <label className="block">
+                        <span className="mb-1 block text-[10px] font-semibold text-[color:var(--surface-muted)]">
+                          테니스 시작 연도
+                        </span>
+                        <input
+                          type="number"
+                          inputMode="numeric"
+                          min={1900}
+                          max={new Date().getFullYear()}
+                          step={1}
+                          className={profileInputCls}
+                          value={draft.tennisStartYear}
+                          onChange={(e) => setDraft({ ...draft, tennisStartYear: e.target.value })}
+                          placeholder={nullLabel(p.participant_type === "member")}
+                        />
+                      </label>
+                      <label className="block">
+                        <span className="mb-1 block text-[10px] font-semibold text-[color:var(--surface-muted)]">Rating</span>
+                        <input
+                          type="number"
+                          inputMode="numeric"
+                          step={1}
+                          className={profileInputCls}
+                          value={draft.rating}
+                          onChange={(e) => setDraft({ ...draft, rating: e.target.value })}
+                          placeholder={nullLabel(p.participant_type === "member")}
+                        />
+                      </label>
+                    </div>
+                    {profileLocked && (
+                      <p className="mt-2 text-[11px] font-semibold text-fault-400">{profileLockMessage}</p>
+                    )}
+                    <div className="mt-2 flex justify-end gap-1.5">
+                      <button
+                        type="button"
+                        disabled={busyId === p.id}
+                        onClick={() => { setEditingId(null); setDraft(EMPTY_DRAFT); }}
+                        className="rounded-sm border border-[color:var(--surface-border)] px-2.5 py-1 text-[11px] font-semibold text-[color:var(--surface-muted)] disabled:opacity-40"
+                      >
+                        취소
+                      </button>
+                      <button
+                        type="button"
+                        disabled={busyId === p.id || profileLocked}
+                        onClick={() => saveProfile(p.id)}
+                        className="rounded-sm border border-clay-400/60 bg-clay-400/10 px-2.5 py-1 text-[11px] font-semibold text-clay-400 disabled:opacity-40"
+                      >
+                        {busyId === p.id ? "저장 중..." : "저장"}
+                      </button>
+                    </div>
+                  </div>
+                )}
             </div>
           ))
         )}

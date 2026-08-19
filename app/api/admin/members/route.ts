@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { getAdminAccessServer } from "@/lib/admin-permissions";
+import { parsePlayerProfile } from "@/lib/player-profile";
 import type { MemberGrade, MemberType } from "@/lib/supabase/database.types";
 
 /**
@@ -42,6 +43,10 @@ interface CreateMemberBody {
   age?: number | null;
   memo?: string;
   playerBackground?: string;
+  /** 0074: 자동 대진용 Profile. 생략하면 unspecified / null 로 생성된다. */
+  gender?: string;
+  tennisStartYear?: number | string | null;
+  dominantHand?: string;
 }
 
 export async function POST(request: NextRequest) {
@@ -52,6 +57,12 @@ export async function POST(request: NextRequest) {
 
   const body = (await request.json()) as CreateMemberBody;
   const { name, nickname, phone, grade, memberType, mapoScore, addressFull, district, age, memo, playerBackground } = body;
+
+  // 0074: 자동 대진용 Profile. 생략은 unspecified / null 로 정규화한다.
+  const profile = parsePlayerProfile(body);
+  if (!profile.ok) {
+    return NextResponse.json({ error: profile.message }, { status: 400 });
+  }
 
   // 이름 정규화 (내부 공백 제거)
   const normalizedName = normalizeName(name ?? "");
@@ -133,6 +144,9 @@ export async function POST(request: NextRequest) {
       is_kakao_linked: false,
       auth_user_id: null,
       player_background: playerBackground ?? "none",
+      gender: profile.value.gender,
+      tennis_start_year: profile.value.tennisStartYear,
+      dominant_hand: profile.value.dominantHand,
       league_point: 0,
       wins: 0,
       losses: 0,

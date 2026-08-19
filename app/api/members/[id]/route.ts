@@ -3,6 +3,7 @@ import { createServiceClient } from "@/lib/supabase/server";
 import { getAdminAccessServer } from "@/lib/admin-permissions";
 import { isValidPlayerBackground } from "@/lib/constants/member-timeline";
 import type { MemberGrade, MemberRole } from "@/lib/supabase/database.types";
+import { parseGender, parseDominantHand, parseTennisStartYear } from "@/lib/player-profile";
 
 interface UpdateMemberBody {
   name?: string;
@@ -19,6 +20,10 @@ interface UpdateMemberBody {
   isDormant?: boolean;
   memo?: string | null;
   playerBackground?: string;
+  /** 0074: 자동 대진용 Profile. 키를 생략하면 기존 값을 유지한다(PATCH 의미). */
+  gender?: string;
+  tennisStartYear?: number | string | null;
+  dominantHand?: string;
 }
 
 const VALID_GRADES: MemberGrade[] = ["A", "B", "C", "D"];
@@ -73,6 +78,9 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     isDormant,
     memo,
     playerBackground,
+    gender,
+    tennisStartYear,
+    dominantHand,
   } = body;
 
   // role(직책) 변경은 owner 전용. body에 role 키 자체가 있으면(null로 직책을
@@ -157,6 +165,24 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
   if (addressFull !== undefined) {
     updates.address_full = addressFull?.trim() || null;
+  }
+
+  // 0074: 자동 대진용 Profile. 키가 없으면 손대지 않는다 — 기존 요청 payload가
+  // 그대로 동작해야 하므로 "생략"과 "명시적 값 지정"을 구분한다.
+  if (gender !== undefined) {
+    const parsed = parseGender(gender);
+    if (!parsed.ok) return NextResponse.json({ error: parsed.message }, { status: 400 });
+    updates.gender = parsed.value;
+  }
+  if (tennisStartYear !== undefined) {
+    const parsed = parseTennisStartYear(tennisStartYear);
+    if (!parsed.ok) return NextResponse.json({ error: parsed.message }, { status: 400 });
+    updates.tennis_start_year = parsed.value;
+  }
+  if (dominantHand !== undefined) {
+    const parsed = parseDominantHand(dominantHand);
+    if (!parsed.ok) return NextResponse.json({ error: parsed.message }, { status: 400 });
+    updates.dominant_hand = parsed.value;
   }
 
   if (district !== undefined) {

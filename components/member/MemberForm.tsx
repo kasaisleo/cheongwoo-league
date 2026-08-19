@@ -15,6 +15,8 @@
  */
 
 import { useState } from "react";
+import type { Gender, DominantHand } from "@/lib/supabase/database.types";
+import { GENDER_LABEL, DOMINANT_HAND_LABEL, GENDERS, DOMINANT_HANDS } from "@/lib/player-profile";
 import {
   PLAYER_BACKGROUND_OPTIONS,
   type PlayerBackground,
@@ -54,6 +56,10 @@ export interface MemberFormValues {
   isPlayerOrigin: boolean;
   playerBackgroundDetail: PlayerBackground;
   memo: string;
+  /** 0074: 자동 대진용. 폼에서는 문자열로 다루고 API가 최종 검증한다. */
+  gender: Gender;
+  tennisStartYear: string;
+  dominantHand: DominantHand;
 }
 
 export function getDefaultFormValues(partial?: Partial<MemberFormValues>): MemberFormValues {
@@ -62,6 +68,9 @@ export function getDefaultFormValues(partial?: Partial<MemberFormValues>): Membe
     nickname: "",
     phoneDigits: "",
     age: "",
+    gender: "unspecified",
+    tennisStartYear: "",
+    dominantHand: "unspecified",
     district: "",
     addressFull: "",
     mapoScore: null,
@@ -192,6 +201,52 @@ export function MemberForm({
             style={inputStyle(errors.age)}
           />
           {errors.age && <p className="mt-1 text-[11px] text-fault-400">{errors.age}</p>}
+        </div>
+        {/* 0074: 자동 대진용 Profile. Public에는 노출하지 않는다. */}
+        <div>
+          <label className={labelCls}>성별</label>
+          <select
+            value={values.gender}
+            onChange={(e) => set({ gender: e.target.value as Gender })}
+            className={inputCls(undefined)}
+            style={inputStyle(undefined)}
+          >
+            {GENDERS.map((g) => (
+              <option key={g} value={g}>
+                {GENDER_LABEL[g]}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className={labelCls}>주손</label>
+          <select
+            value={values.dominantHand}
+            onChange={(e) => set({ dominantHand: e.target.value as DominantHand })}
+            className={inputCls(undefined)}
+            style={inputStyle(undefined)}
+          >
+            {DOMINANT_HANDS.map((h) => (
+              <option key={h} value={h}>
+                {DOMINANT_HAND_LABEL[h]}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className={labelCls}>테니스 시작 연도</label>
+          <input
+            type="number"
+            inputMode="numeric"
+            min={1900}
+            max={new Date().getFullYear()}
+            step={1}
+            value={values.tennisStartYear}
+            onChange={(e) => set({ tennisStartYear: e.target.value })}
+            placeholder="예: 2015 (모르면 비워둠)"
+            className={inputCls(undefined)}
+            style={inputStyle(undefined)}
+          />
         </div>
         <div>
           <label className={labelCls}>동네(district)</label>

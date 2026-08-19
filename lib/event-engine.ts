@@ -191,6 +191,10 @@ export function mapEventRpcError(errorMessage: string | undefined, fallback: str
   if (msg.startsWith("EVENT_PARTICIPANT_NOT_FOUND")) {
     return { status: 404, message: "참가자를 찾을 수 없습니다." };
   }
+  // 0074: 자동 대진용 snapshot 값 검증. API가 먼저 거르지만 RPC도 자체 검증한다.
+  if (msg.startsWith("EVENT_PARTICIPANT_PROFILE_INVALID")) {
+    return { status: 400, message: "참가자 정보 값이 올바르지 않습니다." };
+  }
   if (msg.startsWith("PARTICIPANT_MEMBER_NOT_FOUND")) {
     return { status: 404, message: "회원을 찾을 수 없습니다." };
   }

@@ -74,8 +74,16 @@ export function NewMemberClient({ type, currentClubName, clubSlug }: Props) {
         age: values.age.trim() ? Number(values.age) : undefined,
         memo: values.memo.trim() || undefined,
         playerBackground: values.isPlayerOrigin
+
           ? values.playerBackgroundDetail
+
           : "none",
+
+        gender: values.gender,
+
+        tennisStartYear: values.tennisStartYear.trim() || null,
+
+        dominantHand: values.dominantHand,
       }),
     });
 

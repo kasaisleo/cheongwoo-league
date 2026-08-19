@@ -83,6 +83,10 @@ export function EditMemberModal({ member, onClose, onSaved, onDeleted, currentCl
         memo: values.memo.trim() || null,
         playerBackground: values.isPlayerOrigin ? values.playerBackgroundDetail : "none",
         isDormant: values.isDormant,
+        // 0074: 빈 연도는 null 로 보내 "모름"으로 저장한다.
+        gender: values.gender,
+        tennisStartYear: values.tennisStartYear.trim() || null,
+        dominantHand: values.dominantHand,
         ...(isOwner ? { role: values.role === NO_ROLE ? null : values.role } : {}),
       }),
     });

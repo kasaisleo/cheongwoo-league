@@ -35,6 +35,10 @@ export type EventStatus = "draft" | "active" | "completed" | "cancelled";
 /** Match System 2.0 (0050). legacy_attendance_session은 향후 backfill phase 예약값 — 이번 phase에서는 native만 실제 생성됨. */
 export type EventSource = "native" | "legacy_attendance_session";
 
+/** 0074: 자동 대진용 선수 Profile 값. DB는 enum이 아니라 text + CHECK다. */
+export type Gender = 'male' | 'female' | 'unspecified';
+export type DominantHand = 'right' | 'left' | 'unspecified';
+
 export interface Member {
   id: string;
   name: string;
@@ -62,6 +66,12 @@ export interface Member {
   age: number | null;
   memo: string | null;
   player_background: string;
+  /** 0074: 자동 대진용 성별. 미입력은 'unspecified'(NOT NULL). */
+  gender: Gender;
+  /** 0074: 테니스를 시작한 연도. "연차"가 아니라 연도를 저장한다. 모르면 null. */
+  tennis_start_year: number | null;
+  /** 0074: 주손. 미입력은 'unspecified'(NOT NULL). 양손잡이 옵션은 두지 않는다. */
+  dominant_hand: DominantHand;
   created_at: string;
   /** Step 10-1: Supabase Auth(auth.users)와 연결된 식별자. null이면 카카오 로그인으로 아직 연결되지 않은 회원. */
   auth_user_id: string | null;
@@ -428,6 +438,16 @@ export interface EventParticipant {
   source_record_id: string | null;
   status: ParticipantStatus;
   is_active: boolean;
+  /**
+   * 0074: 참가 시점에 굳힌 자동 대진용 Profile.
+   * null = 아직 굳지 않음 — 회원은 후속 자동 대진에서 members Profile로
+   * fallback/materialize 될 대상이고, 게스트는 정보가 없다는 뜻이다.
+   * 'unspecified'(명시적 미지정)와는 의미가 다르므로 구분해서 다룬다.
+   */
+  gender_snapshot: Gender | null;
+  tennis_start_year_snapshot: number | null;
+  dominant_hand_snapshot: DominantHand | null;
+  rating_snapshot: number | null;
   created_at: string;
   updated_at: string;
 }
