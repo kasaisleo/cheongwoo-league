@@ -594,6 +594,16 @@ export type EventGameFormat = "singles" | "doubles";
 export type EventGameStatus = "draft" | "in_progress" | "completed" | "cancelled";
 /** event_games.source — manual(수동 대진)/auto(자동 편성, 이후 phase). */
 export type EventGameSource = "manual" | "auto";
+/**
+ * 0076: event_games.gender_category — Game 종류.
+ * mens(남복) | womens(여복) | mixed(혼복) | open(잡복). null은 미분류.
+ */
+export type EventGameGenderCategory = "mens" | "womens" | "mixed" | "open";
+/**
+ * 0076: event_games.gender_category_source — 종류를 누가 정했는지.
+ * configured(먼저 지정) | inferred(lineup에서 판정). gender_category와 항상 짝이다.
+ */
+export type EventGameGenderCategorySource = "configured" | "inferred";
 /** event_game_players.team — A/B 두 팀. DB CHECK로 강제. */
 export type EventGameTeam = "A" | "B";
 
@@ -614,6 +624,17 @@ export interface EventGame {
   source: EventGameSource;
   position: number;
   created_by: string | null;
+  /**
+   * 0076: Game 종류. gender_category_source와 항상 함께 null이거나 함께 값이 있다
+   * (DB paired CHECK). 기존 Game은 backfill되지 않아 둘 다 null(미분류)이다.
+   */
+  gender_category: EventGameGenderCategory | null;
+  gender_category_source: EventGameGenderCategorySource | null;
+  /**
+   * 0076: source='auto' Game을 관리자가 실제로 수정한 시각. null이면 수정 증거 없음.
+   * manual Game은 선수 배정만으로 채워지지 않는다.
+   */
+  manually_modified_at: string | null;
   created_at: string;
   updated_at: string;
 }

@@ -1,4 +1,9 @@
-import type { EventGameFormat, EventGameTeam, MatchSlotMode } from "@/lib/supabase/database.types";
+import type {
+  EventGameFormat,
+  EventGameGenderCategory,
+  EventGameTeam,
+  MatchSlotMode,
+} from "@/lib/supabase/database.types";
 
 export interface EventRpcErrorInfo {
   status: number;
@@ -39,6 +44,46 @@ export function isValidPosition(value: unknown): value is number {
  * 병렬 배열)으로 변환한다. 정원(singles 2 / doubles 4)·중복·자리 중복은 RPC가
  * 최종 검증하지만, 형식 오류는 DB 왕복 없이 여기서 먼저 걸러 400으로 돌려준다.
  */
+/** 0076: Game 종류 표시 문구. 원시 값을 화면에 노출하지 않는다. */
+export const GENDER_CATEGORY_LABEL: Record<EventGameGenderCategory, string> = {
+  mens: "남복",
+  womens: "여복",
+  mixed: "혼복",
+  open: "잡복",
+};
+
+/** 0076: gender_category 미분류(null) 표시 문구. */
+export const GENDER_CATEGORY_UNSET_LABEL = "미분류";
+
+export const GENDER_CATEGORIES: readonly EventGameGenderCategory[] = [
+  "mens",
+  "womens",
+  "mixed",
+  "open",
+] as const;
+
+/**
+ * 0076: PATCH .../gender-category 의 genderCategory 값 검증.
+ *
+ * null 은 "해제"라는 명시적 의미다 — 완성된 lineup 이 있으면 RPC 가 즉시
+ * 재판정해 inferred 로 두고, lineup 이 없으면 종류와 source 를 모두 지운다.
+ * key 자체가 없으면(undefined) 무엇을 하려는지 알 수 없으므로 거부한다.
+ */
+export function parseGenderCategory(
+  raw: unknown
+): { ok: true; value: EventGameGenderCategory | null } | { ok: false; message: string } {
+  if (raw === undefined) {
+    return { ok: false, message: "게임 종류 값이 필요합니다." };
+  }
+  if (raw === null) {
+    return { ok: true, value: null };
+  }
+  if (typeof raw === "string" && (GENDER_CATEGORIES as readonly string[]).includes(raw)) {
+    return { ok: true, value: raw as EventGameGenderCategory };
+  }
+  return { ok: false, message: "게임 종류 값이 올바르지 않습니다." };
+}
+
 export interface GameLineupInput {
   participantIds: string[];
   teams: EventGameTeam[];
@@ -360,6 +405,26 @@ export function mapEventRpcError(errorMessage: string | undefined, fallback: str
   }
   if (msg.startsWith("EVENT_GAME_PLAYER_TIME_CONFLICT")) {
     return { status: 409, message: "같은 시간대에 이미 배정된 선수가 있습니다." };
+  }
+  // 0076: ordered 모드 동시 출전. 시간 개념이 없으므로 TIME_CONFLICT를 재사용하지
+  // 않고 별도 코드를 쓴다 — "같은 시간대"라는 문구가 순서형 운영에서는 틀리다.
+  if (msg.startsWith("EVENT_GAME_PLAYER_SLOT_CONFLICT")) {
+    return {
+      status: 409,
+      message: "같은 순번의 다른 코트에 이미 배정된 선수가 있습니다.",
+    };
+  }
+  // 0076: Game 종류 값 자체가 틀린 경우와, lineup이 지정된 종류의 조건을
+  // 어기는 경우를 구분한다. 조건 부족을 잡복으로 자동 완화하지 않는다.
+  if (msg.startsWith("EVENT_GAME_CATEGORY_INVALID")) {
+    return { status: 400, message: "게임 종류 값이 올바르지 않습니다." };
+  }
+  if (msg.startsWith("EVENT_GAME_CATEGORY_MISMATCH")) {
+    return {
+      status: 409,
+      message:
+        "선수 구성이 지정한 게임 종류와 맞지 않습니다. 남복은 남성 4명, 여복은 여성 4명, 혼복은 복식에서 각 팀 남녀 1명씩이어야 합니다.",
+    };
   }
   if (msg.startsWith("EVENT_GAME_REORDER_INVALID")) {
     return { status: 409, message: "게임 순서 정보가 최신 상태와 일치하지 않습니다. 새로고침 후 다시 시도해주세요." };
