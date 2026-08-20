@@ -75,10 +75,6 @@ export function parseTennisStartYear(raw: unknown, field = "테니스 시작 연
   return parsed;
 }
 
-export function parseRating(raw: unknown, field = "Rating"): ParseResult<number | null> {
-  return parseNullableInteger(raw, field);
-}
-
 export interface PlayerProfileInput {
   gender: Gender;
   tennisStartYear: number | null;
@@ -110,7 +106,6 @@ export interface ParticipantProfileInput {
   gender: Gender | null;
   tennisStartYear: number | null;
   dominantHand: DominantHand | null;
-  rating: number | null;
 }
 
 function parseNullableGender(raw: unknown, field = "성별"): ParseResult<Gender | null> {
@@ -132,19 +127,23 @@ function parseNullableDominantHand(raw: unknown, field = "주손"): ParseResult<
 }
 
 /**
- * Event participant snapshot용 — 네 값을 한 번에 교체하는 full-profile 계약이다.
+ * Event participant snapshot용 — 세 값을 한 번에 교체하는 full-profile 계약이다.
  *
- * 네 key 가 모두 있어야 한다. 생략을 자동으로 null/unspecified 로 바꾸지 않는다 —
+ * 세 key 가 모두 있어야 한다. 생략을 자동으로 null/unspecified 로 바꾸지 않는다 —
  * "이 필드는 그대로 두려던 것"과 "지우려던 것"이 body 모양만으로는 구분되지
  * 않기 때문이다. 지우려면 명시적으로 null(숫자) 또는 'unspecified'(enum)를 보낸다.
+ *
+ * 0075: rating 은 계약에서 제거됐다. 자동 대진은 rating 을 입력으로 쓰지 않는다.
+ * body 에 rating 이 남아 있어도 읽지 않고 그냥 무시한다 — 알 수 없는 key 를
+ * 오류로 만들지 않는 것이 이 저장소의 기존 라우트 관례이고, QA 클라이언트가
+ * 일시적으로 네 key 를 보내도 파괴적으로 실패하지 않아야 한다.
  */
-const PROFILE_KEYS = ["gender", "tennisStartYear", "dominantHand", "rating"] as const;
+const PROFILE_KEYS = ["gender", "tennisStartYear", "dominantHand"] as const;
 
 const KEY_LABEL: Record<(typeof PROFILE_KEYS)[number], string> = {
   gender: "성별",
   tennisStartYear: "테니스 시작 연도",
   dominantHand: "주손",
-  rating: "Rating",
 };
 
 export function parseParticipantProfile(body: Record<string, unknown>): ParseResult<ParticipantProfileInput> {
@@ -152,7 +151,7 @@ export function parseParticipantProfile(body: Record<string, unknown>): ParseRes
   if (missing.length > 0) {
     return {
       ok: false,
-      message: `${missing.map((k) => KEY_LABEL[k]).join(", ")} 값이 필요합니다. 네 항목을 모두 보내주세요.`,
+      message: `${missing.map((k) => KEY_LABEL[k]).join(", ")} 값이 필요합니다. 세 항목을 모두 보내주세요.`,
     };
   }
 
@@ -162,11 +161,9 @@ export function parseParticipantProfile(body: Record<string, unknown>): ParseRes
   if (!y.ok) return { ok: false, message: y.message };
   const h = parseNullableDominantHand(body.dominantHand);
   if (!h.ok) return { ok: false, message: h.message };
-  const r = parseRating(body.rating);
-  if (!r.ok) return { ok: false, message: r.message };
 
   return {
     ok: true,
-    value: { gender: g.value, tennisStartYear: y.value, dominantHand: h.value, rating: r.value },
+    value: { gender: g.value, tennisStartYear: y.value, dominantHand: h.value },
   };
 }

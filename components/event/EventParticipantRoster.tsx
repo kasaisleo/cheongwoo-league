@@ -49,14 +49,12 @@ interface ProfileDraft {
   gender: string;
   tennisStartYear: string;
   dominantHand: string;
-  rating: string;
 }
 
 const EMPTY_DRAFT: ProfileDraft = {
   gender: NULL_SENTINEL,
   tennisStartYear: "",
   dominantHand: NULL_SENTINEL,
-  rating: "",
 };
 
 /** NULL 을 어떻게 부를지는 참가자 종류에 따라 다르다. */
@@ -181,7 +179,6 @@ export function EventParticipantRoster({
       gender: p.gender_snapshot ?? NULL_SENTINEL,
       tennisStartYear: p.tennis_start_year_snapshot?.toString() ?? "",
       dominantHand: p.dominant_hand_snapshot ?? NULL_SENTINEL,
-      rating: p.rating_snapshot?.toString() ?? "",
     });
     setEditingId(p.id);
   }
@@ -189,7 +186,7 @@ export function EventParticipantRoster({
   async function saveProfile(participantId: string) {
     if (busyId) return;
     setBusyId(participantId);
-    // 네 key 를 항상 보낸다. sentinel 과 빈 입력은 명시적 null 로 변환한다.
+    // 세 key 를 항상 보낸다. sentinel 과 빈 입력은 명시적 null 로 변환한다.
     const res = await fetch(
       `/api/admin/events/${eventId}/participants/${participantId}/profile`,
       {
@@ -199,7 +196,6 @@ export function EventParticipantRoster({
           gender: draft.gender === NULL_SENTINEL ? null : draft.gender,
           tennisStartYear: draft.tennisStartYear.trim() || null,
           dominantHand: draft.dominantHand === NULL_SENTINEL ? null : draft.dominantHand,
-          rating: draft.rating.trim() || null,
         }),
       }
     );
@@ -357,18 +353,6 @@ export function EventParticipantRoster({
                           className={profileInputCls}
                           value={draft.tennisStartYear}
                           onChange={(e) => setDraft({ ...draft, tennisStartYear: e.target.value })}
-                          placeholder={nullLabel(p.participant_type === "member")}
-                        />
-                      </label>
-                      <label className="block">
-                        <span className="mb-1 block text-[10px] font-semibold text-[color:var(--surface-muted)]">Rating</span>
-                        <input
-                          type="number"
-                          inputMode="numeric"
-                          step={1}
-                          className={profileInputCls}
-                          value={draft.rating}
-                          onChange={(e) => setDraft({ ...draft, rating: e.target.value })}
                           placeholder={nullLabel(p.participant_type === "member")}
                         />
                       </label>

@@ -447,7 +447,6 @@ export interface EventParticipant {
   gender_snapshot: Gender | null;
   tennis_start_year_snapshot: number | null;
   dominant_hand_snapshot: DominantHand | null;
-  rating_snapshot: number | null;
   created_at: string;
   updated_at: string;
 }

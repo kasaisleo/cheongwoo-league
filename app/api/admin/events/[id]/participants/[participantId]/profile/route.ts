@@ -12,10 +12,13 @@ import { parseParticipantProfile } from "@/lib/player-profile";
  * 서로 다른 lifecycle을 갖고 허용 조건도 다르다. 한 PATCH에 섞으면 "상태만
  * 바꾸려는 요청"이 Profile을 덮어쓸지 아닐지가 body 모양에 따라 달라진다.
  *
- * 계약은 set_event_participant_profile RPC 그대로 "네 값 전체 교체"다. 네 key 가
+ * 계약은 set_event_participant_profile RPC 그대로 "세 값 전체 교체"다. 세 key 가
  * 모두 있어야 하며 하나라도 빠지면 400 이다 — 생략을 자동으로 null/unspecified 로
  * 바꾸면 "그대로 두려던 값"이 조용히 지워진다. 지우려면 명시적으로 null 또는
  * unspecified 를 보낸다.
+ *
+ * 0075: rating 은 계약에서 빠졌다. body 에 rating 이 있어도 파서가 읽지 않으므로
+ * DB/RPC 로 전달되지 않는다(무시).
  *
  * Club context는 access.clubId 하나뿐이다. body에 club_id가 들어와도 읽지 않는다.
  */
@@ -46,7 +49,6 @@ export async function PATCH(
     p_gender: parsed.value.gender,
     p_tennis_start_year: parsed.value.tennisStartYear,
     p_dominant_hand: parsed.value.dominantHand,
-    p_rating: parsed.value.rating,
   });
 
   if (rpcError) {
