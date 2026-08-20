@@ -329,6 +329,12 @@ export interface MatchConfigV1 {
   rest_gap_minutes: number | null;
   partner_repeat_limit: number | null;
   opponent_repeat_limit: number | null;
+  /**
+   * 0078: 자동 대진 연속 출전 상한. normalize_match_config는 이 키를 "있을 때만"
+   * 검증하고 없으면 주입하지 않는다(다른 키와 다름) — 그래서 optional이다.
+   * 키 없음/명시적 null은 모두 알고리즘 v1 기본값 2로 해석된다. 허용 범위 1~10.
+   */
+  consecutive_games_limit?: number | null;
 }
 
 export interface Club {
@@ -635,8 +641,38 @@ export interface EventGame {
    * manual Game은 선수 배정만으로 채워지지 않는다.
    */
   manually_modified_at: string | null;
+  /**
+   * 0077: 이 Game의 lineup을 만든 자동 대진 실행. source='auto'와 정확히 짝을
+   * 이룬다(DB CHECK로 강제) — manual Game은 항상 null, auto Game은 항상 값이 있다.
+   */
+  pairing_run_id: string | null;
   created_at: string;
   updated_at: string;
+}
+
+/**
+ * 자동 대진 실행 기록(0077). row 존재 자체가 commit 성공을 뜻한다 — preview는
+ * DB write가 없고 commit은 단일 트랜잭션이라 실패한 실행은 남지 않는다.
+ * status/committed_at 컬럼은 두지 않는다. 삭제 RPC 없음(provenance 영구 보존).
+ * 이 타입은 신규 코드에서 직접 payload를 조립하는 용도가 아니다 — preview/
+ * commit RPC(9D-C/9D-D)가 아직 없으므로 현재는 조회 전용 참조 타입이다.
+ */
+export interface EventPairingRun {
+  id: string;
+  event_id: string;
+  club_id: string;
+  algorithm_version: string;
+  seed: string;
+  config_snapshot: Record<string, unknown>;
+  input_snapshot: Record<string, unknown>;
+  input_hash: string;
+  result_snapshot: Record<string, unknown>;
+  result_hash: string;
+  result_summary: Record<string, unknown>;
+  created_by: string | null;
+  created_at: string;
+  /** 이 run의 결과가 재생성으로 대체된 시각(9D-D). null이면 아직 유효. */
+  superseded_at: string | null;
 }
 
 /**
