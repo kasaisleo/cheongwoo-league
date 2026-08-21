@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "next lint",
     "check:migration-security": "node scripts/check-migration-security.mjs",
-    "test:migration-security": "node --test scripts/check-migration-security.test.mjs"
+    "test:migration-security": "node --test scripts/check-migration-security.test.mjs",
+    "test:pairing": "node --test lib/event-pairing/engine.test.ts lib/event-pairing/property.test.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.5.2",
