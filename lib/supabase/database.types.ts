@@ -676,6 +676,131 @@ export interface EventPairingRun {
 }
 
 /**
+ * 0079 capture_event_pairing_input의 인자. Admin API는 p_club_id에
+ * access.clubId만 넘긴다 — body/query의 club_id는 수신하지도 신뢰하지도 않는다.
+ * p_target_game_ids는 명시적 배열이며 서버(RPC)가 dedupe + UUID 정렬 후 검증한다
+ * (raw 길이와 dedupe 후 길이를 각각 1..32로 제한한다).
+ */
+export interface CaptureEventPairingInputArgs {
+  p_event_id: string;
+  p_club_id: string;
+  p_target_game_ids: string[];
+}
+
+/**
+ * 0079 capture_event_pairing_input의 반환 shape(RETURNS TABLE, 항상 1행).
+ * DB write 0건인 STABLE 읽기 전용 함수다.
+ *
+ * input_hash는 DB가 만든 opaque stale-token이다 — TypeScript는 PostgreSQL의
+ * jsonb 직렬화(키를 "길이 우선 후 바이트순"으로 정규화한다)를 재구현하지 않고,
+ * commit 시 DB가 다시 만든 hash 문자열과 비교만 한다.
+ *
+ * snapshot에는 표시 이름·전화번호 등 개인 식별값과 파생 점수(전력·축소 승률·
+ * imputed median 등)를 담지 않는다 — 엔진이 algorithm_version 기준으로 재계산한다.
+ */
+export interface CaptureEventPairingInputResult {
+  /** normalize_match_config 결과 + 알고리즘 고정 파라미터 + calculationYear. */
+  config_snapshot: PairingConfigSnapshot;
+  input_snapshot: PairingInputSnapshot;
+  /** sha256({"config":config_snapshot,"input":input_snapshot})의 소문자 64 hex. */
+  input_hash: string;
+}
+
+/**
+ * 0079 config_snapshot. normalize_match_config가 반환하는 키 전체에
+ * 알고리즘 고정 파라미터와 calculationYear가 더해진 형태다.
+ * slot_mode와 calculationYear는 여기가 유일한 정본이다(input_snapshot에 중복하지 않는다).
+ */
+export interface PairingConfigSnapshot extends MatchConfigV1 {
+  algorithmVersion: "v1";
+  powerEpsilonBp: number;
+  candidateTopK: number;
+  beamWidth: number;
+  lookaheadDepth: number;
+  doublesOnly: boolean;
+  /** extract(year from events.event_date) — 서버 현재 연도가 아니다. */
+  calculationYear: number;
+}
+
+/** 0079 participant 값의 출처. explicit 'unspecified' snapshot은 master로 fallback하지 않는다. */
+export type PairingValueSource = "snapshot" | "member" | "none";
+
+/**
+ * 0079 input_snapshot의 participant. confirmed + is_active만 포함한다.
+ * wins/losses/draws는 셋 다 public.matches에서 파생한다 — members/guests의
+ * wins/losses 캐시 컬럼은 무승부를 세지 않으므로 쓰지 않는다.
+ * guests에는 gender/dominant_hand/tennis_start_year/mapo_score 컬럼이 없어
+ * guest의 이 값들은 participant snapshot에만 존재할 수 있다.
+ */
+export interface PairingParticipantSnapshot {
+  id: string;
+  participantType: ParticipantType;
+  memberId: string | null;
+  guestId: string | null;
+  gender: Gender;
+  genderSource: PairingValueSource;
+  tennisStartYear: number | null;
+  tennisStartYearSource: PairingValueSource;
+  dominantHand: DominantHand;
+  dominantHandSource: PairingValueSource;
+  mapoScore: number | null;
+  mapoScoreSource: PairingValueSource;
+  wins: number;
+  losses: number;
+  draws: number;
+}
+
+/** 0079 input_snapshot의 base Game lineup 항목. participantId만 담는다. */
+export interface PairingLineupSlotSnapshot {
+  participantId: string;
+  team: "a" | "b";
+  slot: number;
+}
+
+/** 0079 input_snapshot의 target Game. 자동 배정 대상인 빈 draft Game이다. */
+export interface PairingTargetGameSnapshot {
+  id: string;
+  position: number;
+  format: EventGameFormat;
+  genderCategory: EventGameGenderCategory;
+  courtId: string | null;
+  courtPosition: number | null;
+  sessionId: string | null;
+  sessionPosition: number | null;
+  /** UTC 고정 형식 'YYYY-MM-DDTHH:MM:SSZ'. timezone에 따라 값이 바뀌지 않는다. */
+  sessionStartsAt: string | null;
+  sessionEndsAt: string | null;
+}
+
+/**
+ * 0079 input_snapshot의 base Game — target 밖 + non-cancelled + lineup 있음.
+ * derived history(출전·파트너·상대)에 실제로 쓰인다. singles도 포함되며
+ * 이 경우 파트너 이력은 생기지 않는다.
+ */
+export interface PairingBaseGameSnapshot extends PairingTargetGameSnapshot {
+  status: EventGameStatus;
+  source: EventGameSource;
+  pairingRunId: string | null;
+  lineup: PairingLineupSlotSnapshot[];
+}
+
+/**
+ * 0079 input_snapshot. cancelled Game과 lineup이 없는 Game은 담지 않는다 —
+ * 알고리즘 결과에 영향이 없는데도 0077 계약상 input_snapshot 전체가 hash
+ * 대상이라 "담고 hash에서 제외"가 불가능하기 때문이다.
+ */
+export interface PairingInputSnapshot {
+  event: {
+    id: string;
+    clubId: string;
+    status: EventStatus;
+  };
+  participants: PairingParticipantSnapshot[];
+  targetGames: PairingTargetGameSnapshot[];
+  baseGames: PairingBaseGameSnapshot[];
+}
+
+/**
  * Match System 2.0 — event_games의 선수 슬롯(0054). member/guest 전용 컬럼이 없고
  * event_participant_id 하나로 통합 참조한다(레거시 matches의 8-슬롯 방식과 다름).
  */
